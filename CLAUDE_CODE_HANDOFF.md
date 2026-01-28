@@ -8,6 +8,41 @@ I'm Iddo, an architecture student working on my B.Arch thesis at Tel Aviv Univer
 
 **Live Deployment:** https://cuboidstudio.vercel.app
 
+**GitHub Repository:** https://github.com/iddonaim/cuboid-studio
+
+---
+
+## IMPORTANT: Git Configuration
+
+**ALWAYS** ensure these git settings are configured:
+
+```bash
+git config --global user.name "Iddo Naim"
+git config --global user.email "iddonaim@gmail.com"
+```
+
+**NEVER** commit with the Mac user email (kageyoshiki@...). Always use `iddonaim@gmail.com`.
+
+---
+
+## IMPORTANT: REFERENCES Folder
+
+The `REFERENCES/` folder contains internal Grasshopper screenshots, specs, and reference files (including an 84MB video).
+
+**CRITICAL RULES:**
+- ✅ REFERENCES/ is in .gitignore
+- ✅ Folder exists LOCALLY ONLY
+- ❌ NEVER commit or push REFERENCES/ to GitHub
+- ❌ NEVER remove REFERENCES/ from .gitignore
+- ❌ NEVER use `git add .` without checking .gitignore first
+
+If REFERENCES accidentally gets committed:
+```bash
+# Remove from git history
+git filter-branch --force --index-filter 'git rm -r --cached --ignore-unmatch REFERENCES/' --prune-empty --tag-name-filter cat -- --all
+git push --force
+```
+
 ---
 
 ## What This App Does
@@ -16,8 +51,10 @@ Cuboid Studio is a web-based 3D editor that lets me:
 1. **Browse 70 cube variations** - C(8,4) combinations of 4 boolean cutters from 8 master cutters
 2. **Place cubes in 3D space** - Left-click on grid to place selected variation
 3. **Select and delete cubes** - Click placed cubes to select, delete button to remove
-4. **Import/Export assemblies** - Save and load spatial configurations as JSON
-5. **Navigate 3D space** - Right-drag to orbit, scroll to zoom
+4. **Auto-fill algorithm** - Grow assemblies from selected cube or randomly
+5. **Section cut** - Slice through assemblies with adjustable clipping planes
+6. **Navigate 3D space** - Right-drag to orbit, scroll to zoom
+7. **Install as PWA** - Offline-capable progressive web app
 
 ---
 
@@ -771,7 +808,97 @@ VitePWA({
 
 ---
 
-**Last Updated:** 2026-01-27
-**Status:** PWA implemented - installable, offline-capable, production-ready
+### Session 2026-01-28 - GitHub Setup, UI Improvements, Git Configuration
+
+**Completed:**
+
+**Part 1: GitHub Repository Setup**
+- Created GitHub repository: https://github.com/iddonaim/cuboid-studio
+- Generated SSH key for authentication (ed25519)
+- Configured SSH key with correct email (iddonaim@gmail.com)
+- Added SSH key to GitHub account
+- Initial commit and push to GitHub
+
+**Part 2: REFERENCES Folder Management**
+- Removed REFERENCES folder from git repository (84MB video file + internal screenshots)
+- Added REFERENCES/ to .gitignore
+- Folder remains locally for development reference
+- Cleaned from entire git history using git filter-branch
+- Updated documentation with strict rules about REFERENCES folder
+
+**Part 3: Git Configuration**
+- Set global git config: `user.name = "Iddo Naim"`
+- Set global git config: `user.email = "iddonaim@gmail.com"`
+- Rewrote all commit history to use correct email (not Mac user email)
+- Force-pushed corrected history to GitHub
+- Added documentation about required git configuration
+
+**Part 4: Vercel-GitHub Integration**
+- Connected Vercel project to GitHub repository
+- Enabled automatic deployments on git push
+- Enabled Pull Request comments
+- Enabled deployment status events
+- No more manual `vercel --prod` needed - just `git push`
+
+**Part 5: UI Improvements - Remove Import/Export**
+- Removed Import/Export JSON buttons from sidebar
+- Removed `handleExport`, `handleImport` functions
+- Removed `fileInputRef`
+- Cleaner sidebar UI (no longer needed with direct GLB models)
+
+**Part 6: UI Improvements - Section Cut Checkbox**
+- Fixed Section Cut controls to appear ABOVE checkbox (not below)
+- Checkbox now stays in same position when toggled
+- Controls expand upward instead of pushing checkbox down
+- Better UX for enabling/disabling section cut
+
+**Part 7: Sidebar Width Fullscreen Fix**
+- Enhanced sidebar width constraints for fullscreen stability
+- Added `flexBasis: '250px'` and `flexGrow: 0`
+- Added `minWidth: 0` to canvas container
+- Sidebar maintains exact 250px width through fullscreen transitions on Mac
+
+**Workflow Changes:**
+
+**Before:**
+```bash
+# Make changes
+git add .
+git commit -m "message"
+vercel --prod  # Manual deployment
+```
+
+**After:**
+```bash
+# Make changes
+git add .
+git commit -m "message"
+git push  # Automatic deployment via GitHub → Vercel
+```
+
+**Git Best Practices Added:**
+- Always check git config before commits
+- Never commit REFERENCES folder
+- Use correct email (iddonaim@gmail.com)
+- SSH authentication for passwordless push/pull
+
+**Files Modified:**
+- `.gitignore` - Added REFERENCES/ and .env.local
+- `App.tsx` - Removed import/export UI, fixed section cut layout, enhanced sidebar flex
+- `CLAUDE_CODE_HANDOFF.md` - Added git configuration section, REFERENCES warnings
+
+**Files Removed from Git:**
+- All files in REFERENCES/ (removed from entire history)
+
+**Repository Information:**
+- **GitHub**: https://github.com/iddonaim/cuboid-studio
+- **Vercel**: https://cuboidstudio.vercel.app (auto-deploys from main branch)
+- **SSH**: Configured for passwordless git operations
+
+---
+
+**Last Updated:** 2026-01-28
+**Status:** Production-ready PWA with GitHub/Vercel CI/CD pipeline
 **Remaining Bug:** #3 - Remove placed variation from sidebar selection (low priority)
 **Deployed:** https://cuboidstudio.vercel.app
+**Repository:** https://github.com/iddonaim/cuboid-studio
