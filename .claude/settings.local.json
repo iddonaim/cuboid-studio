@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 5 npm run dev)",
+      "WebFetch(domain:cuboidstudio.vercel.app)",
+      "Bash(vercel logs:*)",
+      "Bash(vercel:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(pkill:*)",
+      "Bash(npx gltf-transform:*)",
+      "Bash(xxd:*)",
+      "Bash(sips:*)",
+      "Bash(python3:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
