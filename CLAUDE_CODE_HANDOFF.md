@@ -897,8 +897,80 @@ git push  # Automatic deployment via GitHub → Vercel
 
 ---
 
-**Last Updated:** 2026-01-28
-**Status:** Production-ready PWA with GitHub/Vercel CI/CD pipeline
+### Session 2026-01-29 - Strict Alignment Rules
+
+**Completed:**
+
+**Part 1: Strict Alignment Rules System**
+- Added second checkbox for "Strict Alignment" rules alongside existing "Rules" toggle
+- Strict rules enforce visual continuity of sphere/cylinder cutters
+- When enabled, sphere-to-sphere and cylinder-to-cylinder connections must have aligned centers
+- Alignment tolerance: ~10% of cutter radius
+- Comparison done in local cube space (before rotation/translation)
+
+**Part 2: Connection Rules Logic**
+- Added `getRotatedFaceCutter()` - returns the cutter specification affecting a world-space face after rotation
+- Added `getCutterPositionOnFace()` - extracts 2D position of cutter on face plane
+- Added `cuttersAlign()` - checks if two cutters align within tolerance
+- Added `canConnectStrict()` - checks both type compatibility and alignment
+- Updated all validation functions to accept `strictMode` parameter:
+  - `findValidRotation()`
+  - `findAllValidRotations()`
+  - `findValidRotationsAtPosition()`
+
+**Part 3: UI Components**
+- Created `StrictRulesToggle` component with collapsible details panel
+- Shows additional alignment constraints and tolerance explanation
+- Disabled when basic "Rules" are disabled (requires basic rules to be enabled)
+- Orange color scheme to differentiate from green basic rules
+
+**Part 4: Integration**
+- Added `strictRulesEnabled` state to App.tsx
+- Passed strict mode parameter to all validation calls
+- Updated dependency arrays to include `strictRulesEnabled`
+- Strict rules only apply when both `rulesEnabled` AND `strictRulesEnabled` are true
+
+**Key Technical Details:**
+
+```typescript
+// Alignment checking (connectionRules.ts)
+function cuttersAlign(cutter1, cutter2, face1, face2) {
+  const pos1 = getCutterPositionOnFace(cutter1, face1);
+  const pos2 = getCutterPositionOnFace(cutter2, face2);
+  const distance = Math.sqrt((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2);
+  const tolerance = radius * 0.1; // 10% of radius
+  return distance <= tolerance;
+}
+
+// Strict connection check
+function canConnectStrict(type1, type2, cutter1, cutter2, face1, face2) {
+  if (!canConnect(type1, type2)) return false;  // Basic rules first
+  if (type1 === 'shell' || type2 === 'shell') return true;  // Shells don't need alignment
+  if (cutter1 && cutter2 && type1 === type2) {
+    return cuttersAlign(cutter1, cutter2, face1, face2);  // Check alignment
+  }
+  return true;
+}
+```
+
+**Files Modified:**
+- `connectionRules.ts` - Added strict alignment checking functions
+- `App.tsx` - Added strict rules UI and state management
+
+**Behavior:**
+- Basic "Rules" checkbox: enables type-based connection rules (sphere↔sphere, cylinder↔cylinder, etc.)
+- "Strict Alignment" checkbox: adds alignment requirement for sphere/cylinder pairs
+- Strict Alignment requires Rules to be enabled (disabled when Rules is off)
+- Visual feedback: green for valid, red for invalid (same as before)
+- Rotation cycling (Spacebar/R) respects strict rules when enabled
+
+**Use Case:**
+This feature enables more precise architectural assemblies where sphere cutters (doors) and cylinder cutters (windows) must visually align across adjacent cubes, creating continuous openings rather than offset ones.
+
+---
+
+**Last Updated:** 2026-01-29
+**Status:** Production-ready PWA with GitHub/Vercel CI/CD pipeline + Strict Alignment Rules
 **Remaining Bug:** #3 - Remove placed variation from sidebar selection (low priority)
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio

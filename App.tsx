@@ -355,6 +355,56 @@ const RulesToggle: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => 
   );
 };
 
+const StrictRulesToggle: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ enabled, onChange, disabled }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
+          style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}
+        />
+        <span
+          onClick={() => !disabled && setShowDetails(!showDetails)}
+          style={{
+            color: disabled ? '#64748b' : (enabled ? '#f59e0b' : '#94a3b8'),
+            fontSize: 12,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            textDecoration: 'underline',
+            textDecorationStyle: 'dotted',
+            opacity: disabled ? 0.5 : 1
+          }}
+        >
+          Strict Alignment {showDetails ? '▼' : '▶'}
+        </span>
+      </div>
+      {showDetails && (
+        <div style={{
+          marginTop: 8,
+          marginLeft: 24,
+          padding: 8,
+          background: '#1e293b',
+          borderRadius: 4,
+          fontSize: 11,
+          color: '#94a3b8',
+          lineHeight: 1.6
+        }}>
+          <div style={{ marginBottom: 4, color: '#f59e0b' }}>Additional constraints:</div>
+          <div style={{ color: '#94a3b8' }}>• Sphere ↔ Sphere: centers must align</div>
+          <div style={{ color: '#94a3b8' }}>• Cylinder ↔ Cylinder: centers must align</div>
+          <div style={{ color: '#94a3b8', marginTop: 4, fontSize: 10 }}>
+            (Tolerance: ~10% of cutter radius)
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [placedCubes, setPlacedCubes] = useState<PlacedCube[]>([]);
@@ -366,6 +416,7 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(true);
   const [pickerActive, setPickerActive] = useState(true);
   const [rulesEnabled, setRulesEnabled] = useState(true);  // Toggle for connection rules
+  const [strictRulesEnabled, setStrictRulesEnabled] = useState(false);  // Toggle for strict alignment rules
 
   // PWA install prompt state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -410,9 +461,10 @@ const App: React.FC = () => {
       hoverPos,
       selectedVariation.id,
       cubeInfos,
-      GRID_STRIDE
+      GRID_STRIDE,
+      strictRulesEnabled && rulesEnabled
     );
-  }, [hoverPos, placedCubes, selectedVariation, rulesEnabled]);
+  }, [hoverPos, placedCubes, selectedVariation, rulesEnabled, strictRulesEnabled]);
 
   // Calculate if current placement is valid based on connection rules
   const placementValidity = useMemo(() => {
@@ -606,7 +658,8 @@ const App: React.FC = () => {
         cube.position,
         cube.variationId,
         otherCubes,
-        GRID_STRIDE
+        GRID_STRIDE,
+        strictRulesEnabled && rulesEnabled
       );
 
       // Check if the new rotation is in the valid list
@@ -707,7 +760,8 @@ const App: React.FC = () => {
             position,
             variation.id,
             cubeInfos,
-            GRID_STRIDE
+            GRID_STRIDE,
+            strictRulesEnabled
           );
 
           for (const rotation of validRotations) {
@@ -800,7 +854,8 @@ const App: React.FC = () => {
         position,
         variationId,
         cubeInfos,
-        GRID_STRIDE
+        GRID_STRIDE,
+        strictRulesEnabled
       );
 
       for (const rotation of validRotations) {
@@ -917,6 +972,13 @@ const App: React.FC = () => {
 
         {/* Connection rules toggle */}
         <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
+
+        {/* Strict alignment rules toggle */}
+        <StrictRulesToggle
+          enabled={strictRulesEnabled}
+          onChange={setStrictRulesEnabled}
+          disabled={!rulesEnabled}
+        />
 
         {/* Install PWA section */}
         <div style={{

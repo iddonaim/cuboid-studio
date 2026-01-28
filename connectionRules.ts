@@ -212,6 +212,146 @@ export function canConnect(type1: FaceCutType, type2: FaceCutType): boolean {
 }
 
 /**
+ * Gets the cutter specification that affects a world-space face after rotation.
+ * Returns null if the face is a shell (no cutter).
+ */
+export function getRotatedFaceCutter(
+  variation: CubeVariation,
+  worldFace: Face,
+  rotation: Rotation
+): CutterSpec | null {
+  // Find which original face ends up at worldFace after combined rotation
+  // Same logic as getRotatedFaceCutType but returns the actual cutter
+  const yMap = Y_ROTATION_FACE_MAP[rotation.y];
+  const xMap = X_ROTATION_FACE_MAP[rotation.x];
+
+  // Reverse rotation to find original face
+  let afterYFace: Face = worldFace;
+  for (const [orig, rotated] of Object.entries(xMap)) {
+    if (rotated === worldFace) {
+      afterYFace = orig as Face;
+      break;
+    }
+  }
+
+  let originalFace: Face = afterYFace;
+  for (const [orig, rotated] of Object.entries(yMap)) {
+    if (rotated === afterYFace) {
+      originalFace = orig as Face;
+      break;
+    }
+  }
+
+  // Find which cutter affects this original face
+  for (const cutter of variation.cutters) {
+    if (cutter.type === 'sphere') {
+      const face = getSphereFace(cutter as SphereSpec);
+      if (face === originalFace) {
+        return cutter;
+      }
+    } else {
+      const faces = getCylinderFaces(cutter as CylinderSpec);
+      if (faces.includes(originalFace)) {
+        return cutter;
+      }
+    }
+  }
+
+  return null; // No cutter on this face (shell)
+}
+
+/**
+ * Extracts the 2D position of a cutter on a face plane.
+ * Returns [coord1, coord2] based on the face orientation.
+ */
+function getCutterPositionOnFace(cutter: CutterSpec, face: Face): [number, number] {
+  if (cutter.type === 'sphere') {
+    const sphere = cutter as SphereSpec;
+    const [x, y, z] = sphere.center;
+
+    // Get the 2D coordinates on the face plane
+    if (face === 'Y_NEG' || face === 'Y_POS') {
+      return [x, z];
+    } else if (face === 'X_NEG' || face === 'X_POS') {
+      return [y, z];
+    } else { // Z_NEG or Z_POS
+      return [x, y];
+    }
+  } else {
+    const cylinder = cutter as CylinderSpec;
+
+    // Cylinders have axisPosition which is already the 2D perpendicular coordinates
+    // For Y-axis cylinder: axisPosition = [X, Z]
+    // For X-axis cylinder: axisPosition = [Y, Z]
+    // For Z-axis cylinder: axisPosition = [X, Y]
+    return cylinder.axisPosition;
+  }
+}
+
+/**
+ * Checks if two cutters align in local space (strict rules).
+ * Tolerance is ~10% of the cutter's radius.
+ */
+function cuttersAlign(
+  cutter1: CutterSpec,
+  cutter2: CutterSpec,
+  face1: Face,
+  face2: Face
+): boolean {
+  // Get 2D positions on their respective face planes
+  const pos1 = getCutterPositionOnFace(cutter1, face1);
+  const pos2 = getCutterPositionOnFace(cutter2, face2);
+
+  // Calculate distance between positions
+  const dx = pos1[0] - pos2[0];
+  const dz = pos1[1] - pos2[1];
+  const distance = Math.sqrt(dx * dx + dz * dz);
+
+  // Get radius for tolerance calculation
+  let radius: number;
+  if (cutter1.type === 'sphere') {
+    radius = (cutter1 as SphereSpec).radius;
+  } else {
+    radius = (cutter1 as CylinderSpec).radius;
+  }
+
+  // Tolerance is 10% of radius
+  const tolerance = radius * 0.1;
+
+  return distance <= tolerance;
+}
+
+/**
+ * Checks if two face cut types can connect with strict alignment rules.
+ * First checks basic type compatibility, then checks alignment for sphere/cylinder pairs.
+ */
+export function canConnectStrict(
+  type1: FaceCutType,
+  type2: FaceCutType,
+  cutter1: CutterSpec | null,
+  cutter2: CutterSpec | null,
+  face1: Face,
+  face2: Face
+): boolean {
+  // First check basic connection rules
+  if (!canConnect(type1, type2)) {
+    return false;
+  }
+
+  // For shell connections, basic rules are sufficient
+  if (type1 === 'shell' || type2 === 'shell') {
+    return true;
+  }
+
+  // For sphere-sphere and cylinder-cylinder, check alignment
+  if (cutter1 && cutter2 && type1 === type2) {
+    return cuttersAlign(cutter1, cutter2, face1, face2);
+  }
+
+  return true;
+}
+
+/**
  * Pre-computed face cut types for all variations.
  */
 export const VARIATION_FACE_TYPES: Map<string, Record<Face, FaceCutType>> = new Map();
@@ -232,18 +372,24 @@ const ALL_AXIS_ROTATIONS: AxisRotation[] = [0, 1, 2, 3];
  * @param existingRotation - Rotation of the already-placed cube
  * @param existingFace - Which face of the existing cube we're connecting to
  * @param newVariationId - ID of the cube we want to place
+ * @param strictMode - Whether to enforce strict alignment rules
  * @returns Valid rotation for the new cube, or null if impossible
  */
 export function findValidRotation(
   existingVariationId: string,
   existingRotation: Rotation,
   existingFace: Face,
-  newVariationId: string
+  newVariationId: string,
+  strictMode: boolean = false
 ): Rotation | null {
   const existingFaceTypes = VARIATION_FACE_TYPES.get(existingVariationId);
   const newFaceTypes = VARIATION_FACE_TYPES.get(newVariationId);
 
   if (!existingFaceTypes || !newFaceTypes) return null;
+
+  const existingVariation = CUBE_VARIATIONS.find(v => v.id === existingVariationId);
+  const newVariation = CUBE_VARIATIONS.find(v => v.id === newVariationId);
+  if (!existingVariation || !newVariation) return null;
 
   // Get the cut type on the existing cube's face (considering its rotation)
   const existingCutType = getRotatedFaceCutType(existingFaceTypes, existingFace, existingRotation);
@@ -256,8 +402,17 @@ export function findValidRotation(
     for (const x of ALL_AXIS_ROTATIONS) {
       const rotation: Rotation = { y, x };
       const newCutType = getRotatedFaceCutType(newFaceTypes, newTouchingFace, rotation);
-      if (canConnect(existingCutType, newCutType)) {
-        return rotation;
+
+      if (strictMode) {
+        const existingCutter = getRotatedFaceCutter(existingVariation, existingFace, existingRotation);
+        const newCutter = getRotatedFaceCutter(newVariation, newTouchingFace, rotation);
+        if (canConnectStrict(existingCutType, newCutType, existingCutter, newCutter, existingFace, newTouchingFace)) {
+          return rotation;
+        }
+      } else {
+        if (canConnect(existingCutType, newCutType)) {
+          return rotation;
+        }
       }
     }
   }
@@ -272,12 +427,17 @@ export function findAllValidRotations(
   existingVariationId: string,
   existingRotation: Rotation,
   existingFace: Face,
-  newVariationId: string
+  newVariationId: string,
+  strictMode: boolean = false
 ): Rotation[] {
   const existingFaceTypes = VARIATION_FACE_TYPES.get(existingVariationId);
   const newFaceTypes = VARIATION_FACE_TYPES.get(newVariationId);
 
   if (!existingFaceTypes || !newFaceTypes) return [];
+
+  const existingVariation = CUBE_VARIATIONS.find(v => v.id === existingVariationId);
+  const newVariation = CUBE_VARIATIONS.find(v => v.id === newVariationId);
+  if (!existingVariation || !newVariation) return [];
 
   const existingCutType = getRotatedFaceCutType(existingFaceTypes, existingFace, existingRotation);
   const newTouchingFace = OPPOSITE_FACE[existingFace];
@@ -288,8 +448,17 @@ export function findAllValidRotations(
     for (const x of ALL_AXIS_ROTATIONS) {
       const rotation: Rotation = { y, x };
       const newCutType = getRotatedFaceCutType(newFaceTypes, newTouchingFace, rotation);
-      if (canConnect(existingCutType, newCutType)) {
-        validRotations.push(rotation);
+
+      if (strictMode) {
+        const existingCutter = getRotatedFaceCutter(existingVariation, existingFace, existingRotation);
+        const newCutter = getRotatedFaceCutter(newVariation, newTouchingFace, rotation);
+        if (canConnectStrict(existingCutType, newCutType, existingCutter, newCutter, existingFace, newTouchingFace)) {
+          validRotations.push(rotation);
+        }
+      } else {
+        if (canConnect(existingCutType, newCutType)) {
+          validRotations.push(rotation);
+        }
       }
     }
   }
@@ -376,7 +545,8 @@ export function findValidRotationsAtPosition(
   newPosition: [number, number, number],
   newVariationId: string,
   placedCubes: PlacedCubeInfo[],
-  gridStride: number
+  gridStride: number,
+  strictMode: boolean = false
 ): Rotation[] {
   // Find all adjacent cubes
   const adjacentCubes: { cube: PlacedCubeInfo; faceOnNew: Face; faceOnExisting: Face }[] = [];
@@ -397,6 +567,9 @@ export function findValidRotationsAtPosition(
   const newFaceTypes = VARIATION_FACE_TYPES.get(newVariationId);
   if (!newFaceTypes) return [];
 
+  const newVariation = CUBE_VARIATIONS.find(v => v.id === newVariationId);
+  if (!newVariation) return [];
+
   // Check each rotation against ALL adjacent cubes
   const validRotations: Rotation[] = [];
 
@@ -412,12 +585,27 @@ export function findValidRotationsAtPosition(
           break;
         }
 
+        const existingVariation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!existingVariation) {
+          allValid = false;
+          break;
+        }
+
         const existingCutType = getRotatedFaceCutType(existingFaceTypes, faceOnExisting, cube.rotation);
         const newCutType = getRotatedFaceCutType(newFaceTypes, faceOnNew, rotation);
 
-        if (!canConnect(existingCutType, newCutType)) {
-          allValid = false;
-          break;
+        if (strictMode) {
+          const existingCutter = getRotatedFaceCutter(existingVariation, faceOnExisting, cube.rotation);
+          const newCutter = getRotatedFaceCutter(newVariation, faceOnNew, rotation);
+          if (!canConnectStrict(existingCutType, newCutType, existingCutter, newCutter, faceOnExisting, faceOnNew)) {
+            allValid = false;
+            break;
+          }
+        } else {
+          if (!canConnect(existingCutType, newCutType)) {
+            allValid = false;
+            break;
+          }
         }
       }
 
