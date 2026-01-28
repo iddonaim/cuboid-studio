@@ -366,7 +366,6 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(true);
   const [pickerActive, setPickerActive] = useState(true);
   const [rulesEnabled, setRulesEnabled] = useState(true);  // Toggle for connection rules
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // PWA install prompt state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -851,36 +850,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    const data = JSON.stringify(placedCubes, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'cuboid-assembly.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        if (Array.isArray(data)) {
-          setPlacedCubes(data);
-          pushToHistory(data);
-        }
-      } catch {
-        alert('Invalid JSON file');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
       console.log('No install prompt available');
@@ -948,37 +917,6 @@ const App: React.FC = () => {
 
         {/* Connection rules toggle */}
         <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
-
-        {/* Import/Export buttons */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              flex: 1, padding: 8, background: '#1e293b', border: '1px solid #334155',
-              borderRadius: 6, color: '#94a3b8', cursor: 'pointer', fontSize: 12
-            }}
-          >
-            Import
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={placedCubes.length === 0}
-            style={{
-              flex: 1, padding: 8, background: '#1e293b', border: '1px solid #334155',
-              borderRadius: 6, color: placedCubes.length ? '#94a3b8' : '#475569',
-              cursor: placedCubes.length ? 'pointer' : 'default', fontSize: 12
-            }}
-          >
-            Export
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            style={{ display: 'none' }}
-          />
-        </div>
 
         {/* Install PWA section */}
         <div style={{
@@ -1065,19 +1003,8 @@ const App: React.FC = () => {
 
         {/* Section plane controls */}
         <div style={{ marginTop: 12, borderTop: '1px solid #334155', paddingTop: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <input
-              type="checkbox"
-              checked={sectionEnabled}
-              onChange={(e) => setSectionEnabled(e.target.checked)}
-              style={{ cursor: 'pointer' }}
-            />
-            <span style={{ color: sectionEnabled ? '#f59e0b' : '#64748b', fontSize: 12 }}>
-              Section Cut
-            </span>
-          </div>
           {sectionEnabled && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {(['x', 'y', 'z'] as const).map(axis => (
                   <button
@@ -1107,6 +1034,17 @@ const App: React.FC = () => {
               </span>
             </div>
           )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={sectionEnabled}
+              onChange={(e) => setSectionEnabled(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span style={{ color: sectionEnabled ? '#f59e0b' : '#64748b', fontSize: 12 }}>
+              Section Cut
+            </span>
+          </div>
         </div>
 
         {/* Auto-fill buttons */}
