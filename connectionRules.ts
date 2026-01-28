@@ -289,23 +289,119 @@ function getCutterPositionOnFace(cutter: CutterSpec, face: Face): [number, numbe
 }
 
 /**
- * Checks if two cutters align in local space (strict rules).
+ * Rotates a 3D point around the Y-axis and then X-axis.
+ */
+function rotatePoint(point: [number, number, number], rotation: Rotation): [number, number, number] {
+  let [x, y, z] = point;
+
+  // First rotate around Y-axis (0, 90, 180, 270 degrees)
+  const yAngle = rotation.y * Math.PI / 2;
+  const cosY = Math.cos(yAngle);
+  const sinY = Math.sin(yAngle);
+  const x1 = x * cosY - z * sinY;
+  const z1 = x * sinY + z * cosY;
+  x = x1;
+  z = z1;
+
+  // Then rotate around X-axis (0, 90, 180, 270 degrees)
+  const xAngle = rotation.x * Math.PI / 2;
+  const cosX = Math.cos(xAngle);
+  const sinX = Math.sin(xAngle);
+  const y1 = y * cosX - z * sinX;
+  const z2 = y * sinX + z * cosX;
+  y = y1;
+  z = z2;
+
+  return [x, y, z];
+}
+
+/**
+ * Gets the 3D world position of a cutter center after cube rotation and translation.
+ */
+function getCutterWorldPosition(
+  cutter: CutterSpec,
+  cubePosition: [number, number, number],
+  rotation: Rotation
+): [number, number, number] {
+  let localPos: [number, number, number];
+
+  if (cutter.type === 'sphere') {
+    localPos = (cutter as SphereSpec).center;
+  } else {
+    // For cylinders, construct a 3D position from axisPosition
+    const cylinder = cutter as CylinderSpec;
+    const [a, b] = cylinder.axisPosition;
+    if (cylinder.axis === 'Y') {
+      localPos = [a, CUBE_SIZE / 2, b]; // [X, Y, Z] - Y at center
+    } else if (cylinder.axis === 'X') {
+      localPos = [CUBE_SIZE / 2, a, b]; // [X, Y, Z] - X at center
+    } else { // Z
+      localPos = [a, b, CUBE_SIZE / 2]; // [X, Y, Z] - Z at center
+    }
+  }
+
+  // Apply rotation around cube center
+  const centerOffset: [number, number, number] = [
+    localPos[0] - CUBE_SIZE / 2,
+    localPos[1] - CUBE_SIZE / 2,
+    localPos[2] - CUBE_SIZE / 2
+  ];
+  const rotatedOffset = rotatePoint(centerOffset, rotation);
+  const rotatedLocal: [number, number, number] = [
+    rotatedOffset[0] + CUBE_SIZE / 2,
+    rotatedOffset[1] + CUBE_SIZE / 2,
+    rotatedOffset[2] + CUBE_SIZE / 2
+  ];
+
+  // Apply translation to world position
+  return [
+    rotatedLocal[0] + cubePosition[0],
+    rotatedLocal[1] + cubePosition[1],
+    rotatedLocal[2] + cubePosition[2]
+  ];
+}
+
+/**
+ * Checks if two cutters align in world space after rotation and translation.
  * Tolerance is ~10% of the cutter's radius.
  */
 function cuttersAlign(
   cutter1: CutterSpec,
   cutter2: CutterSpec,
+  cube1Position: [number, number, number],
+  cube1Rotation: Rotation,
+  cube2Position: [number, number, number],
+  cube2Rotation: Rotation,
   face1: Face,
   face2: Face
 ): boolean {
-  // Get 2D positions on their respective face planes
-  const pos1 = getCutterPositionOnFace(cutter1, face1);
-  const pos2 = getCutterPositionOnFace(cutter2, face2);
+  // Get world positions of both cutters
+  const world1 = getCutterWorldPosition(cutter1, cube1Position, cube1Rotation);
+  const world2 = getCutterWorldPosition(cutter2, cube2Position, cube2Rotation);
+
+  // Extract the 2D coordinates in the plane of the touching face
+  let pos1: [number, number];
+  let pos2: [number, number];
+
+  // The touching faces are opposite, so they share a plane
+  // For Y faces: compare XZ coordinates
+  // For X faces: compare YZ coordinates
+  // For Z faces: compare XY coordinates
+  if (face1 === 'Y_NEG' || face1 === 'Y_POS') {
+    pos1 = [world1[0], world1[2]]; // X, Z
+    pos2 = [world2[0], world2[2]];
+  } else if (face1 === 'X_NEG' || face1 === 'X_POS') {
+    pos1 = [world1[1], world1[2]]; // Y, Z
+    pos2 = [world2[1], world2[2]];
+  } else { // Z_NEG or Z_POS
+    pos1 = [world1[0], world1[1]]; // X, Y
+    pos2 = [world2[0], world2[1]];
+  }
 
   // Calculate distance between positions
   const dx = pos1[0] - pos2[0];
-  const dz = pos1[1] - pos2[1];
-  const distance = Math.sqrt(dx * dx + dz * dz);
+  const dy = pos1[1] - pos2[1];
+  const distance = Math.sqrt(dx * dx + dy * dy);
 
   // Get radius for tolerance calculation
   let radius: number;
@@ -330,6 +426,10 @@ export function canConnectStrict(
   type2: FaceCutType,
   cutter1: CutterSpec | null,
   cutter2: CutterSpec | null,
+  cube1Position: [number, number, number],
+  cube1Rotation: Rotation,
+  cube2Position: [number, number, number],
+  cube2Rotation: Rotation,
   face1: Face,
   face2: Face
 ): boolean {
@@ -345,7 +445,7 @@ export function canConnectStrict(
 
   // For sphere-sphere and cylinder-cylinder, check alignment
   if (cutter1 && cutter2 && type1 === type2) {
-    return cuttersAlign(cutter1, cutter2, face1, face2);
+    return cuttersAlign(cutter1, cutter2, cube1Position, cube1Rotation, cube2Position, cube2Rotation, face1, face2);
   }
 
   return true;
@@ -398,21 +498,13 @@ export function findValidRotation(
   const newTouchingFace = OPPOSITE_FACE[existingFace];
 
   // Try all rotation combinations (Y then X) to find one that works
+  // Note: strictMode is ignored here since we don't have position information
   for (const y of ALL_AXIS_ROTATIONS) {
     for (const x of ALL_AXIS_ROTATIONS) {
       const rotation: Rotation = { y, x };
       const newCutType = getRotatedFaceCutType(newFaceTypes, newTouchingFace, rotation);
-
-      if (strictMode) {
-        const existingCutter = getRotatedFaceCutter(existingVariation, existingFace, existingRotation);
-        const newCutter = getRotatedFaceCutter(newVariation, newTouchingFace, rotation);
-        if (canConnectStrict(existingCutType, newCutType, existingCutter, newCutter, existingFace, newTouchingFace)) {
-          return rotation;
-        }
-      } else {
-        if (canConnect(existingCutType, newCutType)) {
-          return rotation;
-        }
+      if (canConnect(existingCutType, newCutType)) {
+        return rotation;
       }
     }
   }
@@ -444,21 +536,13 @@ export function findAllValidRotations(
 
   const validRotations: Rotation[] = [];
 
+  // Note: strictMode is ignored here since we don't have position information
   for (const y of ALL_AXIS_ROTATIONS) {
     for (const x of ALL_AXIS_ROTATIONS) {
       const rotation: Rotation = { y, x };
       const newCutType = getRotatedFaceCutType(newFaceTypes, newTouchingFace, rotation);
-
-      if (strictMode) {
-        const existingCutter = getRotatedFaceCutter(existingVariation, existingFace, existingRotation);
-        const newCutter = getRotatedFaceCutter(newVariation, newTouchingFace, rotation);
-        if (canConnectStrict(existingCutType, newCutType, existingCutter, newCutter, existingFace, newTouchingFace)) {
-          validRotations.push(rotation);
-        }
-      } else {
-        if (canConnect(existingCutType, newCutType)) {
-          validRotations.push(rotation);
-        }
+      if (canConnect(existingCutType, newCutType)) {
+        validRotations.push(rotation);
       }
     }
   }
@@ -597,7 +681,13 @@ export function findValidRotationsAtPosition(
         if (strictMode) {
           const existingCutter = getRotatedFaceCutter(existingVariation, faceOnExisting, cube.rotation);
           const newCutter = getRotatedFaceCutter(newVariation, faceOnNew, rotation);
-          if (!canConnectStrict(existingCutType, newCutType, existingCutter, newCutter, faceOnExisting, faceOnNew)) {
+          if (!canConnectStrict(
+            existingCutType, newCutType,
+            existingCutter, newCutter,
+            cube.position, cube.rotation,
+            newPosition, rotation,
+            faceOnExisting, faceOnNew
+          )) {
             allValid = false;
             break;
           }
