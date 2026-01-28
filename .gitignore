@@ -24,3 +24,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# References folder (internal use only)
+REFERENCES/
