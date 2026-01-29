@@ -193,22 +193,15 @@ export function canConnect(type1: FaceCutType, type2: FaceCutType): boolean {
   // Connection rules:
   // - Door (sphere) ↔ Door (sphere) ✓
   // - Window (cylinder) ↔ Window (cylinder) ✓
-  // - Wall (shell) ↔ Wall (shell) ✓
-  // - Wall (shell) ↔ Door (sphere) ✓
-  // - Wall (shell) ↔ Window (cylinder) ✗
-  // - Door (sphere) ↔ Window (cylinder) ✗
+  // - Wall (shell) ↔ anything ✗ (growth stops at blank walls)
 
-  // Same types always connect
-  if (type1 === type2) return true;
-
-  // Shell + Sphere (wall meets door) is allowed
-  if ((type1 === 'shell' && type2 === 'sphere') ||
-      (type1 === 'sphere' && type2 === 'shell')) {
-    return true;
+  // If either face is shell (blank wall), block the connection
+  if (type1 === 'shell' || type2 === 'shell') {
+    return false;
   }
 
-  // All other combinations are invalid
-  return false;
+  // Both must be cutters (sphere or cylinder) and same type
+  return type1 === type2;
 }
 
 /**
@@ -243,21 +236,24 @@ export function getRotatedFaceCutter(
   }
 
   // Find which cutter affects this original face
+  // Important: Return the LAST cutter that affects the face (to match computeFaceCutTypes behavior)
+  let foundCutter: CutterSpec | null = null;
+
   for (const cutter of variation.cutters) {
     if (cutter.type === 'sphere') {
       const face = getSphereFace(cutter as SphereSpec);
       if (face === originalFace) {
-        return cutter;
+        foundCutter = cutter;  // Keep checking, may be overwritten by later cutter
       }
     } else {
       const faces = getCylinderFaces(cutter as CylinderSpec);
       if (faces.includes(originalFace)) {
-        return cutter;
+        foundCutter = cutter;  // Keep checking, may be overwritten by later cutter
       }
     }
   }
 
-  return null; // No cutter on this face (shell)
+  return foundCutter;
 }
 
 /**
@@ -362,7 +358,8 @@ function getCutterWorldPosition(
 }
 
 /**
- * Checks if two cutters align in world space after rotation and translation.
+ * Checks if two cutters align in LOCAL space (ignoring rotation).
+ * Same cutter ID = perfect alignment. Different IDs = check local position similarity.
  * Tolerance is ~10% of the cutter's radius.
  */
 function cuttersAlign(
@@ -375,30 +372,16 @@ function cuttersAlign(
   face1: Face,
   face2: Face
 ): boolean {
-  // Get world positions of both cutters
-  const world1 = getCutterWorldPosition(cutter1, cube1Position, cube1Rotation);
-  const world2 = getCutterWorldPosition(cutter2, cube2Position, cube2Rotation);
-
-  // Extract the 2D coordinates in the plane of the touching face
-  let pos1: [number, number];
-  let pos2: [number, number];
-
-  // The touching faces are opposite, so they share a plane
-  // For Y faces: compare XZ coordinates
-  // For X faces: compare YZ coordinates
-  // For Z faces: compare XY coordinates
-  if (face1 === 'Y_NEG' || face1 === 'Y_POS') {
-    pos1 = [world1[0], world1[2]]; // X, Z
-    pos2 = [world2[0], world2[2]];
-  } else if (face1 === 'X_NEG' || face1 === 'X_POS') {
-    pos1 = [world1[1], world1[2]]; // Y, Z
-    pos2 = [world2[1], world2[2]];
-  } else { // Z_NEG or Z_POS
-    pos1 = [world1[0], world1[1]]; // X, Y
-    pos2 = [world2[0], world2[1]];
+  // If same cutter ID, they align perfectly (same master cutter)
+  if (cutter1.id === cutter2.id) {
+    return true;
   }
 
-  // Calculate distance between positions
+  // Different cutters - check if their LOCAL positions are similar
+  const pos1 = getCutterPositionOnFace(cutter1, face1);
+  const pos2 = getCutterPositionOnFace(cutter2, face2);
+
+  // Calculate distance between LOCAL positions
   const dx = pos1[0] - pos2[0];
   const dy = pos1[1] - pos2[1];
   const distance = Math.sqrt(dx * dx + dy * dy);
@@ -433,22 +416,22 @@ export function canConnectStrict(
   face1: Face,
   face2: Face
 ): boolean {
-  // First check basic connection rules
+  // First check basic connection rules (this now blocks shell connections)
   if (!canConnect(type1, type2)) {
     return false;
   }
 
-  // For shell connections, basic rules are sufficient
-  if (type1 === 'shell' || type2 === 'shell') {
-    return true;
+  // Both faces must have cutters (shell connections are already blocked above)
+  if (!cutter1 || !cutter2) {
+    return false;
   }
 
   // For sphere-sphere and cylinder-cylinder, check alignment
-  if (cutter1 && cutter2 && type1 === type2) {
+  if (type1 === type2) {
     return cuttersAlign(cutter1, cutter2, cube1Position, cube1Rotation, cube2Position, cube2Rotation, face1, face2);
   }
 
-  return true;
+  return false; // Different cutter types shouldn't reach here (blocked by canConnect)
 }
 
 /**

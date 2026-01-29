@@ -343,11 +343,9 @@ const RulesToggle: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => 
           color: '#94a3b8',
           lineHeight: 1.6
         }}>
-          <div style={{ color: '#22c55e' }}>✓ Door ↔ Door</div>
-          <div style={{ color: '#22c55e' }}>✓ Window ↔ Window</div>
-          <div style={{ color: '#22c55e' }}>✓ Wall ↔ Wall</div>
-          <div style={{ color: '#22c55e' }}>✓ Wall ↔ Door</div>
-          <div style={{ color: '#ef4444' }}>✗ Wall ↔ Window</div>
+          <div style={{ color: '#22c55e' }}>✓ Door ↔ Door (sphere↔sphere)</div>
+          <div style={{ color: '#22c55e' }}>✓ Window ↔ Window (cylinder↔cylinder)</div>
+          <div style={{ color: '#ef4444' }}>✗ Wall ↔ anything (blocks growth)</div>
           <div style={{ color: '#ef4444' }}>✗ Door ↔ Window</div>
         </div>
       )}
@@ -771,7 +769,7 @@ const App: React.FC = () => {
       }
 
       if (candidates.length === 0) {
-        console.log(`Auto-fill stopped after ${i} placements - no valid positions from frontier`);
+        console.log(`Auto-fill stopped after ${i} placements - no valid positions found`);
         break;
       }
 

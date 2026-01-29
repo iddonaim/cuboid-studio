@@ -969,8 +969,66 @@ This feature enables more precise architectural assemblies where sphere cutters 
 
 ---
 
+### Session 2026-01-29 (Evening) - Connection Rules Update + Strict Alignment Fix
+
+**Completed:**
+
+**Part 1: Connection Rules Simplification**
+- Changed shell connection rules from "shell ↔ some" to "shell ↔ none"
+- Shell (blank wall) now blocks ALL connections
+- Growth stops at blank walls (no opening = no connection)
+- This creates cleaner architectural logic: openings must align with openings
+
+**Updated Basic Rules:**
+- ✓ Door ↔ Door (sphere ↔ sphere)
+- ✓ Window ↔ Window (cylinder ↔ cylinder)
+- ✗ Wall ↔ **anything** (blank walls block all growth)
+- ✗ Door ↔ Window (sphere ↔ cylinder)
+
+**Part 2: Strict Alignment Bug Fixes**
+
+**Bug #1: Cutter Mismatch**
+- Problem: `getRotatedFaceCutter()` returned FIRST cutter affecting a face
+- But `computeFaceCutTypes()` uses LAST cutter (overwrite behavior)
+- When multiple cutters affect same face, types didn't match specs
+- Fix: Changed to return LAST cutter to match face type determination
+
+**Bug #2: World Space vs Local Space**
+- Problem: Strict alignment checked world positions after rotation
+- Rotation changed cutter orientation, breaking alignment even for same cutters
+- Example: Cutter 1 at different rotations had different world positions
+- Fix: Changed to check LOCAL space positions (ignore rotation)
+- Same cutter ID = instant alignment ✓
+- Different cutters = compare local positions with 10% tolerance
+
+**Part 3: Alignment Logic Simplification**
+```typescript
+// New simplified logic
+if (cutter1.id === cutter2.id) {
+  return true;  // Same master cutter = perfect alignment
+}
+// Different cutters: check local position similarity
+const distance = /* calculate distance in local space */;
+return distance <= radius * 0.1;
+```
+
+**Results:**
+- Auto-fill now works with strict alignment enabled
+- Same cutters align regardless of cube rotation
+- v-00 can connect to variations sharing cutters (0, 1, 2, or 3)
+- System is still constrained but usable
+
+**Files Modified:**
+- `connectionRules.ts` - Fixed cutter lookup, changed to local space alignment
+- `App.tsx` - Updated rules UI text, cleaned up debug logging
+
+**Key Insight:**
+Rotation changes cutter orientation in world space, which would make alignment impossible. By checking LOCAL space (the cutter's original position in the cube), same cutters always align perfectly regardless of how cubes are rotated. This makes strict alignment both functional and practical.
+
+---
+
 **Last Updated:** 2026-01-29
-**Status:** Production-ready PWA with GitHub/Vercel CI/CD pipeline + Strict Alignment Rules
-**Remaining Bug:** #3 - Remove placed variation from sidebar selection (low priority)
+**Status:** Production-ready PWA with working Strict Alignment Rules
+**Next Feature:** Highlight relevant cube variations in sidebar (show which can connect)
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
