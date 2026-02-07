@@ -26,9 +26,17 @@ const BuilderScene: React.FC = () => {
   const sectionAxis = useBuilderStore(s => s.sectionAxis);
   const sectionPosition = useBuilderStore(s => s.sectionPosition);
   const handlePlace = useBuilderStore(s => s.handlePlace);
+  const selectedIdx = useBuilderStore(s => s.selectedIdx);
+  const previewRotation = useBuilderStore(s => s.previewRotation);
 
-  const selectedVariation = useBuilderStore(s => s.getSelectedVariation());
-  const placementValidity = useBuilderStore(s => s.getPlacementValidity());
+  // Compute these outside of Zustand selectors to avoid infinite re-render loops
+  // (getSelectedVariation/getPlacementValidity return new objects each call)
+  const selectedVariation = useMemo(() => CUBE_VARIATIONS[selectedIdx], [selectedIdx]);
+  const placementValidity = useMemo(
+    () => useBuilderStore.getState().getPlacementValidity(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hoverPos, previewRotation, placedCubes, rulesEnabled]
+  );
 
   const clippingPlanes = useMemo(() => {
     if (!sectionEnabled) return [];
