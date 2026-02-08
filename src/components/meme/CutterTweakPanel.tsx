@@ -31,7 +31,10 @@ const TweakSlider: React.FC<{
 export const CutterTweakPanel: React.FC = () => {
   const lastResult = useMemeStore(s => s.lastResult);
   const reapplyWithTweaks = useMemeStore(s => s.reapplyWithTweaks);
-  const operators = useMemeStore(s => s.operators);
+  const targetCubeId = useMemeStore(s => s.targetCubeId);
+  const cubeOperators = useMemeStore(s => s.cubeOperators);
+  const standaloneOperators = useMemeStore(s => s.operators);
+  const operators = targetCubeId ? (cubeOperators[targetCubeId] || []) : standaloneOperators;
   const cutterVisible = useMemeStore(s => s.cutterVisible);
   const setCutterVisible = useMemeStore(s => s.setCutterVisible);
 

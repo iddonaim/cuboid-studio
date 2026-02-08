@@ -13,11 +13,13 @@ interface CubeWithCutsProps {
   rotation?: Rotation;
   opacity?: number;
   selected?: boolean;
+  targeted?: boolean;
   validPlacement?: boolean | null;
   onClick?: () => void;
   onFaceHover?: (info: FaceHoverInfo | null) => void;
   isPreview?: boolean;
   clippingPlanes?: THREE.Plane[];
+  overrideGeometry?: THREE.BufferGeometry | null;
 }
 
 export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
@@ -26,15 +28,23 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   rotation = DEFAULT_ROTATION,
   opacity = 1,
   selected,
+  targeted,
   validPlacement,
   onClick,
   onFaceHover,
   isPreview = false,
   clippingPlanes,
+  overrideGeometry,
 }) => {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   useEffect(() => {
+    // If override geometry is provided, use it directly
+    if (overrideGeometry) {
+      setGeometry(overrideGeometry);
+      return;
+    }
+
     let cancelled = false;
 
     const loadGeometry = async () => {
@@ -53,7 +63,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
 
     loadGeometry();
     return () => { cancelled = true; };
-  }, [variation]);
+  }, [variation, overrideGeometry]);
 
   const geometryOffset: [number, number, number] = [
     -CUBE_SIZE / 2,
@@ -88,6 +98,10 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   let fillColor = '#ffffff';
   let edgeColor = '#000000';
 
+  if (targeted) {
+    fillColor = '#fff7e0';
+    edgeColor = '#d97706';
+  }
   if (selected) {
     fillColor = '#e0e0ff';
     edgeColor = '#4444ff';

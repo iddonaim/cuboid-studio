@@ -4,7 +4,10 @@ import { useMemeStore } from '../../store/useMemeStore';
 export const OperatorResultPanel: React.FC = () => {
   const lastResult = useMemeStore(s => s.lastResult);
   const revertLastOperator = useMemeStore(s => s.revertLastOperator);
-  const operators = useMemeStore(s => s.operators);
+  const targetCubeId = useMemeStore(s => s.targetCubeId);
+  const cubeOperators = useMemeStore(s => s.cubeOperators);
+  const standaloneOperators = useMemeStore(s => s.operators);
+  const operators = targetCubeId ? (cubeOperators[targetCubeId] || []) : standaloneOperators;
 
   if (!lastResult) return null;
 

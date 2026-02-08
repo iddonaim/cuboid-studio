@@ -20,11 +20,18 @@ interface MemeState {
   selectedMemeTitle: string | null;
   setSelectedMeme: (imageUrl: string | null, title: string | null) => void;
 
-  // Working cube
+  // Standalone working cube (used when no assembly exists)
   baseVariationId: string;
   setBaseVariation: (variationId: string) => void;
   workingGeometry: THREE.BufferGeometry | null;
   geometryStack: THREE.BufferGeometry[];  // for revert
+
+  // Assembly targeting (used when builder has placed cubes)
+  targetCubeId: string | null;
+  setTargetCubeId: (id: string | null) => void;
+  cubeGeometryOverrides: Record<string, THREE.BufferGeometry>;
+  cubeGeometryStacks: Record<string, THREE.BufferGeometry[]>;
+  cubeOperators: Record<string, OperatorRecord[]>;
 
   // Cutter visualization
   lastCutterGeometry: THREE.BufferGeometry | null;
@@ -36,7 +43,7 @@ interface MemeState {
   lastResult: LLMOperatorResult | null;
   lastError: string | null;
 
-  // Operator history
+  // Operator history (standalone mode)
   operators: OperatorRecord[];
 
   // Actions
@@ -44,6 +51,17 @@ interface MemeState {
   translate: () => Promise<void>;
   revertLastOperator: () => void;
   reapplyWithTweaks: (tweakedResult: LLMOperatorResult) => void;
+
+  // Assembly helpers
+  getActiveOperators: () => OperatorRecord[];
+  getActiveGeometryStack: () => THREE.BufferGeometry[];
+}
+
+/** Helper to load base geometry for a placed cube by its variation ID */
+async function loadBaseGeometry(variationId: string): Promise<THREE.BufferGeometry | null> {
+  const variation = CUBE_VARIATIONS.find(v => v.id === variationId);
+  if (!variation) return null;
+  return getVariationGeometryAsync(variation);
 }
 
 export const useMemeStore = create<MemeState>((set, get) => ({
@@ -60,7 +78,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   selectedMemeTitle: null,
   setSelectedMeme: (imageUrl, title) => set({ selectedMemeImageUrl: imageUrl, selectedMemeTitle: title }),
 
-  // Working cube
+  // Standalone working cube
   baseVariationId: 'v-00',
   setBaseVariation: (variationId) => {
     set({ baseVariationId: variationId, workingGeometry: null, geometryStack: [], operators: [] });
@@ -68,6 +86,18 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   },
   workingGeometry: null,
   geometryStack: [],
+
+  // Assembly targeting
+  targetCubeId: null,
+  setTargetCubeId: (id) => set({
+    targetCubeId: id,
+    lastResult: null,
+    lastCutterGeometry: null,
+    lastError: null,
+  }),
+  cubeGeometryOverrides: {},
+  cubeGeometryStacks: {},
+  cubeOperators: {},
 
   // Cutter visualization
   lastCutterGeometry: null,
@@ -79,8 +109,20 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   lastResult: null,
   lastError: null,
 
-  // Operator history
+  // Operator history (standalone)
   operators: [],
+
+  // Assembly helpers
+  getActiveOperators: () => {
+    const { targetCubeId, cubeOperators, operators } = get();
+    if (targetCubeId) return cubeOperators[targetCubeId] || [];
+    return operators;
+  },
+  getActiveGeometryStack: () => {
+    const { targetCubeId, cubeGeometryStacks, geometryStack } = get();
+    if (targetCubeId) return cubeGeometryStacks[targetCubeId] || [];
+    return geometryStack;
+  },
 
   // Actions
   initWorkingCube: async () => {
@@ -97,18 +139,47 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   },
 
   translate: async () => {
-    const { memeDescription, locationTag, engagementLevel, workingGeometry } = get();
+    const { memeDescription, locationTag, engagementLevel, targetCubeId } = get();
     if (!memeDescription.trim()) {
       set({ lastError: 'Please enter a meme description' });
       return;
     }
-    if (!workingGeometry) {
-      // Auto-init if needed
-      await get().initWorkingCube();
-      const freshGeo = get().workingGeometry;
-      if (!freshGeo) {
-        set({ lastError: 'Failed to initialize working cube' });
-        return;
+
+    // Determine which geometry to operate on
+    let currentGeometry: THREE.BufferGeometry | null = null;
+    let placedCubeVariationId: string | null = null;
+
+    if (targetCubeId) {
+      // Assembly mode: get the target cube's current geometry
+      const override = get().cubeGeometryOverrides[targetCubeId];
+      if (override) {
+        currentGeometry = override;
+      } else {
+        // Need to load base geometry — get variationId from builder store
+        // We import dynamically to avoid circular deps
+        const { useBuilderStore } = await import('./useBuilderStore');
+        const placedCube = useBuilderStore.getState().placedCubes.find(c => c.id === targetCubeId);
+        if (!placedCube) {
+          set({ lastError: 'Target cube not found in assembly' });
+          return;
+        }
+        placedCubeVariationId = placedCube.variationId;
+        currentGeometry = await loadBaseGeometry(placedCube.variationId);
+        if (!currentGeometry) {
+          set({ lastError: 'Failed to load target cube geometry' });
+          return;
+        }
+      }
+    } else {
+      // Standalone mode
+      currentGeometry = get().workingGeometry;
+      if (!currentGeometry) {
+        await get().initWorkingCube();
+        currentGeometry = get().workingGeometry;
+        if (!currentGeometry) {
+          set({ lastError: 'Failed to initialize working cube' });
+          return;
+        }
       }
     }
 
@@ -122,18 +193,13 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         memeImageUrl: get().selectedMemeImageUrl,
       });
 
-      const currentGeometry = get().workingGeometry!;
-
-      // Save current geometry for revert
-      const newStack = [...get().geometryStack, currentGeometry.clone()];
-
       // Apply the operator
-      const newGeometry = applyLLMOperator(currentGeometry, result);
+      const newGeometry = applyLLMOperator(currentGeometry!, result);
 
       // Generate cutter geometry for visualization
-      currentGeometry.computeBoundingBox();
-      const cutterGeo = currentGeometry.boundingBox
-        ? createCutterFromLLMOutput(result, currentGeometry.boundingBox)
+      currentGeometry!.computeBoundingBox();
+      const cutterGeo = currentGeometry!.boundingBox
+        ? createCutterFromLLMOutput(result, currentGeometry!.boundingBox)
         : null;
 
       // Create operator record
@@ -150,14 +216,41 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         cutter: result.cutter,
       };
 
-      set({
-        workingGeometry: newGeometry,
-        geometryStack: newStack,
-        operators: [...get().operators, record],
-        lastResult: result,
-        lastCutterGeometry: cutterGeo,
-        isTranslating: false,
-      });
+      if (targetCubeId) {
+        // Assembly mode: update per-cube data
+        const prevOverrides = get().cubeGeometryOverrides;
+        const prevStacks = get().cubeGeometryStacks;
+        const prevOps = get().cubeOperators;
+
+        set({
+          cubeGeometryOverrides: {
+            ...prevOverrides,
+            [targetCubeId]: newGeometry,
+          },
+          cubeGeometryStacks: {
+            ...prevStacks,
+            [targetCubeId]: [...(prevStacks[targetCubeId] || []), currentGeometry!.clone()],
+          },
+          cubeOperators: {
+            ...prevOps,
+            [targetCubeId]: [...(prevOps[targetCubeId] || []), record],
+          },
+          lastResult: result,
+          lastCutterGeometry: cutterGeo,
+          isTranslating: false,
+        });
+      } else {
+        // Standalone mode
+        const newStack = [...get().geometryStack, currentGeometry!.clone()];
+        set({
+          workingGeometry: newGeometry,
+          geometryStack: newStack,
+          operators: [...get().operators, record],
+          lastResult: result,
+          lastCutterGeometry: cutterGeo,
+          isTranslating: false,
+        });
+      }
     } catch (error) {
       set({
         lastError: error instanceof Error ? error.message : 'Translation failed',
@@ -167,51 +260,124 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   },
 
   revertLastOperator: () => {
-    const { geometryStack, operators } = get();
-    if (geometryStack.length === 0 || operators.length === 0) return;
+    const { targetCubeId } = get();
 
-    const previousGeometry = geometryStack[geometryStack.length - 1];
-    set({
-      workingGeometry: previousGeometry,
-      geometryStack: geometryStack.slice(0, -1),
-      operators: operators.slice(0, -1),
-      lastResult: null,
-      lastCutterGeometry: null,
-    });
+    if (targetCubeId) {
+      // Assembly mode: revert on target cube
+      const stacks = get().cubeGeometryStacks;
+      const ops = get().cubeOperators;
+      const stack = stacks[targetCubeId] || [];
+      const cubeOps = ops[targetCubeId] || [];
+      if (stack.length === 0 || cubeOps.length === 0) return;
+
+      const previousGeometry = stack[stack.length - 1];
+      const newOverrides = { ...get().cubeGeometryOverrides };
+
+      if (stack.length === 1) {
+        // Reverting to base geometry — remove override entirely
+        delete newOverrides[targetCubeId];
+      } else {
+        newOverrides[targetCubeId] = previousGeometry;
+      }
+
+      set({
+        cubeGeometryOverrides: newOverrides,
+        cubeGeometryStacks: {
+          ...stacks,
+          [targetCubeId]: stack.slice(0, -1),
+        },
+        cubeOperators: {
+          ...ops,
+          [targetCubeId]: cubeOps.slice(0, -1),
+        },
+        lastResult: null,
+        lastCutterGeometry: null,
+      });
+    } else {
+      // Standalone mode
+      const { geometryStack, operators } = get();
+      if (geometryStack.length === 0 || operators.length === 0) return;
+
+      const previousGeometry = geometryStack[geometryStack.length - 1];
+      set({
+        workingGeometry: previousGeometry,
+        geometryStack: geometryStack.slice(0, -1),
+        operators: operators.slice(0, -1),
+        lastResult: null,
+        lastCutterGeometry: null,
+      });
+    }
   },
 
   reapplyWithTweaks: (tweakedResult: LLMOperatorResult) => {
-    const { geometryStack, operators } = get();
-    if (geometryStack.length === 0) return;
+    const { targetCubeId } = get();
 
-    // Get the pre-cut geometry (top of stack = state before last cut)
-    const preCutGeometry = geometryStack[geometryStack.length - 1];
+    if (targetCubeId) {
+      // Assembly mode
+      const stacks = get().cubeGeometryStacks;
+      const ops = get().cubeOperators;
+      const stack = stacks[targetCubeId] || [];
+      if (stack.length === 0) return;
 
-    // Re-apply CSG with tweaked params
-    const newGeometry = applyLLMOperator(preCutGeometry, tweakedResult);
+      const preCutGeometry = stack[stack.length - 1];
+      const newGeometry = applyLLMOperator(preCutGeometry, tweakedResult);
 
-    // Regenerate cutter geometry for visualization
-    preCutGeometry.computeBoundingBox();
-    const cutterGeo = preCutGeometry.boundingBox
-      ? createCutterFromLLMOutput(tweakedResult, preCutGeometry.boundingBox)
-      : null;
+      preCutGeometry.computeBoundingBox();
+      const cutterGeo = preCutGeometry.boundingBox
+        ? createCutterFromLLMOutput(tweakedResult, preCutGeometry.boundingBox)
+        : null;
 
-    // Update the last operator record with tweaked params
-    const updatedOperators = [...operators];
-    if (updatedOperators.length > 0) {
-      const last = updatedOperators[updatedOperators.length - 1];
-      updatedOperators[updatedOperators.length - 1] = {
-        ...last,
-        magnitude: tweakedResult.magnitude,
-        cutter: tweakedResult.cutter,
-      };
+      const cubeOps = [...(ops[targetCubeId] || [])];
+      if (cubeOps.length > 0) {
+        const last = cubeOps[cubeOps.length - 1];
+        cubeOps[cubeOps.length - 1] = {
+          ...last,
+          magnitude: tweakedResult.magnitude,
+          cutter: tweakedResult.cutter,
+        };
+      }
+
+      set({
+        cubeGeometryOverrides: {
+          ...get().cubeGeometryOverrides,
+          [targetCubeId]: newGeometry,
+        },
+        cubeOperators: {
+          ...get().cubeOperators,
+          [targetCubeId]: cubeOps,
+        },
+        lastResult: tweakedResult,
+        lastCutterGeometry: cutterGeo,
+      });
+    } else {
+      // Standalone mode
+      const { geometryStack, operators } = get();
+      if (geometryStack.length === 0) return;
+
+      const preCutGeometry = geometryStack[geometryStack.length - 1];
+      const newGeometry = applyLLMOperator(preCutGeometry, tweakedResult);
+
+      preCutGeometry.computeBoundingBox();
+      const cutterGeo = preCutGeometry.boundingBox
+        ? createCutterFromLLMOutput(tweakedResult, preCutGeometry.boundingBox)
+        : null;
+
+      const updatedOperators = [...operators];
+      if (updatedOperators.length > 0) {
+        const last = updatedOperators[updatedOperators.length - 1];
+        updatedOperators[updatedOperators.length - 1] = {
+          ...last,
+          magnitude: tweakedResult.magnitude,
+          cutter: tweakedResult.cutter,
+        };
+      }
+
+      set({
+        workingGeometry: newGeometry,
+        operators: updatedOperators,
+        lastResult: tweakedResult,
+        lastCutterGeometry: cutterGeo,
+      });
     }
-
-    set({
-      workingGeometry: newGeometry,
-      operators: updatedOperators,
-      lastResult: tweakedResult,
-      lastCutterGeometry: cutterGeo,
-    });
   },
 }));
