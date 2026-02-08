@@ -1,13 +1,42 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getArchthesisFirestore } from '../src/lib/archthesis-firebase';
-import { mapMemeToCuboidInput } from '../src/lib/meme-mapper';
-import type { ArchthesisMeme, FetchMemeByIdResponse } from '../src/types/archthesis';
+import type { ArchthesisMeme, CuboidMemeInput, FetchMemeByIdResponse } from '../src/types/archthesis';
 
 /**
  * GET /api/fetch-meme-by-id?id=meme-1707234567890-abc123def456
  *
  * Returns a single meme with its pre-mapped cuboid input fields.
+ * Uses Firestore REST API directly — no firebase-admin needed.
  */
+
+const PROJECT_ID = 'adaptivememeticarchitect-2776f';
+const API_KEY = 'AIzaSyCsb6uQgANSQSnCp6kPhFX7I3TG_PQCd3o';
+const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+function extractValue(field: any): any {
+  if (!field) return undefined;
+  if ('stringValue' in field) return field.stringValue;
+  if ('integerValue' in field) return Number(field.integerValue);
+  if ('doubleValue' in field) return field.doubleValue;
+  if ('booleanValue' in field) return field.booleanValue;
+  if ('timestampValue' in field) return field.timestampValue;
+  if ('arrayValue' in field) return (field.arrayValue.values || []).map(extractValue);
+  if ('mapValue' in field) {
+    const result: Record<string, any> = {};
+    for (const [k, v] of Object.entries(field.mapValue.fields || {})) {
+      result[k] = extractValue(v);
+    }
+    return result;
+  }
+  if ('nullValue' in field) return null;
+  return undefined;
+}
+
+function likesToEngagement(likes: number): number {
+  if (likes <= 0) return 0;
+  const scaled = (Math.log10(likes + 1) / Math.log10(1000)) * 100;
+  return Math.min(100, Math.round(scaled));
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -19,35 +48,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const db = getArchthesisFirestore();
-    const doc = await db.collection('memes').doc(memeId).get();
+    const docUrl = `${FIRESTORE_URL}/memes/${encodeURIComponent(memeId)}?key=${API_KEY}`;
+    const response = await fetch(docUrl);
 
-    if (!doc.exists) {
+    if (response.status === 404) {
       return res.status(404).json({ error: 'Meme not found' });
     }
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Firestore fetch failed (${response.status}): ${errText}`);
+    }
 
-    const data = doc.data()!;
+    const doc = await response.json();
+    const fields = doc.fields || {};
+    const nameParts = (doc.name as string).split('/');
+    const id = nameParts[nameParts.length - 1];
+
     const meme: ArchthesisMeme = {
-      id: doc.id,
-      imageUrl: data.imageUrl || '',
-      topText: data.topText || '',
-      bottomText: data.bottomText || '',
-      memeText: data.memeText || undefined,
-      description: data.description || undefined,
-      tags: data.tags || [],
-      location: data.location || undefined,
-      username: data.username || undefined,
-      likes: data.likes || 0,
-      timestamp: data.createdAt || data.timestamp || '',
-      userId: data.userId || undefined,
-      hidden: data.hidden || false,
-      originSource: data.originSource || undefined,
+      id,
+      imageUrl: extractValue(fields.imageUrl) || '',
+      topText: extractValue(fields.topText) || '',
+      bottomText: extractValue(fields.bottomText) || '',
+      memeText: extractValue(fields.memeText) || undefined,
+      description: extractValue(fields.description) || undefined,
+      tags: extractValue(fields.tags) || [],
+      location: extractValue(fields.location) || undefined,
+      username: extractValue(fields.username) || undefined,
+      likes: extractValue(fields.likes) || 0,
+      timestamp: extractValue(fields.createdAt) || extractValue(fields.timestamp) || '',
+      userId: extractValue(fields.userId) || undefined,
+      hidden: extractValue(fields.hidden) || false,
+      originSource: extractValue(fields.originSource) || undefined,
     };
 
-    const cuboidInput = mapMemeToCuboidInput(meme);
+    // Map to cuboid input
+    const parts: string[] = [];
+    const memeText = meme.memeText?.trim();
+    if (memeText) {
+      parts.push(memeText);
+    } else {
+      const combined = [meme.topText, meme.bottomText].filter(Boolean).join(' / ');
+      if (combined) parts.push(combined);
+    }
+    if (meme.description?.trim()) parts.push(`Description: ${meme.description.trim()}`);
+    if (meme.tags.length > 0) parts.push(`Tags: ${meme.tags.join(', ')}`);
+    if (meme.username?.trim()) parts.push(`Created by: ${meme.username.trim()}`);
 
-    const response: FetchMemeByIdResponse = { meme, cuboidInput };
-    return res.status(200).json(response);
+    const cuboidInput: CuboidMemeInput = {
+      memeDescription: parts.join('\n') || 'Untitled meme',
+      locationTag: meme.location?.display_name || null,
+      engagementLevel: likesToEngagement(meme.likes),
+    };
+
+    const payload: FetchMemeByIdResponse = { meme, cuboidInput };
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('fetch-meme-by-id error:', error);
     return res.status(500).json({
