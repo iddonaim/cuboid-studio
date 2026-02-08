@@ -32,6 +32,8 @@ export const CutterTweakPanel: React.FC = () => {
   const lastResult = useMemeStore(s => s.lastResult);
   const reapplyWithTweaks = useMemeStore(s => s.reapplyWithTweaks);
   const operators = useMemeStore(s => s.operators);
+  const cutterVisible = useMemeStore(s => s.cutterVisible);
+  const setCutterVisible = useMemeStore(s => s.setCutterVisible);
 
   // Local state for slider values -- synced from lastResult when it changes from a new translation
   const [magnitude, setMagnitude] = useState(0.5);
@@ -104,40 +106,54 @@ export const CutterTweakPanel: React.FC = () => {
       padding: 8, background: '#1e293b', borderRadius: 6,
       border: '1px solid #334155',
     }}>
-      <div style={{ color: '#94a3b8', fontSize: 10, fontWeight: 600 }}>
-        Tweak cutter — {lastResult.cutter.type}
-      </div>
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+      }}>
+        <input
+          type="checkbox"
+          checked={cutterVisible}
+          onChange={e => setCutterVisible(e.target.checked)}
+          style={{ margin: 0, accentColor: '#ef4444' }}
+        />
+        <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 600 }}>
+          Show cutter — {lastResult.cutter.type}
+        </span>
+      </label>
 
-      {/* Magnitude */}
-      <TweakSlider label="Mag" value={magnitude} min={0.05} max={1} step={0.01}
-        onChange={makeHandler(setMagnitude, 'mag')} />
+      {cutterVisible && (
+        <>
+          {/* Magnitude */}
+          <TweakSlider label="Mag" value={magnitude} min={0.05} max={1} step={0.01}
+            onChange={makeHandler(setMagnitude, 'mag')} />
 
-      {/* Position */}
-      <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Position</div>
-      <TweakSlider label="X" value={posX} min={-1} max={1} step={0.05}
-        onChange={makeHandler(setPosX, 'px')} />
-      <TweakSlider label="Y" value={posY} min={-1} max={1} step={0.05}
-        onChange={makeHandler(setPosY, 'py')} />
-      <TweakSlider label="Z" value={posZ} min={-1} max={1} step={0.05}
-        onChange={makeHandler(setPosZ, 'pz')} />
+          {/* Position */}
+          <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Position</div>
+          <TweakSlider label="X" value={posX} min={-1} max={1} step={0.05}
+            onChange={makeHandler(setPosX, 'px')} />
+          <TweakSlider label="Y" value={posY} min={-1} max={1} step={0.05}
+            onChange={makeHandler(setPosY, 'py')} />
+          <TweakSlider label="Z" value={posZ} min={-1} max={1} step={0.05}
+            onChange={makeHandler(setPosZ, 'pz')} />
 
-      {/* Proportions */}
-      <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Proportions</div>
-      <TweakSlider label="X" value={propX} min={0.05} max={2} step={0.05}
-        onChange={makeHandler(setPropX, 'sx')} />
-      <TweakSlider label="Y" value={propY} min={0.05} max={2} step={0.05}
-        onChange={makeHandler(setPropY, 'sy')} />
-      <TweakSlider label="Z" value={propZ} min={0.05} max={2} step={0.05}
-        onChange={makeHandler(setPropZ, 'sz')} />
+          {/* Proportions */}
+          <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Proportions</div>
+          <TweakSlider label="X" value={propX} min={0.05} max={2} step={0.05}
+            onChange={makeHandler(setPropX, 'sx')} />
+          <TweakSlider label="Y" value={propY} min={0.05} max={2} step={0.05}
+            onChange={makeHandler(setPropY, 'sy')} />
+          <TweakSlider label="Z" value={propZ} min={0.05} max={2} step={0.05}
+            onChange={makeHandler(setPropZ, 'sz')} />
 
-      {/* Rotation */}
-      <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Rotation</div>
-      <TweakSlider label="X" value={rotX} min={0} max={360} step={5}
-        onChange={makeHandler(setRotX, 'rx')} />
-      <TweakSlider label="Y" value={rotY} min={0} max={360} step={5}
-        onChange={makeHandler(setRotY, 'ry')} />
-      <TweakSlider label="Z" value={rotZ} min={0} max={360} step={5}
-        onChange={makeHandler(setRotZ, 'rz')} />
+          {/* Rotation */}
+          <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Rotation</div>
+          <TweakSlider label="X" value={rotX} min={0} max={360} step={5}
+            onChange={makeHandler(setRotX, 'rx')} />
+          <TweakSlider label="Y" value={rotY} min={0} max={360} step={5}
+            onChange={makeHandler(setRotY, 'ry')} />
+          <TweakSlider label="Z" value={rotZ} min={0} max={360} step={5}
+            onChange={makeHandler(setRotZ, 'rz')} />
+        </>
+      )}
     </div>
   );
 };
