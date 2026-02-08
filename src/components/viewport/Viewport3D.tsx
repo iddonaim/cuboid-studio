@@ -10,6 +10,7 @@ import { SpatialGrid } from './SpatialGrid';
 import { CubeWithCuts } from './CubeWithCuts';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
+import { useEncodingStore } from '../../store/useEncodingStore';
 
 /** Builder mode scene contents */
 const BuilderScene: React.FC = () => {
@@ -130,21 +131,38 @@ const BuilderScene: React.FC = () => {
   );
 };
 
-/** Pataphysical mode scene — single working cube from meme store */
-const PataphysicalScene: React.FC = () => {
-  const workingGeometry = useMemeStore(s => s.workingGeometry);
+/** Cutter wireframe overlay — shared between standalone and assembly modes */
+const CutterOverlay: React.FC<{ offset: [number, number, number] }> = ({ offset }) => {
   const lastCutterGeometry = useMemeStore(s => s.lastCutterGeometry);
   const cutterVisible = useMemeStore(s => s.cutterVisible);
-
-  const edgesGeometry = React.useMemo(() => {
-    if (!workingGeometry) return null;
-    return new THREE.EdgesGeometry(workingGeometry, 15);
-  }, [workingGeometry]);
 
   const cutterEdgesGeometry = React.useMemo(() => {
     if (!lastCutterGeometry) return null;
     return new THREE.EdgesGeometry(lastCutterGeometry, 1);
   }, [lastCutterGeometry]);
+
+  if (!cutterVisible || !lastCutterGeometry || !cutterEdgesGeometry) return null;
+
+  return (
+    <>
+      <mesh geometry={lastCutterGeometry} position={offset}>
+        <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={THREE.DoubleSide} />
+      </mesh>
+      <lineSegments geometry={cutterEdgesGeometry} position={offset}>
+        <lineBasicMaterial color="#ef4444" linewidth={1} transparent opacity={0.6} />
+      </lineSegments>
+    </>
+  );
+};
+
+/** Standalone pataphysical scene — single working cube, no assembly */
+const StandalonePataphysicalScene: React.FC = () => {
+  const workingGeometry = useMemeStore(s => s.workingGeometry);
+
+  const edgesGeometry = React.useMemo(() => {
+    if (!workingGeometry) return null;
+    return new THREE.EdgesGeometry(workingGeometry, 15);
+  }, [workingGeometry]);
 
   return (
     <>
@@ -157,20 +175,110 @@ const PataphysicalScene: React.FC = () => {
           <lineSegments geometry={edgesGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
             <lineBasicMaterial color="#000000" linewidth={2} />
           </lineSegments>
-
-          {/* Cutter wireframe overlay */}
-          {cutterVisible && lastCutterGeometry && cutterEdgesGeometry && (
-            <>
-              <mesh geometry={lastCutterGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-                <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={THREE.DoubleSide} />
-              </mesh>
-              <lineSegments geometry={cutterEdgesGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-                <lineBasicMaterial color="#ef4444" linewidth={1} transparent opacity={0.6} />
-              </lineSegments>
-            </>
-          )}
+          <CutterOverlay offset={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]} />
         </group>
       )}
+    </>
+  );
+};
+
+/** Assembly pataphysical scene — builder cubes with per-cube meme overrides */
+const AssemblyPataphysicalScene: React.FC = () => {
+  const placedCubes = useBuilderStore(s => s.placedCubes);
+  const targetCubeId = useMemeStore(s => s.targetCubeId);
+  const setTargetCubeId = useMemeStore(s => s.setTargetCubeId);
+  const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
+
+  // Find the targeted cube's position for the cutter overlay
+  const targetCube = placedCubes.find(c => c.id === targetCubeId);
+
+  return (
+    <>
+      <SpatialGrid size={7} levels={4} />
+
+      {/* Render all placed cubes, with overrides where they exist */}
+      {placedCubes.map(cube => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        const override = cubeGeometryOverrides[cube.id] || null;
+        return (
+          <CubeWithCuts
+            key={cube.id}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            overrideGeometry={override}
+            targeted={cube.id === targetCubeId}
+            onClick={() => {
+              setTargetCubeId(cube.id === targetCubeId ? null : cube.id);
+            }}
+          />
+        );
+      })}
+
+      {/* Cutter wireframe at targeted cube's position */}
+      {targetCube && (
+        <group
+          position={targetCube.position}
+          rotation={[
+            (targetCube.rotation.x * Math.PI) / 2,
+            (targetCube.rotation.y * Math.PI) / 2,
+            0,
+          ]}
+        >
+          <CutterOverlay offset={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]} />
+        </group>
+      )}
+
+      {/* Click-away plane to deselect */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        onClick={(e) => {
+          e.stopPropagation();
+          setTargetCubeId(null);
+        }}
+      >
+        <planeGeometry args={[500, 500]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </>
+  );
+};
+
+/** Pataphysical mode scene — assembly if cubes exist, standalone otherwise */
+const PataphysicalScene: React.FC = () => {
+  const placedCubes = useBuilderStore(s => s.placedCubes);
+  const hasAssembly = placedCubes.length > 0;
+
+  return hasAssembly ? <AssemblyPataphysicalScene /> : <StandalonePataphysicalScene />;
+};
+
+/** Encoding mode scene — preview of encoded assembly before loading into builder */
+const EncodingScene: React.FC = () => {
+  const encodedCubes = useEncodingStore(s => s.encodedCubes);
+
+  if (!encodedCubes || encodedCubes.length === 0) {
+    return <SpatialGrid size={3} levels={2} />;
+  }
+
+  return (
+    <>
+      <SpatialGrid size={7} levels={4} />
+      {encodedCubes.map((cube, i) => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        return (
+          <CubeWithCuts
+            key={`enc-${i}`}
+            variation={variation}
+            position={cube.position}
+            rotation={{
+              x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
+              y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
+            }}
+          />
+        );
+      })}
     </>
   );
 };
@@ -196,6 +304,7 @@ export const Viewport3D: React.FC = () => {
 
       {activeMode === 'builder' && <BuilderScene />}
       {activeMode === 'pataphysical' && <PataphysicalScene />}
+      {activeMode === 'encoding' && <EncodingScene />}
     </Canvas>
   );
 };

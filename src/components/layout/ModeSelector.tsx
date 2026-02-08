@@ -4,7 +4,7 @@ import { useAppStore, AppMode } from '../../store/useAppStore';
 const MODES: { key: AppMode; label: string; enabled: boolean }[] = [
   { key: 'builder', label: 'Builder', enabled: true },
   { key: 'pataphysical', label: 'Pataphysical', enabled: true },
-  { key: 'encoding', label: 'Encoding', enabled: false },
+  { key: 'encoding', label: 'Encoding', enabled: true },
   { key: 'evolution', label: 'Evolution', enabled: false },
 ];
 

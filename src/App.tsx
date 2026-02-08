@@ -12,6 +12,8 @@ import { MemeInputPanel } from './components/meme/MemeInputPanel';
 import { OperatorResultPanel } from './components/meme/OperatorResultPanel';
 import { OperatorHistoryList } from './components/meme/OperatorHistoryList';
 import { CutterTweakPanel } from './components/meme/CutterTweakPanel';
+import { EncodingPanel } from './components/encoding/EncodingPanel';
+import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 
 const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
@@ -136,6 +138,11 @@ const App: React.FC = () => {
             <OperatorHistoryList />
           </div>
         )}
+        {activeMode === 'encoding' && (
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <EncodingPanel />
+          </div>
+        )}
       </div>
 
       {/* Canvas area */}
@@ -147,6 +154,7 @@ const App: React.FC = () => {
 
         {activeMode === 'builder' && <SelectedCubePanel />}
         {activeMode === 'pataphysical' && <OperatorResultPanel />}
+        {activeMode === 'encoding' && <EncodingResultPanel />}
         <HelpBar />
       </div>
     </div>

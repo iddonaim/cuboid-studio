@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
 
 export const OperatorHistoryList: React.FC = () => {
-  const operators = useMemeStore(s => s.operators);
+  const targetCubeId = useMemeStore(s => s.targetCubeId);
+  const cubeOperators = useMemeStore(s => s.cubeOperators);
+  const standaloneOperators = useMemeStore(s => s.operators);
+  const operators = targetCubeId ? (cubeOperators[targetCubeId] || []) : standaloneOperators;
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (operators.length === 0) {

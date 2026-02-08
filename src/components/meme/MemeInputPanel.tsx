@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
+import { useBuilderStore } from '../../store/useBuilderStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
@@ -20,6 +21,11 @@ export const MemeInputPanel: React.FC = () => {
   const selectedMemeImageUrl = useMemeStore(s => s.selectedMemeImageUrl);
   const selectedMemeTitle = useMemeStore(s => s.selectedMemeTitle);
   const setSelectedMeme = useMemeStore(s => s.setSelectedMeme);
+  const targetCubeId = useMemeStore(s => s.targetCubeId);
+
+  const placedCubes = useBuilderStore(s => s.placedCubes);
+  const hasAssembly = placedCubes.length > 0;
+  const targetCube = placedCubes.find(c => c.id === targetCubeId);
 
   const [showBrowser, setShowBrowser] = useState(false);
 
@@ -37,24 +43,50 @@ export const MemeInputPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Base variation selector */}
-      <div>
-        <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
-          Base Variation
-        </label>
-        <select
-          value={baseVariationId}
-          onChange={(e) => setBaseVariation(e.target.value)}
-          style={{
-            width: '100%', padding: 6, background: '#1e293b', border: '1px solid #334155',
-            borderRadius: 4, color: 'white', fontSize: 11,
-          }}
-        >
-          {CUBE_VARIATIONS.map(v => (
-            <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
-          ))}
-        </select>
-      </div>
+      {/* Assembly mode: target cube indicator */}
+      {hasAssembly && (
+        <div style={{
+          padding: 8, borderRadius: 6,
+          background: targetCubeId ? '#1c1917' : '#1e293b',
+          border: `1px solid ${targetCubeId ? '#d97706' : '#334155'}`,
+        }}>
+          {targetCubeId && targetCube ? (
+            <div>
+              <div style={{ color: '#d97706', fontSize: 10, fontWeight: 600, marginBottom: 2 }}>
+                Target: {targetCube.variationId}
+              </div>
+              <div style={{ color: '#78716c', fontSize: 9 }}>
+                pos ({targetCube.position.map(p => p.toFixed(0)).join(', ')})
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: '#78716c', fontSize: 11 }}>
+              Click a cube in the assembly to target it
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Base variation selector — standalone mode only */}
+      {!hasAssembly && (
+        <div>
+          <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
+            Base Variation
+          </label>
+          <select
+            value={baseVariationId}
+            onChange={(e) => setBaseVariation(e.target.value)}
+            style={{
+              width: '100%', padding: 6, background: '#1e293b', border: '1px solid #334155',
+              borderRadius: 4, color: 'white', fontSize: 11,
+            }}
+          >
+            {CUBE_VARIATIONS.map(v => (
+              <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Browse from archthesis */}
       <button
@@ -167,15 +199,15 @@ export const MemeInputPanel: React.FC = () => {
       {/* Translate button */}
       <button
         onClick={translate}
-        disabled={isTranslating || !memeDescription.trim()}
+        disabled={isTranslating || !memeDescription.trim() || (hasAssembly && !targetCubeId)}
         style={{
           padding: 10, background: isTranslating ? '#334155' : '#065f46', border: 'none',
           borderRadius: 6, color: 'white', cursor: isTranslating ? 'wait' : 'pointer',
           fontSize: 12, fontWeight: 600,
-          opacity: (!memeDescription.trim() && !isTranslating) ? 0.5 : 1,
+          opacity: ((!memeDescription.trim() || (hasAssembly && !targetCubeId)) && !isTranslating) ? 0.5 : 1,
         }}
       >
-        {isTranslating ? 'Translating...' : 'Translate'}
+        {isTranslating ? 'Translating...' : hasAssembly && !targetCubeId ? 'Select a cube first' : 'Translate'}
       </button>
 
       {/* Error display */}
