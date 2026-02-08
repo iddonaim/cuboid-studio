@@ -11,6 +11,7 @@ import { SelectedCubePanel } from './components/builder/SelectedCubePanel';
 import { MemeInputPanel } from './components/meme/MemeInputPanel';
 import { OperatorResultPanel } from './components/meme/OperatorResultPanel';
 import { OperatorHistoryList } from './components/meme/OperatorHistoryList';
+import { CutterTweakPanel } from './components/meme/CutterTweakPanel';
 
 const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
@@ -129,10 +130,11 @@ const App: React.FC = () => {
 
         {activeMode === 'builder' && <BuilderSidebar />}
         {activeMode === 'pataphysical' && (
-          <>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <MemeInputPanel />
+            <CutterTweakPanel />
             <OperatorHistoryList />
-          </>
+          </div>
         )}
       </div>
 

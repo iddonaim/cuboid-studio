@@ -41,6 +41,7 @@ interface MemeState {
   initWorkingCube: () => Promise<void>;
   translate: () => Promise<void>;
   revertLastOperator: () => void;
+  reapplyWithTweaks: (tweakedResult: LLMOperatorResult) => void;
 }
 
 export const useMemeStore = create<MemeState>((set, get) => ({
@@ -114,6 +115,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         memeDescription,
         locationTag: locationTag || null,
         engagementLevel,
+        memeImageUrl: get().selectedMemeImageUrl,
       });
 
       const currentGeometry = get().workingGeometry!;
@@ -171,6 +173,41 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       operators: operators.slice(0, -1),
       lastResult: null,
       lastCutterGeometry: null,
+    });
+  },
+
+  reapplyWithTweaks: (tweakedResult: LLMOperatorResult) => {
+    const { geometryStack, operators } = get();
+    if (geometryStack.length === 0) return;
+
+    // Get the pre-cut geometry (top of stack = state before last cut)
+    const preCutGeometry = geometryStack[geometryStack.length - 1];
+
+    // Re-apply CSG with tweaked params
+    const newGeometry = applyLLMOperator(preCutGeometry, tweakedResult);
+
+    // Regenerate cutter geometry for visualization
+    preCutGeometry.computeBoundingBox();
+    const cutterGeo = preCutGeometry.boundingBox
+      ? createCutterFromLLMOutput(tweakedResult, preCutGeometry.boundingBox)
+      : null;
+
+    // Update the last operator record with tweaked params
+    const updatedOperators = [...operators];
+    if (updatedOperators.length > 0) {
+      const last = updatedOperators[updatedOperators.length - 1];
+      updatedOperators[updatedOperators.length - 1] = {
+        ...last,
+        magnitude: tweakedResult.magnitude,
+        cutter: tweakedResult.cutter,
+      };
+    }
+
+    set({
+      workingGeometry: newGeometry,
+      operators: updatedOperators,
+      lastResult: tweakedResult,
+      lastCutterGeometry: cutterGeo,
     });
   },
 }));

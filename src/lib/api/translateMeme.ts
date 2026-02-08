@@ -4,6 +4,7 @@ export interface TranslateMemeRequest {
   memeDescription: string;
   locationTag: string | null;
   engagementLevel: number;
+  memeImageUrl?: string | null;
 }
 
 export async function translateMeme(req: TranslateMemeRequest): Promise<LLMOperatorResult> {
