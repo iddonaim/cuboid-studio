@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { memeDescription, locationTag, engagementLevel } = req.body || {};
+  const { memeDescription, locationTag, engagementLevel, memeImageUrl } = req.body || {};
 
   if (!memeDescription || typeof memeDescription !== 'string') {
     return res.status(400).json({ error: 'memeDescription is required' });
@@ -50,8 +50,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `Engagement level: ${engagement}/100`,
   ].join('\n');
 
+  // Fetch meme image if URL provided (for Claude vision)
+  let imageBase64: string | null = null;
+  let imageMediaType: string = 'image/jpeg';
+  if (memeImageUrl && typeof memeImageUrl === 'string') {
+    try {
+      const imgResponse = await fetch(memeImageUrl);
+      if (imgResponse.ok) {
+        const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+        imageMediaType = contentType.split(';')[0].trim();
+        const buffer = await imgResponse.arrayBuffer();
+        imageBase64 = Buffer.from(buffer).toString('base64');
+      }
+    } catch (err) {
+      console.log('Failed to fetch meme image, proceeding with text only:', err);
+    }
+  }
+
   // Call Claude API
   async function callClaude(retryMessage?: string): Promise<string> {
+    // Build message content: image (if available) + text
+    const messageContent: any[] = [];
+    if (imageBase64 && !retryMessage) {
+      messageContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageMediaType,
+          data: imageBase64,
+        },
+      });
+    }
+    messageContent.push({
+      type: 'text',
+      text: retryMessage || userMessage,
+    });
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -65,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         system: systemPrompt,
         messages: [{
           role: 'user',
-          content: retryMessage || userMessage,
+          content: messageContent,
         }],
       }),
     });
