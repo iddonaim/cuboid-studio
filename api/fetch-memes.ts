@@ -1,78 +1,134 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getArchthesisFirestore } from '../src/lib/archthesis-firebase';
-import { mapMemeToCuboidInput } from '../src/lib/meme-mapper';
 import type { ArchthesisMeme, FetchMemesResponse } from '../src/types/archthesis';
 
 /**
  * GET /api/fetch-memes
  *
- * Lists memes from the archthesis Firestore collection.
+ * Lists memes from the archthesis Firestore collection via the REST API.
+ * No firebase-admin needed — archthesis Firestore rules allow public reads.
  *
  * Query params:
  *   limit   — number of memes to return (default 20, max 50)
- *   offset  — pagination cursor: the `timestamp` value of the last meme in previous page
  *   sort    — "recent" (default), "popular", "oldest"
  *   search  — text search across memeText, topText, bottomText, description
  *   tag     — filter by tag (exact match)
  */
+
+const PROJECT_ID = 'adaptivememeticarchitect-2776f';
+const API_KEY = 'AIzaSyCsb6uQgANSQSnCp6kPhFX7I3TG_PQCd3o';
+const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+/** Extract a typed value from a Firestore REST API field */
+function extractValue(field: any): any {
+  if (!field) return undefined;
+  if ('stringValue' in field) return field.stringValue;
+  if ('integerValue' in field) return Number(field.integerValue);
+  if ('doubleValue' in field) return field.doubleValue;
+  if ('booleanValue' in field) return field.booleanValue;
+  if ('timestampValue' in field) return field.timestampValue;
+  if ('arrayValue' in field) return (field.arrayValue.values || []).map(extractValue);
+  if ('mapValue' in field) {
+    const result: Record<string, any> = {};
+    for (const [k, v] of Object.entries(field.mapValue.fields || {})) {
+      result[k] = extractValue(v);
+    }
+    return result;
+  }
+  if ('nullValue' in field) return null;
+  return undefined;
+}
+
+/** Convert a Firestore REST document to our ArchthesisMeme type */
+function docToMeme(doc: any): ArchthesisMeme {
+  const fields = doc.fields || {};
+  // Document name format: projects/.../documents/memes/{id}
+  const nameParts = (doc.name as string).split('/');
+  const id = nameParts[nameParts.length - 1];
+
+  return {
+    id,
+    imageUrl: extractValue(fields.imageUrl) || '',
+    topText: extractValue(fields.topText) || '',
+    bottomText: extractValue(fields.bottomText) || '',
+    memeText: extractValue(fields.memeText) || undefined,
+    description: extractValue(fields.description) || undefined,
+    tags: extractValue(fields.tags) || [],
+    location: extractValue(fields.location) || undefined,
+    username: extractValue(fields.username) || undefined,
+    likes: extractValue(fields.likes) || 0,
+    timestamp: extractValue(fields.createdAt) || extractValue(fields.timestamp) || '',
+    userId: extractValue(fields.userId) || undefined,
+    hidden: extractValue(fields.hidden) || false,
+    originSource: extractValue(fields.originSource) || undefined,
+  };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const db = getArchthesisFirestore();
-    const memesCol = db.collection('memes');
-
     const limit = Math.min(Number(req.query.limit) || 20, 50);
     const sort = (req.query.sort as string) || 'recent';
     const search = (req.query.search as string)?.toLowerCase().trim();
     const tag = (req.query.tag as string)?.trim();
-    const offset = req.query.offset as string | undefined;
 
-    // Build query
-    let query = memesCol.where('hidden', '!=', true);
+    // Build a Firestore structured query
+    const orderField = sort === 'popular' ? 'likes' : 'createdAt';
+    const orderDirection = sort === 'oldest' ? 'ASCENDING' : 'DESCENDING';
+
+    const where: any[] = [];
+
+    // Exclude hidden memes
+    where.push({
+      fieldFilter: {
+        field: { fieldPath: 'hidden' },
+        op: 'NOT_EQUAL',
+        value: { booleanValue: true },
+      },
+    });
 
     if (tag) {
-      query = query.where('tags', 'array-contains', tag);
+      where.push({
+        fieldFilter: {
+          field: { fieldPath: 'tags' },
+          op: 'ARRAY_CONTAINS',
+          value: { stringValue: tag },
+        },
+      });
     }
 
-    // Sort
-    if (sort === 'popular') {
-      query = query.orderBy('likes', 'desc');
-    } else if (sort === 'oldest') {
-      query = query.orderBy('createdAt', 'asc');
-    } else {
-      query = query.orderBy('createdAt', 'desc');
+    const structuredQuery: any = {
+      from: [{ collectionId: 'memes' }],
+      orderBy: [{ field: { fieldPath: orderField }, direction: orderDirection }],
+      limit: limit + 1, // fetch one extra to detect "has more"
+    };
+
+    if (where.length === 1) {
+      structuredQuery.where = where[0];
+    } else if (where.length > 1) {
+      structuredQuery.where = { compositeFilter: { op: 'AND', filters: where } };
     }
 
-    // Pagination cursor
-    if (offset) {
-      query = query.startAfter(offset);
-    }
-
-    // Fetch one extra to check if there are more pages
-    const snapshot = await query.limit(limit + 1).get();
-
-    let memes: ArchthesisMeme[] = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        imageUrl: data.imageUrl || '',
-        topText: data.topText || '',
-        bottomText: data.bottomText || '',
-        memeText: data.memeText || undefined,
-        description: data.description || undefined,
-        tags: data.tags || [],
-        location: data.location || undefined,
-        username: data.username || undefined,
-        likes: data.likes || 0,
-        timestamp: data.createdAt || data.timestamp || '',
-        userId: data.userId || undefined,
-        hidden: data.hidden || false,
-        originSource: data.originSource || undefined,
-      };
+    const queryUrl = `${FIRESTORE_URL}:runQuery?key=${API_KEY}`;
+    const response = await fetch(queryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery }),
     });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Firestore query failed (${response.status}): ${errText}`);
+    }
+
+    const results = await response.json();
+
+    // Parse results — each item has a `document` field (or `skippedResults` for empty)
+    let memes: ArchthesisMeme[] = results
+      .filter((r: any) => r.document)
+      .map((r: any) => docToMeme(r.document));
 
     // Client-side text search (Firestore doesn't support full-text search)
     if (search) {
@@ -90,8 +146,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const hasMore = memes.length > limit;
     if (hasMore) memes = memes.slice(0, limit);
 
-    const response: FetchMemesResponse = { memes, hasMore };
-    return res.status(200).json(response);
+    const payload: FetchMemesResponse = { memes, hasMore };
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('fetch-memes error:', error);
     return res.status(500).json({
