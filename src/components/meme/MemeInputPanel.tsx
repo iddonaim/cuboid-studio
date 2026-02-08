@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
+import { ArchthesisBrowser } from './ArchthesisBrowser';
+import type { CuboidMemeInput } from '../../types/archthesis';
 
 export const MemeInputPanel: React.FC = () => {
   const memeDescription = useMemeStore(s => s.memeDescription);
@@ -15,6 +17,14 @@ export const MemeInputPanel: React.FC = () => {
   const baseVariationId = useMemeStore(s => s.baseVariationId);
   const setBaseVariation = useMemeStore(s => s.setBaseVariation);
   const initWorkingCube = useMemeStore(s => s.initWorkingCube);
+
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  const handleArchthesisSelect = (input: CuboidMemeInput) => {
+    setMemeDescription(input.memeDescription);
+    setLocationTag(input.locationTag || '');
+    setEngagementLevel(input.engagementLevel);
+  };
 
   // Init working cube on mount
   useEffect(() => {
@@ -41,6 +51,24 @@ export const MemeInputPanel: React.FC = () => {
           ))}
         </select>
       </div>
+
+      {/* Browse from archthesis */}
+      <button
+        onClick={() => setShowBrowser(true)}
+        style={{
+          padding: 8, background: '#1e293b', border: '1px solid #334155',
+          borderRadius: 6, color: '#94a3b8', cursor: 'pointer',
+          fontSize: 11, fontWeight: 500, textAlign: 'left' as const,
+        }}
+      >
+        Browse from archthesis...
+      </button>
+
+      <ArchthesisBrowser
+        open={showBrowser}
+        onClose={() => setShowBrowser(false)}
+        onSelect={handleArchthesisSelect}
+      />
 
       {/* Meme description */}
       <div>
