@@ -134,6 +134,7 @@ const BuilderScene: React.FC = () => {
 const PataphysicalScene: React.FC = () => {
   const workingGeometry = useMemeStore(s => s.workingGeometry);
   const lastCutterGeometry = useMemeStore(s => s.lastCutterGeometry);
+  const cutterVisible = useMemeStore(s => s.cutterVisible);
 
   const edgesGeometry = React.useMemo(() => {
     if (!workingGeometry) return null;
@@ -158,7 +159,7 @@ const PataphysicalScene: React.FC = () => {
           </lineSegments>
 
           {/* Cutter wireframe overlay */}
-          {lastCutterGeometry && cutterEdgesGeometry && (
+          {cutterVisible && lastCutterGeometry && cutterEdgesGeometry && (
             <>
               <mesh geometry={lastCutterGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
                 <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={THREE.DoubleSide} />

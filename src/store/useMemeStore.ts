@@ -28,6 +28,8 @@ interface MemeState {
 
   // Cutter visualization
   lastCutterGeometry: THREE.BufferGeometry | null;
+  cutterVisible: boolean;
+  setCutterVisible: (visible: boolean) => void;
 
   // Translation state
   isTranslating: boolean;
@@ -69,6 +71,8 @@ export const useMemeStore = create<MemeState>((set, get) => ({
 
   // Cutter visualization
   lastCutterGeometry: null,
+  cutterVisible: true,
+  setCutterVisible: (visible) => set({ cutterVisible: visible }),
 
   // Translation state
   isTranslating: false,
