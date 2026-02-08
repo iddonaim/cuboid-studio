@@ -78,37 +78,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orderField = sort === 'popular' ? 'likes' : 'createdAt';
     const orderDirection = sort === 'oldest' ? 'ASCENDING' : 'DESCENDING';
 
-    const where: any[] = [];
-
-    // Exclude hidden memes
-    where.push({
-      fieldFilter: {
-        field: { fieldPath: 'hidden' },
-        op: 'NOT_EQUAL',
-        value: { booleanValue: true },
-      },
-    });
+    const structuredQuery: any = {
+      from: [{ collectionId: 'memes' }],
+      orderBy: [{ field: { fieldPath: orderField }, direction: orderDirection }],
+      limit: limit + 10, // fetch extra to account for hidden memes + "has more" check
+    };
 
     if (tag) {
-      where.push({
+      structuredQuery.where = {
         fieldFilter: {
           field: { fieldPath: 'tags' },
           op: 'ARRAY_CONTAINS',
           value: { stringValue: tag },
         },
-      });
-    }
-
-    const structuredQuery: any = {
-      from: [{ collectionId: 'memes' }],
-      orderBy: [{ field: { fieldPath: orderField }, direction: orderDirection }],
-      limit: limit + 1, // fetch one extra to detect "has more"
-    };
-
-    if (where.length === 1) {
-      structuredQuery.where = where[0];
-    } else if (where.length > 1) {
-      structuredQuery.where = { compositeFilter: { op: 'AND', filters: where } };
+      };
     }
 
     const queryUrl = `${FIRESTORE_URL}:runQuery?key=${API_KEY}`;
@@ -128,7 +111,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Parse results — each item has a `document` field (or `skippedResults` for empty)
     let memes: ArchthesisMeme[] = results
       .filter((r: any) => r.document)
-      .map((r: any) => docToMeme(r.document));
+      .map((r: any) => docToMeme(r.document))
+      .filter((m: ArchthesisMeme) => !m.hidden);
 
     // Client-side text search (Firestore doesn't support full-text search)
     if (search) {
