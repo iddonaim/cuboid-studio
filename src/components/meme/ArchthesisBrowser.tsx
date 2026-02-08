@@ -238,7 +238,8 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer', transition: 'border-color 0.15s',
   },
   cardImage: {
-    width: '100%', height: 120, objectFit: 'cover', display: 'block',
+    width: '100%', height: 120, objectFit: 'contain', display: 'block',
+    background: '#0f172a',
   },
   cardBody: {
     padding: 8, display: 'flex', flexDirection: 'column', gap: 4,

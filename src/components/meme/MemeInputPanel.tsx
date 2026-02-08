@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
-import type { CuboidMemeInput } from '../../types/archthesis';
+import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 
 export const MemeInputPanel: React.FC = () => {
   const memeDescription = useMemeStore(s => s.memeDescription);
@@ -17,13 +17,17 @@ export const MemeInputPanel: React.FC = () => {
   const baseVariationId = useMemeStore(s => s.baseVariationId);
   const setBaseVariation = useMemeStore(s => s.setBaseVariation);
   const initWorkingCube = useMemeStore(s => s.initWorkingCube);
+  const selectedMemeImageUrl = useMemeStore(s => s.selectedMemeImageUrl);
+  const selectedMemeTitle = useMemeStore(s => s.selectedMemeTitle);
+  const setSelectedMeme = useMemeStore(s => s.setSelectedMeme);
 
   const [showBrowser, setShowBrowser] = useState(false);
 
-  const handleArchthesisSelect = (input: CuboidMemeInput) => {
+  const handleArchthesisSelect = (input: CuboidMemeInput, meme: ArchthesisMeme) => {
     setMemeDescription(input.memeDescription);
     setLocationTag(input.locationTag || '');
     setEngagementLevel(input.engagementLevel);
+    setSelectedMeme(meme.imageUrl, meme.topText || meme.description?.slice(0, 50) || meme.id);
   };
 
   // Init working cube on mount
@@ -69,6 +73,42 @@ export const MemeInputPanel: React.FC = () => {
         onClose={() => setShowBrowser(false)}
         onSelect={handleArchthesisSelect}
       />
+
+      {/* Selected meme thumbnail */}
+      {selectedMemeImageUrl && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: 6, background: '#1e293b', borderRadius: 6,
+          border: '1px solid #334155',
+        }}>
+          <img
+            src={selectedMemeImageUrl}
+            alt={selectedMemeTitle || 'selected meme'}
+            style={{
+              width: 48, height: 48, borderRadius: 4,
+              objectFit: 'contain', background: '#0f172a',
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              color: 'white', fontSize: 10, fontWeight: 500,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {selectedMemeTitle}
+            </div>
+            <div style={{ color: '#64748b', fontSize: 9 }}>from archthesis</div>
+          </div>
+          <button
+            onClick={() => setSelectedMeme(null, null)}
+            style={{
+              background: 'none', border: 'none', color: '#64748b',
+              cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Meme description */}
       <div>

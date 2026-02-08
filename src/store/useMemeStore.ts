@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import * as THREE from 'three';
 import { LLMOperatorResult, OperatorRecord } from '../lib/operators/types';
 import { translateMeme } from '../lib/api/translateMeme';
-import { applyLLMOperator } from '../lib/operators/applyOperator';
+import { applyLLMOperator, createCutterFromLLMOutput } from '../lib/operators/applyOperator';
 import { getVariationGeometryAsync } from '../lib/cube/csgUtils';
 import { CUBE_VARIATIONS } from '../lib/cube/specifications';
 
@@ -15,11 +15,19 @@ interface MemeState {
   engagementLevel: number;
   setEngagementLevel: (level: number) => void;
 
+  // Selected archthesis meme (for sidebar thumbnail)
+  selectedMemeImageUrl: string | null;
+  selectedMemeTitle: string | null;
+  setSelectedMeme: (imageUrl: string | null, title: string | null) => void;
+
   // Working cube
   baseVariationId: string;
   setBaseVariation: (variationId: string) => void;
   workingGeometry: THREE.BufferGeometry | null;
   geometryStack: THREE.BufferGeometry[];  // for revert
+
+  // Cutter visualization
+  lastCutterGeometry: THREE.BufferGeometry | null;
 
   // Translation state
   isTranslating: boolean;
@@ -44,6 +52,11 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   engagementLevel: 50,
   setEngagementLevel: (level) => set({ engagementLevel: level }),
 
+  // Selected archthesis meme
+  selectedMemeImageUrl: null,
+  selectedMemeTitle: null,
+  setSelectedMeme: (imageUrl, title) => set({ selectedMemeImageUrl: imageUrl, selectedMemeTitle: title }),
+
   // Working cube
   baseVariationId: 'v-00',
   setBaseVariation: (variationId) => {
@@ -52,6 +65,9 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   },
   workingGeometry: null,
   geometryStack: [],
+
+  // Cutter visualization
+  lastCutterGeometry: null,
 
   // Translation state
   isTranslating: false,
@@ -108,6 +124,12 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       // Apply the operator
       const newGeometry = applyLLMOperator(currentGeometry, result);
 
+      // Generate cutter geometry for visualization
+      currentGeometry.computeBoundingBox();
+      const cutterGeo = currentGeometry.boundingBox
+        ? createCutterFromLLMOutput(result, currentGeometry.boundingBox)
+        : null;
+
       // Create operator record
       const record: OperatorRecord = {
         id: crypto.randomUUID(),
@@ -127,6 +149,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         geometryStack: newStack,
         operators: [...get().operators, record],
         lastResult: result,
+        lastCutterGeometry: cutterGeo,
         isTranslating: false,
       });
     } catch (error) {
@@ -147,6 +170,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       geometryStack: geometryStack.slice(0, -1),
       operators: operators.slice(0, -1),
       lastResult: null,
+      lastCutterGeometry: null,
     });
   },
 }));
