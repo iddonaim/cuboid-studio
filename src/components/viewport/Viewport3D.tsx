@@ -133,11 +133,17 @@ const BuilderScene: React.FC = () => {
 /** Pataphysical mode scene — single working cube from meme store */
 const PataphysicalScene: React.FC = () => {
   const workingGeometry = useMemeStore(s => s.workingGeometry);
+  const lastCutterGeometry = useMemeStore(s => s.lastCutterGeometry);
 
   const edgesGeometry = React.useMemo(() => {
     if (!workingGeometry) return null;
     return new THREE.EdgesGeometry(workingGeometry, 15);
   }, [workingGeometry]);
+
+  const cutterEdgesGeometry = React.useMemo(() => {
+    if (!lastCutterGeometry) return null;
+    return new THREE.EdgesGeometry(lastCutterGeometry, 1);
+  }, [lastCutterGeometry]);
 
   return (
     <>
@@ -150,6 +156,18 @@ const PataphysicalScene: React.FC = () => {
           <lineSegments geometry={edgesGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
             <lineBasicMaterial color="#000000" linewidth={2} />
           </lineSegments>
+
+          {/* Cutter wireframe overlay */}
+          {lastCutterGeometry && cutterEdgesGeometry && (
+            <>
+              <mesh geometry={lastCutterGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
+                <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={THREE.DoubleSide} />
+              </mesh>
+              <lineSegments geometry={cutterEdgesGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
+                <lineBasicMaterial color="#ef4444" linewidth={1} transparent opacity={0.6} />
+              </lineSegments>
+            </>
+          )}
         </group>
       )}
     </>
