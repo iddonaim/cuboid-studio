@@ -365,13 +365,9 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   // --- Computed ---
 
   getCurrentScore: () => {
-    // Lazy import to avoid circular deps at module level
-    // This is a synchronous getter, so we access stores directly
-    const builderStore = require('./useBuilderStore').useBuilderStore;
-    const memeStore = require('./useMemeStore').useMemeStore;
-    const placedCubes = builderStore.getState().placedCubes;
-    const cubeOperators = memeStore.getState().cubeOperators;
-    return computeCompressibility(placedCubes, cubeOperators);
+    // This is unused at render time — callers should use computeCompressibility directly
+    // with store data from React hooks (see EvolutionPanel.tsx)
+    return { geometricClustering: 0, spatialRegularity: 0, operatorSequence: 0, memeCoherence: 0, total: 0 };
   },
 
   getCompressibilityDelta: () => {
