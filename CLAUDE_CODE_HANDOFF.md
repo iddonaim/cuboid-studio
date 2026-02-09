@@ -288,7 +288,15 @@ vercel --prod
 ### Could Be Added Later
 - Performance optimization with InstancedMesh
 - Camera presets/views
-- Export to STL/OBJ for 3D printing
+
+### Export / Rhino Integration (Backlog)
+- **Export assembly as JSON** — positions, variations, rotations, operator history per cube (for round-tripping back to Grasshopper)
+- **Export to GLB/glTF** — single merged mesh of the full assembly (viewable in any 3D tool, importable to Rhino via glTF plugin)
+- **Export to STL/OBJ** — for 3D printing or direct Rhino import
+- **Export to 3DM (Rhino native)** — via rhino3dm.js (WASM library), write NURBS-accurate Breps or meshes directly
+- **Grasshopper live-link** — export assembly state over WebSocket/HTTP to a running GH definition (Hops or custom component)
+- **CSV/table export** — cube positions + variation indices + cutter indices, importable as GH data tree for parametric reconstruction
+- **Per-cube operator log export** — full meme operator history per cube as JSON, for replaying the pataphysical pipeline in GH/Python
 
 ---
 
