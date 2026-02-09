@@ -1108,8 +1108,61 @@ Rotation changes cutter orientation in world space, which would make alignment i
 
 ---
 
+### Session 2026-02-09 (Continued) — Grasshopper Live-Link & Assembly Export
+
+**Completed:**
+
+**Part 1: Assembly Export Utility**
+- Created `src/lib/export/assemblyExport.ts` — serialises full assembly state to structured JSON
+- Exports: positions, variation IDs, cutter indices, grid indices, rotations (steps + degrees), per-cube operator history
+- Includes assembly bounding box and grid metadata (cubeSize, gridStride, units)
+- `buildAssemblyExport()` is a pure function; `downloadAssemblyJSON()` triggers browser download
+
+**Part 2: WebSocket Live-Link Client**
+- Created `src/lib/export/liveLinkClient.ts` — singleton WebSocket client
+- Connects to local bridge server at ws://localhost:9876
+- Auto-reconnect with 3s delay; status subscription API for UI updates
+- `push(data)` sends assembly state; auto-push on assembly changes when connected
+
+**Part 3: Export Panel UI**
+- Created `src/components/export/ExportPanel.tsx` — appears at bottom of sidebar in all modes
+- "Download Assembly JSON" button for one-shot export
+- Live-link controls: connect/stop button, status indicator (green/amber/red dot), manual push
+- Port configuration in collapsible settings
+- Auto-pushes assembly to bridge on every state change when connected
+
+**Part 4: Local Bridge Server (Python)**
+- Created `grasshopper/cuboid_bridge_server.py` — lightweight asyncio server
+- WebSocket endpoint on port 9876 for browser push
+- HTTP endpoint on port 9877 for GH polling (GET /state, GET /status)
+- Optional `--file` flag to also write JSON to disk for File Watcher fallback
+- Single dependency: `pip install websockets`
+
+**Part 5: Grasshopper Python Receiver**
+- Created `grasshopper/cuboid_gh_receiver.py` — GHPython component script
+- Polls bridge server via HTTP, outputs: positions (Point3d), variations, rotations, cutter indices (DataTree), operators (DataTree)
+- Compatible with both IronPython 2 (Rhino 7) and Python 3 (Rhino 8+)
+- Instructions for Timer-based polling setup
+
+**Part 6: Documentation**
+- Created `grasshopper/README.md` — full setup guide with architecture diagram, quick-start, JSON format reference, and GH reconstruction workflow
+
+**Files Created:**
+- `src/lib/export/assemblyExport.ts` — assembly state serialiser
+- `src/lib/export/liveLinkClient.ts` — WebSocket live-link client
+- `src/components/export/ExportPanel.tsx` — sidebar export UI
+- `grasshopper/cuboid_bridge_server.py` — Python bridge server
+- `grasshopper/cuboid_gh_receiver.py` — GH Python component
+- `grasshopper/README.md` — setup guide
+
+**Files Modified:**
+- `src/App.tsx` — added ExportPanel import and render in sidebar
+- `CLAUDE_CODE_HANDOFF.md` — session log
+
+---
+
 **Last Updated:** 2026-02-09
-**Status:** Production-ready PWA with Evolution Mode (compressibility engine + UI)
+**Status:** Production-ready PWA with Evolution Mode + Grasshopper Live-Link
 **Next Feature:** Highlight relevant cube variations in sidebar (show which can connect)
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
