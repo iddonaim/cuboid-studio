@@ -1035,8 +1035,81 @@ Rotation changes cutter orientation in world space, which would make alignment i
 
 ---
 
-**Last Updated:** 2026-01-29
-**Status:** Production-ready PWA with working Strict Alignment Rules
+---
+
+### Session 2026-02-09 - Evolution Mode Implementation
+
+**Completed:**
+
+**Part 1: Compressibility Engine**
+- Created `src/lib/evolution/compressibility.ts` — pure scoring functions
+- Four sub-scores, each normalised to [0, 1]:
+  1. **Geometric Clustering** (weight 0.3) — cosine similarity of 13D per-cube feature vectors (cutter type one-hot + proportions + position + rotation)
+  2. **Spatial Regularity** (weight 0.3) — row/column consistency (60%) + mirror symmetry (40%) along X/Y/Z axes
+  3. **Operator Sequence** (weight 0.2) — n-gram repetition ratio (n=1,2,3) across concatenated operator classes
+  4. **Meme Coherence** (weight 0.2) — within-group cutter parameter variance grouped by last meme, scored via exp(-variance)
+- Compression progress (interestingness) = score_after − score_before
+- Comprehensive plain-language documentation alongside technical comments
+
+**Part 2: Evolution Store**
+- Created `src/store/useEvolutionStore.ts` — Zustand store
+- Meme pool pre-fetch from archthesis via `/api/fetch-memes`
+- Candidate generation: parallel Claude API calls, each scored by simulated compression progress
+- Three target cube strategies: `random`, `least-compressed`, `adaptive` (50/50 hybrid)
+- User selection blending via `selectionPressure` weight
+- Apply selected candidate through meme store pipeline (reuses translate-meme result, no extra API call)
+- Compressibility log with snapshots and deltas
+
+**Part 3: Evolution Panel UI**
+- Created `src/components/evolution/EvolutionPanel.tsx` — sidebar panel
+- Generation counter with cube/modified stats
+- Score breakdown: live bar chart of all 4 sub-scores with weights
+- Meme pool status with auto-fetch on mount
+- "Generate candidates" button — fires parallel Claude calls, ranks results
+- Candidate list ranked by compression progress (green/red colour coding)
+- Each candidate shows: rank, delta score, meme excerpt, operator class, cutter type, target cube
+- "Apply" and "Undo" buttons
+- Settings: target strategy dropdown, population size slider (2-12), algorithm vs. intuition slider, meme tag filter
+
+**Part 4: Compressibility Sparkline**
+- Created `src/components/evolution/CompressibilitySparkline.tsx`
+- Small SVG chart: green segments for positive deltas, red for negative
+- Amber dot on latest generation, score readout, generation labels
+
+**Part 5: Evolution Viewport Scene**
+- Added `EvolutionScene` to `src/components/viewport/Viewport3D.tsx`
+- Renders assembly with per-cube geometry overrides from pataphysical mode
+- Highlights target cube of previewed candidate in amber (reuses `targeted` prop)
+- Wired into Canvas alongside builder/pataphysical/encoding scenes
+
+**Part 6: Documentation Updates**
+- Added Rhino/Grasshopper export options to backlog (JSON, GLB, STL, 3DM, GH live-link, CSV, operator log)
+- Added evolution session log to CLAUDE_CODE_HANDOFF.md
+
+**Files Created:**
+- `src/lib/evolution/compressibility.ts` — compressibility engine (4 sub-scores)
+- `src/store/useEvolutionStore.ts` — evolution state management
+- `src/components/evolution/EvolutionPanel.tsx` — sidebar UI
+- `src/components/evolution/CompressibilitySparkline.tsx` — SVG sparkline chart
+
+**Files Modified:**
+- `src/App.tsx` — added EvolutionPanel import and render
+- `src/components/viewport/Viewport3D.tsx` — added EvolutionScene
+- `CLAUDE_CODE_HANDOFF.md` — backlog updates + session log
+
+**API Cost Estimate:**
+- ~6 API calls per generation × ~15 generations/session = ~90 calls
+- Estimated ~$0.30–0.90 per evolution session (Claude Sonnet for translate-meme)
+- Population size slider (2-12) is the main cost lever
+
+**Remaining Refinements:**
+- Adaptive strategy learning (track which regions yield most compression progress over time)
+- Highlight relevant cube variations in sidebar (show which can connect)
+
+---
+
+**Last Updated:** 2026-02-09
+**Status:** Production-ready PWA with Evolution Mode (compressibility engine + UI)
 **Next Feature:** Highlight relevant cube variations in sidebar (show which can connect)
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio

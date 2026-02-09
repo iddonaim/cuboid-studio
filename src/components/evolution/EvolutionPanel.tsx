@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
+import { computeCompressibility } from '../../lib/evolution/compressibility';
 import { CompressibilitySparkline } from './CompressibilitySparkline';
 
 /**
@@ -41,9 +42,16 @@ export const EvolutionPanel: React.FC = () => {
   const previewCandidate = useEvolutionStore(s => s.previewCandidate);
   const selectCandidate = useEvolutionStore(s => s.selectCandidate);
   const applySelected = useEvolutionStore(s => s.applySelected);
+  const undoLastGeneration = useEvolutionStore(s => s.undoLastGeneration);
 
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const cubeOperators = useMemeStore(s => s.cubeOperators);
+
+  // Live score breakdown
+  const currentScore = useMemo(
+    () => computeCompressibility(placedCubes, cubeOperators),
+    [placedCubes, cubeOperators]
+  );
 
   // Pre-fetch meme pool on mount
   useEffect(() => {
@@ -99,6 +107,49 @@ export const EvolutionPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Score breakdown */}
+      {currentScore.total > 0 && (
+        <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+          <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, fontWeight: 600 }}>
+            Score breakdown
+          </div>
+          {([
+            ['Geometric clustering', currentScore.geometricClustering, '30%'],
+            ['Spatial regularity', currentScore.spatialRegularity, '30%'],
+            ['Operator sequence', currentScore.operatorSequence, '20%'],
+            ['Meme coherence', currentScore.memeCoherence, '20%'],
+          ] as const).map(([label, value, weight]) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+              <span style={{ color: '#64748b', fontSize: 9, width: 90, flexShrink: 0 }}>{label}</span>
+              <div style={{
+                flex: 1,
+                height: 4,
+                background: '#334155',
+                borderRadius: 2,
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: `${Math.max(1, value * 100)}%`,
+                  height: '100%',
+                  background: '#60a5fa',
+                  borderRadius: 2,
+                }} />
+              </div>
+              <span style={{ color: '#94a3b8', fontSize: 9, width: 28, textAlign: 'right' }}>
+                {value.toFixed(2)}
+              </span>
+              <span style={{ color: '#475569', fontSize: 8, width: 20 }}>
+                {weight}
+              </span>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+            <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 600 }}>Total</span>
+            <span style={{ color: '#e2e8f0', fontSize: 10, fontWeight: 600 }}>{currentScore.total.toFixed(4)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Error message */}
       {lastError && (
@@ -261,25 +312,44 @@ export const EvolutionPanel: React.FC = () => {
             })}
           </div>
 
-          {/* Apply button */}
-          <button
-            onClick={applySelected}
-            disabled={!selectedCandidateId}
-            style={{
-              marginTop: 8,
-              padding: 10,
-              background: selectedCandidateId ? '#065f46' : '#334155',
-              border: 'none',
-              borderRadius: 6,
-              color: selectedCandidateId ? 'white' : '#475569',
-              cursor: selectedCandidateId ? 'pointer' : 'default',
-              fontSize: 12,
-              fontWeight: 600,
-              width: '100%',
-            }}
-          >
-            Apply selected
-          </button>
+          {/* Apply + Undo buttons */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button
+              onClick={applySelected}
+              disabled={!selectedCandidateId}
+              style={{
+                flex: 1,
+                padding: 10,
+                background: selectedCandidateId ? '#065f46' : '#334155',
+                border: 'none',
+                borderRadius: 6,
+                color: selectedCandidateId ? 'white' : '#475569',
+                cursor: selectedCandidateId ? 'pointer' : 'default',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              Apply
+            </button>
+            <button
+              onClick={() => {
+                previewCandidate(null);
+                undoLastGeneration();
+              }}
+              disabled={generation === 0}
+              style={{
+                padding: '10px 12px',
+                background: generation > 0 ? '#7f1d1d' : '#334155',
+                border: 'none',
+                borderRadius: 6,
+                color: generation > 0 ? 'white' : '#475569',
+                cursor: generation > 0 ? 'pointer' : 'default',
+                fontSize: 12,
+              }}
+            >
+              Undo
+            </button>
+          </div>
         </div>
       )}
 
