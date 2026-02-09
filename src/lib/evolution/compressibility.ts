@@ -2,19 +2,123 @@
  * Compressibility Engine — Evolution Mode
  * ========================================
  *
- * Implements Schmidhuber's compression progress drive as a fitness function
- * for interactive evolutionary computation on cuboid assemblies.
+ * # The idea in plain words
  *
- * Four sub-scores, each capturing a different kind of regularity:
+ * We want the evolution engine to prefer *interesting* changes — not random
+ * noise, and not boring repetition either.  The insight (from Schmidhuber,
+ * 2008) is that "interestingness" can be measured as the *speed at which
+ * something becomes easier to describe*.
  *
- *   1. Geometric Clustering  (weight 0.3) — feature-vector similarity of operator histories
- *   2. Spatial Regularity    (weight 0.3) — axis symmetry, row/column consistency
- *   3. Operator Sequence     (weight 0.2) — n-gram repetition across cubes
- *   4. Meme Coherence        (weight 0.2) — within-group variance of cutter params by meme
+ * Think of it like this: if you look at a building facade and at first it
+ * seems chaotic, but then you notice a hidden pattern (oh — every third
+ * window is round!), the moment of noticing that pattern is the interesting
+ * moment.  The facade just became more compressible in your mind.
  *
- * All scores are normalised to [0, 1].  Higher = more compressible.
+ * So we measure how "describable" (compressible) the whole assembly is, and
+ * then we reward operations that *increase* that describability.  This steers
+ * evolution away from two failure modes:
  *
- * Compression progress (interestingness) = score_after − score_before.
+ *   - **The "dark room"**: everything is the same.  Already fully described,
+ *     nothing new to learn.  Score is high but can't go higher.  Boring.
+ *
+ *   - **"White noise"**: every cube is randomly different.  No patterns to
+ *     find, score stays low forever.  Also boring.
+ *
+ * The sweet spot is *structured novelty*: operations that introduce
+ * previously unknown regularities that can be discovered across cubes.
+ *
+ *
+ * # How we measure compressibility
+ *
+ * We look at four different kinds of "pattern" in the assembly and blend
+ * them into a single score from 0 (no patterns) to 1 (fully regular).
+ *
+ *
+ * ## 1. Geometric Clustering (30% of total score)
+ *
+ * "Do the boolean cuts on different cubes look alike?"
+ *
+ * For each cube that has been cut, we describe all its cuts as a list of
+ * numbers (what shape was used, how big, where it was placed, how it was
+ * rotated — 13 numbers per cut, averaged across the cube's history).
+ *
+ * Then we compare every pair of cubes: the more similar their cut-profiles
+ * are, the more compressible.  If you applied the same meme to 5 cubes and
+ * they all got similar sphere cuts, this score goes up.
+ *
+ * Technically: cosine similarity on 13-dimensional feature vectors averaged
+ * over all pairwise comparisons.
+ *
+ *
+ * ## 2. Spatial Regularity (30% of total score)
+ *
+ * "Are the cuts arranged in spatial patterns — rows, columns, symmetry?"
+ *
+ * We check two things:
+ *
+ *   a) **Row/column consistency** (60% of this sub-score): group cubes that
+ *      share the same X, Y, or Z coordinate.  Within each group, do they
+ *      tend to have the same *type* of cut?  If all cubes in a row got
+ *      "inversion" operations, that's a pattern we can describe concisely.
+ *
+ *   b) **Mirror symmetry** (40% of this sub-score): for each axis, check if
+ *      cubes have mirror-image partners with the same operation type.  If the
+ *      left side of the assembly mirrors the right, that's compressible.
+ *
+ *
+ * ## 3. Operator Sequence (20% of total score)
+ *
+ * "Are the same sequences of operations repeating across cubes?"
+ *
+ * We line up all the operation types that have been applied across all cubes
+ * into one long sequence, then look for repeated subsequences (n-grams of
+ * length 1, 2, and 3).  If the same pair of operations keeps appearing,
+ * that's a pattern.  More repetition = higher score.
+ *
+ * Example: if three different cubes each got "inversion → drift", that
+ * two-step pattern appears three times — very compressible.
+ *
+ *
+ * ## 4. Meme Coherence (20% of total score)
+ *
+ * "When the same meme is applied to different cubes, does Claude translate
+ * it consistently?"
+ *
+ * We group cubes by the last meme that was applied to them.  Within each
+ * group, we measure how similar the resulting cut parameters are.  If the
+ * same meme always produces roughly the same size/position of cut, that's
+ * consistent — and consistent translations are compressible.
+ *
+ * Low variance within a meme group = high coherence.  We use exp(-variance)
+ * so the score smoothly goes from ~1 (identical cuts) to ~0 (wildly different).
+ *
+ *
+ * # How "interestingness" works
+ *
+ * Before applying a candidate operation, we snapshot the assembly's total
+ * compressibility score.  After applying it, we measure again.  The
+ * difference is the **compression progress**:
+ *
+ *   interestingness = score_after − score_before
+ *
+ * Positive = the assembly just became more describable = interesting.
+ * Negative = it became more random/chaotic = not interesting.
+ * Zero     = no change in describability = neutral.
+ *
+ * The evolution engine ranks candidates by this delta and presents the most
+ * interesting ones first.
+ *
+ *
+ * # Technical summary
+ *
+ * Four sub-scores, each normalised to [0, 1]:
+ *
+ *   1. Geometric Clustering  (weight 0.3) — feature-vector cosine similarity
+ *   2. Spatial Regularity    (weight 0.3) — axis consistency + mirror symmetry
+ *   3. Operator Sequence     (weight 0.2) — n-gram repetition ratio
+ *   4. Meme Coherence        (weight 0.2) — within-group parameter variance
+ *
+ * Total = weighted sum.  Compression progress = delta of total.
  */
 
 import type { PlacedCube } from '../cube/types';
@@ -123,11 +227,17 @@ export function createSnapshot(
 // ---------------------------------------------------------------------------
 // Sub-score 1: Geometric Clustering (0.3)
 // ---------------------------------------------------------------------------
-// Represent each cube's operator history as a feature vector.
-// Per operator: cutterType (one-hot 4D) + proportions (3D) + position (3D) +
-//               rotation (3D) = 13D.
-// Use average across all operators for the cube → fixed-length feature.
-// Cluster by pairwise cosine similarity. More similar cubes = higher score.
+//
+// Plain english:
+//   Each boolean cut is described by 13 numbers (shape type, size, position,
+//   rotation).  For each cube, we average all its cuts into a single 13-number
+//   "fingerprint".  Then we compare every pair of cubes' fingerprints — the
+//   more similar they are on average, the higher this score.
+//
+// Technical:
+//   Per operator: cutterType (one-hot 4D) + proportions (3D) + position (3D) +
+//   rotation (3D) = 13D.  Average across history → fixed-length feature.
+//   Score = mean pairwise cosine similarity.
 
 const CUTTER_TYPE_INDEX: Record<CutterType, number> = {
   box: 0,
@@ -193,8 +303,19 @@ function scoreGeometricClustering(
 // ---------------------------------------------------------------------------
 // Sub-score 2: Spatial Regularity (0.3)
 // ---------------------------------------------------------------------------
-// Check for axis-aligned patterns: how many cubes share the same operator
-// class along rows/columns in the grid. Also checks for mirror symmetry.
+//
+// Plain english:
+//   Do the cuts form spatial patterns?  We check two things:
+//   (a) Line up cubes along each axis (X rows, Y rows, Z rows).  Within each
+//       row, do they tend to share the same operation type?  Score goes up if,
+//       say, an entire row all got "inversion" cuts.
+//   (b) Mirror symmetry: for each axis, flip cube positions and check if the
+//       mirror partner got the same kind of operation.
+//
+// Technical:
+//   Consistency = fraction of majority class per axis-aligned group, averaged.
+//   Symmetry = fraction of mirror-matched cubes with same operator class.
+//   Blend: 60% consistency + 40% symmetry.
 
 function scoreSpatialRegularity(
   placedCubes: PlacedCube[],
@@ -295,8 +416,17 @@ function scoreSpatialRegularity(
 // ---------------------------------------------------------------------------
 // Sub-score 3: Operator Sequence Compressibility (0.2)
 // ---------------------------------------------------------------------------
-// Concatenate the operator class sequence across all cubes.
-// Measure n-gram repetition ratio — more repetition = higher score.
+//
+// Plain english:
+//   Line up all the operation names from every cube into one long list and
+//   look for repeated patterns.  If the sequence "inversion, drift" appears
+//   on 4 different cubes, that's a repeating motif we can describe once
+//   instead of four times.  More repetition = easier to compress = higher score.
+//
+// Technical:
+//   Concatenate operator classes across all cubes.  Compute n-gram repetition
+//   ratio for n=1,2,3.  Repetition ratio = 1 - (unique n-grams / total).
+//   Score = average across the three n-gram sizes.
 
 function scoreOperatorSequence(
   cubeIds: string[],
@@ -341,8 +471,19 @@ function scoreOperatorSequence(
 // ---------------------------------------------------------------------------
 // Sub-score 4: Meme Coherence (0.2)
 // ---------------------------------------------------------------------------
-// Group cubes by their last applied meme. Measure within-group variance
-// on cutter parameters. Low variance = consistent translation = compressible.
+//
+// Plain english:
+//   When the same meme is used on multiple cubes, does Claude produce similar
+//   cuts?  Group cubes by their last meme, then check how similar the cut
+//   parameters are within each group.  If "doge meme" always results in a
+//   sphere of roughly the same size and position, that's coherent and
+//   compressible.  If the same meme produces wildly different results each
+//   time, it's incoherent and harder to describe.
+//
+// Technical:
+//   Group by last memeDescription.  For groups with 2+ members, compute
+//   variance of cutter parameter vectors (proportions, position, magnitude).
+//   Coherence per group = exp(-variance).  Score = mean across groups.
 
 function scoreMemeCoherence(
   cubeIds: string[],
