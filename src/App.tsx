@@ -14,6 +14,7 @@ import { OperatorHistoryList } from './components/meme/OperatorHistoryList';
 import { CutterTweakPanel } from './components/meme/CutterTweakPanel';
 import { EncodingPanel } from './components/encoding/EncodingPanel';
 import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
+import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 
 const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
@@ -143,6 +144,7 @@ const App: React.FC = () => {
             <EncodingPanel />
           </div>
         )}
+        {activeMode === 'evolution' && <EvolutionPanel />}
       </div>
 
       {/* Canvas area */}

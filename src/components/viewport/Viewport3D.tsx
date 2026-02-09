@@ -11,6 +11,7 @@ import { CubeWithCuts } from './CubeWithCuts';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
+import { useEvolutionStore } from '../../store/useEvolutionStore';
 
 /** Builder mode scene contents */
 const BuilderScene: React.FC = () => {
@@ -283,6 +284,44 @@ const EncodingScene: React.FC = () => {
   );
 };
 
+/**
+ * Evolution mode scene — shows assembly with the currently previewed
+ * candidate's target cube highlighted in amber.  Geometry overrides from
+ * previous pataphysical operations are preserved.
+ */
+const EvolutionScene: React.FC = () => {
+  const placedCubes = useBuilderStore(s => s.placedCubes);
+  const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
+  const previewCandidateId = useEvolutionStore(s => s.previewCandidateId);
+  const candidates = useEvolutionStore(s => s.candidates);
+
+  // Find which cube the previewed candidate targets
+  const previewedCandidate = candidates.find(c => c.id === previewCandidateId);
+  const highlightCubeId = previewedCandidate?.targetCubeId ?? null;
+
+  return (
+    <>
+      <SpatialGrid size={7} levels={4} />
+
+      {placedCubes.map(cube => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        const override = cubeGeometryOverrides[cube.id] || null;
+        return (
+          <CubeWithCuts
+            key={cube.id}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            overrideGeometry={override}
+            targeted={cube.id === highlightCubeId}
+          />
+        );
+      })}
+    </>
+  );
+};
+
 export const Viewport3D: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
 
@@ -305,6 +344,7 @@ export const Viewport3D: React.FC = () => {
       {activeMode === 'builder' && <BuilderScene />}
       {activeMode === 'pataphysical' && <PataphysicalScene />}
       {activeMode === 'encoding' && <EncodingScene />}
+      {activeMode === 'evolution' && <EvolutionScene />}
     </Canvas>
   );
 };
