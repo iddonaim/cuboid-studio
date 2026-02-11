@@ -286,8 +286,9 @@ const EncodingScene: React.FC = () => {
 
 /**
  * Evolution mode scene — shows assembly with the currently previewed
- * candidate's target cube highlighted in amber.  Geometry overrides from
- * previous pataphysical operations are preserved.
+ * candidate's target cube highlighted in amber.  When a candidate is
+ * selected, shows a wireframe preview of the cutter that would be applied.
+ * Geometry overrides from previous pataphysical operations are preserved.
  */
 const EvolutionScene: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
@@ -298,6 +299,65 @@ const EvolutionScene: React.FC = () => {
   // Find which cube the previewed candidate targets
   const previewedCandidate = candidates.find(c => c.id === previewCandidateId);
   const highlightCubeId = previewedCandidate?.targetCubeId ?? null;
+  const previewTargetCube = placedCubes.find(c => c.id === highlightCubeId);
+
+  // Generate a cutter wireframe preview for the selected candidate
+  const cutterPreview = useMemo(() => {
+    if (!previewedCandidate || !previewTargetCube) return null;
+    try {
+      const bbox = new THREE.Box3(
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE)
+      );
+      const { type, proportions, position, rotation } = previewedCandidate.cutterConfig.cutter;
+      const scale = Math.max(0.05, Math.min(previewedCandidate.cutterConfig.magnitude, 1.0));
+      const p = proportions.map(v => Math.max(0.01, Math.min(v, 2.0))) as [number, number, number];
+
+      let geo: THREE.BufferGeometry;
+      switch (type) {
+        case 'sphere':
+          geo = new THREE.SphereGeometry(p[0] * CUBE_SIZE * scale * 0.5, 16, 16);
+          break;
+        case 'cylinder':
+          geo = new THREE.CylinderGeometry(p[0] * CUBE_SIZE * scale * 0.5, p[0] * CUBE_SIZE * scale * 0.5, p[1] * CUBE_SIZE * scale, 16);
+          break;
+        case 'plane':
+          geo = new THREE.BoxGeometry(p[0] * CUBE_SIZE * scale, 0.5, p[2] * CUBE_SIZE * scale);
+          break;
+        default:
+          geo = new THREE.BoxGeometry(p[0] * CUBE_SIZE * scale, p[1] * CUBE_SIZE * scale, p[2] * CUBE_SIZE * scale);
+      }
+
+      const center = new THREE.Vector3();
+      bbox.getCenter(center);
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      const pos = position.map(v => Math.max(-1, Math.min(v, 1))) as [number, number, number];
+
+      const matrix = new THREE.Matrix4();
+      const euler = new THREE.Euler(
+        (rotation[0] * Math.PI) / 180,
+        (rotation[1] * Math.PI) / 180,
+        (rotation[2] * Math.PI) / 180,
+        'XYZ'
+      );
+      matrix.makeRotationFromEuler(euler);
+      matrix.setPosition(
+        center.x + pos[0] * (size.x / 2),
+        center.y + pos[1] * (size.y / 2),
+        center.z + pos[2] * (size.z / 2),
+      );
+      geo.applyMatrix4(matrix);
+      return geo;
+    } catch {
+      return null;
+    }
+  }, [previewedCandidate, previewTargetCube]);
+
+  const cutterEdges = useMemo(() => {
+    if (!cutterPreview) return null;
+    return new THREE.EdgesGeometry(cutterPreview, 1);
+  }, [cutterPreview]);
 
   return (
     <>
@@ -318,6 +378,25 @@ const EvolutionScene: React.FC = () => {
           />
         );
       })}
+
+      {/* Cutter wireframe preview for selected candidate */}
+      {previewTargetCube && cutterPreview && cutterEdges && (
+        <group
+          position={previewTargetCube.position}
+          rotation={[
+            (previewTargetCube.rotation.x * Math.PI) / 2,
+            (previewTargetCube.rotation.y * Math.PI) / 2,
+            0,
+          ]}
+        >
+          <mesh geometry={cutterPreview} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
+            <meshBasicMaterial color="#f59e0b" transparent opacity={0.1} side={THREE.DoubleSide} />
+          </mesh>
+          <lineSegments geometry={cutterEdges} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
+            <lineBasicMaterial color="#f59e0b" linewidth={1} transparent opacity={0.7} />
+          </lineSegments>
+        </group>
+      )}
     </>
   );
 };

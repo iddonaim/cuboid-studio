@@ -52,6 +52,9 @@ interface EvolutionState {
   previewCandidateId: string | null;
   lastError: string | null;
 
+  // Track last applied cube for undo
+  lastAppliedCubeId: string | null;
+
   // Meme pool (pre-fetched batch for sampling)
   memePool: ArchthesisMeme[];
   isFetchingMemes: boolean;
@@ -97,6 +100,9 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   selectedCandidateId: null,
   previewCandidateId: null,
   lastError: null,
+
+  // Track last applied cube for undo
+  lastAppliedCubeId: null,
 
   // Meme pool
   memePool: [],
@@ -170,6 +176,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     const pool = filteredPool.length > 0 ? filteredPool : memePool;
 
     // Fire parallel Claude calls
+    const errors: string[] = [];
     const promises = targetCubeIds.map(async (cubeId, idx): Promise<EvolutionCandidate | null> => {
       const meme = pool[Math.floor(Math.random() * pool.length)];
       const input = mapMemeToCuboidInput(meme);
@@ -217,7 +224,9 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           combinedFitness: progress, // user score will blend in later
         };
       } catch (err) {
-        console.error(`Evolution candidate ${idx} failed:`, err);
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Evolution candidate ${idx} failed:`, msg);
+        errors.push(msg);
         return null;
       }
     });
@@ -225,13 +234,34 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     const results = await Promise.all(promises);
     const candidates = results.filter((c): c is EvolutionCandidate => c !== null);
 
+    // If ALL candidates failed, surface the error and don't increment generation
+    if (candidates.length === 0) {
+      const uniqueErrors = [...new Set(errors)];
+      const summary = uniqueErrors.length === 1
+        ? uniqueErrors[0]
+        : `${uniqueErrors.length} different errors occurred`;
+      set({
+        candidates: [],
+        isGenerating: false,
+        lastError: `All ${targetCubeIds.length} candidates failed. ${summary}`,
+      });
+      return;
+    }
+
     // Rank by compression progress (descending)
     candidates.sort((a, b) => b.compressionProgress - a.compressionProgress);
+
+    // Build a warning if some (but not all) candidates failed
+    const failedCount = targetCubeIds.length - candidates.length;
+    const partialWarning = failedCount > 0
+      ? `${failedCount} of ${targetCubeIds.length} candidates failed — showing ${candidates.length} results`
+      : null;
 
     set({
       candidates,
       isGenerating: false,
       generation: get().generation + 1,
+      lastError: partialWarning,
     });
   },
 
@@ -257,7 +287,10 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   applySelected: async () => {
     const { selectedCandidateId, candidates, baselineScore, generation, compressibilityLog } = get();
     const candidate = candidates.find(c => c.id === selectedCandidateId);
-    if (!candidate) return;
+    if (!candidate) {
+      set({ lastError: 'No candidate selected' });
+      return;
+    }
 
     // Apply via the meme store's operator pipeline
     const { useMemeStore } = await import('./useMemeStore');
@@ -280,14 +313,21 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
 
     if (!currentGeometry) {
       const placedCube = placedCubes.find(c => c.id === cubeId);
-      if (!placedCube) return;
+      if (!placedCube) {
+        set({ lastError: `Target cube ${cubeId} no longer exists in the assembly` });
+        return;
+      }
       const variation = CUBE_VARIATIONS.find(v => v.id === placedCube.variationId);
-      if (!variation) return;
+      if (!variation) {
+        set({ lastError: `Variation for cube ${cubeId} not found` });
+        return;
+      }
       currentGeometry = await getVariationGeometryAsync(variation);
     }
 
     const newGeometry = applyLLMOperator(currentGeometry, candidate.cutterConfig);
 
+    // Use the pre-cut geometry bounding box for cutter positioning
     currentGeometry.computeBoundingBox();
     const cutterGeo = currentGeometry.boundingBox
       ? createCutterFromLLMOutput(candidate.cutterConfig, currentGeometry.boundingBox)
@@ -337,17 +377,55 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       selectedCandidateId: null,
       previewCandidateId: null,
       baselineScore: afterScore,
+      lastAppliedCubeId: cubeId,
     });
   },
 
-  undoLastGeneration: () => {
-    set((state) => ({
+  undoLastGeneration: async () => {
+    const { lastAppliedCubeId, compressibilityLog, generation } = get();
+
+    // Revert geometry on the last applied cube via the meme store
+    if (lastAppliedCubeId) {
+      const { useMemeStore } = await import('./useMemeStore');
+      const memeState = useMemeStore.getState();
+      const stack = memeState.cubeGeometryStacks[lastAppliedCubeId] || [];
+      const ops = memeState.cubeOperators[lastAppliedCubeId] || [];
+
+      if (stack.length > 0 && ops.length > 0) {
+        const previousGeometry = stack[stack.length - 1];
+        const newOverrides = { ...memeState.cubeGeometryOverrides };
+
+        if (stack.length === 1) {
+          // Reverting to base geometry — remove override entirely
+          delete newOverrides[lastAppliedCubeId];
+        } else {
+          newOverrides[lastAppliedCubeId] = previousGeometry;
+        }
+
+        useMemeStore.setState({
+          cubeGeometryOverrides: newOverrides,
+          cubeGeometryStacks: {
+            ...memeState.cubeGeometryStacks,
+            [lastAppliedCubeId]: stack.slice(0, -1),
+          },
+          cubeOperators: {
+            ...memeState.cubeOperators,
+            [lastAppliedCubeId]: ops.slice(0, -1),
+          },
+          lastResult: null,
+          lastCutterGeometry: null,
+        });
+      }
+    }
+
+    set({
       candidates: [],
       selectedCandidateId: null,
       previewCandidateId: null,
-      compressibilityLog: state.compressibilityLog.slice(0, -1),
-      generation: Math.max(0, state.generation - 1),
-    }));
+      compressibilityLog: compressibilityLog.slice(0, -1),
+      generation: Math.max(0, generation - 1),
+      lastAppliedCubeId: null,
+    });
   },
 
   reset: () => set({
@@ -360,6 +438,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     previewCandidateId: null,
     lastError: null,
     baselineScore: null,
+    lastAppliedCubeId: null,
   }),
 
   // --- Computed ---

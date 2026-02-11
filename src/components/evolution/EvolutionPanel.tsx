@@ -53,12 +53,12 @@ export const EvolutionPanel: React.FC = () => {
     [placedCubes, cubeOperators]
   );
 
-  // Pre-fetch meme pool on mount
+  // Pre-fetch meme pool on mount and when re-entering evolution mode
   useEffect(() => {
     if (memePool.length === 0 && !isFetchingMemes) {
       fetchMemePool();
     }
-  }, []);
+  }, [memePool.length, isFetchingMemes, fetchMemePool]);
 
   const operatedCount = placedCubes.filter(c => (cubeOperators[c.id]?.length ?? 0) > 0).length;
   const hasAssembly = placedCubes.length > 0;
