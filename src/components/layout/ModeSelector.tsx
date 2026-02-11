@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAppStore, AppMode } from '../../store/useAppStore';
 
+declare const __APP_VERSION__: string;
+
 const MODES: { key: AppMode; label: string; enabled: boolean }[] = [
   { key: 'builder', label: 'Builder', enabled: true },
   { key: 'pataphysical', label: 'Pataphysical', enabled: true },
@@ -41,6 +43,9 @@ export const ModeSelector: React.FC = () => {
           {mode.label}
         </button>
       ))}
+      <span style={{ fontSize: 8, color: '#475569', alignSelf: 'center', marginLeft: 4 }}>
+        v{__APP_VERSION__}
+      </span>
     </div>
   );
 };

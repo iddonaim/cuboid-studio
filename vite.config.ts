@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+const APP_VERSION = '1.1.0';
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -42,7 +47,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,jpg,jpeg,png,svg,glb,json}'],
         skipWaiting: true,
         clientsClaim: true,
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB (for large GLB files)
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (for large GLB files)
+        // Force cache invalidation on version bump
+        additionalManifestEntries: [
+          { url: 'index.html', revision: APP_VERSION },
+        ],
       }
     })
   ],
