@@ -1,7 +1,11 @@
-import React, { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useMemo, useEffect } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
+import {
+  registerCaptureFunction,
+  unregisterCaptureFunction,
+} from '../../lib/capture/screenshotCapture';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { CUBE_SIZE, GRID_STRIDE } from '../../lib/cube/constants';
 import { useBuilderStore } from '../../store/useBuilderStore';
@@ -401,6 +405,19 @@ const EvolutionScene: React.FC = () => {
   );
 };
 
+/** Registers a screenshot capture function with the module-level ref. */
+const SceneCapture: React.FC = () => {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    registerCaptureFunction(() => {
+      gl.render(scene, camera);
+      return gl.domElement.toDataURL('image/png');
+    });
+    return () => unregisterCaptureFunction();
+  }, [gl, scene, camera]);
+  return null;
+};
+
 export const Viewport3D: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
 
@@ -408,8 +425,9 @@ export const Viewport3D: React.FC = () => {
     <Canvas
       camera={{ position: [150, 150, 150], fov: 50 }}
       style={{ background: '#f1f5f9' }}
-      gl={{ localClippingEnabled: true }}
+      gl={{ localClippingEnabled: true, preserveDrawingBuffer: true }}
     >
+      <SceneCapture />
       <ambientLight intensity={0.6} />
       <directionalLight position={[50, 50, 50]} intensity={0.8} />
       <OrbitControls

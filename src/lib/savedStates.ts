@@ -1,0 +1,74 @@
+/**
+ * Saved States — localStorage persistence
+ * =========================================
+ * Serialises / deserialises assembly state to localStorage.
+ * Reuses the existing AssemblyExport format so saves are also
+ * valid for JSON download / Grasshopper import.
+ *
+ * Storage key:  "cuboid-saved-states"  → JSON array of SavedState
+ * Max slots:    20 (oldest auto-pruned)
+ */
+
+import { buildAssemblyExport, AssemblyExport } from './export/assemblyExport';
+import { PlacedCube } from './cube/types';
+import { OperatorRecord } from './operators/types';
+
+const STORAGE_KEY = 'cuboid-saved-states';
+const MAX_STATES = 20;
+
+export interface SavedState {
+  id: string;
+  name: string;
+  savedAt: string;
+  cubeCount: number;
+  data: AssemblyExport;
+}
+
+export function listSavedStates(): SavedState[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as SavedState[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveState(
+  name: string,
+  placedCubes: PlacedCube[],
+  cubeOperators: Record<string, OperatorRecord[]>,
+): SavedState {
+  const states = listSavedStates();
+  const data = buildAssemblyExport(placedCubes, cubeOperators);
+
+  const newState: SavedState = {
+    id: `save-${Date.now()}`,
+    name: name.trim() || `Assembly ${states.length + 1}`,
+    savedAt: new Date().toISOString(),
+    cubeCount: placedCubes.length,
+    data,
+  };
+
+  const updated = [newState, ...states].slice(0, MAX_STATES);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  return newState;
+}
+
+export function deleteSavedState(id: string): void {
+  const states = listSavedStates().filter(s => s.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(states));
+}
+
+/** Converts a saved state back to PlacedCube[] for loading into the builder. */
+export function savedStateToPlacedCubes(savedState: SavedState): PlacedCube[] {
+  return savedState.data.cubes.map(cube => ({
+    id: cube.id,
+    variationId: cube.variationId,
+    position: cube.position,
+    rotation: {
+      x: (cube.rotation.x as 0 | 1 | 2 | 3),
+      y: (cube.rotation.y as 0 | 1 | 2 | 3),
+    },
+  }));
+}
