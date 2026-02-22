@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -43,6 +43,10 @@ const BuilderScene: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [hoverPos, previewRotation, placedCubes, rulesEnabled]
   );
+
+  // Track pointer-down position so we can distinguish a tap from an orbit drag.
+  // If the finger moves more than 8px between down and up, it's a drag — skip placement.
+  const pointerDownXY = useRef<{ x: number; y: number } | null>(null);
 
   const clippingPlanes = useMemo(() => {
     if (!sectionEnabled) return [];
@@ -108,6 +112,9 @@ const BuilderScene: React.FC = () => {
       {/* Ground click plane */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
+        onPointerDown={(e) => {
+          pointerDownXY.current = { x: e.clientX, y: e.clientY };
+        }}
         onPointerMove={(e) => {
           if (!pickerActive) return;
           e.stopPropagation();
@@ -121,6 +128,12 @@ const BuilderScene: React.FC = () => {
           setHoverInfo(null);
         }}
         onClick={(e) => {
+          // Ignore if the pointer moved significantly — that's an orbit drag, not a tap
+          if (pointerDownXY.current) {
+            const dx = e.clientX - pointerDownXY.current.x;
+            const dy = e.clientY - pointerDownXY.current.y;
+            if (dx * dx + dy * dy > 64) return; // 8 px threshold
+          }
           e.stopPropagation();
           if (!pickerActive) {
             setPickerActive(true);

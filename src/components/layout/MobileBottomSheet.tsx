@@ -14,7 +14,7 @@ export const MobileBottomSheet: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <div style={{
-      position: 'absolute',
+      position: 'fixed',
       bottom: 0,
       left: 0,
       right: 0,
@@ -45,6 +45,7 @@ export const MobileBottomSheet: React.FC<{ children: React.ReactNode }> = ({ chi
           alignItems: 'center',
           width: '100%',
           padding: '10px 16px',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
