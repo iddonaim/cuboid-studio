@@ -15,6 +15,15 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+/* Mobile root: use dynamic viewport height so the layout fits exactly
+ * between Safari's address bar and toolbar on real iOS devices.
+ * 100dvh auto-adjusts as chrome shows/hides (iOS 15.4+).
+ * 100vh is the fallback for older iOS — still broken there but acceptable. */
+.mobile-root {
+  height: 100vh;   /* universal fallback */
+  height: 100dvh;  /* overrides when supported: dynamic, adjusts for chrome */
+}
+
 canvas {
   display: block;
 }
