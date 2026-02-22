@@ -24,6 +24,17 @@ const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
   const isMobile = useIsMobile();
 
+  // On iOS Safari 100vh ≠ window.innerHeight (browser chrome eats into it).
+  // Write the real height into --real-vh so we can use it instead of 100vh.
+  useEffect(() => {
+    const setRealVh = () => {
+      document.documentElement.style.setProperty('--real-vh', `${window.innerHeight}px`);
+    };
+    setRealVh();
+    window.addEventListener('resize', setRealVh);
+    return () => window.removeEventListener('resize', setRealVh);
+  }, []);
+
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
     if (USE_PRECOMPUTED_MODELS) {
@@ -121,14 +132,25 @@ const App: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-        <Viewport3D />
-
-        {activeMode === 'builder' && <SelectedCubePanel />}
-        {activeMode === 'pataphysical' && <OperatorResultPanel />}
-        {activeMode === 'encoding' && <EncodingResultPanel />}
-        <CaptureButton />
-        <HelpBar />
+      // Use --real-vh (set via JS) instead of 100vh to match the true visible
+      // height on iOS Safari — 100vh includes area behind browser chrome.
+      // Flex-column layout means the bottom sheet sits at the bottom in normal
+      // flow; no position:fixed/absolute needed (avoids WebKit clipping bugs).
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100vw',
+        height: 'var(--real-vh, 100vh)',
+      }}>
+        {/* Viewport area — takes all remaining vertical space */}
+        <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+          <Viewport3D />
+          {activeMode === 'builder' && <SelectedCubePanel />}
+          {activeMode === 'pataphysical' && <OperatorResultPanel />}
+          {activeMode === 'encoding' && <EncodingResultPanel />}
+          <CaptureButton />
+          <HelpBar />
+        </div>
 
         <MobileBottomSheet>
           <ModeSelector />

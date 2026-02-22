@@ -14,13 +14,11 @@ export const MobileBottomSheet: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <div style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
+      width: '100%',
       background: '#0f172a',
       borderTop: '1px solid #334155',
       zIndex: 50,
+      flexShrink: 0,
     }}>
       {/* Expandable content */}
       <div style={{
