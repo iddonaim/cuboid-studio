@@ -1234,8 +1234,74 @@ GLTF convention is 1 unit = 1 metre. Our scene uses 42-unit cubes (42 mm). In AR
 
 ---
 
+---
+
+### Session 2026-02-22 (Evening) — Mobile Layout, iOS Safari Fixes, Touch Controls
+
+**Context:** The mobile bottom sheet was not visible on real iPhone 11 in Safari, despite appearing correctly in Chrome's device simulation. Multiple overlapping iOS/WebKit bugs were causing the issue.
+
+---
+
+**Root Causes Identified & Fixed:**
+
+**1. `100vh` iOS Safari bug**
+`100vh` in CSS equals the maximum viewport height (browser chrome fully hidden). When Safari's address bar + bottom toolbar are visible (default on page load), the actual visible area is smaller, so a flex column with `height: 100vh` extends below the screen and the bottom sheet is off-screen. Fixed by using `height: 100dvh` (dynamic viewport height) via a CSS class with `100vh` fallback:
+```css
+.mobile-root {
+  height: 100vh;   /* fallback for iOS < 15.4 */
+  height: 100dvh;  /* auto-adjusts for browser chrome on iOS 15.4+ */
+}
+```
+
+**2. WebGL GPU compositing layer bleed**
+React Three Fiber's WebGL `<canvas>` is composited by the GPU on its own layer on iOS. This layer can visually paint over sibling HTML elements regardless of CSS `z-index`. Fix:
+- `transform: translateZ(0)` on the **viewport container div** → creates a GPU compositing boundary, containing the WebGL canvas within its box
+- `transform: translateZ(0)` on the **bottom sheet div** → promotes it to its own GPU layer above the canvas
+
+**3. Touch orbit disabled by mouseButtons override**
+`OrbitControls` was configured with `mouseButtons.LEFT = undefined` to reserve left-click for cube placement. In Three.js OrbitControls, single-finger touch maps to `LEFT` by default — so disabling `LEFT` also silently disabled touch rotation on all touch screens. Fix: explicit `touches` prop:
+```tsx
+touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+```
+
+**4. Mobile layout never deployed**
+All mobile fixes were committed to a feature branch and only took effect once the branch was merged and deployed. Earlier "it still doesn't work" feedback was against the old live code — important lesson for future sessions: always confirm changes are deployed before testing.
+
+---
+
+**Mobile Layout Architecture (final):**
+```
+App.tsx (isMobile branch)
+└── <div className="mobile-root">          ← 100dvh height via CSS class
+    ├── <div style={{ flex: 1, transform: translateZ(0) }}>   ← GPU boundary
+    │   ├── <Viewport3D />                 ← r3f Canvas (WebGL)
+    │   └── overlay panels (absolute)
+    └── <MobileBottomSheet>               ← flex child, flexShrink: 0
+        ├── expandable panel (0 → 55vh)
+        └── always-visible handle bar (mode label + arrow)
+```
+
+**Controls (mobile):**
+- **Tap handle bar** — expand/collapse the bottom drawer
+- **Single-finger drag** — orbit camera
+- **Two-finger pinch** — zoom
+- **Tap grid/cube** — place / select cube (same logic as desktop click)
+
+**PRs Merged:**
+- PR #16: Mobile bottom drawer layout + AR/screenshot features + touch controls + iOS height fixes
+- PR #17: `100dvh` CSS class + GPU compositing containment (pending merge)
+
+**Files Modified:**
+- `src/App.tsx` — mobile flex column layout, `mobileHeight` state → CSS class
+- `src/index.css` — added `.mobile-root` with `100vh` / `100dvh` cascade
+- `src/components/layout/MobileBottomSheet.tsx` — `translateZ(0)` GPU promotion
+- `src/components/viewport/Viewport3D.tsx` — `touches` prop on OrbitControls
+- `src/hooks/useIsMobile.ts` — breakpoint 640px (iPhone 11 at 414px → mobile layout)
+
+---
+
 **Last Updated:** 2026-02-22
-**Status:** Production-ready PWA with Screenshot, Saved States, AR Viewer, Evolution Mode + GH Live-Link
+**Status:** Production-ready PWA — Screenshot, Saved States, AR Viewer, Evolution Mode + GH Live-Link + Mobile bottom drawer
 **Next Feature:** Highlight relevant cube variations in sidebar (show which can connect); Tier 2 AR (WebXR live canvas)
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
