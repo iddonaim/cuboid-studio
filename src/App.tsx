@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useBuilderStore } from './store/useBuilderStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
@@ -25,14 +25,13 @@ const App: React.FC = () => {
   const isMobile = useIsMobile();
 
   // On iOS Safari 100vh ≠ window.innerHeight (browser chrome eats into it).
-  // Write the real height into --real-vh so we can use it instead of 100vh.
+  // Using a useState initializer means the FIRST render already has the exact
+  // pixel height — no CSS-variable timing race, no flash of wrong layout.
+  const [mobileHeight, setMobileHeight] = useState(() => window.innerHeight);
   useEffect(() => {
-    const setRealVh = () => {
-      document.documentElement.style.setProperty('--real-vh', `${window.innerHeight}px`);
-    };
-    setRealVh();
-    window.addEventListener('resize', setRealVh);
-    return () => window.removeEventListener('resize', setRealVh);
+    const update = () => setMobileHeight(window.innerHeight);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
 
   // Pre-generate geometries on mount (CSG mode only)
@@ -140,7 +139,10 @@ const App: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         width: '100vw',
-        height: 'var(--real-vh, 100vh)',
+        // Exact pixel height from window.innerHeight (initialised before first
+        // paint) — guarantees the flex column fills exactly the visible area,
+        // even on iOS Safari where 100vh > the actual visible viewport.
+        height: mobileHeight,
       }}>
         {/* Viewport area — takes all remaining vertical space */}
         <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative', overflow: 'hidden' }}>

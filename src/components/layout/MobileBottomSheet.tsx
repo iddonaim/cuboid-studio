@@ -19,6 +19,10 @@ export const MobileBottomSheet: React.FC<{ children: React.ReactNode }> = ({ chi
       borderTop: '1px solid #334155',
       zIndex: 50,
       flexShrink: 0,
+      // Force this element onto its own GPU compositing layer so it renders
+      // above the WebGL canvas on iOS Safari (WebGL can otherwise float over
+      // regular HTML regardless of z-index due to GPU layer ordering).
+      transform: 'translateZ(0)',
     }}>
       {/* Expandable content */}
       <div style={{
