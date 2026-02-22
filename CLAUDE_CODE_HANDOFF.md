@@ -1161,8 +1161,81 @@ Rotation changes cutter orientation in world space, which would make alignment i
 
 ---
 
-**Last Updated:** 2026-02-09
-**Status:** Production-ready PWA with Evolution Mode + Grasshopper Live-Link
-**Next Feature:** Highlight relevant cube variations in sidebar (show which can connect)
+### Session 2026-02-22 — Screenshot, Saved States & AR Viewer (model-viewer Tier 1)
+
+**Completed:**
+
+**Part 1: Screenshot / Save to Gallery**
+- Fixed `preserveDrawingBuffer: true` on the R3F `Canvas` gl prop — without this, `toDataURL()` returns a blank PNG on most browsers
+- Added `SceneCapture` inner component (uses `useThree`) that calls `gl.render(scene, camera)` then registers a `toDataURL` function via a module-level ref
+- Created `src/lib/capture/screenshotCapture.ts` — module-level capture ref with:
+  - `registerCaptureFunction()` / `unregisterCaptureFunction()` called by the inner canvas component
+  - `captureAndShare()` — on mobile opens the native OS share sheet via Web Share API (`navigator.share({ files: [file] })`), letting the user "Save to Photos / Gallery"; on desktop falls back to a PNG download
+- Created `src/components/tools/CaptureButton.tsx` — floating camera icon button (bottom-right of viewport, above HelpBar), always visible in all four modes; shows spinner while busy
+
+**Part 2: Saved States (localStorage)**
+- Created `src/lib/savedStates.ts` — `saveState()`, `listSavedStates()`, `deleteSavedState()`, `savedStateToPlacedCubes()`
+  - Reuses the existing `AssemblyExport` format (same JSON schema)
+  - Up to 20 named slots, newest first; auto-prunes oldest
+  - Storage key: `"cuboid-saved-states"`
+- Created `src/components/tools/SavedStatesPanel.tsx` — collapsible panel inside ExportPanel:
+  - Name text field + "Save" button (disabled when no cubes)
+  - List of saved states: name, cube count, date
+  - "Load" button restores cubes to builder
+  - Two-click delete confirmation (first click turns button red, second click confirms)
+
+**Part 3: GLB Assembly Export**
+- Created `src/lib/export/glbExport.ts`:
+  - `exportAssemblyAsGLB()` — loads each cube's geometry from the existing `loadVariationFromGLB()` cache, applies position + rotation transforms matching the scene representation (`geometryOffset = [-21, -21, -21]`), merges into a single `THREE.Group`, exports with Three.js `GLTFExporter` as binary GLB
+  - Respects pataphysical `cubeGeometryOverrides` (uses meme-modified geometry if available)
+  - Material: `MeshStandardMaterial` (white, roughness 0.65) for correct AR PBR rendering
+  - `createAssemblyGLBUrl()` — wraps export in a Blob URL (caller must revoke)
+
+**Part 4: AR Viewer (model-viewer Tier 1)**
+- Created `src/components/ar/ARViewer.tsx` — full-screen modal:
+  - Exports assembly on open via `createAssemblyGLBUrl()`
+  - Renders inside `<model-viewer ar ar-modes="scene-viewer quick-look" camera-controls>` web component
+  - Android → Scene Viewer (ARCore); iOS 15+ → Quick Look (ARKit, GLB natively supported)
+  - Desktop → 3D orbit view (no AR button, graceful degradation)
+  - Scale slider: 0.001–0.05 (default 0.01 = ~42 cm/cube); label shows real-world cube size in cm
+  - Scale updated via DOM `setAttribute` for reliable web-component reactivity
+- Added model-viewer CDN script to `index.html`:
+  ```html
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+  ```
+- Added "View in AR" button (blue, disabled when no cubes) to `ExportPanel.tsx`
+- `ARViewer` + `SavedStatesPanel` imported into `ExportPanel.tsx`
+- `CaptureButton` added to canvas overlay area in `App.tsx`
+
+**Unit note (important for future AR work):**
+GLTF convention is 1 unit = 1 metre. Our scene uses 42-unit cubes (42 mm). In AR, an unscaled export appears as 42 m cubes. The scale slider compensates: default 0.01 → 0.42 m = 42 cm per cube.
+
+**Files Created:**
+- `src/lib/capture/screenshotCapture.ts` — screenshot/share utility
+- `src/lib/savedStates.ts` — localStorage save/load
+- `src/lib/export/glbExport.ts` — GLB assembly export for AR
+- `src/components/tools/CaptureButton.tsx` — floating camera button
+- `src/components/tools/SavedStatesPanel.tsx` — collapsible save/load panel
+- `src/components/ar/ARViewer.tsx` — model-viewer AR modal
+
+**Files Modified:**
+- `src/components/viewport/Viewport3D.tsx` — `preserveDrawingBuffer: true`, `SceneCapture` component, `useThree` import
+- `src/components/export/ExportPanel.tsx` — AR button, `ARViewer` + `SavedStatesPanel` wired in
+- `src/App.tsx` — `CaptureButton` added to canvas overlay
+- `index.html` — model-viewer CDN script
+
+**AR Platform Compatibility:**
+- ✓ Android Chrome (ARCore / Scene Viewer)
+- ✓ iOS 15+ Safari (ARKit / Quick Look with GLB)
+- ✗ iOS < 15 (gets 3D orbit view, no AR — graceful degradation)
+- ✗ Desktop (3D orbit view only)
+
+**Deployed:** Branch `claude/evaluate-ar-integration-GiC4t` — pending review/merge
+
+---
+
+**Last Updated:** 2026-02-22
+**Status:** Production-ready PWA with Screenshot, Saved States, AR Viewer, Evolution Mode + GH Live-Link
+**Next Feature:** Highlight relevant cube variations in sidebar (show which can connect); Tier 2 AR (WebXR live canvas)
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
