@@ -14,13 +14,15 @@ export const MobileBottomSheet: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <div style={{
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
+      width: '100%',
       background: '#0f172a',
       borderTop: '1px solid #334155',
       zIndex: 50,
+      flexShrink: 0,
+      // Force this element onto its own GPU compositing layer so it renders
+      // above the WebGL canvas on iOS Safari (WebGL can otherwise float over
+      // regular HTML regardless of z-index due to GPU layer ordering).
+      transform: 'translateZ(0)',
     }}>
       {/* Expandable content */}
       <div style={{
@@ -45,6 +47,7 @@ export const MobileBottomSheet: React.FC<{ children: React.ReactNode }> = ({ chi
           alignItems: 'center',
           width: '100%',
           padding: '10px 16px',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',

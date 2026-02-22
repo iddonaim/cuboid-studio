@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useBuilderStore } from './store/useBuilderStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
@@ -23,6 +23,16 @@ import { CaptureButton } from './components/tools/CaptureButton';
 const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
   const isMobile = useIsMobile();
+
+  // On iOS Safari 100vh ≠ window.innerHeight (browser chrome eats into it).
+  // Using a useState initializer means the FIRST render already has the exact
+  // pixel height — no CSS-variable timing race, no flash of wrong layout.
+  const [mobileHeight, setMobileHeight] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const update = () => setMobileHeight(window.innerHeight);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -121,14 +131,28 @@ const App: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-        <Viewport3D />
-
-        {activeMode === 'builder' && <SelectedCubePanel />}
-        {activeMode === 'pataphysical' && <OperatorResultPanel />}
-        {activeMode === 'encoding' && <EncodingResultPanel />}
-        <CaptureButton />
-        <HelpBar />
+      // Use --real-vh (set via JS) instead of 100vh to match the true visible
+      // height on iOS Safari — 100vh includes area behind browser chrome.
+      // Flex-column layout means the bottom sheet sits at the bottom in normal
+      // flow; no position:fixed/absolute needed (avoids WebKit clipping bugs).
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100vw',
+        // Exact pixel height from window.innerHeight (initialised before first
+        // paint) — guarantees the flex column fills exactly the visible area,
+        // even on iOS Safari where 100vh > the actual visible viewport.
+        height: mobileHeight,
+      }}>
+        {/* Viewport area — takes all remaining vertical space */}
+        <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+          <Viewport3D />
+          {activeMode === 'builder' && <SelectedCubePanel />}
+          {activeMode === 'pataphysical' && <OperatorResultPanel />}
+          {activeMode === 'encoding' && <EncodingResultPanel />}
+          <CaptureButton />
+          <HelpBar />
+        </div>
 
         <MobileBottomSheet>
           <ModeSelector />
