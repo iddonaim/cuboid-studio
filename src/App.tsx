@@ -4,7 +4,9 @@ import { useBuilderStore } from './store/useBuilderStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
 import { getAllRotations, findRotationIndex, AxisRotation } from './lib/cube/connectionRules';
 import { ModeSelector } from './components/layout/ModeSelector';
+import { MobileBottomSheet } from './components/layout/MobileBottomSheet';
 import { HelpBar } from './components/layout/HelpBar';
+import { useIsMobile } from './hooks/useIsMobile';
 import { Viewport3D } from './components/viewport/Viewport3D';
 import { BuilderSidebar } from './components/builder/BuilderSidebar';
 import { SelectedCubePanel } from './components/builder/SelectedCubePanel';
@@ -16,9 +18,11 @@ import { EncodingPanel } from './components/encoding/EncodingPanel';
 import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { ExportPanel } from './components/export/ExportPanel';
+import { CaptureButton } from './components/tools/CaptureButton';
 
 const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
+  const isMobile = useIsMobile();
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -115,6 +119,35 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  if (isMobile) {
+    return (
+      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+        <Viewport3D />
+
+        {activeMode === 'builder' && <SelectedCubePanel />}
+        {activeMode === 'pataphysical' && <OperatorResultPanel />}
+        {activeMode === 'encoding' && <EncodingResultPanel />}
+        <CaptureButton />
+        <HelpBar />
+
+        <MobileBottomSheet>
+          <ModeSelector />
+          {activeMode === 'builder' && <BuilderSidebar />}
+          {activeMode === 'pataphysical' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <MemeInputPanel />
+              <CutterTweakPanel />
+              <OperatorHistoryList />
+            </div>
+          )}
+          {activeMode === 'encoding' && <EncodingPanel />}
+          {activeMode === 'evolution' && <EvolutionPanel />}
+          <ExportPanel />
+        </MobileBottomSheet>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar */}
@@ -160,6 +193,7 @@ const App: React.FC = () => {
         {activeMode === 'builder' && <SelectedCubePanel />}
         {activeMode === 'pataphysical' && <OperatorResultPanel />}
         {activeMode === 'encoding' && <EncodingResultPanel />}
+        <CaptureButton />
         <HelpBar />
       </div>
     </div>

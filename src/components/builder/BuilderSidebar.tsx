@@ -4,8 +4,10 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { CubeThumbnail } from './CubeThumbnail';
 import { RulesToggle } from './RulesToggle';
 import { StrictRulesToggle } from './StrictRulesToggle';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 export const BuilderSidebar: React.FC = () => {
+  const isMobile = useIsMobile();
   const selectedIdx = useBuilderStore(s => s.selectedIdx);
   const setSelectedIdx = useBuilderStore(s => s.setSelectedIdx);
   const placedCubes = useBuilderStore(s => s.placedCubes);
@@ -86,8 +88,10 @@ export const BuilderSidebar: React.FC = () => {
 
       {/* Variation thumbnail grid */}
       <div style={{
-        flex: 1,
-        overflowY: 'auto',
+        ...(isMobile
+          ? { maxHeight: 200, overflowY: 'auto' }
+          : { flex: 1, overflowY: 'auto' }
+        ),
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: 6,

@@ -3,6 +3,8 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { buildAssemblyExport, downloadAssemblyJSON } from '../../lib/export/assemblyExport';
 import { liveLinkClient } from '../../lib/export/liveLinkClient';
+import { ARViewer } from '../ar/ARViewer';
+import { SavedStatesPanel } from '../tools/SavedStatesPanel';
 
 /**
  * Export & Live-Link panel — shown at the bottom of the sidebar.
@@ -18,6 +20,7 @@ export const ExportPanel: React.FC = () => {
   const [port, setPort] = useState(9876);
   const [showSettings, setShowSettings] = useState(false);
   const [lastPush, setLastPush] = useState<string | null>(null);
+  const [showAR, setShowAR] = useState(false);
 
   // Subscribe to live-link status changes
   useEffect(() => {
@@ -90,6 +93,30 @@ export const ExportPanel: React.FC = () => {
       >
         Download Assembly JSON
       </button>
+
+      {/* View in AR button */}
+      <button
+        onClick={() => setShowAR(true)}
+        disabled={!hasCubes}
+        style={{
+          width: '100%', padding: 8, fontSize: 11,
+          background: hasCubes ? '#1e3a5f' : '#0f172a',
+          border: '1px solid #334155', borderRadius: 6,
+          color: hasCubes ? '#93c5fd' : '#475569',
+          cursor: hasCubes ? 'pointer' : 'default',
+          marginBottom: 6,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}
+      >
+        <i className="fas fa-cube" style={{ fontSize: 10 }} />
+        View in AR
+      </button>
+
+      {/* Saved States */}
+      <SavedStatesPanel />
+
+      {/* AR Viewer modal */}
+      {showAR && <ARViewer onClose={() => setShowAR(false)} />}
 
       {/* Live-link section */}
       <div style={{
