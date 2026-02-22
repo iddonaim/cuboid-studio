@@ -445,9 +445,15 @@ export const Viewport3D: React.FC = () => {
       <directionalLight position={[50, 50, 50]} intensity={0.8} />
       <OrbitControls
         mouseButtons={{
-          LEFT: undefined as any,
+          LEFT: undefined as any,  // left-click used for placement, not orbit
           MIDDLE: THREE.MOUSE.DOLLY,
           RIGHT: THREE.MOUSE.ROTATE,
+        }}
+        // Touch must be set explicitly: mouseButtons.LEFT=undefined would
+        // otherwise disable single-finger orbit on touch screens.
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN,
         }}
       />
 
