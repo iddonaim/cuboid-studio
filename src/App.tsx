@@ -19,6 +19,7 @@ import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { ExportPanel } from './components/export/ExportPanel';
 import { CaptureButton } from './components/tools/CaptureButton';
+import { TouchPlacementToolbar } from './components/builder/TouchPlacementToolbar';
 
 const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
@@ -139,6 +140,7 @@ const App: React.FC = () => {
           {activeMode === 'builder' && <SelectedCubePanel />}
           {activeMode === 'pataphysical' && <OperatorResultPanel />}
           {activeMode === 'encoding' && <EncodingResultPanel />}
+          <TouchPlacementToolbar />
           <CaptureButton />
           <HelpBar />
         </div>
@@ -206,6 +208,7 @@ const App: React.FC = () => {
         {activeMode === 'builder' && <SelectedCubePanel />}
         {activeMode === 'pataphysical' && <OperatorResultPanel />}
         {activeMode === 'encoding' && <EncodingResultPanel />}
+        <TouchPlacementToolbar />
         <CaptureButton />
         <HelpBar />
       </div>

@@ -76,7 +76,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
 
   const noRaycast = isPreview ? () => null : undefined;
 
-  const handlePointerMove = (e: any) => {
+  // Shared logic: compute adjacent position from a face intersection and
+  // propagate via onFaceHover.  Used by both pointerMove (mouse hover) and
+  // pointerDown (touch — there is no hover phase on touch devices, so we
+  // must resolve the face on the initial touch before onClick fires).
+  const handleFaceDetect = (e: any) => {
     if (isPreview || !onFaceHover) return;
     e.stopPropagation();
     if (e.face?.normal) {
@@ -122,7 +126,8 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       position={position}
       rotation={[xRotationRad, yRotationRad, 0]}
       onClick={isPreview ? undefined : (e) => { e.stopPropagation(); onClick?.(); }}
-      onPointerMove={handlePointerMove}
+      onPointerDown={handleFaceDetect}
+      onPointerMove={handleFaceDetect}
       onPointerOut={isPreview ? undefined : () => onFaceHover?.(null)}
     >
       <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>

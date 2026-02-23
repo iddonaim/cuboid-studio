@@ -1,6 +1,6 @@
 import React from 'react';
 import { useBuilderStore } from '../../store/useBuilderStore';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useIsMobile, useIsTouch } from '../../hooks/useIsMobile';
 
 export const SelectedCubePanel: React.FC = () => {
   const selectedCubeId = useBuilderStore(s => s.selectedCubeId);
@@ -8,6 +8,7 @@ export const SelectedCubePanel: React.FC = () => {
   const handleDelete = useBuilderStore(s => s.handleDelete);
   const rotateSelectedCube = useBuilderStore(s => s.rotateSelectedCube);
   const isMobile = useIsMobile();
+  const isTouch = useIsTouch();
 
   if (!selectedCubeId) return null;
 
@@ -29,7 +30,8 @@ export const SelectedCubePanel: React.FC = () => {
         {selectedCube?.variationId}
       </p>
 
-      {isMobile && (
+      {/* Show rotation buttons on any touch device (phone or tablet) */}
+      {isTouch && (
         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
           <button
             onClick={() => rotateSelectedCube('y')}

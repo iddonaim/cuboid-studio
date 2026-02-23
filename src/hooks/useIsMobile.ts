@@ -12,3 +12,11 @@ export const useIsMobile = (): boolean => {
 
   return isMobile;
 };
+
+/** Detects touch-capable devices (phones, tablets, touch laptops). */
+export const useIsTouch = (): boolean => {
+  const [isTouch] = useState(
+    () => 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  );
+  return isTouch;
+};

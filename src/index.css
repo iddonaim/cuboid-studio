@@ -26,6 +26,10 @@ body {
 
 canvas {
   display: block;
+  /* Prevent iOS Safari from intercepting touch gestures (scroll, zoom,
+     pull-to-refresh) on the WebGL canvas — all touch handling is done
+     by Three.js OrbitControls and react-three-fiber pointer events. */
+  touch-action: none;
 }
 
 ::-webkit-scrollbar {

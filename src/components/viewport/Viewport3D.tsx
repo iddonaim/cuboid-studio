@@ -16,6 +16,7 @@ import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
+import { useIsTouch } from '../../hooks/useIsMobile';
 
 /** Builder mode scene contents */
 const BuilderScene: React.FC = () => {
@@ -114,6 +115,15 @@ const BuilderScene: React.FC = () => {
         rotation={[-Math.PI / 2, 0, 0]}
         onPointerDown={(e) => {
           pointerDownXY.current = { x: e.clientX, y: e.clientY };
+          // Also set hoverPos on pointerDown so that touch taps (which
+          // have no prior pointerMove / hover phase) immediately know
+          // the grid position before onClick fires.
+          if (pickerActive) {
+            const x = Math.round(e.point.x / GRID_STRIDE) * GRID_STRIDE;
+            const z = Math.round(e.point.z / GRID_STRIDE) * GRID_STRIDE;
+            setHoverPos([x, CUBE_SIZE / 2, z]);
+            setHoverInfo(null);
+          }
         }}
         onPointerMove={(e) => {
           if (!pickerActive) return;
@@ -433,6 +443,16 @@ const SceneCapture: React.FC = () => {
 
 export const Viewport3D: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
+  const isTouch = useIsTouch();
+
+  // In builder mode on touch devices, free single-finger touch for
+  // tap-to-place and drag-to-preview.  Camera control uses two fingers
+  // (DOLLY_ROTATE = pinch-zoom + two-finger-drag orbit).
+  // In all other modes (or on non-touch devices) single-finger orbits
+  // the camera normally.
+  const touchConfig = (activeMode === 'builder' && isTouch)
+    ? { ONE: undefined as any, TWO: THREE.TOUCH.DOLLY_ROTATE }
+    : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
   return (
     <Canvas
@@ -449,12 +469,7 @@ export const Viewport3D: React.FC = () => {
           MIDDLE: THREE.MOUSE.DOLLY,
           RIGHT: THREE.MOUSE.ROTATE,
         }}
-        // Touch must be set explicitly: mouseButtons.LEFT=undefined would
-        // otherwise disable single-finger orbit on touch screens.
-        touches={{
-          ONE: THREE.TOUCH.ROTATE,
-          TWO: THREE.TOUCH.DOLLY_PAN,
-        }}
+        touches={touchConfig}
       />
 
       {activeMode === 'builder' && <BuilderScene />}

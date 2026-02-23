@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useIsMobile, useIsTouch } from '../../hooks/useIsMobile';
 
 const HELP_DESKTOP: Record<string, string> = {
   builder: 'Click to place \u2022 Space to rotate \u2022 R to tip \u2022 Esc to release \u2022 Right-drag to orbit',
@@ -10,7 +10,7 @@ const HELP_DESKTOP: Record<string, string> = {
 };
 
 const HELP_TOUCH: Record<string, string> = {
-  builder: 'Tap to place \u2022 One finger to orbit \u2022 Pinch to zoom',
+  builder: 'Tap to place \u2022 Two fingers to orbit/zoom',
   pataphysical: 'One finger to orbit \u2022 Pinch to zoom',
   encoding: 'One finger to orbit \u2022 Pinch to zoom',
   evolution: 'Tap cubes to select favorites \u2022 Pinch to zoom',
@@ -19,6 +19,7 @@ const HELP_TOUCH: Record<string, string> = {
 export const HelpBar: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
   const isMobile = useIsMobile();
+  const isTouch = useIsTouch();
 
   return (
     <div style={{
@@ -34,7 +35,7 @@ export const HelpBar: React.FC = () => {
       pointerEvents: 'none',
       whiteSpace: 'nowrap',
     }}>
-      {isMobile ? HELP_TOUCH[activeMode] : HELP_DESKTOP[activeMode]}
+      {(isMobile || isTouch) ? HELP_TOUCH[activeMode] : HELP_DESKTOP[activeMode]}
     </div>
   );
 };
