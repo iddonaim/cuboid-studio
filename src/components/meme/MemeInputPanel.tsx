@@ -3,6 +3,8 @@ import { useMemeStore } from '../../store/useMemeStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
+import { SiteContextCurator } from './SiteContextCurator';
+import { getActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 
 export const MemeInputPanel: React.FC = () => {
@@ -28,6 +30,8 @@ export const MemeInputPanel: React.FC = () => {
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
 
   const [showBrowser, setShowBrowser] = useState(false);
+  const [showSiteContext, setShowSiteContext] = useState(false);
+  const activeSiteContext = getActiveSiteContext();
 
   const handleArchthesisSelect = (input: CuboidMemeInput, meme: ArchthesisMeme) => {
     setMemeDescription(input.memeDescription);
@@ -104,6 +108,26 @@ export const MemeInputPanel: React.FC = () => {
         open={showBrowser}
         onClose={() => setShowBrowser(false)}
         onSelect={handleArchthesisSelect}
+      />
+
+      {/* Site context curator */}
+      <button
+        onClick={() => setShowSiteContext(true)}
+        style={{
+          padding: 8, background: activeSiteContext ? '#1e3a2f' : '#1e293b',
+          border: `1px solid ${activeSiteContext ? '#22c55e' : '#334155'}`,
+          borderRadius: 6, color: activeSiteContext ? '#22c55e' : '#94a3b8', cursor: 'pointer',
+          fontSize: 11, fontWeight: 500, textAlign: 'left' as const,
+        }}
+      >
+        {activeSiteContext
+          ? `Site: ${activeSiteContext.site_name}`
+          : 'Set site context...'}
+      </button>
+
+      <SiteContextCurator
+        open={showSiteContext}
+        onClose={() => setShowSiteContext(false)}
       />
 
       {/* Selected meme thumbnail */}
