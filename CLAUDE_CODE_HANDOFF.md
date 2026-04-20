@@ -4,7 +4,7 @@
 
 I'm Iddo, an architecture student working on my B.Arch thesis at Tel Aviv University. This is **Cuboid Studio**, a 3D modular logic builder for architectural exploration that combines parametric cube variations with boolean cuts.
 
-**Project Path:** `/Users/kageyoshiki/Downloads/cuboid-studio-updated`
+**Workflow:** GitHub-first. Work on the repo at https://github.com/iddonaim/cuboid-studio via cloud Claude Code or any local clone. Architect's design artifacts (prompt, spec, curator) live inside the repo — no loose files outside version control.
 
 **Live Deployment:** https://cuboidstudio.vercel.app
 
@@ -1300,8 +1300,45 @@ App.tsx (isMobile branch)
 
 ---
 
-**Last Updated:** 2026-02-22
-**Status:** Production-ready PWA — Screenshot, Saved States, AR Viewer, Evolution Mode + GH Live-Link + Mobile bottom drawer
-**Next Feature:** Highlight relevant cube variations in sidebar (show which can connect); Tier 2 AR (WebXR live canvas)
+---
+
+## Session Log — 2026-04-20 — Pataphysical v2 Phase 1 (complete) + alignment
+
+**What phase 1 shipped** (branch `pataphysical-v2-phase1`, commits `b12f8a4` and `b97c247`):
+- Migrated `api/translate-meme.ts` from direct Anthropic SDK to OpenRouter, with Anthropic legacy fallback
+- Added `TRANSLATION_PASS_MODE` feature flag (`single` | `two_pass`) with per-request override — v1 callers (Evolution, Pataphysical mode) are shielded by `translateMeme()` always requesting `single`
+- Added two-pass types (`TranslationPass1`, `TranslationPass2`, `ConfidenceVector`, `OperatorClassV2` with `consolidation`/`erosion`/`reinforcement`) in `src/lib/operators/types.ts`
+- Added `translateMemeTwoPass()` client function (not yet wired to UI)
+- Added embedded **Site Context Curator** modal in the Pataphysical sidebar (`src/components/meme/SiteContextCurator.tsx`) with SunCalc, localStorage persistence, and the geocode proxy integration
+- Added **Nominatim geocode proxy** at `api/geocode.ts` (fixes the browser CORS / User-Agent issue described in spec §4.5)
+- Filled `src/prompts/pataphysical-translation-v2.md` with the canonical curatorial artifact (Pass 1 + Pass 2 full instructions, not skeleton placeholders)
+- Imported the canonical implementation spec as `PATAPHYSICAL_V2_SPEC.md` at repo root
+
+**What's next — Phase 2 checklist** (see `PATAPHYSICAL_V2_SPEC.md` §4 for full detail):
+
+- [ ] **Cube operators** (§4.3): implement `consolidation`, `erosion`, `reinforcement` alongside existing `inversion`/`amplification`/`drift`/`reassignment`/`preservation`/`shuffle`. Extend the existing operator application logic, do not rewrite.
+- [ ] **Wire `translateMemeTwoPass()` to UI** — the client function exists but nothing calls it yet.
+- [ ] **Pass 1 display** (§4.2b): render rhetorical moves (as tags), cultural tensions, functional affects, site resonance, meme summary — before Pass 2 geometry.
+- [ ] **Pass 2 additions** (§4.2c): show `target_reasoning`, `geometry_reasoning` as readable text alongside existing cutter visualization.
+- [ ] **Confidence vector display** (§4.2d): four-axis readout (RC / SR / AC / OS) with `confidence_note` text.
+- [ ] **Site context selector** (§4.2a): dropdown over saved site contexts, active one visible, switchable without reload.
+- [ ] **Translation history** (§4.2e): store past translations per site; compare confidence vectors across memes on the same site.
+- [ ] **Optional — model selector** (§4.1c): expose `model` parameter in UI for cross-model comparison experiments (Sonnet/Opus/Haiku/GPT-4o/Gemini/Llama via OpenRouter).
+
+**Key files for phase 2:**
+- `src/prompts/pataphysical-translation-v2.md` — the curatorial artifact. **Editing this is how you change behavior; code rarely needs to change.**
+- `PATAPHYSICAL_V2_SPEC.md` — full implementation spec and thesis framing
+- `api/translate-meme.ts` — two-pass API route (already supports `two_pass` mode)
+- `src/lib/api/translateMeme.ts` — client; `translateMemeTwoPass()` is the Phase 2 entry point
+- `src/lib/operators/types.ts` — v2 types
+- `src/components/meme/SiteContextCurator.tsx` — embedded curator
+- `src/lib/storage/siteContext.ts` — localStorage layer for site contexts
+- `api/geocode.ts` — Nominatim proxy
+
+---
+
+**Last Updated:** 2026-04-20
+**Status:** Pataphysical v2 Phase 1 complete (infra + prompt + curator + geocode proxy). Phase 2 = frontend two-pass UI + new operators. See `PATAPHYSICAL_V2_SPEC.md`.
+**Next Feature:** Phase 2 checklist above.
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
