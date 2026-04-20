@@ -122,7 +122,7 @@
  */
 
 import type { PlacedCube } from '../cube/types';
-import type { OperatorRecord, CutterType, OperatorClass } from '../operators/types';
+import type { OperatorRecord, CutterType, OperatorClass, OperatorClassV2 } from '../operators/types';
 import { GRID_STRIDE } from '../cube/constants';
 
 // ---------------------------------------------------------------------------
@@ -327,7 +327,7 @@ function scoreSpatialRegularity(
   if (operated.length < 2) return 0;
 
   // Get the last operator class for each operated cube
-  const cubeClass = new Map<string, OperatorClass>();
+  const cubeClass = new Map<string, OperatorClassV2>();
   for (const cube of operated) {
     const ops = cubeOperators[cube.id];
     if (ops && ops.length > 0) {
