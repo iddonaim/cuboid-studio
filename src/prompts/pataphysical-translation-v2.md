@@ -7,7 +7,7 @@
 # culture becomes geometry. No code changes are needed — only this text.
 #
 # v2 changes from v1:
-# - Two-pass translation (cultural extraction -> geometric translation)
+# - Two-pass translation (cultural extraction → geometric translation)
 # - Site context injection (quantitative, programmatic, architect's reading)
 # - Content-driven cutter geometry (replaces form-to-form mapping)
 # - Translation confidence vector (4-axis)
@@ -18,7 +18,7 @@
 # This prompt is loaded by the API route and sent as the system prompt to the LLM.
 # Changes to this file change the system's behavior immediately.
 #
-# Last edited: 2026-04-12
+# Last edited: 2026-04-20
 # Author: Iddo Naim
 
 ---
@@ -48,24 +48,37 @@ The site context contains:
 
 ## PASS 1 — CULTURAL OPERATOR EXTRACTION
 
-<!-- SKELETON: Awaiting review before filling in full instructions.
-     
-     This pass reads the meme holistically and extracts:
-     
-     1. Rhetorical moves (from expanded set of 10):
-        - Irony, Exaggeration, Juxtaposition, Absurdity, Nostalgia,
-          Rage/frustration, Satire, Solidarity, Mourning, Celebration
-     
-     2. Cultural tensions:
-        - Internal friction (tacit, experiential, lived)
-        - External friction (mediated, representational)
-     
-     3. Functional affects:
-        - 1-3 abstract emotional representations (behavioral/cognitive modulations)
-     
-     4. Site resonance:
-        - How the meme's content connects to or diverges from the site context
--->
+Read the meme holistically. Consider all available inputs: image, text, metadata, location tag, engagement level. Do not privilege any single input.
+
+Extract the following:
+
+### Rhetorical moves
+Identify which rhetorical strategies the meme employs. A meme may use more than one.
+
+- **Irony**: saying the opposite of what is meant
+- **Exaggeration**: amplifying a quality beyond reality
+- **Juxtaposition**: placing incompatible things together
+- **Absurdity**: logic that defeats itself
+- **Nostalgia**: longing for a past or idealized state
+- **Rage / frustration**: direct expression of anger or discontent
+- **Satire**: critiquing through imitation
+- **Solidarity**: expressing shared identity or condition
+- **Mourning**: marking a loss or disappearance
+- **Celebration**: affirming something valued
+
+### Cultural tensions
+What tensions does the meme surface? These may be:
+- **Internal friction**: tacit, experiential, lived — tenant-level, bodily, quotidian
+- **External friction**: mediated, representational — headline-level, political, institutional
+Name the tensions concretely. "Gentrification" is too broad. "Long-term residents being priced out of a street they identify with" is specific enough.
+
+### Affective charge
+Using the functional emotions framework: what abstract emotional representations does this meme activate? Not what the meme "feels like" but what behavioral/cognitive modulations it would produce in someone processing it. Name 1–3 functional affects (e.g., indignation, wistfulness, defiance, resignation, dark humor).
+
+### Site resonance
+Given the site context provided above: where does this meme's content touch the site? What specific site conditions does it amplify, contradict, or reframe? If the meme has no legible connection to the site, say so explicitly — that gap is itself data.
+
+---
 
 ### PASS 1 OUTPUT FORMAT
 
@@ -91,74 +104,84 @@ Return a JSON object for Pass 1:
 
 ## PASS 2 — GEOMETRIC TRANSLATION
 
-<!-- SKELETON: Awaiting review before filling in full instructions.
-     
-     This pass translates Pass 1 output + site context into spatial operations.
-     
-     Mapping structure:
-     
-     ### Rhetorical move -> Operator class (expanded to 9)
-     
-     Original 6:
-     - Irony          -> inversion
-     - Exaggeration   -> amplification
-     - Juxtaposition  -> reassignment
-     - Absurdity      -> shuffle
-     - Nostalgia      -> preservation
-     - Rage/frustr.   -> amplification (high magnitude >= 0.7)
-     
-     New in v2:
-     - Satire         -> drift (gradual displacement from current state)
-     - Solidarity     -> consolidation (strengthen existing clusters, increase adjacency)
-     - Mourning       -> erosion (reduce weight toward zero without removing)
-     - Celebration    -> reinforcement (increase weight of existing strong connections)
-     
-     ### Cultural tension x Site context -> Operator targets
-     Edge types: adjacency, access, visibility, conflict, overlap, threshold
-     (Same vocabulary as v1 — targets selected by meme-site interaction reasoning)
-     
-     ### Functional affects x Site context -> Cutter geometry
-     Content-driven (not form-to-form as in v1):
-     - Compression/constriction affects -> internal voids
-     - Expansion/release affects -> surface porosity
-     - Division/separation affects -> bisecting cuts
-     - Accumulation/layering affects -> nested volumes
-     - Erosion/entropy affects -> edge/corner subtraction
-     - Instability/disruption affects -> oblique/asymmetric cuts
-     
-     Cutter position responds to site directionality, contested zones, scalar asymmetry.
-     
-     ### Engagement level -> Magnitude (0-100 maps to 0.0-1.0)
-     ### Decay rules (same as v1)
-     
-     ### Confidence vector (4 axes, each 0.0-1.0)
-     
-     The confidence vector is NOT a quality score. It is a diagnostic fingerprint
-     of how the translation operated:
-     
-     - rhetorical_clarity (rc):
-       How legibly the meme's rhetorical moves map to operator classes.
-       High = unambiguous strategy. Low = mixed, unclear, or novel rhetoric.
-     
-     - site_resonance (sr):
-       How strongly the meme's cultural content connects to specific site conditions.
-       High = direct connection. Low = imposed or abstract connection.
-     
-     - affective_coherence (ac):
-       How consistently the functional affects point toward a unified cutter logic.
-       High = affects converge. Low = affects pull in different directions.
-     
-     - operational_specificity (os):
-       How deterministically all inputs resolve into a single geometric output.
-       High = one clear answer. Low = multiple valid translations exist.
-     
-     Two memes with similar confidence vectors are "spatially equivalent" — they
-     stress the same dimensions of the translation, regardless of content.
-     
-     Low scores are data, not failure. A [0.9, 0.2, 0.8, 0.3] translation
-     means: "clear rhetoric and affect, but weak site connection and ambiguous
-     geometry." That profile is a finding.
--->
+Using the Pass 1 output and the site context, translate the cultural operators into spatial operations on the cube manifold.
+
+### Rhetorical move → Operator class
+
+- Irony → **inversion** (flip relationship weights)
+- Exaggeration → **amplification** (increase target weights)
+- Juxtaposition → **reassignment** (swap edge targets between unlike elements)
+- Absurdity → **shuffle** (randomize a subset of topology)
+- Nostalgia → **preservation** (lock current weights, resist mutation)
+- Rage / frustration → **amplification** with high magnitude (≥ 0.7)
+- Satire → **drift** (gradual displacement from current state)
+- Solidarity → **consolidation** (strengthen existing clusters, increase adjacency)
+- Mourning → **erosion** (reduce weight toward zero without removing)
+- Celebration → **reinforcement** (increase weight of existing strong connections)
+
+When multiple rhetorical moves are present, the primary move determines the operator class. Secondary moves modulate magnitude and target selection.
+
+### Cultural tension × Site context → Operator targets
+
+The operator targets are selected based on how the meme's cultural tensions interact with the site conditions. Do not map targets mechanically. Use the following edge types as your vocabulary:
+
+- **adjacency**: what is next to what
+- **access**: how things are reached
+- **visibility**: what is seen from where
+- **conflict**: where uses or populations clash
+- **overlap**: where programs or territories share space
+- **threshold**: where transitions between conditions occur
+
+Select targets by reasoning about which spatial relationships the meme's tension would act on *at this specific site*. The same meme at a different site may target different edges.
+
+### Functional affects × Site context → Cutter geometry
+
+The cutter is determined by the *cultural content and affective charge* of the meme in relation to the site, not by the visual composition of the meme image.
+
+Consider:
+- Affects that imply **compression or constriction** (anxiety, claustrophobia, scarcity) → cutters that remove from the interior, create internal voids
+- Affects that imply **expansion or release** (defiance, celebration, liberation) → cutters that open surfaces, create porosity
+- Affects that imply **division or separation** (alienation, displacement, conflict) → cutters that bisect, slice, create hard boundaries
+- Affects that imply **accumulation or layering** (nostalgia, solidarity, densification) → cutters that add mass or create nested volumes
+- Affects that imply **erosion or entropy** (resignation, mourning, neglect) → cutters that subtract from edges and corners, soften geometry
+- Affects that imply **instability or disruption** (rage, absurdity, dark humor) → cutters at oblique angles, off-axis positions, asymmetric proportions
+
+Cutter position should respond to the site context:
+- If the site has a dominant directionality (street axis, slope, wind), the cutter should relate to it — align, oppose, or cross it.
+- If the site has a contested zone, the cutter should engage that zone's approximate position in the cube.
+- If the site has scalar asymmetry (tall neighbors on one side, low on another), the cutter proportions should register this.
+
+### Engagement level → Magnitude
+
+- Map the 0–100 engagement score to a 0.0–1.0 magnitude.
+- Higher engagement = stronger mutation.
+- If multiple rhetorical moves are present, the secondary moves may adjust magnitude by ±0.1.
+
+### Decay
+
+- Memes described as viral or widely shared → low decay (0.01–0.1)
+- Memes described as niche or fleeting → high decay (0.5–0.9)
+- If no temporal information is given → default decay 0.2
+
+### Translation confidence vector
+
+Do not rate confidence as a single number. Decompose it into four axes, each scored 0.0–1.0. Together these form a translation confidence vector — a fingerprint of how the translation operated.
+
+- **Rhetorical clarity** (rc): How legibly the meme's rhetorical moves map to operator classes. High = the meme's strategy is unambiguous. Low = the rhetorical mode is mixed, unclear, or novel.
+- **Site resonance** (sr): How strongly the meme's cultural content connects to the specific site conditions. High = the meme speaks directly to something present at this site. Low = the connection is imposed or abstract.
+- **Affective coherence** (ac): How consistently the functional affects point toward a unified cutter logic. High = the affects converge on a clear geometric implication. Low = the affects pull in different directions, producing a compromised or hybrid geometry.
+- **Operational specificity** (os): How deterministically all inputs resolve into a single geometric output. High = the translation produces one clear answer. Low = multiple valid translations exist and the choice between them is arbitrary.
+
+The vector [rc, sr, ac, os] is a notation for reading the cube that results. It tells the architect:
+- Where the translation is motivated vs. where it is improvising
+- Which dimensions of the meme-to-geometry pipeline carried signal and which carried noise
+- How to compare translations across different memes on the same site, or the same meme across different sites
+
+Two memes with very different content but similar confidence vectors are spatially equivalent — they stress the same dimensions of the translation. Two memes with similar content but divergent confidence vectors reveal that context (site, affect, specificity) is doing more work than rhetoric.
+
+Low scores are not failure. They are data about the limits of the translation operation. The strain between meme and site is itself architecturally informative — it marks where cultural and physical realities resist each other. A translation with [0.9, 0.2, 0.8, 0.3] tells you: "I know exactly what this meme is doing rhetorically and affectively, but it has almost nothing to do with this site, and the geometry could have gone several ways." That profile is a finding.
+
+---
 
 ### PASS 2 OUTPUT FORMAT
 
@@ -170,8 +193,8 @@ Return a JSON object for Pass 2:
   "operator": "string — one of: inversion, amplification, drift, reassignment, preservation, shuffle, consolidation, erosion, reinforcement",
   "targets": ["string — edge types from: adjacency, access, visibility, conflict, overlap, threshold"],
   "target_reasoning": "string — why these targets were selected given the meme-site interaction",
-  "magnitude": number (0.0-1.0),
-  "decay": number (0.0-1.0),
+  "magnitude": number (0.0–1.0),
+  "decay": number (0.0–1.0),
   "cutter": {
     "type": "string — one of: box, sphere, cylinder, plane",
     "proportions": [number, number, number],
@@ -180,12 +203,12 @@ Return a JSON object for Pass 2:
     "geometry_reasoning": "string — why this cutter shape, size, and position given the affects and site"
   },
   "confidence_vector": {
-    "rhetorical_clarity": number (0.0-1.0),
-    "site_resonance": number (0.0-1.0),
-    "affective_coherence": number (0.0-1.0),
-    "operational_specificity": number (0.0-1.0)
+    "rhetorical_clarity": number (0.0–1.0),
+    "site_resonance": number (0.0–1.0),
+    "affective_coherence": number (0.0–1.0),
+    "operational_specificity": number (0.0–1.0)
   },
-  "confidence_note": "string — explain which axes are strained and why. Always provide this.",
+  "confidence_note": "string — explain which axes are strained and why. Always provide this, not only when scores are low.",
   "reasoning": "string — 2-3 sentences summarizing the full translation logic from meme through site to geometry"
 }
 ```
