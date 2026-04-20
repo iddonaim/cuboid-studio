@@ -1,10 +1,18 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import { LLMOperatorResult, OperatorRecord } from '../lib/operators/types';
-import { translateMeme } from '../lib/api/translateMeme';
+import {
+  LLMOperatorResult,
+  OperatorRecord,
+  TranslationPass1,
+  TranslationPass2,
+  ConfidenceVector,
+} from '../lib/operators/types';
+import { translateMeme, translateMemeTwoPass } from '../lib/api/translateMeme';
 import { applyLLMOperator, createCutterFromLLMOutput } from '../lib/operators/applyOperator';
 import { getVariationGeometryAsync } from '../lib/cube/csgUtils';
 import { CUBE_VARIATIONS } from '../lib/cube/specifications';
+
+export type PassMode = 'single' | 'two_pass';
 
 interface MemeState {
   // Input
@@ -42,6 +50,15 @@ interface MemeState {
   isTranslating: boolean;
   lastResult: LLMOperatorResult | null;
   lastError: string | null;
+
+  // v2 two-pass state — populated only when passMode === 'two_pass'.
+  // confidenceVector + model are stored for future UI; not rendered yet.
+  passMode: PassMode;
+  setPassMode: (mode: PassMode) => void;
+  lastPass1: TranslationPass1 | null;
+  lastPass2: TranslationPass2 | null;
+  lastConfidenceVector: ConfidenceVector | null;
+  lastModel: string | null;
 
   // Operator history (standalone mode)
   operators: OperatorRecord[];
@@ -92,6 +109,10 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   setTargetCubeId: (id) => set({
     targetCubeId: id,
     lastResult: null,
+    lastPass1: null,
+    lastPass2: null,
+    lastConfidenceVector: null,
+    lastModel: null,
     lastCutterGeometry: null,
     lastError: null,
   }),
@@ -108,6 +129,14 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   isTranslating: false,
   lastResult: null,
   lastError: null,
+
+  // v2 two-pass state
+  passMode: 'two_pass',
+  setPassMode: (mode) => set({ passMode: mode }),
+  lastPass1: null,
+  lastPass2: null,
+  lastConfidenceVector: null,
+  lastModel: null,
 
   // Operator history (standalone)
   operators: [],
@@ -183,15 +212,59 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       }
     }
 
-    set({ isTranslating: true, lastError: null, lastResult: null });
+    set({
+      isTranslating: true,
+      lastError: null,
+      lastResult: null,
+      lastPass1: null,
+      lastPass2: null,
+      lastConfidenceVector: null,
+      lastModel: null,
+    });
 
     try {
-      const result = await translateMeme({
-        memeDescription,
-        locationTag: locationTag || null,
-        engagementLevel,
-        memeImageUrl: get().selectedMemeImageUrl,
-      });
+      const passMode = get().passMode;
+      let result: LLMOperatorResult;
+      let pass1: TranslationPass1 | null = null;
+      let pass2: TranslationPass2 | null = null;
+      let confidenceVector: ConfidenceVector | null = null;
+      let modelUsed: string | null = null;
+
+      if (passMode === 'two_pass') {
+        const twoPass = await translateMemeTwoPass({
+          memeDescription,
+          locationTag: locationTag || null,
+          engagementLevel,
+          memeImageUrl: get().selectedMemeImageUrl,
+        });
+        pass1 = twoPass.pass1;
+        pass2 = twoPass.pass2;
+        confidenceVector = twoPass.pass2.confidence_vector;
+        modelUsed = twoPass.model;
+        // Synthesize v1-shaped result from pass2 so the existing cutter
+        // pipeline, CutterTweakPanel, and revertLastOperator all work
+        // unchanged. applyLLMOperator only reads cutter + magnitude.
+        result = {
+          operator: twoPass.pass2.operator,
+          targets: twoPass.pass2.targets,
+          magnitude: twoPass.pass2.magnitude,
+          decay: twoPass.pass2.decay,
+          cutter: {
+            type: twoPass.pass2.cutter.type,
+            proportions: twoPass.pass2.cutter.proportions,
+            position: twoPass.pass2.cutter.position,
+            rotation: twoPass.pass2.cutter.rotation,
+          },
+          reasoning: twoPass.pass2.reasoning,
+        };
+      } else {
+        result = await translateMeme({
+          memeDescription,
+          locationTag: locationTag || null,
+          engagementLevel,
+          memeImageUrl: get().selectedMemeImageUrl,
+        });
+      }
 
       // Apply the operator
       const newGeometry = applyLLMOperator(currentGeometry!, result);
@@ -236,6 +309,10 @@ export const useMemeStore = create<MemeState>((set, get) => ({
             [targetCubeId]: [...(prevOps[targetCubeId] || []), record],
           },
           lastResult: result,
+          lastPass1: pass1,
+          lastPass2: pass2,
+          lastConfidenceVector: confidenceVector,
+          lastModel: modelUsed,
           lastCutterGeometry: cutterGeo,
           isTranslating: false,
         });
@@ -247,6 +324,10 @@ export const useMemeStore = create<MemeState>((set, get) => ({
           geometryStack: newStack,
           operators: [...get().operators, record],
           lastResult: result,
+          lastPass1: pass1,
+          lastPass2: pass2,
+          lastConfidenceVector: confidenceVector,
+          lastModel: modelUsed,
           lastCutterGeometry: cutterGeo,
           isTranslating: false,
         });
@@ -291,6 +372,10 @@ export const useMemeStore = create<MemeState>((set, get) => ({
           [targetCubeId]: cubeOps.slice(0, -1),
         },
         lastResult: null,
+        lastPass1: null,
+        lastPass2: null,
+        lastConfidenceVector: null,
+        lastModel: null,
         lastCutterGeometry: null,
       });
     } else {
@@ -304,6 +389,10 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         geometryStack: geometryStack.slice(0, -1),
         operators: operators.slice(0, -1),
         lastResult: null,
+        lastPass1: null,
+        lastPass2: null,
+        lastConfidenceVector: null,
+        lastModel: null,
         lastCutterGeometry: null,
       });
     }

@@ -14,6 +14,8 @@ export const MemeInputPanel: React.FC = () => {
   const setLocationTag = useMemeStore(s => s.setLocationTag);
   const engagementLevel = useMemeStore(s => s.engagementLevel);
   const setEngagementLevel = useMemeStore(s => s.setEngagementLevel);
+  const passMode = useMemeStore(s => s.passMode);
+  const setPassMode = useMemeStore(s => s.setPassMode);
   const isTranslating = useMemeStore(s => s.isTranslating);
   const lastError = useMemeStore(s => s.lastError);
   const translate = useMemeStore(s => s.translate);
@@ -217,6 +219,47 @@ export const MemeInputPanel: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontSize: 9 }}>
           <span>Low</span>
           <span>High</span>
+        </div>
+      </div>
+
+      {/* Pass mode: v1 single-pass vs v2 two-pass */}
+      <div>
+        <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
+          Translation mode
+        </label>
+        <div style={{
+          display: 'flex', borderRadius: 6, overflow: 'hidden',
+          border: '1px solid #334155',
+        }}>
+          <button
+            onClick={() => setPassMode('single')}
+            disabled={isTranslating}
+            style={{
+              flex: 1, padding: '6px 8px',
+              background: passMode === 'single' ? '#334155' : '#0f172a',
+              border: 'none',
+              color: passMode === 'single' ? 'white' : '#64748b',
+              cursor: isTranslating ? 'not-allowed' : 'pointer',
+              fontSize: 11, fontWeight: passMode === 'single' ? 600 : 400,
+            }}
+          >
+            Single pass
+          </button>
+          <button
+            onClick={() => setPassMode('two_pass')}
+            disabled={isTranslating}
+            style={{
+              flex: 1, padding: '6px 8px',
+              background: passMode === 'two_pass' ? '#334155' : '#0f172a',
+              border: 'none',
+              borderLeft: '1px solid #334155',
+              color: passMode === 'two_pass' ? 'white' : '#64748b',
+              cursor: isTranslating ? 'not-allowed' : 'pointer',
+              fontSize: 11, fontWeight: passMode === 'two_pass' ? 600 : 400,
+            }}
+          >
+            Two-pass (v2)
+          </button>
         </div>
       </div>
 

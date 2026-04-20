@@ -15,7 +15,7 @@ export interface LLMCutterResult {
 }
 
 export interface LLMOperatorResult {
-  operator: OperatorClass;
+  operator: OperatorClassV2;
   targets: EdgeType[];
   magnitude: number;        // 0.0-1.0
   decay: number;            // 0.0-1.0
@@ -26,7 +26,7 @@ export interface LLMOperatorResult {
 export interface OperatorRecord {
   id: string;
   source: 'meme';
-  operator: OperatorClass;
+  operator: OperatorClassV2;
   targets: EdgeType[];
   magnitude: number;
   decay: number;
