@@ -7,10 +7,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * Needed because Nominatim requires a custom User-Agent header
  * (which browsers cannot set on fetch) and has inconsistent CORS.
  *
- * Rate limited to 1 request per second per Nominatim usage policy.
+ * Nominatim's usage policy asks for ≤1 request per second. We cannot
+ * enforce that reliably from a serverless runtime (each lambda instance
+ * has its own memory, so an in-process counter is meaningless under
+ * concurrency). The UI gates geocoding behind an explicit button press,
+ * which keeps traffic well below the limit in practice. If this route is
+ * ever exposed to untrusted callers, move rate limiting to a shared store
+ * (Upstash / Redis / KV) before relying on the limit.
  */
-
-let lastRequestTime = 0;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -22,12 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'q query parameter is required' });
   }
 
-  // Rate limit: 1 request per second
-  const now = Date.now();
-  if (now - lastRequestTime < 1000) {
-    return res.status(429).json({ error: 'Rate limited — max 1 request per second' });
+  if (query.length > 512) {
+    return res.status(400).json({ error: 'q too long (max 512 chars)' });
   }
-  lastRequestTime = now;
 
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&limit=1`;

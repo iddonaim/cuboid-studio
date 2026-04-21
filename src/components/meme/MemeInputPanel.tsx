@@ -33,7 +33,15 @@ export const MemeInputPanel: React.FC = () => {
 
   const [showBrowser, setShowBrowser] = useState(false);
   const [showSiteContext, setShowSiteContext] = useState(false);
-  const activeSiteContext = getActiveSiteContext();
+  // Mirror active site context in state so saving/clearing inside the curator
+  // updates this panel on close. Reading localStorage directly on every render
+  // looks cheap but never reflects writes from the modal.
+  const [activeSiteContext, setActiveSiteContextState] = useState(() => getActiveSiteContext());
+
+  const handleCloseSiteContext = () => {
+    setShowSiteContext(false);
+    setActiveSiteContextState(getActiveSiteContext());
+  };
 
   const handleArchthesisSelect = (input: CuboidMemeInput, meme: ArchthesisMeme) => {
     setMemeDescription(input.memeDescription);
@@ -129,7 +137,7 @@ export const MemeInputPanel: React.FC = () => {
 
       <SiteContextCurator
         open={showSiteContext}
-        onClose={() => setShowSiteContext(false)}
+        onClose={handleCloseSiteContext}
       />
 
       {/* Selected meme thumbnail */}
