@@ -125,11 +125,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: `Failed to load translation prompt: ${promptFile}` });
   }
 
-  // Inject site context into v2 prompt
+  // Inject site context into v2 prompt. If the prompt template has drifted
+  // and no longer contains the {site_context} placeholder, the replace is a
+  // silent no-op — warn loudly so the breakage is visible in logs.
   if (passMode === 'two_pass' && site_context) {
     const contextStr = typeof site_context === 'string'
       ? site_context
       : JSON.stringify(site_context, null, 2);
+    if (!systemPrompt.includes('{site_context}')) {
+      console.warn(`Prompt ${promptFile} has no {site_context} placeholder — site context was NOT injected`);
+    }
     systemPrompt = systemPrompt.replace('{site_context}', contextStr);
   }
 
@@ -447,6 +452,18 @@ async function handleAnthropicLegacy(
       text: retryMessage || userMessage,
     });
 
+    // Resolve model name for Anthropic-native API. Clients send OpenRouter-style
+    // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix. If the
+    // result doesn't look like an Anthropic model, fall back to the default.
+    const anthropicDefault = 'claude-sonnet-4-20250514';
+    let anthropicModel = opts.selectedModel.startsWith('anthropic/')
+      ? opts.selectedModel.slice('anthropic/'.length)
+      : opts.selectedModel;
+    if (!anthropicModel.startsWith('claude-')) {
+      console.warn(`Legacy Anthropic path: unrecognized model "${opts.selectedModel}", falling back to ${anthropicDefault}`);
+      anthropicModel = anthropicDefault;
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -455,7 +472,7 @@ async function handleAnthropicLegacy(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: anthropicModel,
         max_tokens: opts.passMode === 'two_pass' ? 2000 : 1000,
         system: systemPrompt,
         messages: [{
