@@ -51,9 +51,10 @@ const SunCalc = (() => {
       return (t.sunrise && t.sunset) ? ((t.sunset as any) - (t.sunrise as any)) / 3600000 : null;
     },
     getPrimaryExposure(lat: number, lng: number) {
-      const summer = new Date(2026, 5, 21), winter = new Date(2026, 11, 21);
-      const sNoon = this.getPosition(new Date(2026, 5, 21, 12), lat, lng);
-      const wNoon = this.getPosition(new Date(2026, 11, 21, 12), lat, lng);
+      const year = new Date().getFullYear();
+      const summer = new Date(year, 5, 21), winter = new Date(year, 11, 21);
+      const sNoon = this.getPosition(new Date(year, 5, 21, 12), lat, lng);
+      const wNoon = this.getPosition(new Date(year, 11, 21, 12), lat, lng);
       const azToDir = (az: number) => ['N','NE','E','SE','S','SW','W','NW'][Math.round(az / 45) % 8];
       return {
         summer_noon_alt: sNoon.altitude.toFixed(1), summer_noon_az: azToDir(sNoon.azimuth),
