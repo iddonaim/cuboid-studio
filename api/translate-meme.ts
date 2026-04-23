@@ -300,14 +300,20 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
   }
 
   // Resolve model name for Anthropic-native API. Clients send OpenRouter-style
-  // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix. If the
-  // result doesn't look like an Anthropic model, fall back to the default.
+  // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix, then
+  // require a date-stamped suffix (e.g. "claude-sonnet-4-20250514"). The bare
+  // OpenRouter alias "claude-sonnet-4" is NOT a valid Anthropic-native model,
+  // so anything without a trailing -YYYYMMDD falls back to the default.
   const anthropicDefault = 'claude-sonnet-4-20250514';
-  let anthropicModel = opts.selectedModel.startsWith('anthropic/')
+  const stripped = opts.selectedModel.startsWith('anthropic/')
     ? opts.selectedModel.slice('anthropic/'.length)
     : opts.selectedModel;
-  if (!anthropicModel.startsWith('claude-')) {
-    console.warn(`Legacy Anthropic path: unrecognized model "${opts.selectedModel}", falling back to ${anthropicDefault}`);
+  const isDateStamped = /-\d{8}$/.test(stripped);
+  let anthropicModel = stripped;
+  if (!isDateStamped) {
+    if (stripped !== opts.selectedModel || stripped !== anthropicDefault) {
+      console.warn(`Legacy Anthropic path: "${opts.selectedModel}" is not a date-stamped Anthropic model, falling back to ${anthropicDefault}`);
+    }
     anthropicModel = anthropicDefault;
   }
 
