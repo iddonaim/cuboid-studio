@@ -5,66 +5,7 @@ import {
   clearActiveSiteContext,
   SiteContextData,
 } from '../../lib/storage/siteContext';
-
-// ---------------------------------------------------------------------------
-// Embedded SunCalc (no dependency needed)
-// ---------------------------------------------------------------------------
-
-const SunCalc = (() => {
-  const rad = Math.PI / 180;
-  const dayMs = 1000 * 60 * 60 * 24;
-  const J1970 = 2440588, J2000 = 2451545;
-  const toJulian = (d: Date) => d.valueOf() / dayMs - 0.5 + J1970;
-  const fromJulian = (j: number) => new Date((j + 0.5 - J1970) * dayMs);
-  const toDays = (d: Date) => toJulian(d) - J2000;
-  const e = rad * 23.4397;
-  const rightAscension = (l: number, b: number) => Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l));
-  const declination = (l: number, b: number) => Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l));
-  const azimuthFn = (H: number, phi: number, dec: number) => Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
-  const altitudeFn = (H: number, phi: number, dec: number) => Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H));
-  const siderealTime = (d: number, lw: number) => rad * (280.16 + 360.9856235 * d) - lw;
-  const solarMeanAnomaly = (d: number) => rad * (357.5291 + 0.98560028 * d);
-  const eclipticLongitude = (M: number) => { const C = rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)); return M + C + rad * 102.9372 + Math.PI; };
-  const sunCoords = (d: number) => { const M = solarMeanAnomaly(d); const L = eclipticLongitude(M); return { dec: declination(L, 0), ra: rightAscension(L, 0) }; };
-  const julianCycle = (d: number, lw: number) => Math.round(d - 0.0009 - lw / (2 * Math.PI));
-  const approxTransit = (Ht: number, lw: number, n: number) => 0.0009 + (Ht + lw) / (2 * Math.PI) + n;
-  const solarTransitJ = (ds: number, M: number, L: number) => J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
-  const hourAngle = (h: number, phi: number, d: number) => Math.acos((Math.sin(h) - Math.sin(phi) * Math.sin(d)) / (Math.cos(phi) * Math.cos(d)));
-  const getSetJ = (h: number, lw: number, phi: number, dec: number, n: number, M: number, L: number) => { const w = hourAngle(h, phi, dec); return solarTransitJ(approxTransit(w, lw, n), M, L); };
-
-  return {
-    getPosition(date: Date, lat: number, lng: number) {
-      const lw = rad * -lng, phi = rad * lat, d = toDays(date), c = sunCoords(d);
-      const H = siderealTime(d, lw) - c.ra;
-      return { azimuth: azimuthFn(H, phi, c.dec) / rad + 180, altitude: altitudeFn(H, phi, c.dec) / rad };
-    },
-    getTimes(date: Date, lat: number, lng: number) {
-      const lw = rad * -lng, phi = rad * lat, d = toDays(date);
-      const n = julianCycle(d, lw), ds = approxTransit(0, lw, n);
-      const M = solarMeanAnomaly(d), L = eclipticLongitude(M);
-      const Jnoon = solarTransitJ(ds, M, L), dec = sunCoords(d).dec;
-      try { const Jset = getSetJ(-0.833 * rad, lw, phi, dec, n, M, L); return { sunrise: fromJulian(Jnoon - (Jset - Jnoon)), sunset: fromJulian(Jset), solarNoon: fromJulian(Jnoon) }; }
-      catch { return { sunrise: null, sunset: null, solarNoon: fromJulian(Jnoon) }; }
-    },
-    getDaylightHours(date: Date, lat: number, lng: number) {
-      const t = this.getTimes(date, lat, lng);
-      return (t.sunrise && t.sunset) ? ((t.sunset as any) - (t.sunrise as any)) / 3600000 : null;
-    },
-    getPrimaryExposure(lat: number, lng: number) {
-      const year = new Date().getFullYear();
-      const summer = new Date(year, 5, 21), winter = new Date(year, 11, 21);
-      const sNoon = this.getPosition(new Date(year, 5, 21, 12), lat, lng);
-      const wNoon = this.getPosition(new Date(year, 11, 21, 12), lat, lng);
-      const azToDir = (az: number) => ['N','NE','E','SE','S','SW','W','NW'][Math.round(az / 45) % 8];
-      return {
-        summer_noon_alt: sNoon.altitude.toFixed(1), summer_noon_az: azToDir(sNoon.azimuth),
-        winter_noon_alt: wNoon.altitude.toFixed(1), winter_noon_az: azToDir(wNoon.azimuth),
-        summer_daylight: this.getDaylightHours(summer, lat, lng)?.toFixed(1),
-        winter_daylight: this.getDaylightHours(winter, lat, lng)?.toFixed(1),
-      };
-    },
-  };
-})();
+import { getPrimaryExposure } from '../../lib/astronomy/suncalc';
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -174,7 +115,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
     const lat = parseFloat(q.location.lat), lng = parseFloat(q.location.lng);
     if (!autoSun || isNaN(lat) || isNaN(lng)) { setSunOk(false); return; }
     try {
-      const s = SunCalc.getPrimaryExposure(lat, lng);
+      const s = getPrimaryExposure(lat, lng);
       setQ(prev => ({
         ...prev,
         sun: {

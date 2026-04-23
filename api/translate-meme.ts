@@ -6,14 +6,12 @@ import path from 'path';
  * Vercel serverless function: POST /api/translate-meme
  *
  * Translates a meme description into spatial operator parameters
- * using the pataphysical translation system prompt via OpenRouter.
+ * using the pataphysical translation system prompt via OpenRouter
+ * (or an Anthropic-native fallback when OPENROUTER_API_KEY isn't set).
  *
- * Supports two modes controlled by TRANSLATION_PASS_MODE env var
- * and per-request override:
- *
+ * Pass mode is selected per-request via the `pass_mode` field:
  *   "single"   — v1 behavior: single-pass, flat JSON object response.
  *                Uses src/prompts/pataphysical-translation.md
- *
  *   "two_pass" — v2 behavior: two-pass, JSON array [Pass1, Pass2].
  *                Uses src/prompts/pataphysical-translation-v2.md
  *                Supports site_context injection.
@@ -55,13 +53,64 @@ function isSafePublicHttpsUrl(raw: string): boolean {
   return true;
 }
 
-function getPassMode(requestOverride?: string): PassMode {
-  if (requestOverride === 'single' || requestOverride === 'two_pass') {
-    return requestOverride;
+function resolvePassMode(requestOverride?: unknown): PassMode {
+  return requestOverride === 'two_pass' ? 'two_pass' : 'single';
+}
+
+function buildUserMessage(memeDescription: string, locationTag: string | null, engagement: number): string {
+  return [
+    `Meme description: ${memeDescription}`,
+    locationTag ? `Location: ${locationTag}` : 'Location: none specified',
+    `Engagement level: ${engagement}/100`,
+  ].join('\n');
+}
+
+function stripCodeFences(s: string): string {
+  return s.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
+}
+
+/**
+ * Runs the model, strips fences, parses JSON, retries once with an explicit
+ * JSON instruction on parse failure, and dispatches to the appropriate
+ * validator. `caller(retry?)` is the transport-specific closure that hits
+ * OpenRouter or Anthropic.
+ */
+async function parseAndRoute(
+  res: VercelResponse,
+  caller: (retryMessage?: string) => Promise<string>,
+  userMessage: string,
+  passMode: PassMode,
+  selectedModel: string,
+): Promise<VercelResponse> {
+  let parsed: any;
+  try {
+    const rawText = stripCodeFences(await caller());
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      console.log('First parse failed, retrying with explicit JSON instruction');
+      const retry = stripCodeFences(await caller(
+        userMessage + '\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON.'
+      ));
+      try {
+        parsed = JSON.parse(retry);
+      } catch {
+        return res.status(422).json({
+          error: 'malformed_response',
+          raw: retry.substring(0, 500),
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Translation error:', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Translation failed',
+    });
   }
-  const envVal = process.env.TRANSLATION_PASS_MODE;
-  if (envVal === 'two_pass') return 'two_pass';
-  return 'single'; // default
+
+  return passMode === 'two_pass'
+    ? validateAndReturnTwoPass(res, parsed, selectedModel)
+    : validateAndReturnSingle(res, parsed);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -108,10 +157,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? Math.max(0, Math.min(100, engagementLevel))
     : 50;
 
-  const passMode = getPassMode(pass_mode);
+  const passMode = resolvePassMode(pass_mode);
   const selectedModel = (typeof model === 'string' && model.trim()) ? model.trim() : DEFAULT_MODEL;
 
-  // Load the appropriate prompt file
+  // Load the appropriate prompt file.
   const promptFile = passMode === 'two_pass'
     ? 'pataphysical-translation-v2.md'
     : 'pataphysical-translation.md';
@@ -138,40 +187,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     systemPrompt = systemPrompt.replace('{site_context}', contextStr);
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    // Fall back to Anthropic key for backwards compat during migration
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      return res.status(500).json({ error: 'Neither OPENROUTER_API_KEY nor ANTHROPIC_API_KEY configured' });
-    }
-    // Use Anthropic API directly (legacy path)
-    return handleAnthropicLegacy(req, res, anthropicKey, systemPrompt, {
-      memeDescription, locationTag, engagement, memeImageUrl, passMode, selectedModel,
+  const userMessage = buildUserMessage(memeDescription, locationTag || null, engagement);
+
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  if (openRouterKey) {
+    const caller = makeOpenRouterCaller({
+      apiKey: openRouterKey,
+      userMessage,
+      memeImageUrl: typeof memeImageUrl === 'string' ? memeImageUrl : null,
+      systemPrompt,
+      selectedModel,
+      passMode,
     });
+    return parseAndRoute(res, caller, userMessage, passMode, selectedModel);
   }
 
-  // Compose the user message
-  const userMessage = [
-    `Meme description: ${memeDescription}`,
-    locationTag ? `Location: ${locationTag}` : 'Location: none specified',
-    `Engagement level: ${engagement}/100`,
-  ].join('\n');
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) {
+    return res.status(500).json({ error: 'Neither OPENROUTER_API_KEY nor ANTHROPIC_API_KEY configured' });
+  }
+  const caller = await makeAnthropicCaller({
+    apiKey: anthropicKey,
+    userMessage,
+    memeImageUrl: typeof memeImageUrl === 'string' ? memeImageUrl : null,
+    systemPrompt,
+    selectedModel,
+    passMode,
+  });
+  return parseAndRoute(res, caller, userMessage, passMode, selectedModel);
+}
 
-  // Build message content (OpenAI-compatible format for OpenRouter)
+// ---------------------------------------------------------------------------
+// Transport: OpenRouter (OpenAI-compatible format)
+// ---------------------------------------------------------------------------
+
+interface CallerOpts {
+  apiKey: string;
+  userMessage: string;
+  memeImageUrl: string | null;
+  systemPrompt: string;
+  selectedModel: string;
+  passMode: PassMode;
+}
+
+function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Promise<string> {
   const messageContent: any[] = [];
-  if (memeImageUrl && typeof memeImageUrl === 'string') {
+  if (opts.memeImageUrl) {
     messageContent.push({
       type: 'image_url',
-      image_url: { url: memeImageUrl },
+      image_url: { url: opts.memeImageUrl },
     });
   }
-  messageContent.push({
-    type: 'text',
-    text: userMessage,
-  });
+  messageContent.push({ type: 'text', text: opts.userMessage });
 
-  async function callOpenRouter(retryMessage?: string): Promise<string> {
+  return async (retryMessage?: string) => {
     const content = retryMessage
       ? [{ type: 'text', text: retryMessage }]
       : messageContent;
@@ -180,15 +249,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${opts.apiKey}`,
         'HTTP-Referer': 'https://cuboidstudio.vercel.app',
         'X-Title': 'Cuboid Studio',
       },
       body: JSON.stringify({
-        model: selectedModel,
-        max_tokens: passMode === 'two_pass' ? 2000 : 1000,
+        model: opts.selectedModel,
+        max_tokens: opts.passMode === 'two_pass' ? 2000 : 1000,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: opts.systemPrompt },
           { role: 'user', content },
         ],
       }),
@@ -201,49 +270,82 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content;
-    if (!text) {
-      throw new Error('No text content in OpenRouter response');
-    }
-
+    if (!text) throw new Error('No text content in OpenRouter response');
     return text;
-  }
+  };
+}
 
-  try {
-    let rawText = await callOpenRouter();
-    rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
+// ---------------------------------------------------------------------------
+// Transport: Anthropic native (legacy fallback when OPENROUTER_API_KEY unset)
+// ---------------------------------------------------------------------------
 
-    let parsed: any;
+async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: string) => Promise<string>> {
+  // Fetch meme image up-front so retries don't re-download. Only https public
+  // URLs allowed (SSRF guard).
+  let imageBase64: string | null = null;
+  let imageMediaType: string = 'image/jpeg';
+  if (opts.memeImageUrl && isSafePublicHttpsUrl(opts.memeImageUrl)) {
     try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      // Retry once with explicit JSON instruction
-      console.log('First parse failed, retrying with explicit JSON instruction');
-      const retryText = await callOpenRouter(
-        userMessage + '\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON.'
-      );
-      const cleanedRetry = retryText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
-
-      try {
-        parsed = JSON.parse(cleanedRetry);
-      } catch {
-        return res.status(422).json({
-          error: 'malformed_response',
-          raw: cleanedRetry.substring(0, 500),
-        });
+      const imgResponse = await fetch(opts.memeImageUrl);
+      if (imgResponse.ok) {
+        imageMediaType = (imgResponse.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
+        const buffer = await imgResponse.arrayBuffer();
+        imageBase64 = Buffer.from(buffer).toString('base64');
       }
+    } catch (err) {
+      console.log('Failed to fetch meme image, proceeding with text only:', err);
+    }
+  } else if (opts.memeImageUrl) {
+    console.warn('Rejected unsafe memeImageUrl (non-https or private host):', opts.memeImageUrl);
+  }
+
+  // Resolve model name for Anthropic-native API. Clients send OpenRouter-style
+  // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix. If the
+  // result doesn't look like an Anthropic model, fall back to the default.
+  const anthropicDefault = 'claude-sonnet-4-20250514';
+  let anthropicModel = opts.selectedModel.startsWith('anthropic/')
+    ? opts.selectedModel.slice('anthropic/'.length)
+    : opts.selectedModel;
+  if (!anthropicModel.startsWith('claude-')) {
+    console.warn(`Legacy Anthropic path: unrecognized model "${opts.selectedModel}", falling back to ${anthropicDefault}`);
+    anthropicModel = anthropicDefault;
+  }
+
+  return async (retryMessage?: string) => {
+    const messageContent: any[] = [];
+    if (imageBase64 && !retryMessage) {
+      messageContent.push({
+        type: 'image',
+        source: { type: 'base64', media_type: imageMediaType, data: imageBase64 },
+      });
+    }
+    messageContent.push({ type: 'text', text: retryMessage || opts.userMessage });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': opts.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: anthropicModel,
+        max_tokens: opts.passMode === 'two_pass' ? 2000 : 1000,
+        system: opts.systemPrompt,
+        messages: [{ role: 'user', content: messageContent }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Anthropic API error (${response.status}): ${errorText}`);
     }
 
-    if (passMode === 'two_pass') {
-      return validateAndReturnTwoPass(res, parsed, selectedModel);
-    } else {
-      return validateAndReturnSingle(res, parsed);
-    }
-  } catch (error) {
-    console.error('Translation error:', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Translation failed',
-    });
-  }
+    const data = await response.json();
+    const textBlock = data.content?.find((b: any) => b.type === 'text');
+    if (!textBlock?.text) throw new Error('No text content in Claude response');
+    return textBlock.text;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -388,147 +490,4 @@ function validateAndReturnTwoPass(res: VercelResponse, parsed: any, model: strin
     pass2,
     model,
   });
-}
-
-// ---------------------------------------------------------------------------
-// Legacy Anthropic fallback (used when OPENROUTER_API_KEY is not set)
-// ---------------------------------------------------------------------------
-
-async function handleAnthropicLegacy(
-  req: VercelRequest,
-  res: VercelResponse,
-  apiKey: string,
-  systemPrompt: string,
-  opts: {
-    memeDescription: string;
-    locationTag: string | null;
-    engagement: number;
-    memeImageUrl: string | null;
-    passMode: PassMode;
-    selectedModel: string;
-  },
-) {
-  const userMessage = [
-    `Meme description: ${opts.memeDescription}`,
-    opts.locationTag ? `Location: ${opts.locationTag}` : 'Location: none specified',
-    `Engagement level: ${opts.engagement}/100`,
-  ].join('\n');
-
-  // Fetch meme image for Anthropic vision format.
-  // Only allow public https URLs — reject private/loopback hosts to prevent
-  // SSRF (server-side request forgery) against cloud metadata endpoints etc.
-  let imageBase64: string | null = null;
-  let imageMediaType: string = 'image/jpeg';
-  if (opts.memeImageUrl && typeof opts.memeImageUrl === 'string' && isSafePublicHttpsUrl(opts.memeImageUrl)) {
-    try {
-      const imgResponse = await fetch(opts.memeImageUrl);
-      if (imgResponse.ok) {
-        const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
-        imageMediaType = contentType.split(';')[0].trim();
-        const buffer = await imgResponse.arrayBuffer();
-        imageBase64 = Buffer.from(buffer).toString('base64');
-      }
-    } catch (err) {
-      console.log('Failed to fetch meme image, proceeding with text only:', err);
-    }
-  } else if (opts.memeImageUrl) {
-    console.warn('Rejected unsafe memeImageUrl (non-https or private host):', opts.memeImageUrl);
-  }
-
-  async function callClaude(retryMessage?: string): Promise<string> {
-    const messageContent: any[] = [];
-    if (imageBase64 && !retryMessage) {
-      messageContent.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: imageMediaType,
-          data: imageBase64,
-        },
-      });
-    }
-    messageContent.push({
-      type: 'text',
-      text: retryMessage || userMessage,
-    });
-
-    // Resolve model name for Anthropic-native API. Clients send OpenRouter-style
-    // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix. If the
-    // result doesn't look like an Anthropic model, fall back to the default.
-    const anthropicDefault = 'claude-sonnet-4-20250514';
-    let anthropicModel = opts.selectedModel.startsWith('anthropic/')
-      ? opts.selectedModel.slice('anthropic/'.length)
-      : opts.selectedModel;
-    if (!anthropicModel.startsWith('claude-')) {
-      console.warn(`Legacy Anthropic path: unrecognized model "${opts.selectedModel}", falling back to ${anthropicDefault}`);
-      anthropicModel = anthropicDefault;
-    }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: anthropicModel,
-        max_tokens: opts.passMode === 'two_pass' ? 2000 : 1000,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: messageContent,
-        }],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
-    const textBlock = data.content?.find((b: any) => b.type === 'text');
-    if (!textBlock?.text) {
-      throw new Error('No text content in Claude response');
-    }
-
-    return textBlock.text;
-  }
-
-  try {
-    let rawText = await callClaude();
-    rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      console.log('First parse failed, retrying with explicit JSON instruction');
-      const retryText = await callClaude(
-        userMessage + '\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON object.'
-      );
-      const cleanedRetry = retryText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
-
-      try {
-        parsed = JSON.parse(cleanedRetry);
-      } catch {
-        return res.status(422).json({
-          error: 'malformed_response',
-          raw: cleanedRetry.substring(0, 500),
-        });
-      }
-    }
-
-    if (opts.passMode === 'two_pass') {
-      return validateAndReturnTwoPass(res, parsed, opts.selectedModel);
-    } else {
-      return validateAndReturnSingle(res, parsed);
-    }
-  } catch (error) {
-    console.error('Translation error (Anthropic legacy):', error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Translation failed',
-    });
-  }
 }
