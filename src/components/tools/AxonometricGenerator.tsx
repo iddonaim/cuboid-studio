@@ -22,6 +22,16 @@ const RENDER_SIZE = 512;
 const CAMERA_DISTANCE = 100;
 const CAMERA_ZOOM = 5.4;
 
+// Edge angle threshold for THREE.EdgesGeometry. Lower = more lines (incl. curve
+// triangulation); higher = cleaner silhouettes. Overridable via ?threshold=N.
+const DEFAULT_EDGE_THRESHOLD = 15;
+function getEdgeThreshold(): number {
+  if (typeof window === 'undefined') return DEFAULT_EDGE_THRESHOLD;
+  const v = new URLSearchParams(window.location.search).get('threshold');
+  const n = v ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : DEFAULT_EDGE_THRESHOLD;
+}
+
 const AxonCamera: React.FC<{ pos: [number, number, number] }> = ({ pos }) => {
   const { camera } = useThree();
   useEffect(() => {
@@ -50,12 +60,12 @@ const WireframeCube: React.FC<{
     (async () => {
       try {
         const geo = await getVariationGeometryAsync(variation);
-        if (!cancelled) setEdges(new THREE.EdgesGeometry(geo, 15));
+        if (!cancelled) setEdges(new THREE.EdgesGeometry(geo, getEdgeThreshold()));
       } catch (err) {
         console.error(`Failed to load geometry for ${variation.id}:`, err);
         if (!cancelled) {
           const fallback = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
-          setEdges(new THREE.EdgesGeometry(fallback, 15));
+          setEdges(new THREE.EdgesGeometry(fallback, getEdgeThreshold()));
         }
       }
     })();

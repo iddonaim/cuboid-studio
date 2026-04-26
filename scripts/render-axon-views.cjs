@@ -70,7 +70,8 @@ const TIMEOUT_MS = Number(args.timeout || 10 * 60 * 1000);
     if (t === 'error' || t === 'warning') console.log(`[page ${t}]`, msg.text());
   });
 
-  const targetUrl = `${BASE_URL}/?axon&auto`;
+  const extra = args.threshold ? `&threshold=${args.threshold}` : '';
+  const targetUrl = `${BASE_URL}/?axon&auto${extra}`;
   console.log(`[axon] opening ${targetUrl}`);
   await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 60_000 });
 
