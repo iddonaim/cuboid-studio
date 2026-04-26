@@ -103,6 +103,14 @@ const CaptureHelper: React.FC<{
 
 type Output = { id: string; angle: AxonAngle; dataUrl: string };
 
+declare global {
+  interface Window {
+    __axonStatus?: 'idle' | 'rendering' | 'done';
+    __axonProgress?: { done: number; total: number };
+    __axonOutputs?: Output[];
+  }
+}
+
 const AxonometricGenerator: React.FC = () => {
   const [variationIndex, setVariationIndex] = useState(0);
   const [angleIndex, setAngleIndex] = useState(0);
@@ -121,7 +129,15 @@ const AxonometricGenerator: React.FC = () => {
     (dataUrl: string) => {
       const variation = CUBE_VARIATIONS[variationIndex];
       const angle = ANGLES[angleIndex];
-      setOutputs((prev) => [...prev, { id: variation.id, angle: angle.key, dataUrl }]);
+      const next: Output = { id: variation.id, angle: angle.key, dataUrl };
+      setOutputs((prev) => {
+        const updated = [...prev, next];
+        if (typeof window !== 'undefined') {
+          window.__axonOutputs = updated;
+          window.__axonProgress = { done: updated.length, total: totalRenders };
+        }
+        return updated;
+      });
       setReadyToCapture(false);
 
       const nextDone = variationIndex * ANGLES.length + angleIndex + 1;
@@ -136,19 +152,37 @@ const AxonometricGenerator: React.FC = () => {
         }, 30);
       } else {
         setIsGenerating(false);
+        if (typeof window !== 'undefined') {
+          window.__axonStatus = 'done';
+        }
       }
     },
     [variationIndex, angleIndex, totalRenders]
   );
 
-  const start = () => {
+  const start = useCallback(() => {
     setOutputs([]);
     setVariationIndex(0);
     setAngleIndex(0);
     setProgress(0);
     setReadyToCapture(false);
     setIsGenerating(true);
-  };
+    if (typeof window !== 'undefined') {
+      window.__axonStatus = 'rendering';
+      window.__axonOutputs = [];
+      window.__axonProgress = { done: 0, total: totalRenders };
+    }
+  }, [totalRenders]);
+
+  // Auto-start when ?auto is in the query string (used by the headless render script).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.__axonStatus = window.__axonStatus ?? 'idle';
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('auto') && window.__axonStatus === 'idle') {
+      start();
+    }
+  }, [start]);
 
   const downloadAll = async () => {
     const zip = new JSZip();
