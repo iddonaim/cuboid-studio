@@ -24,7 +24,7 @@ const CAMERA_ZOOM = 5.4;
 
 // Edge angle threshold for THREE.EdgesGeometry. Lower = more lines (incl. curve
 // triangulation); higher = cleaner silhouettes. Overridable via ?threshold=N.
-const DEFAULT_EDGE_THRESHOLD = 15;
+const DEFAULT_EDGE_THRESHOLD = 45;
 function getEdgeThreshold(): number {
   if (typeof window === 'undefined') return DEFAULT_EDGE_THRESHOLD;
   const v = new URLSearchParams(window.location.search).get('threshold');
