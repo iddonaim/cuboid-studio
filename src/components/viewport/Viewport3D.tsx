@@ -274,15 +274,37 @@ const PataphysicalScene: React.FC = () => {
 /** Encoding mode scene — preview of encoded assembly before loading into builder */
 const EncodingScene: React.FC = () => {
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
+  const seedCubes = useEncodingStore(s => s.seedCubes);
+  const mode = useEncodingStore(s => s.mode);
 
-  if (!encodedCubes || encodedCubes.length === 0) {
+  const hasSeed = mode !== 'standalone' && seedCubes.length > 0;
+  const hasEncoded = encodedCubes && encodedCubes.length > 0;
+
+  if (!hasSeed && !hasEncoded) {
     return <SpatialGrid size={3} levels={2} />;
   }
 
   return (
     <>
       <SpatialGrid size={7} levels={4} />
-      {encodedCubes.map((cube, i) => {
+
+      {/* Seed cubes — only in merge/remix mode */}
+      {hasSeed && seedCubes.map((cube, i) => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        return (
+          <CubeWithCuts
+            key={`seed-${i}`}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            provenance="preserved"
+          />
+        );
+      })}
+
+      {/* Encoded (added) cubes */}
+      {hasEncoded && encodedCubes.map((cube, i) => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         return (
@@ -294,6 +316,7 @@ const EncodingScene: React.FC = () => {
               x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
               y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
             }}
+            provenance="added"
           />
         );
       })}

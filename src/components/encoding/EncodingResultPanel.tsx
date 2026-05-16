@@ -4,6 +4,9 @@ import { useEncodingStore } from '../../store/useEncodingStore';
 export const EncodingResultPanel: React.FC = () => {
   const encodingReasoning = useEncodingStore(s => s.encodingReasoning);
   const isEncoding = useEncodingStore(s => s.isEncoding);
+  const seedCubes = useEncodingStore(s => s.seedCubes);
+  const encodedCubes = useEncodingStore(s => s.encodedCubes);
+  const mode = useEncodingStore(s => s.mode);
 
   if (!encodingReasoning && !isEncoding) return null;
 
@@ -29,6 +32,11 @@ export const EncodingResultPanel: React.FC = () => {
             fontStyle: 'italic',
           }}>
             {encodingReasoning}
+            {mode !== 'standalone' && seedCubes.length > 0 && (
+              <p style={{ color: '#94a3b8', fontSize: 11, margin: '6px 0 0 0' }}>
+                {seedCubes.length} preserved · {encodedCubes?.length ?? 0} added
+              </p>
+            )}
           </div>
         </>
       )}

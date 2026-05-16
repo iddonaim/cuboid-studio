@@ -20,6 +20,7 @@ interface CubeWithCutsProps {
   isPreview?: boolean;
   clippingPlanes?: THREE.Plane[];
   overrideGeometry?: THREE.BufferGeometry | null;
+  provenance?: 'preserved' | 'added';
 }
 
 export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
@@ -35,6 +36,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   isPreview = false,
   clippingPlanes,
   overrideGeometry,
+  provenance,
 }) => {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
@@ -97,6 +99,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
 
   let fillColor = '#ffffff';
   let edgeColor = '#000000';
+
+  if (provenance === 'added') {
+    fillColor = '#d4edfe';
+    edgeColor = '#1d4ed8';
+  }
 
   if (targeted) {
     fillColor = '#fff7e0';

@@ -1,12 +1,16 @@
 import { create } from 'zustand';
 import { encodeSpace, EncodedCube } from '../lib/api/encodeSpace';
 import { PlacedCube } from '../lib/cube/types';
-import { DEFAULT_ROTATION } from '../lib/cube/connectionRules';
+import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
+import { GRID_STRIDE } from '../lib/cube/constants';
+import { useBuilderStore } from './useBuilderStore';
+
+type EncodingMode = 'standalone' | 'merge' | 'remix';
 
 interface EncodingState {
   // Image
-  uploadedImage: string | null;      // data URL for preview
-  imageBase64: string | null;        // raw base64 for API
+  uploadedImage: string | null;
+  imageBase64: string | null;
   imageMediaType: string | null;
   setImage: (dataUrl: string, base64: string, mediaType: string) => void;
   clearImage: () => void;
@@ -16,6 +20,14 @@ interface EncodingState {
   encodedCubes: EncodedCube[] | null;
   encodingReasoning: string | null;
   lastError: string | null;
+
+  // Mode & seed
+  mode: EncodingMode;
+  seedCubes: PlacedCube[];
+  seedCubeIds: Set<string>;
+  setMode: (mode: EncodingMode) => void;
+  setSeedFromBuilder: () => void;
+  setSeedFromSavedState: (savedState: SavedState) => void;
 
   // Actions
   encode: () => Promise<void>;
@@ -50,6 +62,36 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   encodingReasoning: null,
   lastError: null,
 
+  // Mode & seed
+  mode: 'standalone',
+  seedCubes: [],
+  seedCubeIds: new Set<string>(),
+
+  setMode: (mode) => set({
+    mode,
+    seedCubes: [],
+    seedCubeIds: new Set<string>(),
+    encodedCubes: null,
+    encodingReasoning: null,
+    lastError: null,
+  }),
+
+  setSeedFromBuilder: () => {
+    const cubes = useBuilderStore.getState().placedCubes;
+    set({
+      seedCubes: [...cubes],
+      seedCubeIds: new Set(cubes.map(c => c.id)),
+    });
+  },
+
+  setSeedFromSavedState: (savedState: SavedState) => {
+    const cubes = savedStateToPlacedCubes(savedState);
+    set({
+      seedCubes: cubes,
+      seedCubeIds: new Set(cubes.map(c => c.id)),
+    });
+  },
+
   // Actions
   encode: async () => {
     const { imageBase64, imageMediaType } = get();
@@ -66,8 +108,19 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         imageMediaType: imageMediaType || 'image/jpeg',
       });
 
+      // Grid-snap each position and remove collisions with seed cubes
+      const occupied = new Set(get().seedCubes.map(c => c.position.join(',')));
+      const processed = result.cubes
+        .map(cube => ({
+          ...cube,
+          position: cube.position.map(
+            v => Math.round(v / GRID_STRIDE) * GRID_STRIDE
+          ) as [number, number, number],
+        }))
+        .filter(cube => !occupied.has(cube.position.join(',')));
+
       set({
-        encodedCubes: result.cubes,
+        encodedCubes: processed,
         encodingReasoning: result.reasoning,
         isEncoding: false,
       });
@@ -80,11 +133,10 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   },
 
   loadIntoBuilder: () => {
-    const { encodedCubes } = get();
+    const { encodedCubes, mode, seedCubes } = get();
     if (!encodedCubes || encodedCubes.length === 0) return;
 
-    // Convert EncodedCubes to PlacedCubes
-    const placedCubes: PlacedCube[] = encodedCubes.map((cube, i) => ({
+    const newPlacedCubes: PlacedCube[] = encodedCubes.map((cube, i) => ({
       id: `encoded-${Date.now()}-${i}`,
       variationId: cube.variationId,
       position: cube.position,
@@ -94,11 +146,16 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       },
     }));
 
-    // Import builder store dynamically to avoid circular deps
-    import('./useBuilderStore').then(({ useBuilderStore }) => {
-      const store = useBuilderStore.getState();
-      store.setPlacedCubes(placedCubes);
-      store.pushToHistory(placedCubes);
-    });
+    const store = useBuilderStore.getState();
+    let result: PlacedCube[];
+    if (mode === 'merge') {
+      result = [...store.placedCubes, ...newPlacedCubes];
+    } else if (mode === 'remix') {
+      result = [...seedCubes, ...newPlacedCubes];
+    } else {
+      result = newPlacedCubes;
+    }
+    store.setPlacedCubes(result);
+    store.pushToHistory(result);
   },
 }));
