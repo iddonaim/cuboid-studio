@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { encodeSpace, EncodedCube } from '../lib/api/encodeSpace';
 import { PlacedCube } from '../lib/cube/types';
 import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
-import { GRID_STRIDE } from '../lib/cube/constants';
+import { GRID_STRIDE, CUBE_SIZE } from '../lib/cube/constants';
 import { useBuilderStore } from './useBuilderStore';
 
 type EncodingMode = 'standalone' | 'merge' | 'remix';
@@ -108,14 +108,18 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         imageMediaType: imageMediaType || 'image/jpeg',
       });
 
-      // Grid-snap each position and remove collisions with seed cubes
+      // Grid-snap each position and remove collisions with seed cubes.
+      // Y axis is offset by CUBE_SIZE/2 (ground level = 21, not 0).
+      const snapAxis = (v: number, axis: number) =>
+        axis === 1
+          ? Math.round((v - CUBE_SIZE / 2) / GRID_STRIDE) * GRID_STRIDE + CUBE_SIZE / 2
+          : Math.round(v / GRID_STRIDE) * GRID_STRIDE;
+
       const occupied = new Set(get().seedCubes.map(c => c.position.join(',')));
       const processed = result.cubes
         .map(cube => ({
           ...cube,
-          position: cube.position.map(
-            v => Math.round(v / GRID_STRIDE) * GRID_STRIDE
-          ) as [number, number, number],
+          position: cube.position.map(snapAxis) as [number, number, number],
         }))
         .filter(cube => !occupied.has(cube.position.join(',')));
 
