@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useAppStore } from '../../store/useAppStore';
+import { listSavedStates, SavedState } from '../../lib/savedStates';
 
 export const EncodingPanel: React.FC = () => {
   const uploadedImage = useEncodingStore(s => s.uploadedImage);
@@ -12,9 +13,16 @@ export const EncodingPanel: React.FC = () => {
   const lastError = useEncodingStore(s => s.lastError);
   const encode = useEncodingStore(s => s.encode);
   const loadIntoBuilder = useEncodingStore(s => s.loadIntoBuilder);
+  const mode = useEncodingStore(s => s.mode);
+  const setMode = useEncodingStore(s => s.setMode);
+  const setSeedFromBuilder = useEncodingStore(s => s.setSeedFromBuilder);
+  const setSeedFromSavedState = useEncodingStore(s => s.setSeedFromSavedState);
+  const seedCubes = useEncodingStore(s => s.seedCubes);
   const setActiveMode = useAppStore(s => s.setActiveMode);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [savedStates, setSavedStates] = React.useState<SavedState[]>([]);
+  const [selectedSeedId, setSelectedSeedId] = React.useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -23,25 +31,140 @@ export const EncodingPanel: React.FC = () => {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      // Extract base64 and media type from data URL
       const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
       if (match) {
         setImage(dataUrl, match[2], match[1]);
       }
     };
     reader.readAsDataURL(file);
-
-    // Reset input so the same file can be selected again
     e.target.value = '';
   };
 
-  const handleLoadAndSwitch = (mode: 'builder' | 'pataphysical') => {
+  const handleLoadAndSwitch = (target: 'builder' | 'pataphysical') => {
     loadIntoBuilder();
-    setActiveMode(mode);
+    setActiveMode(target);
   };
+
+  const handleModeSelect = (newMode: 'standalone' | 'merge' | 'remix') => {
+    setMode(newMode);
+    setSelectedSeedId(null);
+    if (newMode === 'merge') {
+      setSeedFromBuilder();
+    }
+    if (newMode === 'remix') {
+      setSavedStates(listSavedStates());
+    }
+  };
+
+  const handleSeedSelect = (s: SavedState) => {
+    setSelectedSeedId(s.id);
+    setSeedFromSavedState(s);
+  };
+
+  const encodeDisabled =
+    isEncoding ||
+    (mode === 'merge' && seedCubes.length === 0) ||
+    (mode === 'remix' && seedCubes.length === 0);
+
+  const handleEncode = () => {
+    if (mode === 'merge') {
+      setSeedFromBuilder();
+    }
+    encode();
+  };
+
+  const MODE_LABELS: { value: 'standalone' | 'merge' | 'remix'; label: string }[] = [
+    { value: 'standalone', label: 'Standalone' },
+    { value: 'merge', label: 'Merge' },
+    { value: 'remix', label: 'Remix' },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+      {/* Mode selector */}
+      <div style={{ display: 'flex', gap: 4 }}>
+        {MODE_LABELS.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => handleModeSelect(value)}
+            style={{
+              flex: 1,
+              padding: '6px 4px',
+              background: mode === value ? '#1e3a5f' : '#1e293b',
+              border: mode === value ? '1px solid #3b82f6' : '1px solid #334155',
+              borderRadius: 6,
+              color: mode === value ? '#93c5fd' : '#64748b',
+              cursor: 'pointer',
+              fontSize: 10,
+              fontWeight: mode === value ? 600 : 400,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Merge notice */}
+      {mode === 'merge' && (
+        <div style={{
+          padding: 8, background: '#1e293b', borderRadius: 4,
+          border: '1px solid #334155', fontSize: 11,
+        }}>
+          {seedCubes.length > 0 ? (
+            <span style={{ color: '#94a3b8' }}>
+              Seed: {seedCubes.length} cube{seedCubes.length !== 1 ? 's' : ''} from current assembly
+            </span>
+          ) : (
+            <span style={{ color: '#ef4444' }}>
+              Builder is empty. Add cubes to the Builder first.
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Remix seed picker */}
+      {mode === 'remix' && !uploadedImage && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ color: '#64748b', fontSize: 10 }}>Select a seed assembly:</div>
+          {savedStates.length === 0 ? (
+            <div style={{
+              padding: 8, background: '#1e293b', borderRadius: 4,
+              color: '#64748b', fontSize: 11, fontStyle: 'italic',
+            }}>
+              No saved states — save an assembly first.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 140, overflowY: 'auto' }}>
+              {savedStates.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => handleSeedSelect(s)}
+                  style={{
+                    padding: '6px 8px',
+                    background: selectedSeedId === s.id ? '#1e3a5f' : '#1e293b',
+                    border: selectedSeedId === s.id ? '1px solid #3b82f6' : '1px solid #334155',
+                    borderRadius: 4,
+                    color: selectedSeedId === s.id ? '#93c5fd' : '#94a3b8',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    textAlign: 'left',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{s.name}</span>
+                  <span style={{ color: '#475569', fontSize: 9 }}>
+                    {s.cubeCount}c · {new Date(s.savedAt).toLocaleDateString()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Image upload area */}
       {!uploadedImage ? (
         <div
@@ -138,12 +261,20 @@ export const EncodingPanel: React.FC = () => {
       {/* Encode button */}
       {uploadedImage && !encodedCubes && (
         <button
-          onClick={encode}
-          disabled={isEncoding}
+          onClick={handleEncode}
+          disabled={encodeDisabled}
+          title={
+            mode === 'merge' && seedCubes.length === 0
+              ? 'Add cubes to the Builder first'
+              : mode === 'remix' && seedCubes.length === 0
+              ? 'Select a seed assembly above'
+              : undefined
+          }
           style={{
-            padding: 10, background: isEncoding ? '#334155' : '#1e3a5f',
-            border: 'none', borderRadius: 6, color: 'white',
-            cursor: isEncoding ? 'wait' : 'pointer',
+            padding: 10,
+            background: encodeDisabled ? '#334155' : '#1e3a5f',
+            border: 'none', borderRadius: 6, color: encodeDisabled ? '#64748b' : 'white',
+            cursor: encodeDisabled ? 'not-allowed' : isEncoding ? 'wait' : 'pointer',
             fontSize: 12, fontWeight: 600,
           }}
         >
