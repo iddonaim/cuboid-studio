@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
 
 interface RulesToggleProps {
   enabled: boolean;
@@ -9,42 +10,27 @@ export const RulesToggle: React.FC<RulesToggleProps> = ({ enabled, onChange }) =
   const [showDetails, setShowDetails] = useState(false);
 
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          type="checkbox"
+    <div className="mb-3">
+      <div className="flex items-center gap-2">
+        <Switch
           checked={enabled}
-          onChange={(e) => onChange(e.target.checked)}
-          style={{ cursor: 'pointer' }}
+          onCheckedChange={onChange}
+          id="rules-toggle"
+          className="data-[state=checked]:bg-green-600"
         />
-        <span
+        <button
           onClick={() => setShowDetails(!showDetails)}
-          style={{
-            color: enabled ? '#22c55e' : '#94a3b8',
-            fontSize: 12,
-            cursor: 'pointer',
-            textDecoration: 'underline',
-            textDecorationStyle: 'dotted',
-          }}
+          className={`text-xs cursor-pointer underline decoration-dotted ${enabled ? 'text-green-500' : 'text-slate-400'}`}
         >
-          Rules {showDetails ? '\u25BC' : '\u25B6'}
-        </span>
+          Rules {showDetails ? '▼' : '▶'}
+        </button>
       </div>
       {showDetails && (
-        <div style={{
-          marginTop: 8,
-          marginLeft: 24,
-          padding: 8,
-          background: '#1e293b',
-          borderRadius: 4,
-          fontSize: 11,
-          color: '#94a3b8',
-          lineHeight: 1.6,
-        }}>
-          <div style={{ color: '#22c55e' }}>{'\u2713'} Door {'\u2194'} Door (sphere{'\u2194'}sphere)</div>
-          <div style={{ color: '#22c55e' }}>{'\u2713'} Window {'\u2194'} Window (cylinder{'\u2194'}cylinder)</div>
-          <div style={{ color: '#ef4444' }}>{'\u2717'} Wall {'\u2194'} anything (blocks growth)</div>
-          <div style={{ color: '#ef4444' }}>{'\u2717'} Door {'\u2194'} Window</div>
+        <div className="mt-2 ml-6 p-2 bg-slate-800 rounded text-[11px] text-slate-400 leading-relaxed">
+          <div className="text-green-500">✓ Door ↔ Door (sphere↔sphere)</div>
+          <div className="text-green-500">✓ Window ↔ Window (cylinder↔cylinder)</div>
+          <div className="text-red-500">✗ Wall ↔ anything (blocks growth)</div>
+          <div className="text-red-500">✗ Door ↔ Window</div>
         </div>
       )}
     </div>

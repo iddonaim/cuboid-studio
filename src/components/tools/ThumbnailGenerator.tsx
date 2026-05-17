@@ -6,14 +6,12 @@ import { CUBE_SIZE } from '../../lib/cube/constants';
 import { CUBE_VARIATIONS, CubeVariation } from '../../lib/cube/specifications';
 import { getVariationGeometryAsync } from '../../lib/cube/csgUtils';
 
-// Setup orthographic camera for true isometric view
+// Setup orthographic camera for true isometric view — do not modify (3D logic)
 const IsometricCamera: React.FC = () => {
   const { camera } = useThree();
 
   useEffect(() => {
     if (camera instanceof THREE.OrthographicCamera) {
-      // Classic isometric angle: 35.264° from horizontal (arctan(1/√2))
-      // Camera position at equal X, Z with Y = X * √2
       const distance = 100;
       camera.position.set(distance, distance * Math.SQRT2, distance);
       camera.lookAt(0, 0, 0);
@@ -24,7 +22,7 @@ const IsometricCamera: React.FC = () => {
   return null;
 };
 
-// Single cube renderer for thumbnail
+// Single cube renderer for thumbnail — do not modify (3D logic)
 const ThumbnailCube: React.FC<{
   variation: CubeVariation;
   onReady: () => void;
@@ -57,10 +55,8 @@ const ThumbnailCube: React.FC<{
     return () => { cancelled = true; };
   }, [variation]);
 
-  // Notify when geometry is ready
   useEffect(() => {
     if (geometry && edgesGeometry) {
-      // Small delay to ensure rendering is complete
       const timer = setTimeout(onReady, 100);
       return () => clearTimeout(timer);
     }
@@ -86,7 +82,7 @@ const ThumbnailCube: React.FC<{
   );
 };
 
-// Capture helper
+// Capture helper — do not modify (3D/GL logic)
 const CaptureHelper: React.FC<{
   onCapture: (dataUrl: string) => void;
   shouldCapture: boolean;
@@ -112,7 +108,6 @@ const ThumbnailGenerator: React.FC = () => {
   const [progress, setProgress] = useState(0);
 
   const handleCubeReady = useCallback(() => {
-    // Cube geometry loaded, ready to capture
     setReadyToCapture(true);
   }, []);
 
@@ -122,7 +117,6 @@ const ThumbnailGenerator: React.FC = () => {
     setReadyToCapture(false);
     setProgress(((currentIndex + 1) / CUBE_VARIATIONS.length) * 100);
 
-    // Move to next variation
     if (currentIndex < CUBE_VARIATIONS.length - 1) {
       setTimeout(() => setCurrentIndex(prev => prev + 1), 50);
     } else {
@@ -140,15 +134,10 @@ const ThumbnailGenerator: React.FC = () => {
 
   const downloadAll = async () => {
     const zip = new JSZip();
-
-    // Add each thumbnail to the zip
     for (const { id, dataUrl } of thumbnails) {
-      // Convert data URL to blob
       const base64Data = dataUrl.split(',')[1];
       zip.file(`${id}.png`, base64Data, { base64: true });
     }
-
-    // Generate and download zip
     const blob = await zip.generateAsync({ type: 'blob' });
     const link = document.createElement('a');
     link.download = 'thumbnails.zip';
@@ -167,53 +156,39 @@ const ThumbnailGenerator: React.FC = () => {
   const currentVariation = CUBE_VARIATIONS[currentIndex];
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      <h1>Thumbnail Generator</h1>
-      <p style={{ color: '#666', marginBottom: 20 }}>
+    <div className="p-5 font-sans">
+      <h1 className="text-2xl font-bold mb-2">Thumbnail Generator</h1>
+      <p className="text-gray-500 mb-5">
         Generate PNG thumbnails for all {CUBE_VARIATIONS.length} cube variations.
-        Save them to <code>/public/thumbnails/</code> folder.
+        Save them to <code className="font-mono">/public/thumbnails/</code> folder.
       </p>
 
-      <div style={{ marginBottom: 20 }}>
+      <div className="mb-5">
         {!isGenerating ? (
           <button
             onClick={startGeneration}
-            style={{
-              padding: '12px 24px',
-              fontSize: 16,
-              background: '#4f46e5',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer'
-            }}
+            className="px-6 py-3 text-base bg-indigo-600 text-white border-0 rounded-lg cursor-pointer hover:bg-indigo-500"
           >
             Generate All Thumbnails
           </button>
         ) : (
           <div>
-            <p>Generating: {currentVariation?.id} ({currentIndex + 1}/{CUBE_VARIATIONS.length})</p>
-            <div style={{
-              width: 300,
-              height: 20,
-              background: '#e5e7eb',
-              borderRadius: 10,
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${progress}%`,
-                height: '100%',
-                background: '#4f46e5',
-                transition: 'width 0.2s'
-              }} />
+            <p className="mb-2">
+              Generating: {currentVariation?.id} ({currentIndex + 1}/{CUBE_VARIATIONS.length})
+            </p>
+            <div className="w-[300px] h-5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-600 transition-[width] duration-200"
+                style={{ width: `${progress}%` }}
+              />
             </div>
           </div>
         )}
       </div>
 
-      {/* Hidden canvas for rendering */}
+      {/* Hidden canvas for rendering — Canvas/R3F children untouched */}
       {isGenerating && currentVariation && (
-        <div style={{ width: 128, height: 128, position: 'absolute', left: -9999 }}>
+        <div className="absolute -left-[9999px] w-32 h-32">
           <Canvas
             orthographic
             camera={{
@@ -243,41 +218,24 @@ const ThumbnailGenerator: React.FC = () => {
       {/* Generated thumbnails */}
       {thumbnails.length > 0 && (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            <h2>Generated Thumbnails ({thumbnails.length})</h2>
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-xl font-semibold">Generated Thumbnails ({thumbnails.length})</h2>
             <button
               onClick={downloadAll}
-              style={{
-                padding: '8px 16px',
-                background: '#059669',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: 'pointer'
-              }}
+              className="px-4 py-2 bg-emerald-600 text-white border-0 rounded-md cursor-pointer hover:bg-emerald-500"
             >
               Download All
             </button>
           </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-            gap: 12
-          }}>
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(100px,1fr))]">
             {thumbnails.map(({ id, dataUrl }) => (
               <div
                 key={id}
                 onClick={() => downloadSingle(id, dataUrl)}
-                style={{
-                  cursor: 'pointer',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: 8,
-                  textAlign: 'center'
-                }}
+                className="cursor-pointer border border-gray-200 rounded-lg p-2 text-center hover:border-gray-400"
               >
-                <img src={dataUrl} alt={id} style={{ width: 80, height: 80 }} />
-                <p style={{ margin: '4px 0 0', fontSize: 11 }}>{id}</p>
+                <img src={dataUrl} alt={id} className="w-20 h-20" />
+                <p className="mt-1 mb-0 text-[11px]">{id}</p>
               </div>
             ))}
           </div>

@@ -8,6 +8,7 @@ import {
   savedStateToPlacedCubes,
   SavedState,
 } from '../../lib/savedStates';
+import { Button } from '@/components/ui/button';
 
 export const SavedStatesPanel: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
@@ -58,136 +59,76 @@ export const SavedStatesPanel: React.FC = () => {
   };
 
   return (
-    <div style={{ borderTop: '1px solid #334155', paddingTop: 10, marginTop: 4 }}>
+    <div className="border-t border-slate-700 pt-2.5 mt-1">
       <button
         onClick={() => { setExpanded(e => !e); setConfirmDeleteId(null); }}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'none',
-          border: 'none',
-          color: '#94a3b8',
-          fontSize: 11,
-          fontWeight: 600,
-          cursor: 'pointer',
-          padding: '0 0 6px',
-        }}
+        className="w-full flex items-center justify-between bg-transparent border-0 text-slate-400 text-[11px] font-semibold cursor-pointer pb-1.5"
       >
         <span>Saved States</span>
-        <i
-          className={`fas fa-chevron-${expanded ? 'up' : 'down'}`}
-          style={{ fontSize: 9, color: '#475569' }}
-        />
+        <i className={`fas fa-chevron-${expanded ? 'up' : 'down'} text-[9px] text-slate-600`} />
       </button>
 
       {expanded && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div className="flex flex-col gap-1.5">
 
           {/* Save row */}
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div className="flex gap-1">
             <input
               type="text"
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && hasCubes && handleSave()}
               placeholder={`Assembly ${states.length + 1}`}
-              style={{
-                flex: 1,
-                padding: '4px 6px',
-                fontSize: 10,
-                background: '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: 4,
-                color: '#94a3b8',
-                outline: 'none',
-              }}
+              className="flex-1 px-1.5 py-1 text-[10px] bg-slate-800 border border-slate-700 rounded text-slate-400 outline-none"
             />
-            <button
+            <Button
               onClick={handleSave}
               disabled={!hasCubes}
               title={hasCubes ? 'Save current assembly' : 'No cubes to save'}
-              style={{
-                padding: '4px 8px',
-                fontSize: 10,
-                borderRadius: 4,
-                border: 'none',
-                background: hasCubes ? '#065f46' : '#0f172a',
-                color: hasCubes ? '#6ee7b7' : '#475569',
-                cursor: hasCubes ? 'pointer' : 'default',
-                whiteSpace: 'nowrap',
-              }}
+              className={`h-auto py-1 px-2 text-[10px] border-0 whitespace-nowrap ${
+                hasCubes
+                  ? 'bg-emerald-900 hover:bg-emerald-800 text-emerald-300'
+                  : 'bg-slate-950 text-slate-600 cursor-default'
+              }`}
             >
               Save
-            </button>
+            </Button>
           </div>
 
           {/* State list */}
           {states.length === 0 ? (
-            <div style={{ color: '#475569', fontSize: 9, fontStyle: 'italic', paddingLeft: 2 }}>
-              No saved states yet
-            </div>
+            <div className="text-slate-600 text-[9px] italic pl-0.5">No saved states yet</div>
           ) : (
             states.map(state => (
               <div
                 key={state.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '5px 6px',
-                  background: '#0f172a',
-                  border: '1px solid #1e293b',
-                  borderRadius: 4,
-                }}
+                className="flex items-center gap-1 py-1.5 px-1.5 bg-slate-950 border border-slate-800 rounded"
               >
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <div style={{
-                    color: '#94a3b8',
-                    fontSize: 10,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {state.name}
-                  </div>
-                  <div style={{ color: '#475569', fontSize: 9 }}>
+                <div className="flex-1 overflow-hidden">
+                  <div className="text-slate-400 text-[10px] truncate">{state.name}</div>
+                  <div className="text-slate-600 text-[9px]">
                     {state.cubeCount} cube{state.cubeCount !== 1 ? 's' : ''} · {fmtDate(state.savedAt)}
                   </div>
                 </div>
 
-                <button
+                <Button
                   onClick={() => handleLoad(state)}
                   title="Load this state into builder"
-                  style={{
-                    padding: '2px 6px',
-                    fontSize: 9,
-                    borderRadius: 3,
-                    border: '1px solid #334155',
-                    background: '#1e293b',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="h-auto py-px px-1.5 text-[9px] border border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700 whitespace-nowrap"
                 >
                   Load
-                </button>
+                </Button>
 
                 <button
                   onClick={() => handleDelete(state.id)}
                   title={confirmDeleteId === state.id ? 'Click again to confirm delete' : 'Delete'}
-                  style={{
-                    padding: '2px 5px',
-                    fontSize: 9,
-                    borderRadius: 3,
-                    border: 'none',
-                    background: confirmDeleteId === state.id ? '#7f1d1d' : 'none',
-                    color: confirmDeleteId === state.id ? '#fca5a5' : '#475569',
-                    cursor: 'pointer',
-                  }}
+                  className={`py-px px-1.5 rounded border-0 cursor-pointer text-[9px] ${
+                    confirmDeleteId === state.id
+                      ? 'bg-red-900 text-red-300'
+                      : 'bg-transparent text-slate-600 hover:text-red-400'
+                  }`}
                 >
-                  <i className="fas fa-trash" style={{ fontSize: 8 }} />
+                  <i className="fas fa-trash text-[8px]" />
                 </button>
               </div>
             ))

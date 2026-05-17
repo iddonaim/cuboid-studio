@@ -5,6 +5,8 @@ import { buildAssemblyExport, downloadAssemblyJSON } from '../../lib/export/asse
 import { liveLinkClient } from '../../lib/export/liveLinkClient';
 import { ARViewer } from '../ar/ARViewer';
 import { SavedStatesPanel } from '../tools/SavedStatesPanel';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 /**
  * Export & Live-Link panel — shown at the bottom of the sidebar.
@@ -51,66 +53,54 @@ export const ExportPanel: React.FC = () => {
     if (sent) setLastPush(new Date().toLocaleTimeString());
   }, [placedCubes, cubeOperators]);
 
-  const statusColor: Record<string, string> = {
-    disconnected: '#64748b',
-    connecting: '#f59e0b',
-    connected: '#22c55e',
-    error: '#ef4444',
+  // Status dot color via Tailwind bg classes
+  const statusDotClass: Record<string, string> = {
+    disconnected: 'bg-slate-500',
+    connecting: 'bg-amber-400',
+    connected: 'bg-green-500',
+    error: 'bg-red-500',
   };
 
   const hasCubes = placedCubes.length > 0;
 
   return (
-    <div style={{ borderTop: '1px solid #334155', paddingTop: 12, marginTop: 12 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 8,
-      }}>
-        <span style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600 }}>Export</span>
+    <div className="border-t border-slate-700 pt-3 mt-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-slate-400 text-[11px] font-semibold">Export</span>
         <button
           onClick={() => setShowSettings(!showSettings)}
-          style={{
-            background: 'none', border: 'none', color: '#475569',
-            cursor: 'pointer', fontSize: 10, padding: '2px 4px',
-          }}
+          className="bg-transparent border-0 text-slate-600 hover:text-slate-400 cursor-pointer text-[10px] px-1 py-0.5"
         >
           {showSettings ? 'hide' : 'settings'}
         </button>
       </div>
 
       {/* Download JSON button */}
-      <button
+      <Button
         onClick={downloadAssemblyJSON}
         disabled={!hasCubes}
-        style={{
-          width: '100%', padding: 8, fontSize: 11,
-          background: hasCubes ? '#1e293b' : '#0f172a',
-          border: '1px solid #334155', borderRadius: 6,
-          color: hasCubes ? '#94a3b8' : '#475569',
-          cursor: hasCubes ? 'pointer' : 'default',
-          marginBottom: 6,
-        }}
+        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-slate-700 ${
+          hasCubes
+            ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+            : 'bg-slate-950 text-slate-600 cursor-default'
+        }`}
       >
         Download Assembly JSON
-      </button>
+      </Button>
 
       {/* View in AR button */}
-      <button
+      <Button
         onClick={() => setShowAR(true)}
         disabled={!hasCubes}
-        style={{
-          width: '100%', padding: 8, fontSize: 11,
-          background: hasCubes ? '#1e3a5f' : '#0f172a',
-          border: '1px solid #334155', borderRadius: 6,
-          color: hasCubes ? '#93c5fd' : '#475569',
-          cursor: hasCubes ? 'pointer' : 'default',
-          marginBottom: 6,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}
+        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-slate-700 flex items-center justify-center gap-1.5 ${
+          hasCubes
+            ? 'bg-blue-950 text-blue-300 hover:bg-blue-900'
+            : 'bg-slate-950 text-slate-600 cursor-default'
+        }`}
       >
-        <i className="fas fa-cube" style={{ fontSize: 10 }} />
+        <i className="fas fa-cube text-[10px]" />
         View in AR
-      </button>
+      </Button>
 
       {/* Saved States */}
       <SavedStatesPanel />
@@ -119,73 +109,61 @@ export const ExportPanel: React.FC = () => {
       {showAR && <ARViewer onClose={() => setShowAR(false)} />}
 
       {/* Live-link section */}
-      <div style={{
-        padding: 8, background: '#0f172a',
-        border: '1px solid #334155', borderRadius: 6,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: statusColor[linkStatus] || '#64748b',
-          }} />
-          <span style={{ color: '#94a3b8', fontSize: 10, flex: 1 }}>
+      <Separator className="bg-slate-700 my-2" />
+      <div className="p-2 bg-slate-950 border border-slate-700 rounded-md">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass[linkStatus] ?? 'bg-slate-500'}`} />
+          <span className="text-slate-400 text-[10px] flex-1">
             GH Live-Link: {linkStatus}
           </span>
-          <button
+          <Button
             onClick={handleConnect}
-            style={{
-              padding: '3px 8px', fontSize: 10, borderRadius: 4,
-              border: 'none', cursor: 'pointer',
-              background: linkStatus === 'connected' ? '#7f1d1d' : '#065f46',
-              color: 'white',
-            }}
+            className={`h-auto py-0.5 px-2 text-[10px] border-0 ${
+              linkStatus === 'connected'
+                ? 'bg-red-900 hover:bg-red-800 text-white'
+                : 'bg-emerald-900 hover:bg-emerald-800 text-white'
+            }`}
           >
             {linkStatus === 'connected' ? 'Stop' : 'Connect'}
-          </button>
+          </Button>
         </div>
 
         {linkStatus === 'connected' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
+          <div className="flex items-center gap-1.5">
+            <Button
               onClick={handleManualPush}
               disabled={!hasCubes}
-              style={{
-                flex: 1, padding: 4, fontSize: 10, borderRadius: 4,
-                border: '1px solid #334155', cursor: hasCubes ? 'pointer' : 'default',
-                background: '#1e293b', color: hasCubes ? '#94a3b8' : '#475569',
-              }}
+              className={`flex-1 h-auto py-1 text-[10px] border border-slate-700 ${
+                hasCubes
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-transparent text-slate-600 cursor-default'
+              }`}
             >
               Push Now
-            </button>
+            </Button>
             {lastPush && (
-              <span style={{ color: '#475569', fontSize: 9 }}>
-                {lastPush}
-              </span>
+              <span className="text-slate-600 text-[9px]">{lastPush}</span>
             )}
           </div>
         )}
 
         {linkStatus === 'disconnected' && (
-          <div style={{ color: '#475569', fontSize: 9, lineHeight: 1.4 }}>
-            Run <code style={{ color: '#60a5fa' }}>python cuboid_bridge_server.py</code> first
+          <div className="text-slate-600 text-[9px] leading-relaxed">
+            Run <code className="text-blue-400">python cuboid_bridge_server.py</code> first
           </div>
         )}
       </div>
 
       {/* Settings (port config) */}
       {showSettings && (
-        <div style={{ marginTop: 6, padding: 6, background: '#0f172a', borderRadius: 4, border: '1px solid #1e293b' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#64748b' }}>
+        <div className="mt-1.5 p-1.5 bg-slate-950 border border-slate-800 rounded">
+          <label className="flex items-center gap-1.5 text-[10px] text-slate-500">
             Port:
             <input
               type="number"
               value={port}
               onChange={(e) => setPort(Number(e.target.value))}
-              style={{
-                width: 60, padding: '2px 4px', fontSize: 10,
-                background: '#1e293b', border: '1px solid #334155',
-                borderRadius: 3, color: '#94a3b8',
-              }}
+              className="w-16 px-1 py-0.5 text-[10px] bg-slate-800 border border-slate-700 rounded text-slate-400"
             />
           </label>
         </div>

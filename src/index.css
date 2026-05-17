@@ -2,11 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  :root {
+    --background:             222 47% 11%;
+    --foreground:             0 0% 100%;
+    --card:                   217 33% 17%;
+    --card-foreground:        0 0% 100%;
+    --popover:                222 47% 11%;
+    --popover-foreground:     0 0% 100%;
+    --primary:                142 71% 45%;
+    --primary-foreground:     0 0% 100%;
+    --secondary:              215 28% 22%;
+    --secondary-foreground:   0 0% 100%;
+    --muted:                  217 33% 17%;
+    --muted-foreground:       215 16% 57%;
+    --accent:                 38 92% 50%;
+    --accent-foreground:      0 0% 0%;
+    --destructive:            0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border:                 217 33% 17%;
+    --input:                  215 28% 22%;
+    --ring:                   142 71% 45%;
+    --radius:                 0.5rem;
+  }
+
+  .dark {
+    --background:             222 47% 11%;
+    --foreground:             0 0% 100%;
+    --card:                   217 33% 17%;
+    --card-foreground:        0 0% 100%;
+    --popover:                222 47% 11%;
+    --popover-foreground:     0 0% 100%;
+    --primary:                142 71% 45%;
+    --primary-foreground:     0 0% 100%;
+    --secondary:              215 28% 22%;
+    --secondary-foreground:   0 0% 100%;
+    --muted:                  217 33% 17%;
+    --muted-foreground:       215 16% 57%;
+    --accent:                 38 92% 50%;
+    --accent-foreground:      0 0% 0%;
+    --destructive:            0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border:                 217 33% 17%;
+    --input:                  215 28% 22%;
+    --ring:                   142 71% 45%;
+  }
 }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -20,27 +63,13 @@ body {
  * 100dvh auto-adjusts as chrome shows/hides (iOS 15.4+).
  * 100vh is the fallback for older iOS — still broken there but acceptable. */
 .mobile-root {
-  height: 100vh;   /* universal fallback */
-  height: 100dvh;  /* overrides when supported: dynamic, adjusts for chrome */
+  height: 100vh;
+  height: 100dvh;
 }
 
-canvas {
-  display: block;
-}
+canvas { display: block; }
 
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1e293b;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1e293b; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }

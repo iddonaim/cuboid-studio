@@ -11,29 +11,16 @@ export const EncodingResultPanel: React.FC = () => {
   if (!encodingReasoning && !isEncoding) return null;
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      background: '#0f172a',
-      border: '1px solid #334155',
-      borderRadius: 8,
-      padding: 16,
-      width: 260,
-    }}>
+    <div className="absolute top-4 right-4 bg-slate-950 border border-slate-700 rounded-lg p-4 w-[260px]">
       {isEncoding ? (
-        <p style={{ color: '#94a3b8', fontSize: 12 }}>Encoding space...</p>
+        <p className="text-slate-400 text-xs">Encoding space...</p>
       ) : (
         <>
-          <p style={{ color: 'white', fontSize: 14, marginBottom: 8 }}>Space Encoded</p>
-          <div style={{
-            padding: 8, background: '#1e293b', borderRadius: 4,
-            color: '#cbd5e1', fontSize: 11, lineHeight: 1.5,
-            fontStyle: 'italic',
-          }}>
+          <p className="text-white text-sm mb-2">Space Encoded</p>
+          <div className="p-2 bg-slate-800 rounded text-slate-300 text-[11px] leading-relaxed italic">
             {encodingReasoning}
             {mode !== 'standalone' && seedCubes.length > 0 && (
-              <p style={{ color: '#94a3b8', fontSize: 11, margin: '6px 0 0 0' }}>
+              <p className="text-slate-400 text-[11px] mt-1.5 mb-0">
                 {seedCubes.length} preserved · {encodedCubes?.length ?? 0} added
               </p>
             )}

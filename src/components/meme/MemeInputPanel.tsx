@@ -6,6 +6,8 @@ import { ArchthesisBrowser } from './ArchthesisBrowser';
 import { SiteContextCurator } from './SiteContextCurator';
 import { getActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 
 export const MemeInputPanel: React.FC = () => {
   const memeDescription = useMemeStore(s => s.memeDescription);
@@ -55,26 +57,26 @@ export const MemeInputPanel: React.FC = () => {
     initWorkingCube();
   }, []);
 
+  const isDisabled = !memeDescription.trim() || (hasAssembly && !targetCubeId);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="flex flex-col gap-2.5">
       {/* Assembly mode: target cube indicator */}
       {hasAssembly && (
-        <div style={{
-          padding: 8, borderRadius: 6,
-          background: targetCubeId ? '#1c1917' : '#1e293b',
-          border: `1px solid ${targetCubeId ? '#d97706' : '#334155'}`,
-        }}>
+        <div className={`p-2 rounded-md border ${
+          targetCubeId ? 'bg-stone-900 border-amber-600' : 'bg-slate-800 border-slate-700'
+        }`}>
           {targetCubeId && targetCube ? (
             <div>
-              <div style={{ color: '#d97706', fontSize: 10, fontWeight: 600, marginBottom: 2 }}>
+              <div className="text-amber-500 text-[10px] font-semibold mb-0.5">
                 Target: {targetCube.variationId}
               </div>
-              <div style={{ color: '#78716c', fontSize: 9 }}>
+              <div className="text-stone-500 text-[9px]">
                 pos ({targetCube.position.map(p => p.toFixed(0)).join(', ')})
               </div>
             </div>
           ) : (
-            <div style={{ color: '#78716c', fontSize: 11 }}>
+            <div className="text-stone-500 text-[11px]">
               Click a cube in the assembly to target it
             </div>
           )}
@@ -84,16 +86,11 @@ export const MemeInputPanel: React.FC = () => {
       {/* Base variation selector — standalone mode only */}
       {!hasAssembly && (
         <div>
-          <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
-            Base Variation
-          </label>
+          <label className="text-slate-400 text-[11px] block mb-1">Base Variation</label>
           <select
             value={baseVariationId}
             onChange={(e) => setBaseVariation(e.target.value)}
-            style={{
-              width: '100%', padding: 6, background: '#1e293b', border: '1px solid #334155',
-              borderRadius: 4, color: 'white', fontSize: 11,
-            }}
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-[11px]"
           >
             {CUBE_VARIATIONS.map(v => (
               <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
@@ -103,16 +100,12 @@ export const MemeInputPanel: React.FC = () => {
       )}
 
       {/* Browse from archthesis */}
-      <button
+      <Button
         onClick={() => setShowBrowser(true)}
-        style={{
-          padding: 8, background: '#1e293b', border: '1px solid #334155',
-          borderRadius: 6, color: '#94a3b8', cursor: 'pointer',
-          fontSize: 11, fontWeight: 500, textAlign: 'left' as const,
-        }}
+        className="w-full h-auto py-2 px-3 bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 text-[11px] font-medium justify-start"
       >
         Browse from archthesis...
-      </button>
+      </Button>
 
       <ArchthesisBrowser
         open={showBrowser}
@@ -121,55 +114,34 @@ export const MemeInputPanel: React.FC = () => {
       />
 
       {/* Site context curator */}
-      <button
+      <Button
         onClick={() => setShowSiteContext(true)}
-        style={{
-          padding: 8, background: activeSiteContext ? '#1e3a2f' : '#1e293b',
-          border: `1px solid ${activeSiteContext ? '#22c55e' : '#334155'}`,
-          borderRadius: 6, color: activeSiteContext ? '#22c55e' : '#94a3b8', cursor: 'pointer',
-          fontSize: 11, fontWeight: 500, textAlign: 'left' as const,
-        }}
+        className={`w-full h-auto py-2 px-3 text-[11px] font-medium justify-start border ${
+          activeSiteContext
+            ? 'bg-emerald-950 border-green-700 text-green-400 hover:bg-emerald-900'
+            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+        }`}
       >
-        {activeSiteContext
-          ? `Site: ${activeSiteContext.site_name}`
-          : 'Set site context...'}
-      </button>
+        {activeSiteContext ? `Site: ${activeSiteContext.site_name}` : 'Set site context...'}
+      </Button>
 
-      <SiteContextCurator
-        open={showSiteContext}
-        onClose={handleCloseSiteContext}
-      />
+      <SiteContextCurator open={showSiteContext} onClose={handleCloseSiteContext} />
 
       {/* Selected meme thumbnail */}
       {selectedMemeImageUrl && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: 6, background: '#1e293b', borderRadius: 6,
-          border: '1px solid #334155',
-        }}>
+        <div className="flex items-center gap-2 p-1.5 bg-slate-800 border border-slate-700 rounded-md">
           <img
             src={selectedMemeImageUrl}
             alt={selectedMemeTitle || 'selected meme'}
-            style={{
-              width: 48, height: 48, borderRadius: 4,
-              objectFit: 'contain', background: '#0f172a',
-            }}
+            className="w-12 h-12 rounded object-contain bg-slate-900 flex-shrink-0"
           />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              color: 'white', fontSize: 10, fontWeight: 500,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {selectedMemeTitle}
-            </div>
-            <div style={{ color: '#64748b', fontSize: 9 }}>from archthesis</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-white text-[10px] font-medium truncate">{selectedMemeTitle}</div>
+            <div className="text-slate-500 text-[9px]">from archthesis</div>
           </div>
           <button
             onClick={() => setSelectedMeme(null, null)}
-            style={{
-              background: 'none', border: 'none', color: '#64748b',
-              cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1,
-            }}
+            className="text-slate-500 hover:text-slate-300 text-sm leading-none px-0.5 bg-transparent border-0 cursor-pointer"
           >
             &times;
           </button>
@@ -178,7 +150,7 @@ export const MemeInputPanel: React.FC = () => {
 
       {/* Meme description */}
       <div>
-        <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
+        <label className="text-slate-400 text-[11px] block mb-1">
           Describe the meme or paste its content
         </label>
         <textarea
@@ -186,45 +158,34 @@ export const MemeInputPanel: React.FC = () => {
           onChange={(e) => setMemeDescription(e.target.value)}
           placeholder="A viral meme about gentrification in south Tel Aviv..."
           rows={4}
-          style={{
-            width: '100%', padding: 8, background: '#1e293b', border: '1px solid #334155',
-            borderRadius: 4, color: 'white', fontSize: 12, resize: 'vertical',
-            fontFamily: 'inherit', boxSizing: 'border-box',
-          }}
+          className="w-full px-2 py-2 bg-slate-800 border border-slate-700 rounded text-white text-xs resize-y font-[inherit] box-border"
         />
       </div>
 
       {/* Location tag */}
       <div>
-        <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
-          Location tag (optional)
-        </label>
+        <label className="text-slate-400 text-[11px] block mb-1">Location tag (optional)</label>
         <input
           type="text"
           value={locationTag}
           onChange={(e) => setLocationTag(e.target.value)}
           placeholder="e.g., Dizengoff Center, Tel Aviv"
-          style={{
-            width: '100%', padding: 6, background: '#1e293b', border: '1px solid #334155',
-            borderRadius: 4, color: 'white', fontSize: 12, boxSizing: 'border-box',
-          }}
+          className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs box-border"
         />
       </div>
 
       {/* Engagement level */}
       <div>
-        <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
+        <label className="text-slate-400 text-[11px] block mb-1">
           Engagement level: {engagementLevel}
         </label>
-        <input
-          type="range"
+        <Slider
           min={0}
           max={100}
-          value={engagementLevel}
-          onChange={(e) => setEngagementLevel(Number(e.target.value))}
-          style={{ width: '100%' }}
+          value={[engagementLevel]}
+          onValueChange={([v]) => setEngagementLevel(v)}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontSize: 9 }}>
+        <div className="flex justify-between text-slate-600 text-[9px] mt-0.5">
           <span>Low</span>
           <span>High</span>
         </div>
@@ -232,39 +193,23 @@ export const MemeInputPanel: React.FC = () => {
 
       {/* Pass mode: v1 single-pass vs v2 two-pass */}
       <div>
-        <label style={{ color: '#94a3b8', fontSize: 11, display: 'block', marginBottom: 4 }}>
-          Translation mode
-        </label>
-        <div style={{
-          display: 'flex', borderRadius: 6, overflow: 'hidden',
-          border: '1px solid #334155',
-        }}>
+        <label className="text-slate-400 text-[11px] block mb-1">Translation mode</label>
+        <div className="flex border border-slate-700 rounded-md overflow-hidden">
           <button
             onClick={() => setPassMode('single')}
             disabled={isTranslating}
-            style={{
-              flex: 1, padding: '6px 8px',
-              background: passMode === 'single' ? '#334155' : '#0f172a',
-              border: 'none',
-              color: passMode === 'single' ? 'white' : '#64748b',
-              cursor: isTranslating ? 'not-allowed' : 'pointer',
-              fontSize: 11, fontWeight: passMode === 'single' ? 600 : 400,
-            }}
+            className={`flex-1 py-1.5 px-2 text-[11px] border-0 disabled:cursor-not-allowed ${
+              passMode === 'single' ? 'bg-slate-600 text-white font-semibold' : 'bg-slate-900 text-slate-500'
+            }`}
           >
             Single pass
           </button>
           <button
             onClick={() => setPassMode('two_pass')}
             disabled={isTranslating}
-            style={{
-              flex: 1, padding: '6px 8px',
-              background: passMode === 'two_pass' ? '#334155' : '#0f172a',
-              border: 'none',
-              borderLeft: '1px solid #334155',
-              color: passMode === 'two_pass' ? 'white' : '#64748b',
-              cursor: isTranslating ? 'not-allowed' : 'pointer',
-              fontSize: 11, fontWeight: passMode === 'two_pass' ? 600 : 400,
-            }}
+            className={`flex-1 py-1.5 px-2 text-[11px] border-0 border-l border-slate-700 disabled:cursor-not-allowed ${
+              passMode === 'two_pass' ? 'bg-slate-600 text-white font-semibold' : 'bg-slate-900 text-slate-500'
+            }`}
           >
             Two-pass (v2)
           </button>
@@ -272,25 +217,19 @@ export const MemeInputPanel: React.FC = () => {
       </div>
 
       {/* Translate button */}
-      <button
+      <Button
         onClick={translate}
-        disabled={isTranslating || !memeDescription.trim() || (hasAssembly && !targetCubeId)}
-        style={{
-          padding: 10, background: isTranslating ? '#334155' : '#065f46', border: 'none',
-          borderRadius: 6, color: 'white', cursor: isTranslating ? 'wait' : 'pointer',
-          fontSize: 12, fontWeight: 600,
-          opacity: ((!memeDescription.trim() || (hasAssembly && !targetCubeId)) && !isTranslating) ? 0.5 : 1,
-        }}
+        disabled={isTranslating || isDisabled}
+        className={`w-full h-auto py-2.5 text-xs font-semibold text-white border-0 ${
+          isTranslating ? 'bg-slate-700 cursor-wait' : 'bg-emerald-900 hover:bg-emerald-800'
+        } ${isDisabled && !isTranslating ? 'opacity-50' : ''}`}
       >
         {isTranslating ? 'Translating...' : hasAssembly && !targetCubeId ? 'Select a cube first' : 'Translate'}
-      </button>
+      </Button>
 
       {/* Error display */}
       {lastError && (
-        <div style={{
-          padding: 8, background: '#7f1d1d', borderRadius: 4,
-          color: '#fca5a5', fontSize: 11, lineHeight: 1.4,
-        }}>
+        <div className="p-2 bg-red-900 rounded text-red-300 text-[11px] leading-relaxed">
           {lastError}
         </div>
       )}

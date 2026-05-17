@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
-import type { LLMOperatorResult, LLMCutterResult } from '../../lib/operators/types';
+import type { LLMOperatorResult } from '../../lib/operators/types';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 
-/** Debounced slider that only fires reapply after user stops dragging */
+/** Compact slider row that only fires reapply after user stops dragging */
 const TweakSlider: React.FC<{
   label: string;
   value: number;
@@ -11,18 +13,17 @@ const TweakSlider: React.FC<{
   step: number;
   onChange: (v: number) => void;
 }> = ({ label, value, min, max, step, onChange }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-    <span style={{ color: '#94a3b8', fontSize: 9, width: 24, flexShrink: 0 }}>{label}</span>
-    <input
-      type="range"
+  <div className="flex items-center gap-1.5">
+    <span className="text-slate-400 text-[9px] w-6 flex-shrink-0">{label}</span>
+    <Slider
       min={min}
       max={max}
       step={step}
-      value={value}
-      onChange={e => onChange(Number(e.target.value))}
-      style={{ flex: 1, height: 12 }}
+      value={[value]}
+      onValueChange={([v]) => onChange(v)}
+      className="flex-1"
     />
-    <span style={{ color: '#64748b', fontSize: 9, width: 32, textAlign: 'right' as const }}>
+    <span className="text-slate-500 text-[9px] w-8 text-right">
       {value.toFixed(step < 0.1 ? 2 : 1)}
     </span>
   </div>
@@ -38,7 +39,7 @@ export const CutterTweakPanel: React.FC = () => {
   const cutterVisible = useMemeStore(s => s.cutterVisible);
   const setCutterVisible = useMemeStore(s => s.setCutterVisible);
 
-  // Local state for slider values -- synced from lastResult when it changes from a new translation
+  // Local state for slider values — synced from lastResult when a new translation arrives
   const [magnitude, setMagnitude] = useState(0.5);
   const [posX, setPosX] = useState(0);
   const [posY, setPosY] = useState(0);
@@ -50,12 +51,11 @@ export const CutterTweakPanel: React.FC = () => {
   const [rotY, setRotY] = useState(0);
   const [rotZ, setRotZ] = useState(0);
 
-  // Track the operator count so we know when a NEW translation arrives vs a tweak
+  // Track operator count to distinguish new translations from tweaks
   const lastOperatorCount = useRef(0);
 
   useEffect(() => {
     if (!lastResult) return;
-    // Only sync sliders when a genuinely new operator was added
     if (operators.length !== lastOperatorCount.current) {
       lastOperatorCount.current = operators.length;
       setMagnitude(lastResult.magnitude);
@@ -71,7 +71,7 @@ export const CutterTweakPanel: React.FC = () => {
     }
   }, [lastResult, operators.length]);
 
-  // Debounce reapply -- wait 150ms after last slider change
+  // Debounce reapply — wait 150ms after last slider change
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const applyTweaks = useCallback((overrides: Partial<{
     mag: number;
@@ -104,33 +104,25 @@ export const CutterTweakPanel: React.FC = () => {
   };
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', gap: 6,
-      padding: 8, background: '#1e293b', borderRadius: 6,
-      border: '1px solid #334155',
-    }}>
-      <label style={{
-        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-      }}>
-        <input
-          type="checkbox"
+    <div className="flex flex-col gap-1.5 p-2 bg-slate-800 border border-slate-700 rounded-md">
+      <div className="flex items-center gap-1.5">
+        <Switch
           checked={cutterVisible}
-          onChange={e => setCutterVisible(e.target.checked)}
-          style={{ margin: 0, accentColor: '#ef4444' }}
+          onCheckedChange={setCutterVisible}
+          id="cutter-visible"
+          className="data-[state=checked]:bg-red-500"
         />
-        <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 600 }}>
+        <label htmlFor="cutter-visible" className="text-slate-400 text-[10px] font-semibold cursor-pointer">
           Show cutter — {lastResult.cutter.type}
-        </span>
-      </label>
+        </label>
+      </div>
 
       {cutterVisible && (
         <>
-          {/* Magnitude */}
           <TweakSlider label="Mag" value={magnitude} min={0.05} max={1} step={0.01}
             onChange={makeHandler(setMagnitude, 'mag')} />
 
-          {/* Position */}
-          <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Position</div>
+          <div className="text-slate-500 text-[9px] mt-0.5">Position</div>
           <TweakSlider label="X" value={posX} min={-1} max={1} step={0.05}
             onChange={makeHandler(setPosX, 'px')} />
           <TweakSlider label="Y" value={posY} min={-1} max={1} step={0.05}
@@ -138,8 +130,7 @@ export const CutterTweakPanel: React.FC = () => {
           <TweakSlider label="Z" value={posZ} min={-1} max={1} step={0.05}
             onChange={makeHandler(setPosZ, 'pz')} />
 
-          {/* Proportions */}
-          <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Proportions</div>
+          <div className="text-slate-500 text-[9px] mt-0.5">Proportions</div>
           <TweakSlider label="X" value={propX} min={0.05} max={2} step={0.05}
             onChange={makeHandler(setPropX, 'sx')} />
           <TweakSlider label="Y" value={propY} min={0.05} max={2} step={0.05}
@@ -147,8 +138,7 @@ export const CutterTweakPanel: React.FC = () => {
           <TweakSlider label="Z" value={propZ} min={0.05} max={2} step={0.05}
             onChange={makeHandler(setPropZ, 'sz')} />
 
-          {/* Rotation */}
-          <div style={{ color: '#64748b', fontSize: 9, marginTop: 2 }}>Rotation</div>
+          <div className="text-slate-500 text-[9px] mt-0.5">Rotation</div>
           <TweakSlider label="X" value={rotX} min={0} max={360} step={5}
             onChange={makeHandler(setRotX, 'rx')} />
           <TweakSlider label="Y" value={rotY} min={0} max={360} step={5}

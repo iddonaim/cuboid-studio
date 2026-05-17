@@ -11,6 +11,9 @@ interface Props {
  * Tiny SVG sparkline showing compressibility score over generations.
  * The slope of the line = interestingness (compression progress).
  * Green segments = positive delta (interesting), red = negative (boring).
+ *
+ * NOTE: All SVG rendering logic (coordinate math, segment colors, dot positions)
+ * is intentionally unchanged. Only wrapper/legend styles were migrated.
  */
 export const CompressibilitySparkline: React.FC<Props> = ({
   log,
@@ -19,18 +22,10 @@ export const CompressibilitySparkline: React.FC<Props> = ({
 }) => {
   if (log.length < 2) {
     return (
-      <div style={{
-        width,
-        height,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#475569',
-        fontSize: 10,
-        border: '1px solid #334155',
-        borderRadius: 4,
-        background: '#1e293b',
-      }}>
+      <div
+        className="flex items-center justify-center text-slate-600 text-[10px] border border-slate-700 rounded bg-slate-800"
+        style={{ width, height }}
+      >
         {log.length === 0 ? 'No data yet' : 'Need 2+ generations'}
       </div>
     );
@@ -51,7 +46,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
     y: padding + plotH - ((score - minScore) / range) * plotH,
   }));
 
-  // Build line segments coloured by delta
+  // Build line segments coloured by delta — do not modify this rendering logic
   const segments: React.ReactNode[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     const delta = log[i + 1].delta;
@@ -70,7 +65,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
     );
   }
 
-  // Dots at each data point
+  // Dots at each data point — do not modify this rendering logic
   const dots = points.map((p, i) => (
     <circle
       key={i}
@@ -82,27 +77,14 @@ export const CompressibilitySparkline: React.FC<Props> = ({
   ));
 
   return (
-    <div style={{
-      border: '1px solid #334155',
-      borderRadius: 4,
-      background: '#1e293b',
-      padding: 0,
-    }}>
+    <div className="border border-slate-700 rounded bg-slate-800">
       <svg width={width} height={height}>
         {segments}
         {dots}
       </svg>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '2px 6px 4px',
-        fontSize: 9,
-        color: '#64748b',
-      }}>
+      <div className="flex justify-between px-1.5 pb-1 pt-0.5 text-[9px] text-slate-500">
         <span>Gen 1</span>
-        <span style={{ color: '#94a3b8' }}>
-          {scores[scores.length - 1].toFixed(3)}
-        </span>
+        <span className="text-slate-400">{scores[scores.length - 1].toFixed(3)}</span>
         <span>Gen {log.length}</span>
       </div>
     </div>

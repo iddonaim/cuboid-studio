@@ -4,6 +4,9 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { computeCompressibility } from '../../lib/evolution/compressibility';
 import { CompressibilitySparkline } from './CompressibilitySparkline';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Separator } from '@/components/ui/separator';
 
 /**
  * Evolution Mode sidebar panel.
@@ -62,28 +65,19 @@ export const EvolutionPanel: React.FC = () => {
 
   const operatedCount = placedCubes.filter(c => (cubeOperators[c.id]?.length ?? 0) > 0).length;
   const hasAssembly = placedCubes.length > 0;
+  const generateDisabled = isGenerating || !hasAssembly || memePool.length === 0;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
 
       {/* Header + generation counter */}
       <div>
-        <div style={{ color: '#94a3b8', fontSize: 11, marginBottom: 4 }}>
-          Evolution Mode
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{
-            display: 'inline-block',
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: '#334155',
-            color: '#e2e8f0',
-            fontSize: 11,
-            fontWeight: 600,
-          }}>
+        <div className="text-slate-400 text-[11px] mb-1">Evolution Mode</div>
+        <div className="flex items-center gap-2">
+          <span className="inline-block px-2 py-0.5 rounded bg-slate-700 text-slate-200 text-[11px] font-semibold">
             Gen {generation}
           </span>
-          <span style={{ color: '#64748b', fontSize: 10 }}>
+          <span className="text-slate-500 text-[10px]">
             {placedCubes.length} cubes &middot; {operatedCount} modified
           </span>
         </div>
@@ -91,16 +85,16 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Compressibility sparkline */}
       <div>
-        <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 4, fontWeight: 600 }}>
+        <div className="text-slate-400 text-[10px] font-semibold mb-1">
           Compressibility over time
         </div>
         <CompressibilitySparkline log={compressibilityLog} />
         {compressibilityLog.length > 0 && (
-          <div style={{
-            marginTop: 4,
-            fontSize: 9,
-            color: compressibilityLog[compressibilityLog.length - 1].delta > 0 ? '#22c55e' : '#ef4444',
-          }}>
+          <div className={`mt-1 text-[9px] ${
+            compressibilityLog[compressibilityLog.length - 1].delta > 0
+              ? 'text-green-500'
+              : 'text-red-500'
+          }`}>
             Last delta: {compressibilityLog[compressibilityLog.length - 1].delta > 0 ? '+' : ''}
             {compressibilityLog[compressibilityLog.length - 1].delta.toFixed(4)}
             {compressibilityLog[compressibilityLog.length - 1].delta > 0 ? ' (interesting)' : ' (less interesting)'}
@@ -110,79 +104,49 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Score breakdown */}
       {currentScore.total > 0 && (
-        <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
-          <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, fontWeight: 600 }}>
-            Score breakdown
-          </div>
+        <div className="border-t border-slate-700 pt-2">
+          <div className="text-slate-400 text-[10px] font-semibold mb-1.5">Score breakdown</div>
           {([
             ['Geometric clustering', currentScore.geometricClustering, '30%'],
             ['Spatial regularity', currentScore.spatialRegularity, '30%'],
             ['Operator sequence', currentScore.operatorSequence, '20%'],
             ['Meme coherence', currentScore.memeCoherence, '20%'],
           ] as const).map(([label, value, weight]) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-              <span style={{ color: '#64748b', fontSize: 9, width: 90, flexShrink: 0 }}>{label}</span>
-              <div style={{
-                flex: 1,
-                height: 4,
-                background: '#334155',
-                borderRadius: 2,
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${Math.max(1, value * 100)}%`,
-                  height: '100%',
-                  background: '#60a5fa',
-                  borderRadius: 2,
-                }} />
+            <div key={label} className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-slate-500 text-[9px] w-[90px] flex-shrink-0">{label}</span>
+              <div className="flex-1 h-1 bg-slate-700 rounded overflow-hidden">
+                <div
+                  className="h-full bg-blue-400 rounded"
+                  style={{ width: `${Math.max(1, value * 100)}%` }}
+                />
               </div>
-              <span style={{ color: '#94a3b8', fontSize: 9, width: 28, textAlign: 'right' }}>
-                {value.toFixed(2)}
-              </span>
-              <span style={{ color: '#475569', fontSize: 8, width: 20 }}>
-                {weight}
-              </span>
+              <span className="text-slate-400 text-[9px] w-7 text-right">{value.toFixed(2)}</span>
+              <span className="text-slate-600 text-[8px] w-5">{weight}</span>
             </div>
           ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-            <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 600 }}>Total</span>
-            <span style={{ color: '#e2e8f0', fontSize: 10, fontWeight: 600 }}>{currentScore.total.toFixed(4)}</span>
+          <div className="flex justify-between mt-1">
+            <span className="text-slate-400 text-[10px] font-semibold">Total</span>
+            <span className="text-slate-200 text-[10px] font-semibold">{currentScore.total.toFixed(4)}</span>
           </div>
         </div>
       )}
 
       {/* Error message */}
       {lastError && (
-        <div style={{
-          padding: 8,
-          background: '#7f1d1d',
-          borderRadius: 4,
-          color: '#fca5a5',
-          fontSize: 11,
-          lineHeight: 1.4,
-        }}>
+        <div className="p-2 bg-red-900 rounded text-red-300 text-[11px] leading-relaxed">
           {lastError}
         </div>
       )}
 
       {/* Meme pool status */}
-      <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
-        <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 4 }}>
+      <div className="border-t border-slate-700 pt-2">
+        <div className="text-slate-400 text-[10px] mb-1">
           Meme pool: {isFetchingMemes ? 'loading...' : `${memePool.length} memes`}
         </div>
         {memePool.length === 0 && !isFetchingMemes && (
           <button
             onClick={fetchMemePool}
-            style={{
-              padding: 6,
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: '#94a3b8',
-              cursor: 'pointer',
-              fontSize: 10,
-              width: '100%',
-            }}
+            className="w-full py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 cursor-pointer text-[10px]"
           >
             Fetch memes
           </button>
@@ -190,31 +154,25 @@ export const EvolutionPanel: React.FC = () => {
       </div>
 
       {/* Generate button */}
-      <button
+      <Button
         onClick={generateCandidates}
-        disabled={isGenerating || !hasAssembly || memePool.length === 0}
-        style={{
-          padding: 10,
-          background: isGenerating || !hasAssembly || memePool.length === 0 ? '#334155' : '#065f46',
-          border: 'none',
-          borderRadius: 6,
-          color: isGenerating || !hasAssembly || memePool.length === 0 ? '#475569' : 'white',
-          cursor: isGenerating || !hasAssembly || memePool.length === 0 ? 'default' : 'pointer',
-          fontSize: 12,
-          fontWeight: 600,
-          width: '100%',
-        }}
+        disabled={generateDisabled}
+        className={`w-full h-auto py-2.5 text-xs font-semibold border-0 ${
+          generateDisabled
+            ? 'bg-slate-700 text-slate-500 cursor-default'
+            : 'bg-emerald-900 hover:bg-emerald-800 text-white'
+        }`}
       >
         {isGenerating ? `Generating ${config.populationSize} candidates...` : 'Generate candidates'}
-      </button>
+      </Button>
 
       {/* Candidate list */}
       {candidates.length > 0 && (
-        <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
-          <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, fontWeight: 600 }}>
+        <div className="border-t border-slate-700 pt-2">
+          <div className="text-slate-400 text-[10px] font-semibold mb-1.5">
             Candidates (ranked by interestingness)
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div className="flex flex-col gap-1">
             {candidates.map((candidate, idx) => {
               const isSelected = selectedCandidateId === candidate.id;
               const isPreviewing = previewCandidateId === candidate.id;
@@ -225,85 +183,51 @@ export const EvolutionPanel: React.FC = () => {
                     previewCandidate(candidate.id);
                     selectCandidate(candidate.id);
                   }}
-                  style={{
-                    padding: 8,
-                    borderRadius: 6,
-                    background: isSelected ? '#1e3a2f' : isPreviewing ? '#1e293b' : '#0f172a',
-                    border: `1px solid ${isSelected ? '#22c55e' : isPreviewing ? '#f59e0b' : '#334155'}`,
-                    cursor: 'pointer',
-                  }}
+                  className={`p-2 rounded-md border cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-950 border-green-600'
+                      : isPreviewing
+                      ? 'bg-slate-800 border-amber-500'
+                      : 'bg-slate-950 border-slate-700'
+                  }`}
                 >
                   {/* Rank + score */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 600 }}>
-                      #{idx + 1}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{
-                        fontSize: 10,
-                        color: candidate.compressionProgress > 0 ? '#22c55e' : candidate.compressionProgress < 0 ? '#ef4444' : '#64748b',
-                        fontWeight: 600,
-                      }}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-slate-400 text-[10px] font-semibold">#{idx + 1}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-semibold ${
+                        candidate.compressionProgress > 0
+                          ? 'text-green-500'
+                          : candidate.compressionProgress < 0
+                          ? 'text-red-500'
+                          : 'text-slate-500'
+                      }`}>
                         {candidate.compressionProgress > 0 ? '+' : ''}
                         {candidate.compressionProgress.toFixed(4)}
                       </span>
-                      {/* Mini progress indicator */}
-                      <div style={{
-                        width: 40,
-                        height: 4,
-                        background: '#334155',
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          width: `${Math.min(100, Math.max(0, (candidate.compressionProgress + 0.5) * 100))}%`,
-                          height: '100%',
-                          background: candidate.compressionProgress > 0 ? '#22c55e' : '#ef4444',
-                          borderRadius: 2,
-                        }} />
+                      <div className="w-10 h-1 bg-slate-700 rounded overflow-hidden">
+                        <div
+                          className={`h-full rounded ${candidate.compressionProgress > 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, Math.max(0, (candidate.compressionProgress + 0.5) * 100))}%` }}
+                        />
                       </div>
                     </div>
                   </div>
 
                   {/* Meme description (truncated) */}
-                  <div style={{
-                    color: '#cbd5e1',
-                    fontSize: 10,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    marginBottom: 2,
-                  }}>
+                  <div className="text-slate-300 text-[10px] truncate mb-0.5">
                     {candidate.memeDescription.split('\n')[0]}
                   </div>
 
                   {/* Target cube + operator */}
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    <span style={{
-                      padding: '1px 6px',
-                      borderRadius: 3,
-                      background: '#334155',
-                      color: '#94a3b8',
-                      fontSize: 9,
-                    }}>
+                  <div className="flex gap-1 flex-wrap">
+                    <span className="px-1.5 py-px rounded bg-slate-700 text-slate-400 text-[9px]">
                       {candidate.cutterConfig.operator}
                     </span>
-                    <span style={{
-                      padding: '1px 6px',
-                      borderRadius: 3,
-                      background: '#334155',
-                      color: '#94a3b8',
-                      fontSize: 9,
-                    }}>
+                    <span className="px-1.5 py-px rounded bg-slate-700 text-slate-400 text-[9px]">
                       {candidate.cutterConfig.cutter.type}
                     </span>
-                    <span style={{
-                      padding: '1px 6px',
-                      borderRadius: 3,
-                      background: '#334155',
-                      color: '#64748b',
-                      fontSize: 9,
-                    }}>
+                    <span className="px-1.5 py-px rounded bg-slate-700 text-slate-500 text-[9px]">
                       cube {candidate.targetCubeId.slice(-4)}
                     </span>
                   </div>
@@ -313,70 +237,48 @@ export const EvolutionPanel: React.FC = () => {
           </div>
 
           {/* Apply + Undo buttons */}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button
+          <div className="flex gap-1.5 mt-2">
+            <Button
               onClick={applySelected}
               disabled={!selectedCandidateId}
-              style={{
-                flex: 1,
-                padding: 10,
-                background: selectedCandidateId ? '#065f46' : '#334155',
-                border: 'none',
-                borderRadius: 6,
-                color: selectedCandidateId ? 'white' : '#475569',
-                cursor: selectedCandidateId ? 'pointer' : 'default',
-                fontSize: 12,
-                fontWeight: 600,
-              }}
+              className={`flex-1 h-auto py-2.5 text-xs font-semibold border-0 ${
+                selectedCandidateId
+                  ? 'bg-emerald-900 hover:bg-emerald-800 text-white'
+                  : 'bg-slate-700 text-slate-500 cursor-default'
+              }`}
             >
               Apply
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 previewCandidate(null);
                 undoLastGeneration();
               }}
               disabled={generation === 0}
-              style={{
-                padding: '10px 12px',
-                background: generation > 0 ? '#7f1d1d' : '#334155',
-                border: 'none',
-                borderRadius: 6,
-                color: generation > 0 ? 'white' : '#475569',
-                cursor: generation > 0 ? 'pointer' : 'default',
-                fontSize: 12,
-              }}
+              className={`h-auto py-2.5 px-3 text-xs border-0 ${
+                generation > 0
+                  ? 'bg-red-900 hover:bg-red-800 text-white'
+                  : 'bg-slate-700 text-slate-500 cursor-default'
+              }`}
             >
               Undo
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {/* Config section */}
-      <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
-        <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 8, fontWeight: 600 }}>
-          Settings
-        </div>
+      <Separator className="bg-slate-700" />
+      <div className="pb-2">
+        <div className="text-slate-400 text-[10px] font-semibold mb-2">Settings</div>
 
         {/* Target strategy */}
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ color: '#94a3b8', fontSize: 10, display: 'block', marginBottom: 4 }}>
-            Target strategy
-          </label>
+        <div className="mb-2">
+          <label className="text-slate-400 text-[10px] block mb-1">Target strategy</label>
           <select
             value={config.targetCubeStrategy}
             onChange={(e) => setConfig({ targetCubeStrategy: e.target.value as 'random' | 'least-compressed' | 'adaptive' })}
-            style={{
-              width: '100%',
-              padding: 6,
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: 'white',
-              fontSize: 11,
-              boxSizing: 'border-box',
-            }}
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-[11px] box-border"
           >
             <option value="least-compressed">Least compressed (focus on untouched cubes)</option>
             <option value="adaptive">Adaptive (mix of focused + random)</option>
@@ -385,38 +287,34 @@ export const EvolutionPanel: React.FC = () => {
         </div>
 
         {/* Population size */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <label style={{ color: '#94a3b8', fontSize: 10 }}>Candidates per generation</label>
-            <span style={{ color: '#e2e8f0', fontSize: 10 }}>{config.populationSize}</span>
+        <div className="mb-2">
+          <div className="flex justify-between mb-1">
+            <label className="text-slate-400 text-[10px]">Candidates per generation</label>
+            <span className="text-slate-200 text-[10px]">{config.populationSize}</span>
           </div>
-          <input
-            type="range"
+          <Slider
             min={2}
             max={12}
             step={1}
-            value={config.populationSize}
-            onChange={(e) => setConfig({ populationSize: parseInt(e.target.value) })}
-            style={{ width: '100%' }}
+            value={[config.populationSize]}
+            onValueChange={([v]) => setConfig({ populationSize: v })}
           />
         </div>
 
         {/* Selection pressure */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <label style={{ color: '#94a3b8', fontSize: 10 }}>Algorithm vs. intuition</label>
-            <span style={{ color: '#e2e8f0', fontSize: 10 }}>{Math.round(config.selectionPressure * 100)}%</span>
+        <div className="mb-2">
+          <div className="flex justify-between mb-1">
+            <label className="text-slate-400 text-[10px]">Algorithm vs. intuition</label>
+            <span className="text-slate-200 text-[10px]">{Math.round(config.selectionPressure * 100)}%</span>
           </div>
-          <input
-            type="range"
+          <Slider
             min={0}
             max={100}
             step={5}
-            value={config.selectionPressure * 100}
-            onChange={(e) => setConfig({ selectionPressure: parseInt(e.target.value) / 100 })}
-            style={{ width: '100%' }}
+            value={[config.selectionPressure * 100]}
+            onValueChange={([v]) => setConfig({ selectionPressure: v / 100 })}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#475569', marginTop: 2 }}>
+          <div className="flex justify-between text-[9px] text-slate-600 mt-0.5">
             <span>Your choice matters more</span>
             <span>Algorithm decides</span>
           </div>
@@ -424,24 +322,13 @@ export const EvolutionPanel: React.FC = () => {
 
         {/* Meme filter */}
         <div>
-          <label style={{ color: '#94a3b8', fontSize: 10, display: 'block', marginBottom: 4 }}>
-            Meme tag filter (optional)
-          </label>
+          <label className="text-slate-400 text-[10px] block mb-1">Meme tag filter (optional)</label>
           <input
             type="text"
             value={config.memePoolFilter || ''}
             onChange={(e) => setConfig({ memePoolFilter: e.target.value || null })}
             placeholder="e.g. architecture"
-            style={{
-              width: '100%',
-              padding: 6,
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 4,
-              color: 'white',
-              fontSize: 11,
-              boxSizing: 'border-box',
-            }}
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-[11px] box-border"
           />
         </div>
       </div>

@@ -11,24 +11,14 @@ export const CubeThumbnail: React.FC<CubeThumbnailProps> = ({ variation, selecte
   return (
     <div
       onClick={onClick}
-      style={{
-        width: 70,
-        height: 70,
-        borderRadius: 6,
-        cursor: 'pointer',
-        border: selected ? '2px solid #818cf8' : '2px solid transparent',
-        background: selected ? '#4f46e5' : '#1e293b',
-        overflow: 'hidden',
-      }}
+      className={`w-[70px] h-[70px] rounded-md cursor-pointer border-2 overflow-hidden ${
+        selected ? 'border-indigo-400 bg-indigo-600' : 'border-transparent bg-slate-800'
+      }`}
     >
       <img
         src={`/thumbnails/${variation.id}.png`}
         alt={variation.id}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-        }}
+        className="w-full h-full object-cover"
       />
     </div>
   );

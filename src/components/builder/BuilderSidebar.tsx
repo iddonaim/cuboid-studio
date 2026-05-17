@@ -5,6 +5,11 @@ import { CubeThumbnail } from './CubeThumbnail';
 import { RulesToggle } from './RulesToggle';
 import { StrictRulesToggle } from './StrictRulesToggle';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export const BuilderSidebar: React.FC = () => {
   const isMobile = useIsMobile();
@@ -45,9 +50,9 @@ export const BuilderSidebar: React.FC = () => {
 
   return (
     <>
-      <p style={{ color: '#64748b', fontSize: 12, marginBottom: 12 }}>
+      <p className="text-slate-500 text-xs mb-3">
         {CUBE_VARIATIONS.length} variations {'\u2022'} {placedCubes.length} placed
-        {isGenerating && <span style={{ color: '#fbbf24' }}> {'\u2022'} Generating...</span>}
+        {isGenerating && <span className="text-amber-400"> {'\u2022'} Generating...</span>}
       </p>
 
       <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
@@ -58,158 +63,133 @@ export const BuilderSidebar: React.FC = () => {
       />
 
       {/* Install PWA section */}
-      <div style={{
-        marginBottom: 12,
-        padding: 10,
-        background: showInstallButton ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : '#1e293b',
-        border: showInstallButton ? '1px solid #1e40af' : '1px solid #334155',
-        borderRadius: 6,
-      }}>
+      <div className={`mb-3 p-2.5 rounded-md border ${
+        showInstallButton
+          ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-800'
+          : 'bg-card border-slate-700'
+      }`}>
         {showInstallButton ? (
-          <button
+          <Button
             onClick={handleInstallClick}
-            style={{
-              width: '100%', padding: 0, background: 'transparent', border: 'none',
-              color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
+            className="w-full h-auto p-0 text-xs font-semibold text-white bg-transparent hover:bg-transparent border-0 flex items-center justify-center gap-1.5"
           >
             Install App
-          </button>
+          </Button>
         ) : (
-          <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4, color: '#cbd5e1' }}>Install as App</div>
-            <div style={{ fontSize: 10 }}>
-              Chrome: Menu {'\u22EE'} {'\u2192'} <span style={{ color: '#60a5fa' }}>Install Cuboid Studio</span>
+          <div className="text-[11px] text-muted-foreground leading-[1.5]">
+            <div className="font-semibold mb-1 text-slate-200">Install as App</div>
+            <div className="text-[10px]">
+              Chrome: Menu {'\u22EE'} {'\u2192'} <span className="text-blue-400">Install Cuboid Studio</span>
             </div>
           </div>
         )}
       </div>
 
       {/* Variation thumbnail grid */}
-      <div style={{
-        ...(isMobile
-          ? { maxHeight: 200, overflowY: 'auto' }
-          : { flex: 1, overflowY: 'auto' }
-        ),
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 6,
-        padding: 4,
-      }}>
-        {CUBE_VARIATIONS.map((v, i) => (
-          <CubeThumbnail
-            key={v.id}
-            variation={v}
-            selected={selectedIdx === i}
-            onClick={() => setSelectedIdx(i)}
-          />
-        ))}
-      </div>
+      <ScrollArea className={isMobile ? 'max-h-[200px]' : 'flex-1'}>
+        <div className="grid grid-cols-3 gap-1.5 p-1">
+          {CUBE_VARIATIONS.map((v, i) => (
+            <CubeThumbnail
+              key={v.id}
+              variation={v}
+              selected={selectedIdx === i}
+              onClick={() => setSelectedIdx(i)}
+            />
+          ))}
+        </div>
+      </ScrollArea>
 
       {/* Undo/Redo buttons */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button
+      <div className="flex gap-2 mt-3">
+        <Button
           onClick={undo}
           disabled={historyIndex <= 0}
-          style={{
-            flex: 1, padding: 8, background: '#1e293b', border: '1px solid #334155',
-            borderRadius: 6, color: historyIndex > 0 ? '#94a3b8' : '#475569',
-            cursor: historyIndex > 0 ? 'pointer' : 'default', fontSize: 11,
-          }}
+          className="flex-1 h-auto py-2 text-[11px] bg-card border border-slate-700 rounded-md text-muted-foreground hover:bg-slate-700 disabled:text-slate-600"
         >
           Undo
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={redo}
           disabled={historyIndex >= history.length - 1}
-          style={{
-            flex: 1, padding: 8, background: '#1e293b', border: '1px solid #334155',
-            borderRadius: 6, color: historyIndex < history.length - 1 ? '#94a3b8' : '#475569',
-            cursor: historyIndex < history.length - 1 ? 'pointer' : 'default', fontSize: 11,
-          }}
+          className="flex-1 h-auto py-2 text-[11px] bg-card border border-slate-700 rounded-md text-muted-foreground hover:bg-slate-700 disabled:text-slate-600"
         >
           Redo
-        </button>
+        </Button>
       </div>
 
       {/* Section plane controls */}
-      <div style={{ marginTop: 12, borderTop: '1px solid #334155', paddingTop: 12 }}>
+      <Separator className="mt-3 bg-slate-700" />
+      <div className="mt-3">
         {sectionEnabled && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-            <div style={{ display: 'flex', gap: 4 }}>
+          <div className="flex flex-col gap-1.5 mb-2">
+            <div className="flex gap-1">
               {(['x', 'y', 'z'] as const).map(axis => (
-                <button
+                <Button
                   key={axis}
                   onClick={() => setSectionAxis(axis)}
-                  style={{
-                    flex: 1, padding: 4, fontSize: 11,
-                    background: sectionAxis === axis ? '#f59e0b' : '#1e293b',
-                    color: sectionAxis === axis ? 'black' : '#94a3b8',
-                    border: 'none', borderRadius: 4, cursor: 'pointer',
-                  }}
+                  className={`flex-1 h-auto py-1 px-0 text-[11px] rounded-sm border-0 ${
+                    sectionAxis === axis
+                      ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                      : 'bg-card text-muted-foreground hover:bg-slate-700'
+                  }`}
                 >
                   {axis.toUpperCase()}
-                </button>
+                </Button>
               ))}
             </div>
-            <input
-              type="range"
+            <Slider
               min={-100}
               max={200}
-              value={sectionPosition}
-              onChange={(e) => setSectionPosition(Number(e.target.value))}
-              style={{ width: '100%' }}
+              value={[sectionPosition]}
+              onValueChange={([v]) => setSectionPosition(v)}
             />
-            <span style={{ color: '#64748b', fontSize: 10, textAlign: 'center' }}>
+            <span className="text-slate-500 text-[10px] text-center">
               {sectionAxis.toUpperCase()} = {sectionPosition}
             </span>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input
-            type="checkbox"
+        <div className="flex items-center gap-2">
+          <Switch
             checked={sectionEnabled}
-            onChange={(e) => setSectionEnabled(e.target.checked)}
-            style={{ cursor: 'pointer' }}
+            onCheckedChange={setSectionEnabled}
+            id="section-cut"
+            className="data-[state=checked]:bg-accent"
           />
-          <span style={{ color: sectionEnabled ? '#f59e0b' : '#64748b', fontSize: 12 }}>
+          <label
+            htmlFor="section-cut"
+            className={`text-xs cursor-pointer ${sectionEnabled ? 'text-accent' : 'text-slate-500'}`}
+          >
             Section Cut
-          </span>
+          </label>
         </div>
       </div>
 
-      {/* Auto-fill buttons */}
-      <div style={{ marginTop: 12, borderTop: '1px solid #334155', paddingTop: 12 }}>
-        <p style={{ color: '#64748b', fontSize: 11, marginBottom: 8 }}>
+      {/* Auto-fill (Grow) buttons */}
+      <Separator className="mt-3 bg-slate-700" />
+      <div className="mt-3">
+        <p className="text-slate-500 text-[11px] mb-2">
           Grow {selectedCubeId ? 'from selected' : '(random)'}
         </p>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="flex gap-1.5">
           {[5, 10, 25].map(count => (
-            <button
+            <Button
               key={count}
               onClick={() => handleAutoFill(count)}
-              style={{
-                flex: 1, padding: 8, background: '#065f46', border: 'none',
-                borderRadius: 6, color: 'white', cursor: 'pointer', fontSize: 11,
-              }}
+              className="flex-1 h-auto py-2 text-[11px] bg-emerald-800 hover:bg-emerald-700 text-white border-0"
             >
               +{count}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       {placedCubes.length > 0 && (
-        <button
+        <Button
           onClick={handleClearAll}
-          style={{
-            marginTop: 8, padding: 10, background: '#7f1d1d', border: 'none',
-            borderRadius: 6, color: 'white', cursor: 'pointer', fontSize: 12, width: '100%',
-          }}
+          className="mt-2 w-full h-auto py-2.5 text-xs bg-red-900 hover:bg-red-800 text-white border-0"
         >
           Clear All
-        </button>
+        </Button>
       )}
     </>
   );
