@@ -100,77 +100,44 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
   const cubeSizeCm = (scale * 42 * 100).toFixed(1);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(0,0,0,0.9)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div className="fixed inset-0 z-[1000] bg-black/90 flex flex-col">
+
       {/* ── Header ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 14px',
-          background: '#0f172a',
-          borderBottom: '1px solid #334155',
-          flexShrink: 0,
-        }}
-      >
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-950 border-b border-slate-700 flex-shrink-0">
         <div>
-          <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600 }}>AR View</span>
-          <span style={{ color: '#475569', fontSize: 10, marginLeft: 8 }}>
+          <span className="text-slate-400 text-[13px] font-semibold">AR View</span>
+          <span className="text-slate-600 text-[10px] ml-2">
             {placedCubes.length} cube{placedCubes.length !== 1 ? 's' : ''}
           </span>
         </div>
         <button
           onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#94a3b8',
-            cursor: 'pointer',
-            fontSize: 16,
-            padding: '4px 6px',
-          }}
+          className="bg-transparent border-0 text-slate-400 cursor-pointer text-base px-1.5 py-1"
         >
           <i className="fas fa-times" />
         </button>
       </div>
 
       {/* ── Viewer area ── */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div className="flex-1 relative overflow-hidden">
 
         {loading && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 10,
-            color: '#94a3b8', fontSize: 13,
-          }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: 20 }} />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-slate-400 text-[13px]">
+            <i className="fas fa-spinner fa-spin text-xl" />
             Building 3D model…
           </div>
         )}
 
         {error && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#ef4444', fontSize: 12, padding: 24, textAlign: 'center',
-          }}>
+          <div className="absolute inset-0 flex items-center justify-center text-red-500 text-xs p-6 text-center">
             <div>
-              <i className="fas fa-exclamation-triangle" style={{ marginBottom: 8, display: 'block', fontSize: 20 }} />
+              <i className="fas fa-exclamation-triangle mb-2 block text-xl" />
               {error}
             </div>
           </div>
         )}
 
+        {/* ── model-viewer: do not modify this element or any of its attributes ── */}
         {glbUrl && !loading && (
           <model-viewer
             ref={(el: HTMLElement | null) => { viewerRef.current = el; }}
@@ -188,19 +155,10 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
       </div>
 
       {/* ── Footer: scale + hint ── */}
-      <div
-        style={{
-          padding: '10px 14px',
-          background: '#0f172a',
-          borderTop: '1px solid #334155',
-          flexShrink: 0,
-        }}
-      >
+      <div className="px-3.5 py-2.5 bg-slate-950 border-t border-slate-700 flex-shrink-0">
         {/* Scale row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ color: '#94a3b8', fontSize: 10, whiteSpace: 'nowrap' }}>
-            Scale
-          </span>
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-slate-400 text-[10px] whitespace-nowrap">Scale</span>
           <input
             type="range"
             min={SCALE_MIN}
@@ -208,26 +166,18 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
             step={0.001}
             value={scale}
             onChange={e => setScale(Number(e.target.value))}
-            style={{ flex: 1, accentColor: '#60a5fa' }}
+            className="flex-1 accent-blue-400"
           />
-          <span
-            style={{
-              color: '#64748b',
-              fontSize: 9,
-              whiteSpace: 'nowrap',
-              minWidth: 64,
-              textAlign: 'right',
-            }}
-          >
+          <span className="text-slate-500 text-[9px] whitespace-nowrap min-w-[64px] text-right">
             {cubeSizeCm}cm / cube
           </span>
         </div>
 
         {/* Platform hint */}
-        <div style={{ color: '#475569', fontSize: 9, lineHeight: 1.5 }}>
-          <i className="fab fa-android" style={{ marginRight: 4 }} />Android: tap AR icon → Scene Viewer
+        <div className="text-slate-600 text-[9px] leading-relaxed">
+          <i className="fab fa-android mr-1" />Android: tap AR icon → Scene Viewer
           {'  ·  '}
-          <i className="fab fa-apple" style={{ marginRight: 4 }} />iOS 15+: tap AR icon → Quick Look
+          <i className="fab fa-apple mr-1" />iOS 15+: tap AR icon → Quick Look
         </div>
       </div>
     </div>

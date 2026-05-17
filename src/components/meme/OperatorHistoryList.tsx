@@ -10,63 +10,43 @@ export const OperatorHistoryList: React.FC = () => {
 
   if (operators.length === 0) {
     return (
-      <div style={{ marginTop: 16, color: '#475569', fontSize: 11, fontStyle: 'italic' }}>
+      <div className="mt-4 text-slate-600 text-[11px] italic">
         No operators applied yet. Translate a meme to begin.
       </div>
     );
   }
 
   return (
-    <div style={{ marginTop: 16, flex: 1, overflowY: 'auto' }}>
-      <p style={{ color: '#94a3b8', fontSize: 11, marginBottom: 8 }}>
-        Operator History ({operators.length})
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div className="mt-4 flex-1 overflow-y-auto">
+      <p className="text-slate-400 text-[11px] mb-2">Operator History ({operators.length})</p>
+      <div className="flex flex-col gap-1">
         {operators.map((op, idx) => (
           <div
             key={op.id}
             onClick={() => setExpandedId(expandedId === op.id ? null : op.id)}
-            style={{
-              padding: 8,
-              background: '#1e293b',
-              borderRadius: 4,
-              cursor: 'pointer',
-              border: '1px solid #334155',
-            }}
+            className="p-2 bg-slate-800 rounded border border-slate-700 cursor-pointer"
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 600 }}>
-                  #{idx + 1}
-                </span>
-                <span style={{
-                  padding: '1px 6px', borderRadius: 3,
-                  background: '#334155', color: '#94a3b8', fontSize: 10,
-                }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-200 text-[11px] font-semibold">#{idx + 1}</span>
+                <span className="px-1.5 py-px rounded bg-slate-700 text-slate-400 text-[10px]">
                   {op.operator}
                 </span>
               </div>
               {/* Magnitude bar */}
-              <div style={{
-                width: 40, height: 4, background: '#334155', borderRadius: 2,
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${op.magnitude * 100}%`, height: '100%',
-                  background: '#22c55e', borderRadius: 2,
-                }} />
+              <div className="w-10 h-1 bg-slate-700 rounded overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded"
+                  style={{ width: `${op.magnitude * 100}%` }}
+                />
               </div>
             </div>
 
             {expandedId === op.id && (
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #334155' }}>
-                <p style={{ color: '#64748b', fontSize: 10, marginBottom: 4 }}>
-                  {op.memeDescription}
-                </p>
-                <p style={{ color: '#94a3b8', fontSize: 10, fontStyle: 'italic' }}>
-                  {op.reasoning}
-                </p>
-                <p style={{ color: '#475569', fontSize: 9, marginTop: 4 }}>
+              <div className="mt-2 pt-2 border-t border-slate-700">
+                <p className="text-slate-500 text-[10px] mb-1">{op.memeDescription}</p>
+                <p className="text-slate-400 text-[10px] italic">{op.reasoning}</p>
+                <p className="text-slate-600 text-[9px] mt-1">
                   {new Date(op.createdAt).toLocaleTimeString()}
                 </p>
               </div>

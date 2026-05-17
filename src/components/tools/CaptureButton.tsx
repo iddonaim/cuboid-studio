@@ -27,25 +27,9 @@ export const CaptureButton: React.FC = () => {
       onClick={handleCapture}
       disabled={busy}
       title="Screenshot / Save to Gallery"
-      style={{
-        position: 'absolute',
-        bottom: 40,
-        right: 12,
-        zIndex: 10,
-        width: 36,
-        height: 36,
-        borderRadius: '50%',
-        background: flash ? '#334155' : '#0f172a',
-        border: '1px solid #334155',
-        color: busy ? '#475569' : '#94a3b8',
-        cursor: busy ? 'default' : 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 14,
-        transition: 'background 0.1s',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-      }}
+      className={`absolute bottom-10 right-3 z-10 w-9 h-9 rounded-full border border-slate-700 flex items-center justify-center text-sm shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-colors duration-100 ${
+        flash ? 'bg-slate-700' : 'bg-slate-950'
+      } ${busy ? 'text-slate-600 cursor-default' : 'text-slate-400 cursor-pointer'}`}
     >
       <i className={busy ? 'fas fa-spinner fa-spin' : 'fas fa-camera'} />
     </button>

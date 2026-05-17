@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
 
 interface StrictRulesToggleProps {
   enabled: boolean;
@@ -10,46 +11,35 @@ export const StrictRulesToggle: React.FC<StrictRulesToggleProps> = ({ enabled, o
   const [showDetails, setShowDetails] = useState(false);
 
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          type="checkbox"
+    <div className="mb-3">
+      <div className="flex items-center gap-2">
+        <Switch
           checked={enabled}
-          onChange={(e) => onChange(e.target.checked)}
+          onCheckedChange={onChange}
           disabled={disabled}
-          style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}
+          id="strict-rules-toggle"
+          className="data-[state=checked]:bg-amber-500 disabled:opacity-50"
         />
-        <span
+        <button
           onClick={() => !disabled && setShowDetails(!showDetails)}
-          style={{
-            color: disabled ? '#64748b' : (enabled ? '#f59e0b' : '#94a3b8'),
-            fontSize: 12,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            textDecoration: 'underline',
-            textDecorationStyle: 'dotted',
-            opacity: disabled ? 0.5 : 1,
-          }}
+          disabled={disabled}
+          className={`text-xs underline decoration-dotted ${
+            disabled
+              ? 'cursor-not-allowed opacity-50 text-slate-600'
+              : enabled
+              ? 'cursor-pointer text-amber-400'
+              : 'cursor-pointer text-slate-400'
+          }`}
         >
-          Strict Alignment {showDetails ? '\u25BC' : '\u25B6'}
-        </span>
+          Strict Alignment {showDetails ? '▼' : '▶'}
+        </button>
       </div>
       {showDetails && (
-        <div style={{
-          marginTop: 8,
-          marginLeft: 24,
-          padding: 8,
-          background: '#1e293b',
-          borderRadius: 4,
-          fontSize: 11,
-          color: '#94a3b8',
-          lineHeight: 1.6,
-        }}>
-          <div style={{ marginBottom: 4, color: '#f59e0b' }}>Additional constraints:</div>
-          <div style={{ color: '#94a3b8' }}>{'\u2022'} Sphere {'\u2194'} Sphere: centers must align</div>
-          <div style={{ color: '#94a3b8' }}>{'\u2022'} Cylinder {'\u2194'} Cylinder: centers must align</div>
-          <div style={{ color: '#94a3b8', marginTop: 4, fontSize: 10 }}>
-            (Tolerance: ~10% of cutter radius)
-          </div>
+        <div className="mt-2 ml-6 p-2 bg-slate-800 rounded text-[11px] text-slate-400 leading-relaxed">
+          <div className="text-amber-400 mb-1">Additional constraints:</div>
+          <div>• Sphere ↔ Sphere: centers must align</div>
+          <div>• Cylinder ↔ Cylinder: centers must align</div>
+          <div className="text-[10px] mt-1">(Tolerance: ~10% of cutter radius)</div>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useAppStore } from '../../store/useAppStore';
 import { listSavedStates, SavedState } from '../../lib/savedStates';
+import { Button } from '@/components/ui/button';
 
 export const EncodingPanel: React.FC = () => {
   const uploadedImage = useEncodingStore(s => s.uploadedImage);
@@ -80,25 +81,19 @@ export const EncodingPanel: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="flex flex-col gap-2.5">
 
       {/* Mode selector */}
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="flex gap-1">
         {MODE_LABELS.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => handleModeSelect(value)}
-            style={{
-              flex: 1,
-              padding: '6px 4px',
-              background: mode === value ? '#1e3a5f' : '#1e293b',
-              border: mode === value ? '1px solid #3b82f6' : '1px solid #334155',
-              borderRadius: 6,
-              color: mode === value ? '#93c5fd' : '#64748b',
-              cursor: 'pointer',
-              fontSize: 10,
-              fontWeight: mode === value ? 600 : 400,
-            }}
+            className={`flex-1 py-1.5 px-1 rounded-md text-[10px] border cursor-pointer ${
+              mode === value
+                ? 'bg-blue-950 border-blue-500 text-blue-300 font-semibold'
+                : 'bg-slate-800 border-slate-700 text-slate-500'
+            }`}
           >
             {label}
           </button>
@@ -107,16 +102,13 @@ export const EncodingPanel: React.FC = () => {
 
       {/* Merge notice */}
       {mode === 'merge' && (
-        <div style={{
-          padding: 8, background: '#1e293b', borderRadius: 4,
-          border: '1px solid #334155', fontSize: 11,
-        }}>
+        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-[11px]">
           {seedCubes.length > 0 ? (
-            <span style={{ color: '#94a3b8' }}>
+            <span className="text-slate-400">
               Seed: {seedCubes.length} cube{seedCubes.length !== 1 ? 's' : ''} from current assembly
             </span>
           ) : (
-            <span style={{ color: '#ef4444' }}>
+            <span className="text-red-400">
               Builder is empty. Add cubes to the Builder first.
             </span>
           )}
@@ -125,37 +117,26 @@ export const EncodingPanel: React.FC = () => {
 
       {/* Remix seed picker */}
       {mode === 'remix' && !uploadedImage && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ color: '#64748b', fontSize: 10 }}>Select a seed assembly:</div>
+        <div className="flex flex-col gap-1">
+          <div className="text-slate-500 text-[10px]">Select a seed assembly:</div>
           {savedStates.length === 0 ? (
-            <div style={{
-              padding: 8, background: '#1e293b', borderRadius: 4,
-              color: '#64748b', fontSize: 11, fontStyle: 'italic',
-            }}>
+            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-slate-500 text-[11px] italic">
               No saved states — save an assembly first.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 140, overflowY: 'auto' }}>
+            <div className="flex flex-col gap-0.5 max-h-[140px] overflow-y-auto">
               {savedStates.map(s => (
                 <button
                   key={s.id}
                   onClick={() => handleSeedSelect(s)}
-                  style={{
-                    padding: '6px 8px',
-                    background: selectedSeedId === s.id ? '#1e3a5f' : '#1e293b',
-                    border: selectedSeedId === s.id ? '1px solid #3b82f6' : '1px solid #334155',
-                    borderRadius: 4,
-                    color: selectedSeedId === s.id ? '#93c5fd' : '#94a3b8',
-                    cursor: 'pointer',
-                    fontSize: 10,
-                    textAlign: 'left',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
+                  className={`py-1.5 px-2 rounded border text-[10px] text-left flex justify-between items-center cursor-pointer ${
+                    selectedSeedId === s.id
+                      ? 'bg-blue-950 border-blue-500 text-blue-300'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
                 >
-                  <span style={{ fontWeight: 500 }}>{s.name}</span>
-                  <span style={{ color: '#475569', fontSize: 9 }}>
+                  <span className="font-medium">{s.name}</span>
+                  <span className="text-slate-600 text-[9px]">
                     {s.cubeCount}c · {new Date(s.savedAt).toLocaleDateString()}
                   </span>
                 </button>
@@ -169,43 +150,23 @@ export const EncodingPanel: React.FC = () => {
       {!uploadedImage ? (
         <div
           onClick={() => fileInputRef.current?.click()}
-          style={{
-            padding: 24,
-            border: '2px dashed #334155',
-            borderRadius: 8,
-            cursor: 'pointer',
-            textAlign: 'center',
-            background: '#1e293b',
-          }}
+          className="py-6 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer text-center bg-slate-800"
         >
-          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 4 }}>
-            Upload or capture a photo
-          </div>
-          <div style={{ color: '#475569', fontSize: 10 }}>
+          <div className="text-slate-400 text-xs mb-1">Upload or capture a photo</div>
+          <div className="text-slate-600 text-[10px]">
             A street corner, a shop, an office, a room...
           </div>
         </div>
       ) : (
-        <div style={{ position: 'relative' }}>
+        <div className="relative">
           <img
             src={uploadedImage}
             alt="Uploaded space"
-            style={{
-              width: '100%',
-              borderRadius: 6,
-              objectFit: 'contain',
-              maxHeight: 160,
-              background: '#0f172a',
-            }}
+            className="w-full rounded-md object-contain max-h-[160px] bg-slate-950"
           />
           <button
             onClick={clearImage}
-            style={{
-              position: 'absolute', top: 4, right: 4,
-              background: '#0f172a', border: 'none', color: '#94a3b8',
-              borderRadius: 4, cursor: 'pointer', fontSize: 14,
-              padding: '2px 6px', lineHeight: 1,
-            }}
+            className="absolute top-1 right-1 bg-slate-950 border-0 text-slate-400 rounded px-1.5 py-px text-sm leading-none cursor-pointer"
           >
             &times;
           </button>
@@ -219,12 +180,12 @@ export const EncodingPanel: React.FC = () => {
         accept="image/*"
         capture="environment"
         onChange={handleFileChange}
-        style={{ display: 'none' }}
+        className="hidden"
       />
 
       {/* Separate buttons for gallery and camera on mobile */}
       {!uploadedImage && (
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="flex gap-1.5">
           <button
             onClick={() => {
               if (fileInputRef.current) {
@@ -232,11 +193,7 @@ export const EncodingPanel: React.FC = () => {
                 fileInputRef.current.click();
               }
             }}
-            style={{
-              flex: 1, padding: 8, background: '#1e293b',
-              border: '1px solid #334155', borderRadius: 6,
-              color: '#94a3b8', cursor: 'pointer', fontSize: 10,
-            }}
+            className="flex-1 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-400 cursor-pointer text-[10px]"
           >
             Gallery
           </button>
@@ -247,11 +204,7 @@ export const EncodingPanel: React.FC = () => {
                 fileInputRef.current.click();
               }
             }}
-            style={{
-              flex: 1, padding: 8, background: '#1e293b',
-              border: '1px solid #334155', borderRadius: 6,
-              color: '#94a3b8', cursor: 'pointer', fontSize: 10,
-            }}
+            className="flex-1 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-400 cursor-pointer text-[10px]"
           >
             Camera
           </button>
@@ -260,7 +213,7 @@ export const EncodingPanel: React.FC = () => {
 
       {/* Encode button */}
       {uploadedImage && !encodedCubes && (
-        <button
+        <Button
           onClick={handleEncode}
           disabled={encodeDisabled}
           title={
@@ -270,97 +223,65 @@ export const EncodingPanel: React.FC = () => {
               ? 'Select a seed assembly above'
               : undefined
           }
-          style={{
-            padding: 10,
-            background: encodeDisabled ? '#334155' : '#1e3a5f',
-            border: 'none', borderRadius: 6, color: encodeDisabled ? '#64748b' : 'white',
-            cursor: encodeDisabled ? 'not-allowed' : isEncoding ? 'wait' : 'pointer',
-            fontSize: 12, fontWeight: 600,
-          }}
+          className={`w-full h-auto py-2.5 text-xs font-semibold border-0 ${
+            encodeDisabled
+              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              : isEncoding
+              ? 'bg-slate-700 text-white cursor-wait'
+              : 'bg-blue-950 text-white hover:bg-blue-900'
+          }`}
         >
           {isEncoding ? 'Encoding space...' : 'Encode'}
-        </button>
+        </Button>
       )}
 
       {/* Error display */}
       {lastError && (
-        <div style={{
-          padding: 8, background: '#7f1d1d', borderRadius: 4,
-          color: '#fca5a5', fontSize: 11, lineHeight: 1.4,
-        }}>
+        <div className="p-2 bg-red-900 rounded text-red-300 text-[11px] leading-relaxed">
           {lastError}
         </div>
       )}
 
       {/* Result */}
       {encodedCubes && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: 8,
-        }}>
-          {/* Reasoning */}
+        <div className="flex flex-col gap-2">
           {encodingReasoning && (
-            <div style={{
-              padding: 8, background: '#1e293b', borderRadius: 4,
-              color: '#cbd5e1', fontSize: 11, lineHeight: 1.5,
-              fontStyle: 'italic', border: '1px solid #334155',
-            }}>
+            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-slate-300 text-[11px] leading-relaxed italic">
               {encodingReasoning}
             </div>
           )}
 
-          {/* Stats */}
-          <div style={{ color: '#94a3b8', fontSize: 11 }}>
+          <div className="text-slate-400 text-[11px]">
             {encodedCubes.length} cubes encoded
             {' '}({new Set(encodedCubes.map(c => c.variationId)).size} unique variations)
           </div>
 
-          {/* Variation list */}
-          <div style={{
-            maxHeight: 100, overflowY: 'auto',
-            display: 'flex', flexWrap: 'wrap', gap: 4,
-          }}>
+          <div className="max-h-[100px] overflow-y-auto flex flex-wrap gap-1">
             {encodedCubes.map((cube, i) => (
-              <span key={i} style={{
-                padding: '2px 6px', background: '#334155',
-                borderRadius: 3, color: '#94a3b8', fontSize: 9,
-              }}>
+              <span key={i} className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400 text-[9px]">
                 {cube.variationId}
               </span>
             ))}
           </div>
 
-          {/* Action buttons */}
-          <button
+          <Button
             onClick={() => handleLoadAndSwitch('builder')}
-            style={{
-              padding: 10, background: '#065f46', border: 'none',
-              borderRadius: 6, color: 'white', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600,
-            }}
+            className="w-full h-auto py-2.5 text-xs font-semibold bg-emerald-900 hover:bg-emerald-800 text-white border-0"
           >
             Load into Builder
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => handleLoadAndSwitch('pataphysical')}
-            style={{
-              padding: 10, background: '#7c2d12', border: 'none',
-              borderRadius: 6, color: 'white', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600,
-            }}
+            className="w-full h-auto py-2.5 text-xs font-semibold bg-orange-950 hover:bg-orange-900 text-white border-0"
           >
             Load + Apply Memes
-          </button>
+          </Button>
 
-          {/* Re-encode */}
           <button
             onClick={() => {
               useEncodingStore.setState({ encodedCubes: null, encodingReasoning: null });
             }}
-            style={{
-              padding: 6, background: 'transparent',
-              border: '1px solid #334155', borderRadius: 6,
-              color: '#64748b', cursor: 'pointer', fontSize: 10,
-            }}
+            className="py-1.5 bg-transparent border border-slate-700 rounded-md text-slate-500 cursor-pointer text-[10px]"
           >
             Re-encode
           </button>

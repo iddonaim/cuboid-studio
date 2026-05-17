@@ -1,6 +1,7 @@
 import React from 'react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { Button } from '@/components/ui/button';
 
 export const SelectedCubePanel: React.FC = () => {
   const selectedCubeId = useBuilderStore(s => s.selectedCubeId);
@@ -14,75 +15,35 @@ export const SelectedCubePanel: React.FC = () => {
   const selectedCube = placedCubes.find(c => c.id === selectedCubeId);
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      background: '#0f172a',
-      border: '1px solid #334155',
-      borderRadius: 8,
-      padding: 16,
-      width: isMobile ? 160 : 200,
-    }}>
-      <p style={{ color: 'white', fontSize: 14, marginBottom: 4 }}>Selected Cube</p>
-      <p style={{ color: '#64748b', fontSize: 11, marginBottom: 12 }}>
-        {selectedCube?.variationId}
-      </p>
+    <div className={`absolute top-4 right-4 bg-slate-900 border border-slate-700 rounded-lg p-4 ${isMobile ? 'w-40' : 'w-48'}`}>
+      <p className="text-white text-sm mb-1">Selected Cube</p>
+      <p className="text-slate-500 text-[11px] mb-3">{selectedCube?.variationId}</p>
 
       {isMobile && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-          <button
+        <div className="flex gap-1.5 mb-2">
+          <Button
             onClick={() => rotateSelectedCube('y')}
             title="Rotate around Y axis"
-            style={{
-              flex: 1,
-              padding: '10px 0',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 6,
-              color: '#94a3b8',
-              cursor: 'pointer',
-              fontSize: 18,
-              lineHeight: 1,
-            }}
+            className="flex-1 h-auto py-2.5 bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 text-lg leading-none"
           >
             ↻
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => rotateSelectedCube('x')}
             title="Tip around X axis"
-            style={{
-              flex: 1,
-              padding: '10px 0',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: 6,
-              color: '#94a3b8',
-              cursor: 'pointer',
-              fontSize: 18,
-              lineHeight: 1,
-            }}
+            className="flex-1 h-auto py-2.5 bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 text-lg leading-none"
           >
             ↺
-          </button>
+          </Button>
         </div>
       )}
 
-      <button
+      <Button
         onClick={handleDelete}
-        style={{
-          width: '100%',
-          padding: isMobile ? 12 : 8,
-          background: '#7f1d1d',
-          border: 'none',
-          borderRadius: 6,
-          color: 'white',
-          cursor: 'pointer',
-          fontSize: 12,
-        }}
+        className={`w-full h-auto ${isMobile ? 'py-3' : 'py-2'} text-xs bg-red-900 hover:bg-red-800 text-white border-0`}
       >
         Delete
-      </button>
+      </Button>
     </div>
   );
 };

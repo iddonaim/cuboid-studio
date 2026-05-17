@@ -1,16 +1,12 @@
 import React from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
+import { Button } from '@/components/ui/button';
 
-const chipStyle: React.CSSProperties = {
-  display: 'inline-block',
-  padding: '2px 6px',
-  margin: '0 4px 4px 0',
-  borderRadius: 4,
-  background: '#1e293b',
-  color: '#cbd5e1',
-  fontSize: 10,
-  border: '1px solid #334155',
-};
+const Chip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="inline-block px-1.5 py-0.5 mr-1 mb-1 rounded bg-slate-800 text-slate-300 text-[10px] border border-slate-700">
+    {children}
+  </span>
+);
 
 export const OperatorResultPanel: React.FC = () => {
   const lastResult = useMemeStore(s => s.lastResult);
@@ -25,61 +21,39 @@ export const OperatorResultPanel: React.FC = () => {
   if (!lastResult) return null;
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      background: '#0f172a',
-      border: '1px solid #334155',
-      borderRadius: 8,
-      padding: 16,
-      width: 280,
-      maxHeight: '70vh',
-      overflowY: 'auto',
-    }}>
+    <div className="absolute top-4 right-4 bg-slate-950 border border-slate-700 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto">
       {/* Pass 1 block — only in v2 flow */}
       {lastPass1 && (
-        <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #334155' }}>
-          <p style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, margin: '0 0 6px 0' }}>
+        <div className="mb-4 pb-3 border-b border-slate-700">
+          <p className="text-slate-400 text-[11px] font-semibold mb-1.5">
             Pass 1 · Cultural extraction
           </p>
-
-          <p style={{ color: 'white', fontSize: 12, fontStyle: 'italic', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+          <p className="text-white text-xs italic mb-2.5 leading-relaxed">
             {lastPass1.meme_summary}
           </p>
 
           {lastPass1.rhetorical_moves.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ color: '#64748b', fontSize: 10, marginBottom: 3 }}>Rhetorical moves</div>
-              <div>
-                {lastPass1.rhetorical_moves.map((m, i) => (
-                  <span key={i} style={chipStyle}>{m}</span>
-                ))}
-              </div>
+            <div className="mb-2">
+              <div className="text-slate-500 text-[10px] mb-0.5">Rhetorical moves</div>
+              <div>{lastPass1.rhetorical_moves.map((m, i) => <Chip key={i}>{m}</Chip>)}</div>
             </div>
           )}
 
           {lastPass1.functional_affects.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ color: '#64748b', fontSize: 10, marginBottom: 3 }}>Affects</div>
-              <div>
-                {lastPass1.functional_affects.map((a, i) => (
-                  <span key={i} style={chipStyle}>{a}</span>
-                ))}
-              </div>
+            <div className="mb-2">
+              <div className="text-slate-500 text-[10px] mb-0.5">Affects</div>
+              <div>{lastPass1.functional_affects.map((a, i) => <Chip key={i}>{a}</Chip>)}</div>
             </div>
           )}
 
           {lastPass1.cultural_tensions.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ color: '#64748b', fontSize: 10, marginBottom: 3 }}>Tensions</div>
-              <ul style={{ margin: 0, paddingLeft: 16, color: '#cbd5e1', fontSize: 10, lineHeight: 1.5 }}>
+            <div className="mb-2">
+              <div className="text-slate-500 text-[10px] mb-0.5">Tensions</div>
+              <ul className="m-0 pl-4 text-slate-300 text-[10px] leading-relaxed">
                 {lastPass1.cultural_tensions.map((t, i) => (
                   <li key={i}>
                     {t.description}
-                    <span style={{ color: '#64748b', marginLeft: 4 }}>
-                      [{t.friction_type}]
-                    </span>
+                    <span className="text-slate-500 ml-1">[{t.friction_type}]</span>
                   </li>
                 ))}
               </ul>
@@ -88,73 +62,54 @@ export const OperatorResultPanel: React.FC = () => {
 
           {lastPass1.site_resonance && (
             <div>
-              <div style={{ color: '#64748b', fontSize: 10, marginBottom: 3 }}>Site resonance</div>
-              <p style={{ color: '#cbd5e1', fontSize: 10, lineHeight: 1.5, margin: 0 }}>
-                {lastPass1.site_resonance}
-              </p>
+              <div className="text-slate-500 text-[10px] mb-0.5">Site resonance</div>
+              <p className="text-slate-300 text-[10px] leading-relaxed m-0">{lastPass1.site_resonance}</p>
             </div>
           )}
         </div>
       )}
 
       {/* Pass 2 / v1 block — operator application */}
-      <p style={{ color: 'white', fontSize: 14, margin: '0 0 8px 0' }}>
+      <p className="text-white text-sm mb-2">
         {lastPass2 ? 'Pass 2 · Geometric translation' : 'Operator Applied'}
       </p>
 
-      <div style={{ marginBottom: 8 }}>
-        <span style={{
-          display: 'inline-block', padding: '2px 8px', borderRadius: 4,
-          background: '#334155', color: '#e2e8f0', fontSize: 11, fontWeight: 600,
-        }}>
+      <div className="mb-2">
+        <span className="inline-block px-2 py-0.5 rounded bg-slate-700 text-slate-200 text-[11px] font-semibold">
           {lastResult.operator}
         </span>
-        <span style={{ color: '#94a3b8', fontSize: 11, marginLeft: 8 }}>
+        <span className="text-slate-400 text-[11px] ml-2">
           mag: {lastResult.magnitude.toFixed(2)}
         </span>
       </div>
 
-      <div style={{ marginBottom: 8 }}>
-        <span style={{ color: '#64748b', fontSize: 10 }}>Targets: </span>
-        <span style={{ color: '#94a3b8', fontSize: 10 }}>
-          {lastResult.targets.join(', ')}
-        </span>
+      <div className="mb-2">
+        <span className="text-slate-500 text-[10px]">Targets: </span>
+        <span className="text-slate-400 text-[10px]">{lastResult.targets.join(', ')}</span>
       </div>
 
       {/* v2 extra: target_reasoning */}
       {lastPass2?.target_reasoning && (
-        <div style={{
-          padding: 6, background: '#1e293b', borderRadius: 4,
-          color: '#94a3b8', fontSize: 10, lineHeight: 1.5, marginBottom: 8,
-        }}>
-          <span style={{ color: '#64748b' }}>Target reasoning — </span>
+        <div className="p-1.5 bg-slate-800 rounded text-slate-400 text-[10px] leading-relaxed mb-2">
+          <span className="text-slate-500">Target reasoning — </span>
           {lastPass2.target_reasoning}
         </div>
       )}
 
-      <div style={{ marginBottom: 8 }}>
-        <span style={{ color: '#64748b', fontSize: 10 }}>Cutter: </span>
-        <span style={{ color: '#94a3b8', fontSize: 10 }}>
-          {lastResult.cutter.type}
-        </span>
+      <div className="mb-2">
+        <span className="text-slate-500 text-[10px]">Cutter: </span>
+        <span className="text-slate-400 text-[10px]">{lastResult.cutter.type}</span>
       </div>
 
       {/* v2 extra: geometry_reasoning */}
       {lastPass2?.cutter.geometry_reasoning && (
-        <div style={{
-          padding: 6, background: '#1e293b', borderRadius: 4,
-          color: '#94a3b8', fontSize: 10, lineHeight: 1.5, marginBottom: 8,
-        }}>
-          <span style={{ color: '#64748b' }}>Geometry reasoning — </span>
+        <div className="p-1.5 bg-slate-800 rounded text-slate-400 text-[10px] leading-relaxed mb-2">
+          <span className="text-slate-500">Geometry reasoning — </span>
           {lastPass2.cutter.geometry_reasoning}
         </div>
       )}
 
-      <div style={{
-        padding: 8, background: '#1e293b', borderRadius: 4,
-        color: '#cbd5e1', fontSize: 11, lineHeight: 1.5, marginBottom: 12,
-        fontStyle: 'italic',
-      }}>
+      <div className="p-2 bg-slate-800 rounded text-slate-300 text-[11px] leading-relaxed mb-3 italic">
         {lastResult.reasoning}
       </div>
 
@@ -163,15 +118,12 @@ export const OperatorResultPanel: React.FC = () => {
           scope discipline; data already in store. */}
 
       {operators.length > 0 && (
-        <button
+        <Button
           onClick={revertLastOperator}
-          style={{
-            width: '100%', padding: 8, background: '#7f1d1d',
-            border: 'none', borderRadius: 6, color: 'white', cursor: 'pointer', fontSize: 12,
-          }}
+          className="w-full h-auto py-2 text-xs bg-red-900 hover:bg-red-800 text-white border-0"
         >
           Revert Last
-        </button>
+        </Button>
       )}
     </div>
   );

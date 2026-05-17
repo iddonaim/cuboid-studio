@@ -24,7 +24,6 @@ const App: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
   const isMobile = useIsMobile();
 
-
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
     if (USE_PRECOMPUTED_MODELS) {
@@ -126,15 +125,11 @@ const App: React.FC = () => {
       // height on iOS Safari — 100vh includes area behind browser chrome.
       // Flex-column layout means the bottom sheet sits at the bottom in normal
       // flow; no position:fixed/absolute needed (avoids WebKit clipping bugs).
-      <div className="mobile-root" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100vw',
-      }}>
+      <div className="mobile-root flex flex-col w-screen">
         {/* Viewport area — takes all remaining vertical space.
             transform:translateZ(0) creates a GPU compositing boundary so the
             WebGL canvas cannot visually bleed over the sibling bottom sheet. */}
-        <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative', overflow: 'hidden', transform: 'translateZ(0)' }}>
+        <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]">
           <Viewport3D />
           {activeMode === 'builder' && <SelectedCubePanel />}
           {activeMode === 'pataphysical' && <OperatorResultPanel />}
@@ -147,7 +142,7 @@ const App: React.FC = () => {
           <ModeSelector />
           {activeMode === 'builder' && <BuilderSidebar />}
           {activeMode === 'pataphysical' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="flex flex-col gap-2.5">
               <MemeInputPanel />
               <CutterTweakPanel />
               <OperatorHistoryList />
@@ -162,32 +157,22 @@ const App: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div className="flex w-screen h-screen overflow-hidden">
       {/* Sidebar */}
-      <div style={{
-        width: 250, minWidth: 250, maxWidth: 250,
-        flexShrink: 0,
-        position: 'relative',
-        background: '#0f172a',
-        borderRight: '1px solid #1e293b',
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}>
-        <h1 style={{ color: 'white', fontSize: 18, marginBottom: 8 }}>Cuboid Studio</h1>
+      <div className="w-[250px] min-w-[250px] max-w-[250px] shrink-0 relative bg-background border-r border-border p-4 flex flex-col overflow-hidden">
+        <h1 className="text-foreground text-lg mb-2">Cuboid Studio</h1>
         <ModeSelector />
 
         {activeMode === 'builder' && <BuilderSidebar />}
         {activeMode === 'pataphysical' && (
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
             <MemeInputPanel />
             <CutterTweakPanel />
             <OperatorHistoryList />
           </div>
         )}
         {activeMode === 'encoding' && (
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
             <EncodingPanel />
           </div>
         )}
@@ -197,10 +182,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Canvas area */}
-      <div style={{
-        flex: 1, flexShrink: 1, flexGrow: 1,
-        position: 'relative', minWidth: 0, overflow: 'hidden',
-      }}>
+      <div className="flex-1 min-w-0 relative overflow-hidden">
         <Viewport3D />
 
         {activeMode === 'builder' && <SelectedCubePanel />}
