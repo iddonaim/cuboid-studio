@@ -3,8 +3,9 @@ import { useAppStore } from './store/useAppStore';
 import { useBuilderStore } from './store/useBuilderStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
 import { getAllRotations, findRotationIndex, AxisRotation } from './lib/cube/connectionRules';
-import { ModeSelector } from './components/layout/ModeSelector';
-import { MobileBottomSheet } from './components/layout/MobileBottomSheet';
+import { TopBar } from './components/layout/TopBar';
+import { FloatingPanel } from './components/layout/FloatingPanel';
+import { BottomSheet } from './components/layout/BottomSheet';
 import { HelpBar } from './components/layout/HelpBar';
 import { useIsMobile } from './hooks/useIsMobile';
 import { Viewport3D } from './components/viewport/Viewport3D';
@@ -21,8 +22,9 @@ import { ExportPanel } from './components/export/ExportPanel';
 import { CaptureButton } from './components/tools/CaptureButton';
 
 const App: React.FC = () => {
-  const activeMode = useAppStore(s => s.activeMode);
-  const isMobile = useIsMobile();
+  const activeMode        = useAppStore(s => s.activeMode);
+  const floatingPanelOpen = useAppStore(s => s.floatingPanelOpen);
+  const isMobile          = useIsMobile();
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -119,27 +121,31 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // ── Mobile layout ──────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      // Use --real-vh (set via JS) instead of 100vh to match the true visible
-      // height on iOS Safari — 100vh includes area behind browser chrome.
-      // Flex-column layout means the bottom sheet sits at the bottom in normal
-      // flow; no position:fixed/absolute needed (avoids WebKit clipping bugs).
+      // mobile-root uses 100dvh (dynamic viewport height) for iOS Safari compatibility.
+      // Flex-column layout: TopBar spacer → viewport (flex-1) → BottomSheet.
       <div className="mobile-root flex flex-col w-screen">
-        {/* Viewport area — takes all remaining vertical space.
-            transform:translateZ(0) creates a GPU compositing boundary so the
-            WebGL canvas cannot visually bleed over the sibling bottom sheet. */}
+        {/* TopBar: fixed at top, mobile variant shows logo + cube count only */}
+        <TopBar showModeTabs={false} />
+
+        {/* 42 px spacer because TopBar is position:fixed and doesn't occupy flow */}
+        <div style={{ height: 42, flexShrink: 0 }} aria-hidden />
+
+        {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
+            so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
         <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]">
           <Viewport3D />
-          {activeMode === 'builder' && <SelectedCubePanel />}
+          {activeMode === 'builder'      && <SelectedCubePanel />}
           {activeMode === 'pataphysical' && <OperatorResultPanel />}
-          {activeMode === 'encoding' && <EncodingResultPanel />}
+          {activeMode === 'encoding'     && <EncodingResultPanel />}
           <CaptureButton />
           <HelpBar />
         </div>
 
-        <MobileBottomSheet>
-          <ModeSelector />
+        {/* BottomSheet contains mode content + MobileTabBar */}
+        <BottomSheet>
           {activeMode === 'builder' && <BuilderSidebar />}
           {activeMode === 'pataphysical' && (
             <div className="flex flex-col gap-2.5">
@@ -148,49 +154,48 @@ const App: React.FC = () => {
               <OperatorHistoryList />
             </div>
           )}
-          {activeMode === 'encoding' && <EncodingPanel />}
+          {activeMode === 'encoding'  && <EncodingPanel />}
           {activeMode === 'evolution' && <EvolutionPanel />}
           <ExportPanel />
-        </MobileBottomSheet>
+        </BottomSheet>
       </div>
     );
   }
 
+  // ── Desktop layout ─────────────────────────────────────────────────────────
   return (
-    <div className="flex w-screen h-screen overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-[250px] min-w-[250px] max-w-[250px] shrink-0 relative bg-background border-r border-border p-4 flex flex-col overflow-hidden">
-        <h1 className="text-foreground text-lg mb-2">Cuboid Studio</h1>
-        <ModeSelector />
+    <div className="relative w-screen h-screen overflow-hidden">
+      {/* TopBar: fixed glass bar, full width */}
+      <TopBar />
 
+      {/* Viewport: full bleed behind all overlays.
+          transform:translateZ(0) keeps the WebGL layer below React overlays. */}
+      <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
+        <Viewport3D />
+        {activeMode === 'builder'      && <SelectedCubePanel />}
+        {activeMode === 'pataphysical' && <OperatorResultPanel />}
+        {activeMode === 'encoding'     && <EncodingResultPanel />}
+        <CaptureButton />
+        <HelpBar />
+      </div>
+
+      {/* FloatingPanel: glass overlay on the left side */}
+      <FloatingPanel
+        mode={activeMode}
+        isOpen={floatingPanelOpen}
+        exportSlot={<ExportPanel />}
+      >
         {activeMode === 'builder' && <BuilderSidebar />}
         {activeMode === 'pataphysical' && (
-          <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5">
             <MemeInputPanel />
             <CutterTweakPanel />
             <OperatorHistoryList />
           </div>
         )}
-        {activeMode === 'encoding' && (
-          <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
-            <EncodingPanel />
-          </div>
-        )}
+        {activeMode === 'encoding'  && <EncodingPanel />}
         {activeMode === 'evolution' && <EvolutionPanel />}
-
-        <ExportPanel />
-      </div>
-
-      {/* Canvas area */}
-      <div className="flex-1 min-w-0 relative overflow-hidden">
-        <Viewport3D />
-
-        {activeMode === 'builder' && <SelectedCubePanel />}
-        {activeMode === 'pataphysical' && <OperatorResultPanel />}
-        {activeMode === 'encoding' && <EncodingResultPanel />}
-        <CaptureButton />
-        <HelpBar />
-      </div>
+      </FloatingPanel>
     </div>
   );
 };

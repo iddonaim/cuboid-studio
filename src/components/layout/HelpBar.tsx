@@ -16,12 +16,26 @@ const HELP_TOUCH: Record<string, string> = {
   evolution:    'Tap cubes to select favorites \u2022 Pinch to zoom',
 };
 
+const pillStyle: React.CSSProperties = {
+  background: 'rgba(15, 23, 42, 0.2)',
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  boxShadow: '0 8px 48px rgba(0,0,0,0.4)',
+  borderRadius: 20,
+  padding: '4px 13px',
+};
+
 export const HelpBar: React.FC = () => {
   const activeMode = useAppStore(s => s.activeMode);
-  const isMobile = useIsMobile();
+  const isMobile   = useIsMobile();
 
   return (
-    <div className={`absolute ${isMobile ? 'bottom-[60px]' : 'bottom-4'} left-1/2 -translate-x-1/2 bg-background/80 py-2 px-4 rounded-lg text-slate-500 text-[11px] pointer-events-none whitespace-nowrap`}>
+    <div
+      className="absolute left-1/2 -translate-x-1/2 text-slate-500 text-[11px] pointer-events-none whitespace-nowrap"
+      style={{
+        bottom: isMobile ? 64 : 20,
+        ...pillStyle,
+      }}
+    >
       {isMobile ? HELP_TOUCH[activeMode] : HELP_DESKTOP[activeMode]}
     </div>
   );
