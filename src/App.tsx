@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useBuilderStore } from './store/useBuilderStore';
+import { useEncodingStore } from './store/useEncodingStore';
+import { useEvolutionStore } from './store/useEvolutionStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
 import { getAllRotations, findRotationIndex, AxisRotation } from './lib/cube/connectionRules';
 import { TopBar } from './components/layout/TopBar';
@@ -20,11 +22,90 @@ import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { ExportPanel } from './components/export/ExportPanel';
 import { CaptureButton } from './components/tools/CaptureButton';
+import { Button } from '@/components/ui/button';
+
+/**
+ * Banner rendered above the BuilderSidebar when the user has opened the
+ * seed-edit overlay from Encode → Merge. "Done" closes the overlay and
+ * re-snapshots the current Builder placedCubes into the merge seed.
+ */
+const SeedEditBanner: React.FC = () => {
+  const closeSeedEdit = useEncodingStore(s => s.closeSeedEdit);
+  return (
+    <div
+      className="mb-2 p-2 rounded-md flex items-center justify-between gap-2"
+      style={{
+        background: 'rgba(16, 185, 129, 0.08)',
+        border: '1px solid rgba(16, 185, 129, 0.35)',
+      }}
+    >
+      <div className="flex flex-col">
+        <span className="text-emerald-400 text-[10px] font-semibold uppercase tracking-wider">
+          Editing merge seed
+        </span>
+        <span className="text-slate-400 text-[10px]">
+          Changes here become the seed for Encode.
+        </span>
+      </div>
+      <Button
+        onClick={closeSeedEdit}
+        className="h-auto py-1.5 px-2.5 text-[11px] bg-emerald-700 hover:bg-emerald-600 text-white border-0"
+      >
+        Done
+      </Button>
+    </div>
+  );
+};
+
+/**
+ * Small in-panel toggle between Evolution's two sub-modes.
+ * Lives at the top of the Evolution surface (panel or sheet).
+ */
+const EvolutionSubModeToggle: React.FC = () => {
+  const subMode = useEvolutionStore(s => s.subMode);
+  const setSubMode = useEvolutionStore(s => s.setSubMode);
+  const tabs: { value: 'evolve' | 'pataphysical'; label: string }[] = [
+    { value: 'evolve',       label: 'Evolve' },
+    { value: 'pataphysical', label: 'Pataphysical' },
+  ];
+  return (
+    <div className="flex gap-1 mb-2.5">
+      {tabs.map(({ value, label }) => (
+        <button
+          key={value}
+          onClick={() => setSubMode(value)}
+          className={`flex-1 py-1.5 px-1 rounded-md text-[10px] border cursor-pointer ${
+            subMode === value
+              ? 'bg-blue-950 border-blue-500 text-blue-300 font-semibold'
+              : 'bg-slate-800 border-slate-700 text-slate-500'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+/** Pataphysical surface as a contextual sub-mode within Evolution. */
+const PataphysicalSurface: React.FC = () => (
+  <div className="flex flex-col gap-2.5">
+    <MemeInputPanel />
+    <CutterTweakPanel />
+    <OperatorHistoryList />
+  </div>
+);
 
 const App: React.FC = () => {
-  const activeMode        = useAppStore(s => s.activeMode);
-  const floatingPanelOpen = useAppStore(s => s.floatingPanelOpen);
-  const isMobile          = useIsMobile();
+  const activeMode          = useAppStore(s => s.activeMode);
+  const floatingPanelOpen   = useAppStore(s => s.floatingPanelOpen);
+  const seedEditOpen        = useEncodingStore(s => s.seedEditOpen);
+  const evolutionSubMode    = useEvolutionStore(s => s.subMode);
+  const isMobile            = useIsMobile();
+
+  // Convenience predicates for what to mount.
+  const showBuilderSurface     = activeMode === 'encoding' && seedEditOpen;
+  const showPataphysicalSurface = activeMode === 'evolution' && evolutionSubMode === 'pataphysical';
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -137,25 +218,37 @@ const App: React.FC = () => {
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
         <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]">
           <Viewport3D />
-          {activeMode === 'builder'      && <SelectedCubePanel />}
-          {activeMode === 'pataphysical' && <OperatorResultPanel />}
-          {activeMode === 'encoding'     && <EncodingResultPanel />}
+          {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
+              otherwise the standard EncodingResultPanel */}
+          {activeMode === 'encoding' && (
+            showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
+          )}
+          {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel */}
+          {showPataphysicalSurface && <OperatorResultPanel />}
           <CaptureButton />
           <HelpBar />
         </div>
 
         {/* BottomSheet contains mode content + MobileTabBar */}
         <BottomSheet>
-          {activeMode === 'builder' && <BuilderSidebar />}
-          {activeMode === 'pataphysical' && (
-            <div className="flex flex-col gap-2.5">
-              <MemeInputPanel />
-              <CutterTweakPanel />
-              <OperatorHistoryList />
-            </div>
+          {activeMode === 'encoding' && (
+            showBuilderSurface ? (
+              <>
+                <SeedEditBanner />
+                <BuilderSidebar />
+              </>
+            ) : (
+              <EncodingPanel />
+            )
           )}
-          {activeMode === 'encoding'  && <EncodingPanel />}
-          {activeMode === 'evolution' && <EvolutionPanel />}
+          {activeMode === 'evolution' && (
+            <>
+              <EvolutionSubModeToggle />
+              {evolutionSubMode === 'evolve'
+                ? <EvolutionPanel />
+                : <PataphysicalSurface />}
+            </>
+          )}
           <ExportPanel />
         </BottomSheet>
       </div>
@@ -172,9 +265,10 @@ const App: React.FC = () => {
           transform:translateZ(0) keeps the WebGL layer below React overlays. */}
       <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
         <Viewport3D />
-        {activeMode === 'builder'      && <SelectedCubePanel />}
-        {activeMode === 'pataphysical' && <OperatorResultPanel />}
-        {activeMode === 'encoding'     && <EncodingResultPanel />}
+        {activeMode === 'encoding' && (
+          showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
+        )}
+        {showPataphysicalSurface && <OperatorResultPanel />}
         <CaptureButton />
         <HelpBar />
       </div>
@@ -185,16 +279,24 @@ const App: React.FC = () => {
         isOpen={floatingPanelOpen}
         exportSlot={<ExportPanel />}
       >
-        {activeMode === 'builder' && <BuilderSidebar />}
-        {activeMode === 'pataphysical' && (
-          <div className="flex flex-col gap-2.5">
-            <MemeInputPanel />
-            <CutterTweakPanel />
-            <OperatorHistoryList />
-          </div>
+        {activeMode === 'encoding' && (
+          showBuilderSurface ? (
+            <>
+              <SeedEditBanner />
+              <BuilderSidebar />
+            </>
+          ) : (
+            <EncodingPanel />
+          )
         )}
-        {activeMode === 'encoding'  && <EncodingPanel />}
-        {activeMode === 'evolution' && <EvolutionPanel />}
+        {activeMode === 'evolution' && (
+          <>
+            <EvolutionSubModeToggle />
+            {evolutionSubMode === 'evolve'
+              ? <EvolutionPanel />
+              : <PataphysicalSurface />}
+          </>
+        )}
       </FloatingPanel>
     </div>
   );

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
+import { useEncodingStore } from '../../store/useEncodingStore';
+import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { MobileTabBar, SheetHeight } from './MobileTabBar';
 
 const MODE_LABELS: Record<string, string> = {
-  builder:      'Builder',
-  pataphysical: 'Pataphysical',
-  encoding:     'Encoding',
-  evolution:    'Evolution',
+  encoding:  'Encode',
+  evolution: 'Evolution',
 };
 
 const HEIGHT_MAP: Record<SheetHeight, string> = {
@@ -46,7 +46,19 @@ interface BottomSheetProps {
  */
 export const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
   const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
-  const activeMode = useAppStore(s => s.activeMode);
+  const activeMode       = useAppStore(s => s.activeMode);
+  const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
+  const evolutionSubMode = useEvolutionStore(s => s.subMode);
+
+  // Context-aware label that reflects the current sub-mode (e.g. Encode → Builder
+  // while editing the merge seed, Evolution → Pataphysical while the sub-mode is
+  // active). Falls back to the mode's own label.
+  const contextLabel =
+    activeMode === 'encoding' && seedEditOpen
+      ? 'Encode → Builder'
+      : activeMode === 'evolution' && evolutionSubMode === 'pataphysical'
+        ? 'Evolution → Pataphysical'
+        : MODE_LABELS[activeMode] ?? activeMode;
 
   const cycleHeight    = () => setHeightState(s => NEXT_STATE[s]);
   const expandToHalf   = () => { if (heightState === 'collapsed') setHeightState('half'); };
@@ -83,7 +95,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
       {!isCollapsed && (
         <div className="px-4 py-1 flex-shrink-0">
           <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
-            {MODE_LABELS[activeMode] ?? activeMode}
+            {contextLabel}
           </span>
         </div>
       )}

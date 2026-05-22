@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AppMode } from '../../store/useAppStore';
+import { useEncodingStore } from '../../store/useEncodingStore';
+import { useEvolutionStore } from '../../store/useEvolutionStore';
 
 const TOP_BAR = 42;
 const VIEWPORT_PADDING = 16;
@@ -11,10 +13,8 @@ const DRAG_EDGE = 12;
 const RESIZE_EDGE = 8;
 
 const MODE_LABELS: Record<AppMode, string> = {
-  builder:      'Builder',
-  pataphysical: 'Pataphysical',
-  encoding:     'Encoding',
-  evolution:    'Evolution',
+  encoding:  'Encode',
+  evolution: 'Evolution',
 };
 
 const panelStyle: React.CSSProperties = {
@@ -156,6 +156,15 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   children,
   exportSlot,
 }) => {
+  const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
+  const evolutionSubMode = useEvolutionStore(s => s.subMode);
+  const contextLabel =
+    mode === 'encoding' && seedEditOpen
+      ? 'Encode → Builder'
+      : mode === 'evolution' && evolutionSubMode === 'pataphysical'
+        ? 'Evolution → Pataphysical'
+        : MODE_LABELS[mode];
+
   const [geometry, setGeometry] = useState<Geometry>(initialGeometry);
   const panelRef = useRef<HTMLDivElement>(null);
   const geomRef = useRef<Geometry>(geometry);
@@ -322,7 +331,7 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
           style={{ width: 5, height: 5, background: 'hsl(var(--accent))' }}
         />
         <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
-          {MODE_LABELS[mode]}
+          {contextLabel}
         </span>
       </div>
 

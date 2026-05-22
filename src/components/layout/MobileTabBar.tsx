@@ -1,30 +1,9 @@
 import React from 'react';
-import { useAppStore, AppMode } from '../../store/useAppStore';
+import { useAppStore, AppMode, VISIBLE_NAV_SLOTS, NavSlot } from '../../store/useAppStore';
 
 export type SheetHeight = 'collapsed' | 'half' | 'full';
 
 // ── SVG icons per spec ───────────────────────────────────────────────────────
-
-/** Builder: 2×2 grid of squares */
-const BuilderIcon: React.FC = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2"  y="2"  width="6" height="6" rx="0.8" />
-    <rect x="10" y="2"  width="6" height="6" rx="0.8" />
-    <rect x="2"  y="10" width="6" height="6" rx="0.8" />
-    <rect x="10" y="10" width="6" height="6" rx="0.8" />
-  </svg>
-);
-
-/** Pataphysical: circle + crosshair */
-const PataphysicalIcon: React.FC = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-    <circle cx="9" cy="9" r="5" />
-    <line x1="9" y1="1"    x2="9" y2="3.5"  />
-    <line x1="9" y1="14.5" x2="9" y2="17"   />
-    <line x1="1"    y1="9" x2="3.5"  y2="9" />
-    <line x1="14.5" y1="9" x2="17"   y2="9" />
-  </svg>
-);
 
 /** Encoding: 3 horizontal lines */
 const EncodingIcon: React.FC = () => (
@@ -47,12 +26,33 @@ const EvolutionIcon: React.FC = () => (
   </svg>
 );
 
-const MODES: { key: AppMode; label: string; Icon: React.FC }[] = [
-  { key: 'builder',      label: 'Builder',      Icon: BuilderIcon },
-  { key: 'pataphysical', label: 'Pataphysical',  Icon: PataphysicalIcon },
-  { key: 'encoding',     label: 'Encoding',      Icon: EncodingIcon },
-  { key: 'evolution',    label: 'Evolution',     Icon: EvolutionIcon },
-];
+/** Map (reserved): pinned location glyph */
+const MapIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 16 C 9 16 14 11 14 7 A 5 5 0 0 0 4 7 C 4 11 9 16 9 16 Z" />
+    <circle cx="9" cy="7" r="1.6" />
+  </svg>
+);
+
+/** Decode (reserved): notation lines */
+const DecodeIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+    <line x1="2" y1="6"  x2="16" y2="6"  />
+    <line x1="2" y1="12" x2="11" y2="12" />
+    <line x1="2" y1="9"  x2="14" y2="9"  />
+  </svg>
+);
+
+/**
+ * Icon registry keyed by slot.key. New slots (Map, Decode) add their icon
+ * here when they get mounted — paired with NAV_SLOTS by key, not by index.
+ */
+const SLOT_ICONS: Record<NavSlot['key'], React.FC> = {
+  map:       MapIcon,
+  encoding:  EncodingIcon,
+  evolution: EvolutionIcon,
+  decode:    DecodeIcon,
+};
 
 interface MobileTabBarProps {
   heightState: SheetHeight;
@@ -78,12 +78,13 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpan
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
-      {MODES.map(({ key, label, Icon }) => {
-        const active = key === activeMode;
+      {VISIBLE_NAV_SLOTS.map((slot) => {
+        const Icon = SLOT_ICONS[slot.key];
+        const active = slot.key === activeMode;
         return (
           <button
-            key={key}
-            onClick={() => handlePress(key)}
+            key={slot.key}
+            onClick={() => handlePress(slot.key as AppMode)}
             className="flex-1 flex flex-col items-center justify-center gap-[3px] bg-transparent border-none cursor-pointer transition-colors"
             style={{
               color:      active ? '#ffffff' : 'rgb(148 163 184)',
@@ -91,7 +92,7 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpan
             }}
           >
             <Icon />
-            <span style={{ fontSize: 9, lineHeight: 1 }}>{label}</span>
+            <span style={{ fontSize: 9, lineHeight: 1 }}>{slot.label}</span>
           </button>
         );
       })}

@@ -1,13 +1,6 @@
 import React from 'react';
-import { useAppStore, AppMode } from '../../store/useAppStore';
+import { useAppStore, AppMode, VISIBLE_NAV_SLOTS } from '../../store/useAppStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
-
-const MODES: { key: AppMode; label: string }[] = [
-  { key: 'builder',      label: 'Builder' },
-  { key: 'pataphysical', label: 'Pataphysical' },
-  { key: 'encoding',     label: 'Encoding' },
-  { key: 'evolution',    label: 'Evolution' },
-];
 
 const glassStyle: React.CSSProperties = {
   background: '#0f172a',
@@ -58,15 +51,18 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
         <span className="font-mono text-[13px] text-slate-300 select-none">CS</span>
       </div>
 
-      {/* ── Center: mode tabs ── */}
+      {/* ── Center: mode tabs ──
+          Renders from VISIBLE_NAV_SLOTS so positional order stays stable;
+          Map/Decode reserve their slots in NAV_SLOTS but aren't rendered
+          until they have a mounted component. */}
       <div className="flex h-full">
         {showModeTabs
-          ? MODES.map(mode => {
-              const active = mode.key === activeMode;
+          ? VISIBLE_NAV_SLOTS.map(slot => {
+              const active = slot.key === activeMode;
               return (
                 <button
-                  key={mode.key}
-                  onClick={() => setActiveMode(mode.key)}
+                  key={slot.key}
+                  onClick={() => setActiveMode(slot.key as AppMode)}
                   className={[
                     'h-full px-3 flex items-center font-mono text-[11px] transition-colors border-b-2 bg-transparent border-0 cursor-pointer',
                     active
@@ -75,7 +71,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
                   ].join(' ')}
                   style={{ borderBottom: active ? '2px solid #fff' : '2px solid transparent' }}
                 >
-                  {mode.label}
+                  {slot.label}
                 </button>
               );
             })
