@@ -32,6 +32,15 @@ export interface EvolutionCandidate {
 
 export type TargetCubeStrategy = 'random' | 'least-compressed' | 'adaptive';
 
+/**
+ * Evolution's internal sub-mode.
+ *
+ * - 'evolve'       : the canonical Evolution panel (compressibility-driven candidates).
+ * - 'pataphysical' : the meme-translation surface (former top-level Pataphysical mode)
+ *                    re-parented here as a contextual sub-mode.
+ */
+export type EvolutionSubMode = 'evolve' | 'pataphysical';
+
 export interface EvolutionConfig {
   populationSize: number;        // candidates per generation (default 6)
   selectionPressure: number;     // weight of compression progress vs user choice (default 0.7)
@@ -40,6 +49,10 @@ export interface EvolutionConfig {
 }
 
 interface EvolutionState {
+  // Sub-mode (internal toggle within Evolution)
+  subMode: EvolutionSubMode;
+  setSubMode: (m: EvolutionSubMode) => void;
+
   // Core state
   generation: number;
   candidates: EvolutionCandidate[];
@@ -89,6 +102,10 @@ const DEFAULT_CONFIG: EvolutionConfig = {
 // ---------------------------------------------------------------------------
 
 export const useEvolutionStore = create<EvolutionState>((set, get) => ({
+  // Sub-mode
+  subMode: 'evolve' as EvolutionSubMode,
+  setSubMode: (m) => set({ subMode: m }),
+
   // Core state
   generation: 0,
   candidates: [],

@@ -29,6 +29,13 @@ interface EncodingState {
   setSeedFromBuilder: () => void;
   setSeedFromSavedState: (savedState: SavedState) => void;
 
+  // Seed-edit overlay: when true, the Encoding surface temporarily mounts the
+  // Builder UI so the user can build / edit the merge seed inline.
+  // Closing the overlay re-snapshots `placedCubes` into `seedCubes`.
+  seedEditOpen: boolean;
+  openSeedEdit: () => void;
+  closeSeedEdit: () => void;
+
   // Actions
   encode: () => Promise<void>;
   loadIntoBuilder: () => void;
@@ -88,6 +95,17 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const cubes = savedStateToPlacedCubes(savedState);
     set({
       seedCubes: cubes,
+      seedCubeIds: new Set(cubes.map(c => c.id)),
+    });
+  },
+
+  seedEditOpen: false,
+  openSeedEdit: () => set({ seedEditOpen: true }),
+  closeSeedEdit: () => {
+    const cubes = useBuilderStore.getState().placedCubes;
+    set({
+      seedEditOpen: false,
+      seedCubes: [...cubes],
       seedCubeIds: new Set(cubes.map(c => c.id)),
     });
   },

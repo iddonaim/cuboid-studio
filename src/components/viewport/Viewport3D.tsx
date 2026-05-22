@@ -455,7 +455,16 @@ const SceneCapture: React.FC = () => {
 };
 
 export const Viewport3D: React.FC = () => {
-  const activeMode = useAppStore(s => s.activeMode);
+  const activeMode       = useAppStore(s => s.activeMode);
+  const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
+  const evolutionSubMode = useEvolutionStore(s => s.subMode);
+
+  // Encoding: Builder takes over the scene when the seed-edit overlay is open.
+  // Evolution: Pataphysical takes over the scene when its sub-mode is active.
+  const showBuilderScene       = activeMode === 'encoding' && seedEditOpen;
+  const showEncodingScene      = activeMode === 'encoding' && !seedEditOpen;
+  const showPataphysicalScene  = activeMode === 'evolution' && evolutionSubMode === 'pataphysical';
+  const showEvolutionScene     = activeMode === 'evolution' && evolutionSubMode === 'evolve';
 
   return (
     <Canvas
@@ -480,10 +489,10 @@ export const Viewport3D: React.FC = () => {
         }}
       />
 
-      {activeMode === 'builder' && <BuilderScene />}
-      {activeMode === 'pataphysical' && <PataphysicalScene />}
-      {activeMode === 'encoding' && <EncodingScene />}
-      {activeMode === 'evolution' && <EvolutionScene />}
+      {showBuilderScene       && <BuilderScene />}
+      {showEncodingScene      && <EncodingScene />}
+      {showPataphysicalScene  && <PataphysicalScene />}
+      {showEvolutionScene     && <EvolutionScene />}
     </Canvas>
   );
 };

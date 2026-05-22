@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useAppStore } from '../../store/useAppStore';
+import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { listSavedStates, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 
@@ -19,7 +20,9 @@ export const EncodingPanel: React.FC = () => {
   const setSeedFromBuilder = useEncodingStore(s => s.setSeedFromBuilder);
   const setSeedFromSavedState = useEncodingStore(s => s.setSeedFromSavedState);
   const seedCubes = useEncodingStore(s => s.seedCubes);
+  const openSeedEdit = useEncodingStore(s => s.openSeedEdit);
   const setActiveMode = useAppStore(s => s.setActiveMode);
+  const setEvolutionSubMode = useEvolutionStore(s => s.setSubMode);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [savedStates, setSavedStates] = React.useState<SavedState[]>([]);
@@ -41,9 +44,23 @@ export const EncodingPanel: React.FC = () => {
     e.target.value = '';
   };
 
-  const handleLoadAndSwitch = (target: 'builder' | 'pataphysical') => {
+  // Post-encode destinations.
+  //
+  // The old IA had two "Load into ..." buttons that jumped to the top-level
+  // Builder or Pataphysical modes. Those modes no longer exist as primary
+  // nav, so we redirect:
+  //   - 'edit'   : load the encoded result into the assembly and open the
+  //                seed-edit view inside Encode (formerly the Builder tab).
+  //   - 'memes'  : load the result, then jump to Evolution → Pataphysical
+  //                sub-mode (formerly the Pataphysical tab).
+  const handleLoadAndSwitch = (target: 'edit' | 'memes') => {
     loadIntoBuilder();
-    setActiveMode(target);
+    if (target === 'edit') {
+      openSeedEdit();
+    } else {
+      setEvolutionSubMode('pataphysical');
+      setActiveMode('evolution');
+    }
   };
 
   const handleModeSelect = (newMode: 'standalone' | 'merge' | 'remix') => {
@@ -100,18 +117,22 @@ export const EncodingPanel: React.FC = () => {
         ))}
       </div>
 
-      {/* Merge notice */}
+      {/* Merge seed slot — build or edit the seed inline */}
       {mode === 'merge' && (
-        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-[11px]">
-          {seedCubes.length > 0 ? (
-            <span className="text-slate-400">
-              Seed: {seedCubes.length} cube{seedCubes.length !== 1 ? 's' : ''} from current assembly
+        <div className="p-2 bg-slate-800 border border-slate-700 rounded flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className={`text-[11px] ${seedCubes.length > 0 ? 'text-slate-400' : 'text-amber-400'}`}>
+              {seedCubes.length > 0
+                ? `Seed: ${seedCubes.length} cube${seedCubes.length !== 1 ? 's' : ''}`
+                : 'Seed is empty'}
             </span>
-          ) : (
-            <span className="text-red-400">
-              Builder is empty. Add cubes to the Builder first.
-            </span>
-          )}
+            <Button
+              onClick={() => { setSeedFromBuilder(); openSeedEdit(); }}
+              className="h-auto py-1 px-2 text-[10px] bg-slate-700 hover:bg-slate-600 text-white border-0"
+            >
+              {seedCubes.length > 0 ? 'Edit seed' : 'Build seed'}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -265,16 +286,16 @@ export const EncodingPanel: React.FC = () => {
           </div>
 
           <Button
-            onClick={() => handleLoadAndSwitch('builder')}
+            onClick={() => handleLoadAndSwitch('edit')}
             className="w-full h-auto py-2.5 text-xs font-semibold bg-emerald-900 hover:bg-emerald-800 text-white border-0"
           >
-            Load into Builder
+            Load &amp; edit
           </Button>
           <Button
-            onClick={() => handleLoadAndSwitch('pataphysical')}
+            onClick={() => handleLoadAndSwitch('memes')}
             className="w-full h-auto py-2.5 text-xs font-semibold bg-orange-950 hover:bg-orange-900 text-white border-0"
           >
-            Load + Apply Memes
+            Load &amp; apply memes
           </Button>
 
           <button
