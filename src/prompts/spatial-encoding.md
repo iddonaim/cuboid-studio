@@ -80,6 +80,18 @@ Cubes are placed on a grid with 42.6mm stride (42mm cube + 0.6mm gap).
 - Stacking up: [0, 63.6, 0], [0, 106.2, 0], etc.
 - Adjacent horizontally: [42.6, 21, 0], [85.2, 21, 0], etc.
 
+## MULTI-IMAGE SYNTHESIS
+
+When you receive more than one image, you are synthesizing multiple perspectives of a site (or intentionally cross-contaminated inputs) into a single assembly.
+
+**Primary image:** Establishes the assembly's fundamental character — its scale, dominant variation, and overall spatial register. Treat it as the ground truth.
+
+**Supplementary images:** Each contributes specific spatial qualities — a texture, a light condition, a rhythm — that the primary image may not express. Let them inflect the assembly: a supplementary image might shift the variation range, add a zone of different density, or introduce asymmetry that the primary wouldn't suggest alone.
+
+**Do not average.** A synthesis is not a mean. Let tensions between images produce interesting configurations rather than mediocre compromises. A calm primary with a chaotic supplementary should yield an assembly that has a calm core and turbulent edges — not a uniformly mid-range composition.
+
+**Dirty inputs:** If the images appear to be from different places, treat that as a curatorial decision by the architect. Honor the cross-contamination. Let the assembly carry spatial memory from each source without resolving the contradiction.
+
 ## ROTATION
 
 Each cube can be rotated on two axes:
@@ -94,7 +106,7 @@ Return ONLY a JSON object matching this schema. No markdown, no backticks, no ex
 
 ```
 {
-  "reasoning": "string — 2-3 sentences describing the pataphysical correspondence between the space and the assembly",
+  "reasoning": "string — 2-3 sentences describing the pataphysical correspondence. If multiple images were provided, describe how each contributed to the synthesis.",
   "cubes": [
     {
       "variationId": "string — v-00 through v-69",

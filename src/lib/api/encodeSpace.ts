@@ -1,7 +1,12 @@
-export interface EncodeSpaceRequest {
-  imageBase64: string;
-  imageMediaType?: string;
+export interface EncodeSpaceImage {
+  base64: string;
+  mediaType: string;
+  isPrimary?: boolean;
 }
+
+export type EncodeSpaceRequest =
+  | { imageBase64: string; imageMediaType?: string }
+  | { images: EncodeSpaceImage[] };
 
 export interface EncodedCube {
   variationId: string;
@@ -15,13 +20,18 @@ export interface EncodeSpaceResponse {
 }
 
 export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSpaceResponse> {
+  const body =
+    'images' in request
+      ? { images: request.images }
+      : {
+          imageBase64: request.imageBase64,
+          imageMediaType: request.imageMediaType || 'image/jpeg',
+        };
+
   const response = await fetch('/api/encode-space', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      imageBase64: request.imageBase64,
-      imageMediaType: request.imageMediaType || 'image/jpeg',
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

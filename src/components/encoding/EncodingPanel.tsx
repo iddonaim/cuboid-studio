@@ -1,14 +1,38 @@
 import React, { useRef } from 'react';
-import { useEncodingStore } from '../../store/useEncodingStore';
+import { useEncodingStore, UploadedEncodingImage } from '../../store/useEncodingStore';
 import { useAppStore } from '../../store/useAppStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { listSavedStates, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
+import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
+
+async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
+  try {
+    const { base64, mediaType } = await resizeImageToBase64(file);
+    const dataUrl = `data:${mediaType};base64,${base64}`;
+    return {
+      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      dataUrl,
+      base64,
+      mediaType,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export const EncodingPanel: React.FC = () => {
   const uploadedImage = useEncodingStore(s => s.uploadedImage);
   const setImage = useEncodingStore(s => s.setImage);
   const clearImage = useEncodingStore(s => s.clearImage);
+  const multiPhotoEnabled = useEncodingStore(s => s.multiPhotoEnabled);
+  const setMultiPhotoEnabled = useEncodingStore(s => s.setMultiPhotoEnabled);
+  const uploadedImages = useEncodingStore(s => s.uploadedImages);
+  const primaryImageId = useEncodingStore(s => s.primaryImageId);
+  const addImages = useEncodingStore(s => s.addImages);
+  const removeImage = useEncodingStore(s => s.removeImage);
+  const setPrimaryImage = useEncodingStore(s => s.setPrimaryImage);
+  const clearAllImages = useEncodingStore(s => s.clearAllImages);
   const isEncoding = useEncodingStore(s => s.isEncoding);
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const encodingReasoning = useEncodingStore(s => s.encodingReasoning);
@@ -28,19 +52,25 @@ export const EncodingPanel: React.FC = () => {
   const [savedStates, setSavedStates] = React.useState<SavedState[]>([]);
   const [selectedSeedId, setSelectedSeedId] = React.useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const hasImages = multiPhotoEnabled
+    ? uploadedImages.length > 0
+    : Boolean(uploadedImage);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
-      if (match) {
-        setImage(dataUrl, match[2], match[1]);
-      }
-    };
-    reader.readAsDataURL(file);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (multiPhotoEnabled) {
+      const remaining = 7 - uploadedImages.length;
+      const toRead = Array.from(files).slice(0, remaining);
+      const parsed = (await Promise.all(toRead.map(readImageFile))).filter(
+        (img): img is UploadedEncodingImage => img !== null
+      );
+      if (parsed.length > 0) addImages(parsed);
+    } else {
+      const img = await readImageFile(files[0]);
+      if (img) setImage(img.dataUrl, img.base64, img.mediaType);
+    }
     e.target.value = '';
   };
 
@@ -100,6 +130,17 @@ export const EncodingPanel: React.FC = () => {
   return (
     <div className="flex flex-col gap-2.5">
 
+      {/* Multi-photo toggle */}
+      <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-400">
+        <input
+          type="checkbox"
+          checked={multiPhotoEnabled}
+          onChange={(e) => setMultiPhotoEnabled(e.target.checked)}
+          className="rounded border-slate-600"
+        />
+        Multi-photo
+      </label>
+
       {/* Mode selector */}
       <div className="flex gap-1">
         {MODE_LABELS.map(({ value, label }) => (
@@ -137,7 +178,7 @@ export const EncodingPanel: React.FC = () => {
       )}
 
       {/* Remix seed picker */}
-      {mode === 'remix' && !uploadedImage && (
+      {mode === 'remix' && !hasImages && (
         <div className="flex flex-col gap-1">
           <div className="text-slate-500 text-[10px]">Select a seed assembly:</div>
           {savedStates.length === 0 ? (
@@ -168,7 +209,75 @@ export const EncodingPanel: React.FC = () => {
       )}
 
       {/* Image upload area */}
-      {!uploadedImage ? (
+      {multiPhotoEnabled ? (
+        <>
+          {uploadedImages.length === 0 ? (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="py-6 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer text-center bg-slate-800"
+            >
+              <div className="text-slate-400 text-xs mb-1">Upload photos (up to 7)</div>
+              <div className="text-slate-600 text-[10px]">
+                Mark one as primary — it anchors the assembly
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {uploadedImages.map((img) => (
+                  <div
+                    key={img.id}
+                    className={`relative shrink-0 w-20 rounded-md border-2 overflow-hidden ${
+                      img.id === primaryImageId
+                        ? 'border-blue-500'
+                        : 'border-slate-700'
+                    }`}
+                  >
+                    <img
+                      src={img.dataUrl}
+                      alt=""
+                      className="w-20 h-16 object-cover bg-slate-950"
+                    />
+                    <label className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-0.5 bg-slate-950/80 py-0.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="primary-encoding-image"
+                        checked={img.id === primaryImageId}
+                        onChange={() => setPrimaryImage(img.id)}
+                        className="w-2.5 h-2.5"
+                      />
+                      <span className="text-[8px] text-slate-400">Primary</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.id)}
+                      className="absolute top-0.5 right-0.5 bg-slate-950/90 border-0 text-slate-400 rounded px-1 text-xs leading-none cursor-pointer"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {uploadedImages.length < 7 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="py-1.5 bg-slate-800 border border-slate-700 rounded-md text-slate-500 cursor-pointer text-[10px]"
+                >
+                  Add more ({uploadedImages.length}/7)
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={clearAllImages}
+                className="py-1 bg-transparent border-0 text-slate-600 cursor-pointer text-[10px] self-start"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </>
+      ) : !uploadedImage ? (
         <div
           onClick={() => fileInputRef.current?.click()}
           className="py-6 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer text-center bg-slate-800"
@@ -200,12 +309,13 @@ export const EncodingPanel: React.FC = () => {
         type="file"
         accept="image/*"
         capture="environment"
+        multiple={multiPhotoEnabled}
         onChange={handleFileChange}
         className="hidden"
       />
 
       {/* Separate buttons for gallery and camera on mobile */}
-      {!uploadedImage && (
+      {!hasImages && (
         <div className="flex gap-1.5">
           <button
             onClick={() => {
@@ -233,7 +343,7 @@ export const EncodingPanel: React.FC = () => {
       )}
 
       {/* Encode button */}
-      {uploadedImage && !encodedCubes && (
+      {hasImages && !encodedCubes && (
         <Button
           onClick={handleEncode}
           disabled={encodeDisabled}
