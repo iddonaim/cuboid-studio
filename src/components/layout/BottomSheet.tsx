@@ -7,6 +7,7 @@ import { MobileTabBar, SheetHeight } from './MobileTabBar';
 const MODE_LABELS: Record<string, string> = {
   encoding:  'Encode',
   evolution: 'Evolution',
+  decode:    'Decode',
 };
 
 const HEIGHT_MAP: Record<SheetHeight, string> = {

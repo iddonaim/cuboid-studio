@@ -464,7 +464,9 @@ export const Viewport3D: React.FC = () => {
   const showBuilderScene       = activeMode === 'encoding' && seedEditOpen;
   const showEncodingScene      = activeMode === 'encoding' && !seedEditOpen;
   const showPataphysicalScene  = activeMode === 'evolution' && evolutionSubMode === 'pataphysical';
-  const showEvolutionScene     = activeMode === 'evolution' && evolutionSubMode === 'evolve';
+  const showEvolutionScene     =
+    (activeMode === 'evolution' && evolutionSubMode === 'evolve') ||
+    activeMode === 'decode';
 
   return (
     <Canvas

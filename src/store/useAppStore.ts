@@ -5,10 +5,9 @@ import { create } from 'zustand';
  *
  * The wider workflow spine is Map -> Encode -> Evolution -> Decode (see
  * NAV_SLOTS below). Map and Decode are reserved as future tabs and are not
- * mounted yet; only `'encoding'` and `'evolution'` are valid AppMode values
- * at runtime.
+ * mounted yet; Map is still reserved.
  */
-export type AppMode = 'encoding' | 'evolution';
+export type AppMode = 'encoding' | 'evolution' | 'decode';
 
 /**
  * Ordered named-slot config for the primary navigation.
@@ -30,7 +29,7 @@ export const NAV_SLOTS: readonly NavSlot[] = [
   { key: 'map',       label: 'Map',       mounted: false },
   { key: 'encoding',  label: 'Encode',    mounted: true  },
   { key: 'evolution', label: 'Evolution', mounted: true  },
-  { key: 'decode',    label: 'Decode',    mounted: false },
+  { key: 'decode',    label: 'Decode',    mounted: true  },
 ] as const;
 
 /** Slots actually rendered as tabs right now (mounted=true). */

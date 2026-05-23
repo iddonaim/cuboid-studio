@@ -15,6 +15,7 @@ const RESIZE_EDGE = 8;
 const MODE_LABELS: Record<AppMode, string> = {
   encoding:  'Encode',
   evolution: 'Evolution',
+  decode:    'Decode',
 };
 
 const panelStyle: React.CSSProperties = {
