@@ -7,13 +7,30 @@ import { useBuilderStore } from './useBuilderStore';
 
 type EncodingMode = 'standalone' | 'merge' | 'remix';
 
+export interface UploadedEncodingImage {
+  id: string;
+  dataUrl: string;
+  base64: string;
+  mediaType: string;
+}
+
 interface EncodingState {
-  // Image
+  // Image (single-photo mode)
   uploadedImage: string | null;
   imageBase64: string | null;
   imageMediaType: string | null;
   setImage: (dataUrl: string, base64: string, mediaType: string) => void;
   clearImage: () => void;
+
+  // Multi-photo mode
+  multiPhotoEnabled: boolean;
+  uploadedImages: UploadedEncodingImage[];
+  primaryImageId: string | null;
+  setMultiPhotoEnabled: (enabled: boolean) => void;
+  addImages: (images: UploadedEncodingImage[]) => void;
+  removeImage: (id: string) => void;
+  setPrimaryImage: (id: string) => void;
+  clearAllImages: () => void;
 
   // Encoding state
   isEncoding: boolean;
@@ -58,6 +75,85 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     uploadedImage: null,
     imageBase64: null,
     imageMediaType: null,
+    encodedCubes: null,
+    encodingReasoning: null,
+    lastError: null,
+  }),
+
+  multiPhotoEnabled: false,
+  uploadedImages: [],
+  primaryImageId: null,
+
+  setMultiPhotoEnabled: (enabled) => {
+    const state = get();
+    if (enabled && !state.multiPhotoEnabled && state.uploadedImage && state.imageBase64) {
+      const id = `img-${Date.now()}`;
+      set({
+        multiPhotoEnabled: true,
+        uploadedImages: [{
+          id,
+          dataUrl: state.uploadedImage,
+          base64: state.imageBase64,
+          mediaType: state.imageMediaType || 'image/jpeg',
+        }],
+        primaryImageId: id,
+        uploadedImage: null,
+        imageBase64: null,
+        imageMediaType: null,
+      });
+      return;
+    }
+    if (!enabled && state.uploadedImages.length > 0) {
+      const primary = state.uploadedImages.find(img => img.id === state.primaryImageId)
+        ?? state.uploadedImages[0];
+      set({
+        multiPhotoEnabled: false,
+        uploadedImage: primary.dataUrl,
+        imageBase64: primary.base64,
+        imageMediaType: primary.mediaType,
+        uploadedImages: [],
+        primaryImageId: null,
+      });
+      return;
+    }
+    set({ multiPhotoEnabled: enabled });
+  },
+
+  addImages: (images) => set((state) => {
+    const merged = [...state.uploadedImages, ...images].slice(0, 7);
+    const primaryImageId = state.primaryImageId ?? merged[0]?.id ?? null;
+    return {
+      uploadedImages: merged,
+      primaryImageId,
+      encodedCubes: null,
+      encodingReasoning: null,
+      lastError: null,
+    };
+  }),
+
+  removeImage: (id) => set((state) => {
+    const uploadedImages = state.uploadedImages.filter(img => img.id !== id);
+    let primaryImageId = state.primaryImageId;
+    if (primaryImageId === id) {
+      primaryImageId = uploadedImages[0]?.id ?? null;
+    }
+    return {
+      uploadedImages,
+      primaryImageId,
+      encodedCubes: null,
+      encodingReasoning: null,
+      lastError: null,
+    };
+  }),
+
+  setPrimaryImage: (id) => set({ primaryImageId: id }),
+
+  clearAllImages: () => set({
+    uploadedImage: null,
+    imageBase64: null,
+    imageMediaType: null,
+    uploadedImages: [],
+    primaryImageId: null,
     encodedCubes: null,
     encodingReasoning: null,
     lastError: null,
@@ -112,8 +208,18 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
 
   // Actions
   encode: async () => {
-    const { imageBase64, imageMediaType } = get();
-    if (!imageBase64) {
+    const {
+      multiPhotoEnabled,
+      uploadedImages,
+      primaryImageId,
+      imageBase64,
+      imageMediaType,
+    } = get();
+
+    const hasMulti = multiPhotoEnabled && uploadedImages.length > 0;
+    const hasSingle = !multiPhotoEnabled && imageBase64;
+
+    if (!hasMulti && !hasSingle) {
       set({ lastError: 'No image provided' });
       return;
     }
@@ -121,10 +227,18 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     set({ isEncoding: true, lastError: null, encodedCubes: null, encodingReasoning: null });
 
     try {
-      const result = await encodeSpace({
-        imageBase64,
-        imageMediaType: imageMediaType || 'image/jpeg',
-      });
+      const result = hasMulti
+        ? await encodeSpace({
+            images: uploadedImages.map((img) => ({
+              base64: img.base64,
+              mediaType: img.mediaType,
+              isPrimary: img.id === primaryImageId,
+            })),
+          })
+        : await encodeSpace({
+            imageBase64: imageBase64!,
+            imageMediaType: imageMediaType || 'image/jpeg',
+          });
 
       // Grid-snap each position and remove collisions with seed cubes.
       // Y axis is offset by CUBE_SIZE/2 (ground level = 21, not 0).

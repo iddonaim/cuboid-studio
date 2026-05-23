@@ -2,10 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fs from 'fs';
 import path from 'path';
 
+type EncodingImage = { base64: string; mediaType: string; isPrimary: boolean };
+
 /**
  * Vercel serverless function: POST /api/encode-space
  *
- * Accepts a base64 image of an inhabited space and translates it
+ * Accepts one or more base64 images of inhabited space and translates them
  * into a cuboid assembly composition using Claude's vision API
  * with the spatial encoding system prompt.
  *
@@ -18,13 +20,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { imageBase64, imageMediaType } = req.body || {};
+  let images: EncodingImage[];
 
-  if (!imageBase64 || typeof imageBase64 !== 'string') {
-    return res.status(400).json({ error: 'imageBase64 is required' });
+  if (req.body.images && Array.isArray(req.body.images)) {
+    images = req.body.images.map((img: { base64?: string; mediaType?: string; isPrimary?: boolean }, i: number) => ({
+      base64: img.base64,
+      mediaType: img.mediaType || 'image/jpeg',
+      isPrimary: img.isPrimary ?? i === 0,
+    }));
+  } else {
+    images = [{
+      base64: req.body.imageBase64,
+      mediaType: req.body.imageMediaType || 'image/jpeg',
+      isPrimary: true,
+    }];
   }
 
-  const mediaType = imageMediaType || 'image/jpeg';
+  if (!images || images.length === 0 || images.some(img => !img.base64)) {
+    return res.status(400).json({ error: 'At least one image is required' });
+  }
+  if (images.length > 7) {
+    return res.status(400).json({ error: 'Maximum 7 images per encoding (1 primary + 6 supplementary)' });
+  }
 
   // Load the architect's curatorial artifact at runtime
   let systemPrompt: string;
@@ -41,25 +58,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   }
 
-  async function callClaude(retryText?: string): Promise<string> {
-    const messageContent: any[] = [];
+  function buildContent(userText: string): { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] {
+    const content: { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] = [];
 
-    if (!retryText) {
-      messageContent.push({
+    images.forEach((img) => {
+      content.push({
         type: 'image',
-        source: {
-          type: 'base64',
-          media_type: mediaType,
-          data: imageBase64,
-        },
+        source: { type: 'base64', media_type: img.mediaType, data: img.base64 },
       });
-    }
-
-    messageContent.push({
-      type: 'text',
-      text: retryText || 'Translate this space into a cuboid assembly.',
     });
 
+    const primaryIndex = images.findIndex(img => img.isPrimary);
+    const imageContext = images.length > 1
+      ? `You are receiving ${images.length} images. Image ${primaryIndex + 1} is the primary reference — it should anchor the assembly's overall character and scale. The remaining images are supplementary — they contribute specific spatial qualities but should not override the primary's fundamental character.\n\n${userText}`
+      : userText;
+
+    content.push({ type: 'text', text: imageContext });
+    return content;
+  }
+
+  async function callClaude(content: { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[]): Promise<string> {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -73,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         system: systemPrompt,
         messages: [{
           role: 'user',
-          content: messageContent,
+          content,
         }],
       }),
     });
@@ -84,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data = await response.json();
-    const textBlock = data.content?.find((b: any) => b.type === 'text');
+    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
     if (!textBlock?.text) {
       throw new Error('No text content in Claude response');
     }
@@ -93,20 +111,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    let rawText = await callClaude();
+    let rawText = await callClaude(buildContent('Translate this space into a cuboid assembly.'));
 
     // Strip markdown code fences if present
     rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
 
-    let parsed: any;
+    let parsed: { reasoning?: string; cubes?: unknown[] };
     try {
       parsed = JSON.parse(rawText);
     } catch {
-      // Retry once with explicit JSON instruction
+      // Retry once with explicit JSON instruction (images preserved via buildContent)
       console.log('First parse failed, retrying with explicit JSON instruction');
-      const retryText = await callClaude(
+      const retryText = await callClaude(buildContent(
         'Translate this space into a cuboid assembly.\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON object.'
-      );
+      ));
       const cleanedRetry = retryText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
 
       try {
@@ -133,9 +151,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Validate and sanitize each cube
     const validCubes = parsed.cubes
-      .filter((c: any) => {
+      .filter((c: { variationId?: string; position?: number[] }) => {
         if (!c.variationId || typeof c.variationId !== 'string') return false;
-        // Validate variation ID format: v-00 through v-69
         const match = c.variationId.match(/^v-(\d+)$/);
         if (!match) return false;
         const num = parseInt(match[1], 10);
@@ -143,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!c.position || !Array.isArray(c.position) || c.position.length !== 3) return false;
         return true;
       })
-      .map((c: any) => ({
+      .map((c: { variationId: string; position: number[]; rotation?: { x?: number; y?: number } }) => ({
         variationId: c.variationId,
         position: c.position.map(Number) as [number, number, number],
         rotation: {
