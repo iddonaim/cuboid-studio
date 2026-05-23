@@ -16,4 +16,4 @@ He reads code pragmatically (can follow shape, variable names, control flow at a
 
 ## Project context
 
-See `CLAUDE_CODE_HANDOFF.md` and `PATAPHYSICAL_V2_SPEC.md` for the substantive project state. This file is only about collaboration style.
+See `docs/internal/HANDOFF.md` and `PATAPHYSICAL_V2_SPEC.md` for the substantive project state. This file is only about collaboration style.
