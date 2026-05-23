@@ -27,3 +27,6 @@ dist-ssr
 
 # References folder (internal use only)
 REFERENCES/
+
+# Claude Code local permissions (per-machine, not shared)
+.claude/settings.local.json

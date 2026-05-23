@@ -110,7 +110,7 @@ public/thumbnails/         Pre-rendered thumbnails for the variation catalog
 EVOLUTION_SPEC.md          Evolution mode design spec (unimplemented)
 PATAPHYSICAL_V2_SPEC.md    Translation pipeline spec — read this first
 SERIALIZATION_GUIDE.md     Assembly JSON format
-CLAUDE_CODE_HANDOFF.md     Working notes from the build process
+docs/internal/HANDOFF.md   Working notes from the build process
 ```
 
 ---
