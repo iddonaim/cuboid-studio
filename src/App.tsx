@@ -21,6 +21,7 @@ import { EncodingPanel } from './components/encoding/EncodingPanel';
 import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { ExportPanel } from './components/export/ExportPanel';
+import { DecodePanel } from './components/decode/DecodePanel';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 
@@ -249,6 +250,7 @@ const App: React.FC = () => {
                 : <PataphysicalSurface />}
             </>
           )}
+          {activeMode === 'decode' && <DecodePanel />}
           <ExportPanel />
         </BottomSheet>
       </div>
@@ -297,6 +299,7 @@ const App: React.FC = () => {
               : <PataphysicalSurface />}
           </>
         )}
+        {activeMode === 'decode' && <DecodePanel />}
       </FloatingPanel>
     </div>
   );

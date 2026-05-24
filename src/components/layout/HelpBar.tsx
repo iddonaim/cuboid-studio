@@ -7,9 +7,10 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 // Help text is keyed by the *effective* surface (mode + sub-mode), not just
 // the top-level AppMode. Builder and Pataphysical hints still apply when those
 // surfaces are mounted as contextual sub-modes inside Encode and Evolution.
-type HelpKey = 'encoding' | 'encoding-builder' | 'evolution-evolve' | 'evolution-pataphysical';
+type HelpKey = 'encoding' | 'encoding-builder' | 'evolution-evolve' | 'evolution-pataphysical' | 'decode';
 
 const HELP_DESKTOP: Record<HelpKey, string> = {
+  'decode':                'Read-only assembly \u2022 Right-drag to orbit',
   'encoding':              'Right-drag to orbit',
   'encoding-builder':      'Editing seed \u2022 Click to place \u2022 Space to rotate \u2022 R to tip \u2022 Esc to release \u2022 Right-drag to orbit',
   'evolution-evolve':      'Click cubes to select favorites \u2022 Right-drag to orbit',
@@ -17,6 +18,7 @@ const HELP_DESKTOP: Record<HelpKey, string> = {
 };
 
 const HELP_TOUCH: Record<HelpKey, string> = {
+  'decode':                'Read-only assembly \u2022 One finger to orbit \u2022 Pinch to zoom',
   'encoding':              'One finger to orbit \u2022 Pinch to zoom',
   'encoding-builder':      'Editing seed \u2022 Tap to place \u2022 One finger to orbit \u2022 Pinch to zoom',
   'evolution-evolve':      'Tap cubes to select favorites \u2022 Pinch to zoom',
@@ -38,9 +40,11 @@ export const HelpBar: React.FC = () => {
   const isMobile         = useIsMobile();
 
   const key: HelpKey =
-    activeMode === 'encoding'
-      ? (seedEditOpen ? 'encoding-builder' : 'encoding')
-      : (evolutionSubMode === 'pataphysical' ? 'evolution-pataphysical' : 'evolution-evolve');
+    activeMode === 'decode'
+      ? 'decode'
+      : activeMode === 'encoding'
+        ? (seedEditOpen ? 'encoding-builder' : 'encoding')
+        : (evolutionSubMode === 'pataphysical' ? 'evolution-pataphysical' : 'evolution-evolve');
 
   return (
     <div
