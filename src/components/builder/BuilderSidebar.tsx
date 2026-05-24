@@ -6,10 +6,9 @@ import { RulesToggle } from './RulesToggle';
 import { StrictRulesToggle } from './StrictRulesToggle';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SectionCutControls } from '../viewport/SectionCutControls';
 
 export const BuilderSidebar: React.FC = () => {
   const isMobile = useIsMobile();
@@ -21,12 +20,6 @@ export const BuilderSidebar: React.FC = () => {
   const setRulesEnabled = useBuilderStore(s => s.setRulesEnabled);
   const strictRulesEnabled = useBuilderStore(s => s.strictRulesEnabled);
   const setStrictRulesEnabled = useBuilderStore(s => s.setStrictRulesEnabled);
-  const sectionEnabled = useBuilderStore(s => s.sectionEnabled);
-  const setSectionEnabled = useBuilderStore(s => s.setSectionEnabled);
-  const sectionAxis = useBuilderStore(s => s.sectionAxis);
-  const setSectionAxis = useBuilderStore(s => s.setSectionAxis);
-  const sectionPosition = useBuilderStore(s => s.sectionPosition);
-  const setSectionPosition = useBuilderStore(s => s.setSectionPosition);
   const historyIndex = useBuilderStore(s => s.historyIndex);
   const history = useBuilderStore(s => s.history);
   const undo = useBuilderStore(s => s.undo);
@@ -117,52 +110,7 @@ export const BuilderSidebar: React.FC = () => {
         </Button>
       </div>
 
-      {/* Section plane controls */}
-      <Separator className="mt-3 bg-slate-700" />
-      <div className="mt-3">
-        {sectionEnabled && (
-          <div className="flex flex-col gap-1.5 mb-2">
-            <div className="flex gap-1">
-              {(['x', 'y', 'z'] as const).map(axis => (
-                <Button
-                  key={axis}
-                  onClick={() => setSectionAxis(axis)}
-                  className={`flex-1 h-auto py-1 px-0 text-[11px] rounded-sm border-0 ${
-                    sectionAxis === axis
-                      ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                      : 'bg-card text-muted-foreground hover:bg-slate-700'
-                  }`}
-                >
-                  {axis.toUpperCase()}
-                </Button>
-              ))}
-            </div>
-            <Slider
-              min={-100}
-              max={200}
-              value={[sectionPosition]}
-              onValueChange={([v]) => setSectionPosition(v)}
-            />
-            <span className="text-slate-500 text-[10px] text-center">
-              {sectionAxis.toUpperCase()} = {sectionPosition}
-            </span>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={sectionEnabled}
-            onCheckedChange={setSectionEnabled}
-            id="section-cut"
-            className="data-[state=checked]:bg-accent"
-          />
-          <label
-            htmlFor="section-cut"
-            className={`text-xs cursor-pointer ${sectionEnabled ? 'text-accent' : 'text-slate-500'}`}
-          >
-            Section Cut
-          </label>
-        </div>
-      </div>
+      <SectionCutControls />
 
       {/* Auto-fill (Grow) buttons */}
       <Separator className="mt-3 bg-slate-700" />

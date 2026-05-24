@@ -9,6 +9,7 @@ import {
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { CUBE_SIZE, GRID_STRIDE } from '../../lib/cube/constants';
 import { useBuilderStore } from '../../store/useBuilderStore';
+import { useClippingPlanes } from '../../hooks/useClippingPlanes';
 import { useAppStore } from '../../store/useAppStore';
 import { SpatialGrid } from './SpatialGrid';
 import { CubeWithCuts } from './CubeWithCuts';
@@ -29,9 +30,6 @@ const BuilderScene: React.FC = () => {
   const pickerActive = useBuilderStore(s => s.pickerActive);
   const setPickerActive = useBuilderStore(s => s.setPickerActive);
   const rulesEnabled = useBuilderStore(s => s.rulesEnabled);
-  const sectionEnabled = useBuilderStore(s => s.sectionEnabled);
-  const sectionAxis = useBuilderStore(s => s.sectionAxis);
-  const sectionPosition = useBuilderStore(s => s.sectionPosition);
   const handlePlace = useBuilderStore(s => s.handlePlace);
   const selectedIdx = useBuilderStore(s => s.selectedIdx);
   const previewRotation = useBuilderStore(s => s.previewRotation);
@@ -49,15 +47,7 @@ const BuilderScene: React.FC = () => {
   // If the finger moves more than 8px between down and up, it's a drag — skip placement.
   const pointerDownXY = useRef<{ x: number; y: number } | null>(null);
 
-  const clippingPlanes = useMemo(() => {
-    if (!sectionEnabled) return [];
-    const normal = new THREE.Vector3(
-      sectionAxis === 'x' ? -1 : 0,
-      sectionAxis === 'y' ? -1 : 0,
-      sectionAxis === 'z' ? -1 : 0
-    );
-    return [new THREE.Plane(normal, sectionPosition)];
-  }, [sectionEnabled, sectionAxis, sectionPosition]);
+  const clippingPlanes = useClippingPlanes();
 
   return (
     <>
@@ -336,6 +326,7 @@ const EvolutionScene: React.FC = () => {
   const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
   const previewCandidateId = useEvolutionStore(s => s.previewCandidateId);
   const candidates = useEvolutionStore(s => s.candidates);
+  const clippingPlanes = useClippingPlanes();
 
   // Find which cube the previewed candidate targets
   const previewedCandidate = candidates.find(c => c.id === previewCandidateId);
@@ -373,6 +364,7 @@ const EvolutionScene: React.FC = () => {
             rotation={cube.rotation}
             overrideGeometry={override}
             targeted={cube.id === highlightCubeId}
+            clippingPlanes={clippingPlanes}
           />
         );
       })}

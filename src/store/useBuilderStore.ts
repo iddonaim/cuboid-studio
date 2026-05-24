@@ -46,14 +46,6 @@ interface BuilderState {
   strictRulesEnabled: boolean;
   setStrictRulesEnabled: (enabled: boolean) => void;
 
-  // Section
-  sectionEnabled: boolean;
-  setSectionEnabled: (enabled: boolean) => void;
-  sectionAxis: 'x' | 'y' | 'z';
-  setSectionAxis: (axis: 'x' | 'y' | 'z') => void;
-  sectionPosition: number;
-  setSectionPosition: (pos: number) => void;
-
   // Generation (CSG mode)
   isGenerating: boolean;
   setIsGenerating: (generating: boolean) => void;
@@ -120,14 +112,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setRulesEnabled: (enabled) => set({ rulesEnabled: enabled }),
   strictRulesEnabled: false,
   setStrictRulesEnabled: (enabled) => set({ strictRulesEnabled: enabled }),
-
-  // Section
-  sectionEnabled: false,
-  setSectionEnabled: (enabled) => set({ sectionEnabled: enabled }),
-  sectionAxis: 'y',
-  setSectionAxis: (axis) => set({ sectionAxis: axis }),
-  sectionPosition: 50,
-  setSectionPosition: (pos) => set({ sectionPosition: pos }),
 
   // Generation
   isGenerating: true,

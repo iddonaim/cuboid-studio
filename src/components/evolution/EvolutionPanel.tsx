@@ -7,6 +7,7 @@ import { CompressibilitySparkline } from './CompressibilitySparkline';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
+import { SectionCutControls } from '../viewport/SectionCutControls';
 
 /**
  * Evolution Mode sidebar panel.
@@ -267,8 +268,9 @@ export const EvolutionPanel: React.FC = () => {
         </div>
       )}
 
+      <SectionCutControls />
+
       {/* Config section */}
-      <Separator className="bg-slate-700" />
       <div className="pb-2">
         <div className="text-slate-400 text-[10px] font-semibold mb-2">Settings</div>
 
