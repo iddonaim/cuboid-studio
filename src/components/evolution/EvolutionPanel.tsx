@@ -34,6 +34,7 @@ export const EvolutionPanel: React.FC = () => {
   const compressibilityLog = useEvolutionStore(s => s.compressibilityLog);
   const config = useEvolutionStore(s => s.config);
   const isGenerating = useEvolutionStore(s => s.isGenerating);
+  const generationPhase = useEvolutionStore(s => s.generationPhase);
   const selectedCandidateId = useEvolutionStore(s => s.selectedCandidateId);
   const previewCandidateId = useEvolutionStore(s => s.previewCandidateId);
   const lastError = useEvolutionStore(s => s.lastError);
@@ -164,7 +165,9 @@ export const EvolutionPanel: React.FC = () => {
             : 'bg-emerald-900 hover:bg-emerald-800 text-white'
         }`}
       >
-        {isGenerating ? `Generating ${config.populationSize} candidates...` : 'Generate candidates'}
+        {isGenerating
+          ? (generationPhase === 'scoring' ? 'Scoring candidates...' : 'Reading memes...')
+          : 'Generate candidates'}
       </Button>
 
       {/* Candidate list */}
@@ -215,12 +218,34 @@ export const EvolutionPanel: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Meme description (truncated) */}
+                  {/* Meme summary (pass1) or fallback to raw description */}
                   <div className="text-slate-300 text-[10px] truncate mb-0.5">
-                    {candidate.memeDescription.split('\n')[0]}
+                    {candidate.pass1?.meme_summary || candidate.memeDescription.split('\n')[0]}
                   </div>
 
-                  {/* Target cube + operator */}
+                  {/* Rhetorical moves (pass1) */}
+                  {candidate.pass1?.rhetorical_moves && candidate.pass1.rhetorical_moves.length > 0 && (
+                    <div className="flex gap-1 flex-wrap mb-0.5">
+                      {candidate.pass1.rhetorical_moves.map((move, i) => (
+                        <span key={i} className="px-1.5 py-px rounded bg-violet-950 text-violet-400 text-[9px]">
+                          {move}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Functional affects (pass1) */}
+                  {candidate.pass1?.functional_affects && candidate.pass1.functional_affects.length > 0 && (
+                    <div className="flex gap-1 flex-wrap mb-0.5">
+                      {candidate.pass1.functional_affects.map((affect, i) => (
+                        <span key={i} className="px-1.5 py-px rounded bg-amber-950 text-amber-400 text-[9px]">
+                          {affect}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Target cube + operator (pass2) */}
                   <div className="flex gap-1 flex-wrap">
                     <span className="px-1.5 py-px rounded bg-slate-700 text-slate-400 text-[9px]">
                       {candidate.cutterConfig.operator}

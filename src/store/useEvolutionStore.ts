@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import type { LLMOperatorResult } from '../lib/operators/types';
+import type { LLMOperatorResult, TranslationPass1 } from '../lib/operators/types';
 import type { ArchthesisMeme } from '../types/archthesis';
 import type { FetchMemesResponse } from '../types/archthesis';
 import { mapMemeToCuboidInput } from '../lib/meme-mapper';
-import { translateMeme } from '../lib/api/translateMeme';
+import { translateMemeTwoPass } from '../lib/api/translateMeme';
 import {
   computeCompressibility,
   compressionProgress,
@@ -23,6 +23,7 @@ export interface EvolutionCandidate {
   memeImageUrl: string | null;
   targetCubeId: string;
   cutterConfig: LLMOperatorResult;
+  pass1?: TranslationPass1;
 
   // Fitness
   compressionProgress: number;
@@ -61,6 +62,7 @@ interface EvolutionState {
 
   // Runtime
   isGenerating: boolean;
+  generationPhase: 'reading' | 'scoring' | null;
   selectedCandidateId: string | null;
   previewCandidateId: string | null;
   lastError: string | null;
@@ -114,6 +116,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
 
   // Runtime
   isGenerating: false,
+  generationPhase: null,
   selectedCandidateId: null,
   previewCandidateId: null,
   lastError: null,
@@ -168,7 +171,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       return;
     }
 
-    set({ isGenerating: true, lastError: null, candidates: [] });
+    set({ isGenerating: true, generationPhase: 'reading', lastError: null, candidates: [] });
 
     // Snapshot current compressibility as baseline
     const baseline = computeCompressibility(placedCubes, cubeOperators);
@@ -199,12 +202,14 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       const input = mapMemeToCuboidInput(meme);
 
       try {
-        const cutterConfig = await translateMeme({
+        const twoPassResult = await translateMemeTwoPass({
           memeDescription: input.memeDescription,
           locationTag: input.locationTag,
           engagementLevel: input.engagementLevel,
           memeImageUrl: meme.imageUrl,
         });
+        const cutterConfig: LLMOperatorResult = twoPassResult.pass2;
+        const pass1 = twoPassResult.pass1;
 
         // Simulate applying this candidate and measure compression progress
         const simulatedOperators = {
@@ -236,6 +241,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           memeImageUrl: meme.imageUrl,
           targetCubeId: cubeId,
           cutterConfig,
+          pass1,
           compressionProgress: progress,
           userScore: null,
           combinedFitness: progress, // user score will blend in later
@@ -249,6 +255,11 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     });
 
     const results = await Promise.all(promises);
+
+    // Transition to scoring phase briefly before rendering results
+    set({ generationPhase: 'scoring' });
+    await new Promise(r => setTimeout(r, 350));
+
     const candidates = results.filter((c): c is EvolutionCandidate => c !== null);
 
     // If ALL candidates failed, surface the error and don't increment generation
@@ -260,6 +271,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       set({
         candidates: [],
         isGenerating: false,
+        generationPhase: null,
         lastError: `All ${targetCubeIds.length} candidates failed. ${summary}`,
       });
       return;
@@ -277,6 +289,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     set({
       candidates,
       isGenerating: false,
+      generationPhase: null,
       generation: get().generation + 1,
       lastError: partialWarning,
     });
@@ -451,6 +464,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     compressibilityLog: [],
     config: { ...DEFAULT_CONFIG },
     isGenerating: false,
+    generationPhase: null,
     selectedCandidateId: null,
     previewCandidateId: null,
     lastError: null,
