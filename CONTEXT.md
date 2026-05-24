@@ -96,7 +96,7 @@ The translation pipeline was substantially redesigned. Key decisions:
 
 **Geocoding:** Nominatim proxy via Vercel serverless `api/geocode.ts` (browser can't hit Nominatim directly due to CORS).
 
-**Implementation status:** Backend route implemented: OpenRouter when `OPENROUTER_API_KEY` is set, otherwise Anthropic Messages API fallback; per-request `pass_mode` (`single` | `two_pass`), optional `model`, `site_context` injection into the v2 prompt (two_pass only), and two-pass response validation (JSON array with `pass: 1` / `pass: 2` or `{ pass1, pass2 }` object). Client helpers: `translateMeme()` always sends `pass_mode: 'single'`; `translateMemeTwoPass()` sends `pass_mode: 'two_pass'` plus site context. Frontend Phase 2 (Pass 1 results panel, confidence vector radar, multi-model selector UI) is deferred.
+**Implementation status:** Backend route implemented: OpenRouter when `OPENROUTER_API_KEY` is set, otherwise Anthropic Messages API fallback; per-request `pass_mode` (`single` | `two_pass`), optional `model`, `site_context` injection into the v2 prompt (two_pass only), and two-pass response validation (JSON array with `pass: 1` / `pass: 2` or `{ pass1, pass2 }` object). Client helpers: `translateMeme()` always sends `pass_mode: 'single'`; `translateMemeTwoPass()` sends `pass_mode: 'two_pass'` plus site context. Frontend: complete — Pass 1 panel, confidence vector, reasoning text visible in Pataphysical tab (`OperatorResultPanel`, floating overlay while cutter shows on canvas). Multi-model selector UI still deferred.
 
 ---
 
@@ -158,7 +158,7 @@ Being developed as a separate project. Will eventually integrate into Cuboid Stu
 ## What's Deferred / Not Yet Built
 
 - Evolution mode implementation (stubbed)
-- Pataphysical v2 frontend display (Pass 1 results panel, confidence vector radar, multi-model selector UI) — Phase 2
+- Pataphysical v2 multi-model selector UI
 - Map tab (pending ContextMapper integration)
 - Decode tab (not yet built)
 - step2views revival (shelved)

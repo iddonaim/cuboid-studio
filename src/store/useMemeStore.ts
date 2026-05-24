@@ -48,11 +48,12 @@ interface MemeState {
 
   // Translation state
   isTranslating: boolean;
+  /** Cosmetic two-phase loading label during v2 translation */
+  translationPhase: 'idle' | 'reading' | 'geometry';
   lastResult: LLMOperatorResult | null;
   lastError: string | null;
 
   // v2 two-pass state — populated only when passMode === 'two_pass'.
-  // confidenceVector + model are stored for future UI; not rendered yet.
   passMode: PassMode;
   setPassMode: (mode: PassMode) => void;
   lastPass1: TranslationPass1 | null;
@@ -127,6 +128,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
 
   // Translation state
   isTranslating: false,
+  translationPhase: 'idle',
   lastResult: null,
   lastError: null,
 
@@ -212,8 +214,10 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       }
     }
 
+    const passMode = get().passMode;
     set({
       isTranslating: true,
+      translationPhase: 'reading',
       lastError: null,
       lastResult: null,
       lastPass1: null,
@@ -223,7 +227,6 @@ export const useMemeStore = create<MemeState>((set, get) => ({
     });
 
     try {
-      const passMode = get().passMode;
       let result: LLMOperatorResult;
       let pass1: TranslationPass1 | null = null;
       let pass2: TranslationPass2 | null = null;
@@ -264,6 +267,11 @@ export const useMemeStore = create<MemeState>((set, get) => ({
           engagementLevel,
           memeImageUrl: get().selectedMemeImageUrl,
         });
+      }
+
+      if (passMode === 'two_pass') {
+        set({ translationPhase: 'geometry' });
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       // Apply the operator
@@ -315,6 +323,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
           lastModel: modelUsed,
           lastCutterGeometry: cutterGeo,
           isTranslating: false,
+          translationPhase: 'idle',
         });
       } else {
         // Standalone mode
@@ -330,12 +339,14 @@ export const useMemeStore = create<MemeState>((set, get) => ({
           lastModel: modelUsed,
           lastCutterGeometry: cutterGeo,
           isTranslating: false,
+          translationPhase: 'idle',
         });
       }
     } catch (error) {
       set({
         lastError: error instanceof Error ? error.message : 'Translation failed',
         isTranslating: false,
+        translationPhase: 'idle',
       });
     }
   },
