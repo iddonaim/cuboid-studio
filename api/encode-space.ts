@@ -110,8 +110,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return textBlock.text;
   }
 
+  const siteContext = req.body.siteContext;
+  let siteContextPrefix = '';
+  if (siteContext && typeof siteContext === 'object') {
+    const q = siteContext.quantitative;
+    const loc = q?.location;
+    const sun = q?.sun;
+    const pois = siteContext.nearby_pois;
+    if (loc?.lat && loc?.lng) {
+      const radius = loc.radius_meters || '500';
+      const transit = pois?.transit?.length ?? 0;
+      const schools = pois?.education?.length ?? 0;
+      const civic = pois?.civic?.length ?? 0;
+      const parks = pois?.greenSpace?.length ?? 0;
+      const roads =
+        pois?.majorRoads
+          ?.map((r: { name?: string }) => r.name)
+          .filter(Boolean)
+          .slice(0, 5)
+          .join(', ') || 'none listed';
+      siteContextPrefix =
+        `Site context: ${loc.address || 'Unknown address'}. ${loc.lat}, ${loc.lng}. ` +
+        `Sun: ${sun?.primary_exposure || 'n/a'}; summer daylight ${sun?.shadow_hours_summer || 'n/a'}. ` +
+        `Nearby: ${transit} transit stops, ${schools} schools, ${civic} civic buildings, ${parks} parks within ${radius}m. ` +
+        `Major roads: ${roads}.\n\n`;
+    }
+  }
+
+  const basePrompt = 'Translate this space into a cuboid assembly.';
+  const userPrompt = siteContextPrefix ? `${siteContextPrefix}${basePrompt}` : basePrompt;
+
   try {
-    let rawText = await callClaude(buildContent('Translate this space into a cuboid assembly.'));
+    let rawText = await callClaude(buildContent(userPrompt));
 
     // Strip markdown code fences if present
     rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
@@ -123,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Retry once with explicit JSON instruction (images preserved via buildContent)
       console.log('First parse failed, retrying with explicit JSON instruction');
       const retryText = await callClaude(buildContent(
-        'Translate this space into a cuboid assembly.\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON object.'
+        `${userPrompt}\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON object.`
       ));
       const cleanedRetry = retryText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
 

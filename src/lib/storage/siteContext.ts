@@ -8,11 +8,38 @@
 
 const STORAGE_KEY = 'cuboid:activeSiteContext';
 
+export interface PoiItem {
+  name: string;
+  type: string;
+  lat: number;
+  lng: number;
+}
+
+export interface NearbyPoisData {
+  transit: PoiItem[];
+  education: PoiItem[];
+  healthcare: PoiItem[];
+  civic: PoiItem[];
+  greenSpace: PoiItem[];
+  markets: PoiItem[];
+  majorRoads: Array<{ name: string; type: string }>;
+}
+
+export interface SeasonalSunAnalysisStored {
+  summer_solstice: { sunrise: string; sunset: string };
+  winter_solstice: { sunrise: string; sunset: string };
+  equinox: { sunrise: string; sunset: string };
+}
+
 export interface SiteContextData {
   site_name: string;
   generated: string;
+  /** Detailed solstice/equinox sun times (Map tab or curator auto-fill). */
+  sun_analysis?: SeasonalSunAnalysisStored;
+  /** Overpass POI enrichment from Map tab. */
+  nearby_pois?: NearbyPoisData;
   quantitative: {
-    location: { lat: string; lng: string; address: string };
+    location: { lat: string; lng: string; address: string; radius_meters?: string };
     sun: { primary_exposure: string; shadow_hours_winter: string; shadow_hours_summer: string };
     wind: { dominant_direction: string; intensity: string };
     transit: { walkability_notes: string; bus_stops_nearby: string; primary_mode: string };

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { encodeSpace, EncodedCube } from '../lib/api/encodeSpace';
+import { getActiveSiteContext } from '../lib/storage/siteContext';
 import { PlacedCube } from '../lib/cube/types';
 import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
 import { GRID_STRIDE, CUBE_SIZE } from '../lib/cube/constants';
@@ -226,6 +227,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
 
     set({ isEncoding: true, lastError: null, encodedCubes: null, encodingReasoning: null });
 
+    const activeSite = getActiveSiteContext();
+    const hasSiteCoords =
+      activeSite &&
+      activeSite.quantitative.location.lat &&
+      activeSite.quantitative.location.lng;
+    const siteContext = hasSiteCoords ? activeSite : undefined;
+
     try {
       const result = hasMulti
         ? await encodeSpace({
@@ -234,10 +242,12 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
               mediaType: img.mediaType,
               isPrimary: img.id === primaryImageId,
             })),
+            siteContext,
           })
         : await encodeSpace({
             imageBase64: imageBase64!,
             imageMediaType: imageMediaType || 'image/jpeg',
+            siteContext,
           });
 
       // Grid-snap each position and remove collisions with seed cubes.

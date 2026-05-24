@@ -41,7 +41,7 @@ Map and Decode are structural placeholders — not rendered yet, but the nav acc
 
 | Slot | Status | What it does |
 |------|--------|--------------|
-| **Map** | Hidden — pending ContextMapper integration | Site analysis. Will be the Mapping tab when ContextMapper merges. |
+| **Map** | Mounted — functional wireframe with OSM map, address search, radius selector, Overpass POI enrichment. Feeds into existing siteContext system. | Site picker: geocode, pin, radius, POI fetch → `localStorage` active site context. |
 | **Encode** | Complete | Upload or capture photos of an inhabited space. Claude's vision model proposes a cuboid assembly mirroring the spatial logic. Supports multi-image (see below). |
 | **Evolution** | Stubbed | Genetic algorithm layer. Sub-modes: Evolve (default) and Pataphysical. |
 | **Decode** | Hidden — not yet built | 2D notational view driven by Evolution output. |

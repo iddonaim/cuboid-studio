@@ -13,6 +13,7 @@ const DRAG_EDGE = 12;
 const RESIZE_EDGE = 8;
 
 const MODE_LABELS: Record<AppMode, string> = {
+  map:       'Map',
   encoding:  'Encode',
   evolution: 'Evolution',
   decode:    'Decode',
