@@ -1,170 +1,337 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type Konva from 'konva';
+import { Expand, RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
-import { useMemeStore } from '../../store/useMemeStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
-import { downloadAssemblyJSON } from '../../lib/export/assemblyExport';
-import { downloadDecodeGridSvg } from '../../lib/decode/decodeSvgExport';
+import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
+import { TILE_SIZE } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
-import { PlacedCube } from '../../lib/cube/types';
+import { Switch } from '@/components/ui/switch';
+import { DecodeCanvas } from './DecodeCanvas';
 
-const NO_ASSEMBLY_TITLE = 'No assembly to export';
+const ALL_VARIATIONS = Array.from({ length: 70 }, (_, i) =>
+  `v-${String(i).padStart(2, '0')}`,
+);
 
-function operatorCount(cubeOperators: Record<string, unknown[]>, cubeId: string): number {
-  return cubeOperators[cubeId]?.length ?? 0;
+function dedupeVariationsFromAssembly(placedCubes: { variationId: string }[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const cube of placedCubes) {
+    if (seen.has(cube.variationId)) continue;
+    seen.add(cube.variationId);
+    result.push(cube.variationId);
+  }
+  return result;
 }
 
-const VariationTile: React.FC<{
-  cube: PlacedCube;
+const DrawerTile: React.FC<{
+  variationId: string;
   selected: boolean;
-  opCount: number;
+  isMobile: boolean;
   onSelect: () => void;
-}> = ({ cube, selected, opCount, onSelect }) => {
+  onDragStart: (e: React.DragEvent) => void;
+}> = ({ variationId, selected, isMobile, onSelect, onDragStart }) => {
   const [imgFailed, setImgFailed] = useState(false);
-  const src = variation2dPath(cube.variationId);
 
   return (
     <button
       type="button"
+      draggable={!isMobile}
+      onDragStart={onDragStart}
       onClick={onSelect}
-      className={`flex flex-col items-stretch rounded-md border bg-slate-900 p-2 text-left cursor-pointer transition-colors ${
+      className={`flex-shrink-0 w-[72px] rounded-md border bg-slate-900 p-1.5 transition-colors ${
         selected
           ? 'border-blue-500 ring-2 ring-blue-500/40'
           : 'border-slate-700 hover:border-slate-500'
-      }`}
+      } ${!isMobile ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded bg-slate-800">
+      <div className="aspect-square w-full overflow-hidden rounded bg-slate-800">
         {!imgFailed ? (
           <img
-            src={src}
-            alt={cube.variationId}
-            className="h-full w-full object-contain"
+            src={variation2dPath(variationId)}
+            alt={variationId}
+            className="h-full w-full object-contain pointer-events-none"
+            draggable={false}
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center bg-slate-700 text-slate-400">
-            <span className="font-mono text-[10px]">{cube.variationId}</span>
+          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-slate-500">
+            {variationId}
           </div>
         )}
-        {opCount > 0 && (
-          <span
-            className="absolute right-1 top-1 rounded px-1.5 py-0.5 text-[9px] font-semibold text-violet-100"
-            style={{ background: 'rgba(139, 92, 246, 0.85)' }}
-            title={`${opCount} operator${opCount === 1 ? '' : 's'} applied`}
-          >
-            {opCount}
-          </span>
-        )}
       </div>
-      <span className="mt-1.5 text-center font-mono text-[10px] text-slate-400">
-        {cube.variationId}
+      <span className="mt-1 block text-center font-mono text-[9px] text-slate-500">
+        {variationId}
       </span>
     </button>
   );
 };
 
-export const DecodePanel: React.FC = () => {
+interface DecodeComposerProps {
+  expanded?: boolean;
+  onCloseExpanded?: () => void;
+}
+
+const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onCloseExpanded }) => {
+  const isMobile = useIsMobile();
+  const stageRef = useRef<Konva.Stage | null>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
   const placedCubes = useBuilderStore(s => s.placedCubes);
-  const cubeOperators = useMemeStore(s => s.cubeOperators);
-  const selectedCubeId = useDecodeStore(s => s.selectedCubeId);
-  const setSelectedCubeId = useDecodeStore(s => s.setSelectedCubeId);
+  const freestyle = useDecodeStore(s => s.freestyle);
+  const canvasTiles = useDecodeStore(s => s.canvasTiles);
+  const selectedTileId = useDecodeStore(s => s.selectedTileId);
+  const pendingPlacementVariationId = useDecodeStore(s => s.pendingPlacementVariationId);
 
-  const hasCubes = placedCubes.length > 0;
+  const setFreestyle = useDecodeStore(s => s.setFreestyle);
+  const toggleCanvasExpanded = useDecodeStore(s => s.toggleCanvasExpanded);
+  const addTile = useDecodeStore(s => s.addTile);
+  const rotateTile = useDecodeStore(s => s.rotateTile);
+  const removeTile = useDecodeStore(s => s.removeTile);
+  const clearCanvas = useDecodeStore(s => s.clearCanvas);
+  const setSelectedTileId = useDecodeStore(s => s.setSelectedTileId);
+  const setPendingPlacementVariationId = useDecodeStore(s => s.setPendingPlacementVariationId);
 
-  const operatorCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const cube of placedCubes) {
-      counts[cube.id] = operatorCount(cubeOperators, cube.id);
-    }
-    return counts;
-  }, [placedCubes, cubeOperators]);
-
-  const evolvedCubes = useMemo(
-    () =>
-      placedCubes.filter(c => operatorCount(cubeOperators, c.id) > 0),
-    [placedCubes, cubeOperators],
+  const drawerVariations = useMemo(
+    () => (freestyle ? ALL_VARIATIONS : dedupeVariationsFromAssembly(placedCubes)),
+    [freestyle, placedCubes],
   );
 
-  const handleDownload2d = () => {
-    if (!hasCubes) return;
-    downloadDecodeGridSvg(placedCubes, operatorCounts);
+  const isEmpty = canvasTiles.length === 0;
+  const [exporting, setExporting] = useState(false);
+
+  const placePendingAt = useCallback(
+    (worldX: number, worldY: number) => {
+      if (!pendingPlacementVariationId) return;
+      addTile({
+        variationId: pendingPlacementVariationId,
+        x: worldX,
+        y: worldY,
+        rotation: 0,
+      });
+    },
+    [addTile, pendingPlacementVariationId],
+  );
+
+  const clientToWorld = useCallback((clientX: number, clientY: number) => {
+    const stage = stageRef.current;
+    const container = dropZoneRef.current;
+    if (!stage || !container) return null;
+
+    const rect = container.getBoundingClientRect();
+    const pointer = { x: clientX - rect.left, y: clientY - rect.top };
+    const transform = stage.getAbsoluteTransform().copy().invert();
+    return transform.point(pointer);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const variationId = e.dataTransfer.getData('text/variation-id');
+      if (!variationId) return;
+
+      const world = clientToWorld(e.clientX, e.clientY);
+      if (!world) return;
+
+      addTile({
+        variationId,
+        x: world.x - TILE_SIZE / 2,
+        y: world.y - TILE_SIZE / 2,
+        rotation: 0,
+      });
+    },
+    [addTile, clientToWorld],
+  );
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && selectedTileId) {
+        e.preventDefault();
+        rotateTile(selectedTileId);
+      }
+      if ((e.code === 'Delete' || e.code === 'Backspace') && selectedTileId) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        removeTile(selectedTileId);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [removeTile, rotateTile, selectedTileId]);
+
+  const handleExportDxf = async () => {
+    if (isEmpty || exporting) return;
+    setExporting(true);
+    try {
+      await downloadDecodeCompositionDxf(canvasTiles);
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const handleDownload3d = () => {
-    if (!hasCubes) return;
-    void downloadAssemblyJSON();
-  };
+  const canvasHeightClass = expanded ? 'flex-1 min-h-[320px]' : 'h-[220px] sm:h-[260px]';
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        <Button
-          onClick={handleDownload2d}
-          disabled={!hasCubes}
-          title={!hasCubes ? NO_ASSEMBLY_TITLE : undefined}
-          className={`flex-1 h-auto py-2 text-[11px] border border-slate-700 ${
-            hasCubes
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-slate-950 text-slate-600 cursor-default'
-          }`}
-        >
-          Download 2D (SVG)
-        </Button>
-        <Button
-          onClick={handleDownload3d}
-          disabled={!hasCubes}
-          title={!hasCubes ? NO_ASSEMBLY_TITLE : undefined}
-          className={`flex-1 h-auto py-2 text-[11px] border border-slate-700 ${
-            hasCubes
-              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              : 'bg-slate-950 text-slate-600 cursor-default'
-          }`}
-        >
-          Download 3D (JSON)
-        </Button>
+    <div className={`flex flex-col gap-2 ${expanded ? 'h-full' : ''}`}>
+      {/* Zone 1 — Toolbar */}
+      <div className="flex items-center justify-between gap-2">
+        <label className="flex items-center gap-2 text-[11px] text-slate-400">
+          <Switch checked={freestyle} onCheckedChange={setFreestyle} />
+          <span>Freestyle</span>
+        </label>
+
+        <div className="flex items-center gap-1">
+          {isMobile && selectedTileId && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+              onClick={() => rotateTile(selectedTileId)}
+              aria-label="Rotate tile"
+            >
+              <RotateCw className="h-4 w-4" />
+            </Button>
+          )}
+
+          {expanded ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+              onClick={onCloseExpanded}
+              aria-label="Close expanded canvas"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+              onClick={toggleCanvasExpanded}
+              aria-label="Expand canvas"
+            >
+              <Expand className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      {placedCubes.length === 0 ? (
-        <p className="text-slate-500 text-[11px]">No cubes in the assembly yet.</p>
+      {/* Zone 2 — Parts drawer */}
+      {drawerVariations.length === 0 ? (
+        <p className="text-[10px] text-slate-600">
+          {freestyle ? 'No variations available.' : 'No cubes in the assembly yet.'}
+        </p>
       ) : (
-        <div className="max-h-[min(50vh,320px)] overflow-y-auto pr-1">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {placedCubes.map(cube => (
-            <VariationTile
-              key={cube.id}
-              cube={cube}
-              selected={selectedCubeId === cube.id}
-              opCount={operatorCounts[cube.id] ?? 0}
-              onSelect={() => setSelectedCubeId(cube.id)}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {drawerVariations.map(variationId => (
+            <DrawerTile
+              key={variationId}
+              variationId={variationId}
+              selected={pendingPlacementVariationId === variationId}
+              isMobile={isMobile}
+              onSelect={() => {
+                if (isMobile) {
+                  setPendingPlacementVariationId(
+                    pendingPlacementVariationId === variationId ? null : variationId,
+                  );
+                }
+              }}
+              onDragStart={e => {
+                e.dataTransfer.setData('text/variation-id', variationId);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
             />
           ))}
-          </div>
         </div>
       )}
 
-      <div>
-        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          Evolved
-        </h3>
-        {evolvedCubes.length === 0 ? (
-          <p className="text-slate-600 text-[10px]">No evolved cubes yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-1">
-            {evolvedCubes.map(cube => {
-              const count = operatorCounts[cube.id] ?? 0;
-              return (
-                <li
-                  key={cube.id}
-                  className="flex items-center justify-between rounded border border-slate-800 bg-slate-950 px-2 py-1 font-mono text-[10px] text-slate-400"
-                >
-                  <span>{cube.variationId}</span>
-                  <span className="text-violet-400">{count} op{count === 1 ? '' : 's'}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      {isMobile && pendingPlacementVariationId && (
+        <p className="text-[10px] text-blue-400">
+          Tap the canvas to place {pendingPlacementVariationId}
+        </p>
+      )}
+
+      {/* Zone 3 — Canvas */}
+      <div
+        ref={dropZoneRef}
+        className={canvasHeightClass}
+        onDragOver={e => e.preventDefault()}
+        onDrop={handleDrop}
+      >
+        <DecodeCanvas
+          isMobile={isMobile}
+          placePendingAt={placePendingAt}
+          onStageReady={stage => {
+            stageRef.current = stage;
+          }}
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          disabled={isEmpty}
+          onClick={clearCanvas}
+          className="flex-1 h-auto py-2 text-[11px] border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:bg-slate-950 disabled:text-slate-600"
+        >
+          Clear
+        </Button>
+        <Button
+          type="button"
+          disabled={isEmpty || exporting}
+          onClick={() => void handleExportDxf()}
+          className="flex-1 h-auto py-2 text-[11px] border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:bg-slate-950 disabled:text-slate-600"
+        >
+          {exporting ? 'Exporting…' : 'Export DXF'}
+        </Button>
       </div>
     </div>
+  );
+};
+
+export const DecodePanel: React.FC = () => {
+  const canvasExpanded = useDecodeStore(s => s.canvasExpanded);
+  const setCanvasExpanded = useDecodeStore(s => s.setCanvasExpanded);
+
+  useEffect(() => {
+    if (!canvasExpanded) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCanvasExpanded(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canvasExpanded, setCanvasExpanded]);
+
+  return (
+    <>
+      {!canvasExpanded && <DecodeComposer />}
+
+      {canvasExpanded && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70"
+          onClick={() => setCanvasExpanded(false)}
+        >
+          <div
+            className="flex w-[90vw] h-[85vh] flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-3 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <DecodeComposer
+              expanded
+              onCloseExpanded={() => setCanvasExpanded(false)}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 };
