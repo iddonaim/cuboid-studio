@@ -41,13 +41,13 @@ const DrawerTile: React.FC<{
       draggable={!isMobile}
       onDragStart={onDragStart}
       onClick={onSelect}
-      className={`flex-shrink-0 w-[72px] rounded-md border bg-slate-900 p-1.5 transition-colors ${
+      className={`flex-shrink-0 w-[72px] rounded-md border p-1.5 transition-colors ${
         selected
-          ? 'border-blue-500 ring-2 ring-blue-500/40'
-          : 'border-slate-700 hover:border-slate-500'
+          ? 'border-blue-500 bg-slate-800 ring-2 ring-blue-500/40'
+          : 'border-slate-600 bg-slate-800/80 hover:border-slate-400'
       } ${!isMobile ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
     >
-      <div className="aspect-square w-full overflow-hidden rounded bg-slate-800">
+      <div className="aspect-square w-full overflow-hidden rounded border border-slate-200 bg-white">
         {!imgFailed ? (
           <img
             src={variation2dPath(variationId)}
@@ -57,12 +57,12 @@ const DrawerTile: React.FC<{
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-slate-500">
+          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-slate-400">
             {variationId}
           </div>
         )}
       </div>
-      <span className="mt-1 block text-center font-mono text-[9px] text-slate-500">
+      <span className="mt-1 block text-center font-mono text-[9px] text-slate-400">
         {variationId}
       </span>
     </button>
@@ -225,33 +225,43 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
       </div>
 
       {/* Zone 2 — Parts drawer */}
-      {drawerVariations.length === 0 ? (
-        <p className="text-[10px] text-slate-600">
-          {freestyle ? 'No variations available.' : 'No cubes in the assembly yet.'}
+      <div>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          Parts
         </p>
-      ) : (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {drawerVariations.map(variationId => (
-            <DrawerTile
-              key={variationId}
-              variationId={variationId}
-              selected={pendingPlacementVariationId === variationId}
-              isMobile={isMobile}
-              onSelect={() => {
-                if (isMobile) {
-                  setPendingPlacementVariationId(
-                    pendingPlacementVariationId === variationId ? null : variationId,
-                  );
-                }
-              }}
-              onDragStart={e => {
-                e.dataTransfer.setData('text/variation-id', variationId);
-                e.dataTransfer.effectAllowed = 'copy';
-              }}
-            />
-          ))}
-        </div>
-      )}
+        {drawerVariations.length === 0 ? (
+          <p className="text-[10px] text-slate-600">
+            {freestyle
+              ? 'No variations available.'
+              : 'No cubes in the assembly yet — enable Freestyle to browse all 70 parts.'}
+          </p>
+        ) : (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {drawerVariations.map(variationId => (
+              <DrawerTile
+                key={variationId}
+                variationId={variationId}
+                selected={pendingPlacementVariationId === variationId}
+                isMobile={isMobile}
+                onSelect={() => {
+                  if (isMobile) {
+                    setPendingPlacementVariationId(
+                      pendingPlacementVariationId === variationId ? null : variationId,
+                    );
+                  }
+                }}
+                onDragStart={e => {
+                  e.dataTransfer.setData('text/variation-id', variationId);
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+              />
+            ))}
+          </div>
+        )}
+        {!isMobile && drawerVariations.length > 0 && (
+          <p className="mt-1 text-[10px] text-slate-600">Drag a part onto the canvas below.</p>
+        )}
+      </div>
 
       {isMobile && pendingPlacementVariationId && (
         <p className="text-[10px] text-blue-400">
@@ -260,19 +270,24 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
       )}
 
       {/* Zone 3 — Canvas */}
-      <div
-        ref={dropZoneRef}
-        className={canvasHeightClass}
-        onDragOver={e => e.preventDefault()}
-        onDrop={handleDrop}
-      >
-        <DecodeCanvas
-          isMobile={isMobile}
-          placePendingAt={placePendingAt}
-          onStageReady={stage => {
-            stageRef.current = stage;
-          }}
-        />
+      <div>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          Canvas
+        </p>
+        <div
+          ref={dropZoneRef}
+          className={canvasHeightClass}
+          onDragOver={e => e.preventDefault()}
+          onDrop={handleDrop}
+        >
+          <DecodeCanvas
+            isMobile={isMobile}
+            placePendingAt={placePendingAt}
+            onStageReady={stage => {
+              stageRef.current = stage;
+            }}
+          />
+        </div>
       </div>
 
       {/* Actions */}
@@ -322,7 +337,7 @@ export const DecodePanel: React.FC = () => {
           onClick={() => setCanvasExpanded(false)}
         >
           <div
-            className="flex w-[90vw] h-[85vh] flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-3 shadow-2xl"
+            className="flex w-[90vw] h-[85vh] flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-3 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <DecodeComposer

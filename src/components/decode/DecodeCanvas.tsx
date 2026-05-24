@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Circle, Group, Image, Layer, Rect, Stage } from 'react-konva';
+import { Circle, Group, Image, Layer, Line, Rect, Stage } from 'react-konva';
 import type Konva from 'konva';
 import { CanvasTile, useDecodeStore } from '../../store/useDecodeStore';
 import { getSnapPoints } from '../../lib/decode/snapPoints';
@@ -110,7 +110,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
         <Rect
           width={TILE_SIZE}
           height={TILE_SIZE}
-          stroke="#3b82f6"
+          stroke="#2563eb"
           strokeWidth={2}
           listening={false}
         />
@@ -121,8 +121,10 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
           x={sp.x * TILE_SIZE}
           y={sp.y * TILE_SIZE}
           radius={SNAP_POINT_RADIUS}
-          fill="#ef4444"
-          opacity={isSnapPointActive(activeSnap, tile.id, index) ? 1 : 0.6}
+          fill="#dc2626"
+          stroke="#ffffff"
+          strokeWidth={1}
+          opacity={isSnapPointActive(activeSnap, tile.id, index) ? 1 : 0.75}
           listening={false}
         />
       ))}
@@ -350,8 +352,17 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="h-full w-full min-h-[180px] rounded-md border border-slate-800 bg-slate-950"
+      className="relative h-full w-full min-h-[180px] overflow-hidden rounded-md border border-slate-300 bg-white shadow-inner"
     >
+      {canvasTiles.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 text-center">
+          <p className="text-[11px] text-slate-500">
+            {isMobile
+              ? 'Select a part above, then tap here to place it'
+              : 'Drag a part from the strip above onto this canvas'}
+          </p>
+        </div>
+      )}
       <Stage
         ref={stageRef}
         width={size.width}
@@ -365,8 +376,27 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         onTouchEnd={handleTouchEnd}
         onClick={handleStageClick}
         onTap={handleStageClick}
-        style={{ cursor: panRef.current.active ? 'grabbing' : 'default' }}
+        style={{ cursor: panRef.current.active ? 'grabbing' : 'default', background: '#ffffff' }}
       >
+        <Layer listening={false}>
+          <Rect x={0} y={0} width={size.width} height={size.height} fill="#ffffff" />
+          {Array.from({ length: Math.ceil(size.width / 24) + 1 }, (_, i) => (
+            <Line
+              key={`v-${i}`}
+              points={[i * 24, 0, i * 24, size.height]}
+              stroke="#e2e8f0"
+              strokeWidth={1}
+            />
+          ))}
+          {Array.from({ length: Math.ceil(size.height / 24) + 1 }, (_, i) => (
+            <Line
+              key={`h-${i}`}
+              points={[0, i * 24, size.width, i * 24]}
+              stroke="#e2e8f0"
+              strokeWidth={1}
+            />
+          ))}
+        </Layer>
         <Layer>
           {canvasTiles.map(tile => (
             <CanvasTileNode
