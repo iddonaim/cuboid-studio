@@ -253,7 +253,7 @@ const App: React.FC = () => {
           )}
           {activeMode === 'map' && <MapPanel />}
           {activeMode === 'decode' && <DecodePanel />}
-          <ExportPanel />
+          {activeMode !== 'decode' && <ExportPanel />}
         </BottomSheet>
       </div>
     );
@@ -281,7 +281,7 @@ const App: React.FC = () => {
       <FloatingPanel
         mode={activeMode}
         isOpen={floatingPanelOpen}
-        exportSlot={<ExportPanel />}
+        exportSlot={activeMode === 'decode' ? undefined : <ExportPanel />}
       >
         {activeMode === 'encoding' && (
           showBuilderSurface ? (
