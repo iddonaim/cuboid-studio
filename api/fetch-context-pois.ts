@@ -31,6 +31,8 @@ type OverpassElement = {
 };
 
 const MAX_PER_CATEGORY = 10;
+const OVERPASS_URL = 'https://overpass.kumi.systems/api/interpreter';
+const OVERPASS_TIMEOUT_MS = 10_000;
 
 function parseCoord(el: OverpassElement): { lat: number; lng: number } | null {
   if (el.lat != null && el.lon != null) return { lat: el.lat, lng: el.lon };
@@ -151,10 +153,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const query = buildOverpassQuery(lat, lng, radius);
-    const response = await fetch('https://overpass-api.de/api/interpreter', {
+    const response = await fetch(OVERPASS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'CuboidStudio/1.0 (topological-translation-thesis)',
+      },
       body: `data=${encodeURIComponent(query)}`,
+      signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -225,10 +231,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(result);
   } catch (error) {
+    const timedOut =
+      error instanceof Error &&
+      (error.name === 'TimeoutError' || error.name === 'AbortError');
     console.error('fetch-context-pois error:', error);
     return res.status(503).json({
-      error: 'POI fetch failed',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Overpass API unavailable',
+      message: timedOut ? 'Request timed out' : error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
