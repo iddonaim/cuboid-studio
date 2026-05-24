@@ -41,9 +41,9 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   useEffect(() => {
-    // If override geometry is provided, use it directly
+    // If override geometry is provided, use it directly (clone so CSG updates always re-render)
     if (overrideGeometry) {
-      setGeometry(overrideGeometry);
+      setGeometry(overrideGeometry.clone());
       return;
     }
 
