@@ -16,6 +16,7 @@ import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
+import { createCutterFromLLMOutput } from '../../lib/operators/applyOperator';
 
 /** Builder mode scene contents */
 const BuilderScene: React.FC = () => {
@@ -345,50 +346,7 @@ const EvolutionScene: React.FC = () => {
   const cutterPreview = useMemo(() => {
     if (!previewedCandidate || !previewTargetCube) return null;
     try {
-      const bbox = new THREE.Box3(
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE)
-      );
-      const { type, proportions, position, rotation } = previewedCandidate.cutterConfig.cutter;
-      const scale = Math.max(0.05, Math.min(previewedCandidate.cutterConfig.magnitude, 1.0));
-      const p = proportions.map(v => Math.max(0.01, Math.min(v, 2.0))) as [number, number, number];
-
-      let geo: THREE.BufferGeometry;
-      switch (type) {
-        case 'sphere':
-          geo = new THREE.SphereGeometry(p[0] * CUBE_SIZE * scale * 0.5, 16, 16);
-          break;
-        case 'cylinder':
-          geo = new THREE.CylinderGeometry(p[0] * CUBE_SIZE * scale * 0.5, p[0] * CUBE_SIZE * scale * 0.5, p[1] * CUBE_SIZE * scale, 16);
-          break;
-        case 'plane':
-          geo = new THREE.BoxGeometry(p[0] * CUBE_SIZE * scale, 0.5, p[2] * CUBE_SIZE * scale);
-          break;
-        default:
-          geo = new THREE.BoxGeometry(p[0] * CUBE_SIZE * scale, p[1] * CUBE_SIZE * scale, p[2] * CUBE_SIZE * scale);
-      }
-
-      const center = new THREE.Vector3();
-      bbox.getCenter(center);
-      const size = new THREE.Vector3();
-      bbox.getSize(size);
-      const pos = position.map(v => Math.max(-1, Math.min(v, 1))) as [number, number, number];
-
-      const matrix = new THREE.Matrix4();
-      const euler = new THREE.Euler(
-        (rotation[0] * Math.PI) / 180,
-        (rotation[1] * Math.PI) / 180,
-        (rotation[2] * Math.PI) / 180,
-        'XYZ'
-      );
-      matrix.makeRotationFromEuler(euler);
-      matrix.setPosition(
-        center.x + pos[0] * (size.x / 2),
-        center.y + pos[1] * (size.y / 2),
-        center.z + pos[2] * (size.z / 2),
-      );
-      geo.applyMatrix4(matrix);
-      return geo;
+      return createCutterFromLLMOutput(previewedCandidate.cutterConfig);
     } catch {
       return null;
     }
