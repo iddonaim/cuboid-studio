@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 74.95 68.19">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke-dasharray: 1 .75;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .cls-1, .cls-3 {
+        stroke-width: .26px;
+      }
+
+      .cls-1, .cls-3, .cls-4 {
+        fill: none;
+        stroke: #000;
+      }
+
+      .cls-2 {
+        fill: red;
+        stroke: red;
+        stroke-width: .71px;
+      }
+
+      .cls-4 {
+        stroke-width: .43px;
+      }
+
+      .cls-5 {
+        fill: #fff;
+        stroke: #fff;
+      }
+    </style>
+  </defs>
+  <g id="DOT_Main">
+    <g>
+      <g id="CIRCLE">
+        <circle class="cls-3" cx="29.47" cy="14.84" r="11.27"/>
+      </g>
+      <g id="LWPOLYLINE">
+        <rect class="cls-1" x=".13" y="31.08" width="74.69" height="36.98"/>
+      </g>
+      <g id="LWPOLYLINE-2" data-name="LWPOLYLINE">
+        <rect class="cls-4" x="13.02" y=".21" width="47.99" height="47.99"/>
+      </g>
+      <g id="LWPOLYLINE-3" data-name="LWPOLYLINE">
+        <rect class="cls-5" x="59.81" y="22.72" width="2.4" height="2.4"/>
+      </g>
+      <g id="LWPOLYLINE-4" data-name="LWPOLYLINE">
+        <rect class="cls-5" x="59.81" y="16.95" width="2.4" height="2.4"/>
+      </g>
+      <g id="CIRCLE-2" data-name="CIRCLE">
+        <circle class="cls-2" cx="61.01" cy="23.92" r=".8"/>
+      </g>
+      <g id="CIRCLE-3" data-name="CIRCLE">
+        <circle class="cls-2" cx="61.01" cy="18.15" r=".8"/>
+      </g>
+    </g>
+  </g>
+</svg>
