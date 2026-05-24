@@ -300,8 +300,14 @@ export const MapPanel: React.FC = () => {
       >
         <div
           ref={mapContainerRef}
-          className="h-full w-full overflow-hidden"
-          style={{ pointerEvents: 'auto' }}
+          className="overflow-hidden"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: 220,
+            maxHeight: 220,
+            pointerEvents: 'auto',
+          }}
         />
       </div>
 
