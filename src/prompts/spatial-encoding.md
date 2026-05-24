@@ -116,3 +116,17 @@ Return ONLY a JSON object matching this schema. No markdown, no backticks, no ex
   ]
 }
 ```
+
+---
+
+## SITE CONTEXT (inject when available)
+
+When a site context is provided, integrate it into the spatial reading of the photograph(s). The site context is provided as a JSON object and may include: geographic location (lat/lng, address), cardinal orientation implications, sun analysis (sunrise/sunset at solstices and equinox), and nearby POIs (transit, education, civic, green space, markets, roads).
+
+Use the site context to:
+- Orient the spatial reading (note which direction is likely south-facing, where morning/afternoon light enters relative to the photos)
+- Note the urban character of the surroundings (dense transit-connected urban, residential, industrial, etc.) and how the photographed space relates to it
+- Reference proximate programs that create spatial pressure on the photographed space (e.g., "adjacent to a school — threshold management and acoustic logic likely")
+- The site context enriches but does not override the photo reading — the photos remain primary evidence
+
+If no site context is provided, proceed without it.

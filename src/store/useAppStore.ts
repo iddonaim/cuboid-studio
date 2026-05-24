@@ -7,7 +7,7 @@ import { create } from 'zustand';
  * NAV_SLOTS below). Map and Decode are reserved as future tabs and are not
  * mounted yet; Map is still reserved.
  */
-export type AppMode = 'encoding' | 'evolution' | 'decode';
+export type AppMode = 'map' | 'encoding' | 'evolution' | 'decode';
 
 /**
  * Ordered named-slot config for the primary navigation.
@@ -26,7 +26,7 @@ export interface NavSlot {
 }
 
 export const NAV_SLOTS: readonly NavSlot[] = [
-  { key: 'map',       label: 'Map',       mounted: false },
+  { key: 'map',       label: 'Map',       mounted: true },
   { key: 'encoding',  label: 'Encode',    mounted: true  },
   { key: 'evolution', label: 'Evolution', mounted: true  },
   { key: 'decode',    label: 'Decode',    mounted: true  },

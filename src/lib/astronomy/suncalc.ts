@@ -128,3 +128,34 @@ export function getPrimaryExposure(lat: number, lng: number): PrimaryExposure {
     winter_daylight: getDaylightHours(winter, lat, lng)?.toFixed(1),
   };
 }
+
+export interface SeasonalSunTimes {
+  sunrise: string;
+  sunset: string;
+}
+
+export interface SeasonalSunAnalysis {
+  summer_solstice: SeasonalSunTimes;
+  winter_solstice: SeasonalSunTimes;
+  equinox: SeasonalSunTimes;
+}
+
+function formatTime(d: Date | null): string {
+  if (!d) return 'n/a';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function sunTimesForDate(date: Date, lat: number, lng: number): SeasonalSunTimes {
+  const t = getTimes(date, lat, lng);
+  return { sunrise: formatTime(t.sunrise), sunset: formatTime(t.sunset) };
+}
+
+/** Sunrise/sunset on summer & winter solstices and March equinox (current year). */
+export function getSeasonalSunAnalysis(lat: number, lng: number): SeasonalSunAnalysis {
+  const year = new Date().getFullYear();
+  return {
+    summer_solstice: sunTimesForDate(new Date(year, 5, 21), lat, lng),
+    winter_solstice: sunTimesForDate(new Date(year, 11, 21), lat, lng),
+    equinox: sunTimesForDate(new Date(year, 2, 20), lat, lng),
+  };
+}

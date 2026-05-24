@@ -4,9 +4,11 @@ export interface EncodeSpaceImage {
   isPrimary?: boolean;
 }
 
+import type { SiteContextData } from '../storage/siteContext';
+
 export type EncodeSpaceRequest =
-  | { imageBase64: string; imageMediaType?: string }
-  | { images: EncodeSpaceImage[] };
+  | { imageBase64: string; imageMediaType?: string; siteContext?: SiteContextData | null }
+  | { images: EncodeSpaceImage[]; siteContext?: SiteContextData | null };
 
 export interface EncodedCube {
   variationId: string;
@@ -20,12 +22,16 @@ export interface EncodeSpaceResponse {
 }
 
 export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSpaceResponse> {
+  const siteContext =
+    'siteContext' in request && request.siteContext ? request.siteContext : undefined;
+
   const body =
     'images' in request
-      ? { images: request.images }
+      ? { images: request.images, ...(siteContext ? { siteContext } : {}) }
       : {
           imageBase64: request.imageBase64,
           imageMediaType: request.imageMediaType || 'image/jpeg',
+          ...(siteContext ? { siteContext } : {}),
         };
 
   const response = await fetch('/api/encode-space', {
