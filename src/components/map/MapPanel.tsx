@@ -264,32 +264,36 @@ export const MapPanel: React.FC = () => {
         (used by Encode and Pataphysical translation).
       </p>
 
-      <form onSubmit={handleGeocode} className="flex gap-1.5">
-        <input
-          type="text"
-          value={addressQuery}
-          onChange={(e) => setAddressQuery(e.target.value)}
-          placeholder="Search address..."
-          className="flex-1 box-border px-2 py-1.5 font-[inherit] text-[11px] text-slate-200 bg-slate-800 border border-slate-700 rounded outline-none focus:border-cyan-700"
-        />
-        <Button
-          type="submit"
-          disabled={geocoding || !addressQuery.trim()}
-          className="h-auto py-1.5 px-2.5 text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700"
-        >
-          {geocoding ? 'Searching…' : 'Search'}
-        </Button>
-      </form>
-      {geocodeError && (
-        <p className="text-red-400 text-[10px] m-0" role="alert">
-          {geocodeError}
-        </p>
-      )}
+      <div className="relative z-[1000]" style={{ position: 'relative', zIndex: 1000 }}>
+        <form onSubmit={handleGeocode} className="flex gap-1.5">
+          <input
+            type="text"
+            value={addressQuery}
+            onChange={(e) => setAddressQuery(e.target.value)}
+            placeholder="Search address..."
+            className="relative z-[1000] flex-1 box-border px-2 py-1.5 font-[inherit] text-[11px] text-slate-200 bg-slate-800 border border-slate-700 rounded outline-none focus:border-cyan-700"
+            style={{ position: 'relative', zIndex: 1000 }}
+          />
+          <Button
+            type="submit"
+            disabled={geocoding || !addressQuery.trim()}
+            className="relative z-[1000] h-auto py-1.5 px-2.5 text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700"
+            style={{ position: 'relative', zIndex: 1000 }}
+          >
+            {geocoding ? 'Searching…' : 'Search'}
+          </Button>
+        </form>
+        {geocodeError && (
+          <p className="text-red-400 text-[10px] m-0" role="alert">
+            {geocodeError}
+          </p>
+        )}
+      </div>
 
       <div
         ref={mapContainerRef}
-        className="w-full rounded-md border border-slate-700 overflow-hidden"
-        style={{ height: 220, minHeight: 180 }}
+        className="relative z-0 w-full rounded-md border border-slate-700 overflow-hidden"
+        style={{ position: 'relative', zIndex: 0, height: 220, minHeight: 180 }}
       />
 
       <div>
