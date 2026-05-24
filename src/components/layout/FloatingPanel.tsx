@@ -245,7 +245,6 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
         height: geometry.height,
         ...panelStyle,
       }}
-      onPointerDown={e => e.preventDefault()}
     >
       {/* Top edge — resize height */}
       <div
