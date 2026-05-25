@@ -103,7 +103,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
 
       {/* ── Scrollable content (not collapsed) ─────────────────────────── */}
       {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-3">
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-4 pb-3">
           {children}
         </div>
       )}
