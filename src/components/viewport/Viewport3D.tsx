@@ -20,6 +20,13 @@ import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { createCutterFromLLMOutput } from '../../lib/operators/applyOperator';
+import { useCoarsePointer } from '../../hooks/useCoarsePointer';
+
+function snapGroundHoverPos(point: { x: number; z: number }): [number, number, number] {
+  const x = Math.round(point.x / GRID_STRIDE) * GRID_STRIDE;
+  const z = Math.round(point.z / GRID_STRIDE) * GRID_STRIDE;
+  return [x, CUBE_SIZE / 2, z];
+}
 
 /** Builder mode scene contents */
 const BuilderScene: React.FC = () => {
@@ -48,6 +55,7 @@ const BuilderScene: React.FC = () => {
   // Track pointer-down position so we can distinguish a tap from an orbit drag.
   // If the finger moves more than 8px between down and up, it's a drag — skip placement.
   const pointerDownXY = useRef<{ x: number; y: number } | null>(null);
+  const touchPlacement = useCoarsePointer();
 
   const clippingPlanes = useClippingPlanes();
 
@@ -72,11 +80,11 @@ const BuilderScene: React.FC = () => {
                 setSelectedCubeId(null);
               } else if (!hoverPos) {
                 setSelectedCubeId(cube.id);
-              } else {
+              } else if (!touchPlacement) {
                 handlePlace();
               }
             }}
-            onFaceHover={(info: FaceHoverInfo | null) => {
+            onFaceHover={touchPlacement ? undefined : (info: FaceHoverInfo | null) => {
               if (pickerActive && !selectedCubeId) {
                 if (info) {
                   setHoverPos(info.adjacentPosition);
@@ -90,7 +98,7 @@ const BuilderScene: React.FC = () => {
         );
       })}
 
-      {/* Hover preview */}
+      {/* Hover / touch ghost preview */}
       {pickerActive && hoverPos && !selectedCubeId && (
         <CubeWithCuts
           variation={selectedVariation}
@@ -109,14 +117,13 @@ const BuilderScene: React.FC = () => {
           pointerDownXY.current = { x: e.clientX, y: e.clientY };
         }}
         onPointerMove={(e) => {
-          if (!pickerActive) return;
+          if (touchPlacement || !pickerActive) return;
           e.stopPropagation();
-          const x = Math.round(e.point.x / GRID_STRIDE) * GRID_STRIDE;
-          const z = Math.round(e.point.z / GRID_STRIDE) * GRID_STRIDE;
-          setHoverPos([x, CUBE_SIZE / 2, z]);
+          setHoverPos(snapGroundHoverPos(e.point));
           setHoverInfo(null);
         }}
         onPointerOut={() => {
+          if (touchPlacement) return;
           setHoverPos(null);
           setHoverInfo(null);
         }}
@@ -128,11 +135,24 @@ const BuilderScene: React.FC = () => {
             if (dx * dx + dy * dy > 64) return; // 8 px threshold
           }
           e.stopPropagation();
+          const snapped = snapGroundHoverPos(e.point);
+
           if (!pickerActive) {
             setPickerActive(true);
+            if (touchPlacement) {
+              setHoverPos(snapped);
+              setHoverInfo(null);
+            }
             return;
           }
-          if (!selectedCubeId) handlePlace();
+          if (selectedCubeId) return;
+
+          if (touchPlacement) {
+            setHoverPos(snapped);
+            setHoverInfo(null);
+            return;
+          }
+          handlePlace();
         }}
       >
         <planeGeometry args={[500, 500]} />
