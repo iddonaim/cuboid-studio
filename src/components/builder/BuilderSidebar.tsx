@@ -42,103 +42,120 @@ export const BuilderSidebar: React.FC = () => {
   };
 
   return (
-    <>
-      <p className="text-slate-500 text-xs mb-3">
-        {CUBE_VARIATIONS.length} variations {'\u2022'} {placedCubes.length} placed
-        {isGenerating && <span className="text-amber-400"> {'\u2022'} Generating...</span>}
-      </p>
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex-shrink-0">
+        <p className="text-slate-500 text-xs mb-3">
+          {CUBE_VARIATIONS.length} variations {'\u2022'} {placedCubes.length} placed
+          {isGenerating && <span className="text-amber-400"> {'\u2022'} Generating...</span>}
+        </p>
 
-      <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
-      <StrictRulesToggle
-        enabled={strictRulesEnabled}
-        onChange={setStrictRulesEnabled}
-        disabled={!rulesEnabled}
-      />
+        <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
+        <StrictRulesToggle
+          enabled={strictRulesEnabled}
+          onChange={setStrictRulesEnabled}
+          disabled={!rulesEnabled}
+        />
 
-      {/* Install PWA section */}
-      <div className={`mb-3 p-2.5 rounded-md border ${
-        showInstallButton
-          ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-800'
-          : 'bg-card border-slate-700'
-      }`}>
-        {showInstallButton ? (
-          <Button
-            onClick={handleInstallClick}
-            className="w-full h-auto p-0 text-xs font-semibold text-white bg-transparent hover:bg-transparent border-0 flex items-center justify-center gap-1.5"
-          >
-            Install App
-          </Button>
-        ) : (
-          <div className="text-[11px] text-muted-foreground leading-[1.5]">
-            <div className="font-semibold mb-1 text-slate-200">Install as App</div>
-            <div className="text-[10px]">
-              Chrome: Menu {'\u22EE'} {'\u2192'} <span className="text-blue-400">Install Cuboid Studio</span>
+        {/* Install PWA section */}
+        <div className={`mb-3 p-2.5 rounded-md border ${
+          showInstallButton
+            ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-800'
+            : 'bg-card border-slate-700'
+        }`}>
+          {showInstallButton ? (
+            <Button
+              onClick={handleInstallClick}
+              className="w-full h-auto p-0 text-xs font-semibold text-white bg-transparent hover:bg-transparent border-0 flex items-center justify-center gap-1.5"
+            >
+              Install App
+            </Button>
+          ) : (
+            <div className="text-[11px] text-muted-foreground leading-[1.5]">
+              <div className="font-semibold mb-1 text-slate-200">Install as App</div>
+              <div className="text-[10px]">
+                Chrome: Menu {'\u22EE'} {'\u2192'} <span className="text-blue-400">Install Cuboid Studio</span>
+              </div>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pinned actions — always above the variation grid */}
+      <div className="flex-shrink-0 pb-3">
+        <div className="flex gap-2">
+          <Button
+            onClick={undo}
+            disabled={historyIndex <= 0}
+            className="flex-1 h-auto py-2 text-[11px] bg-card border border-slate-700 rounded-md text-muted-foreground hover:bg-slate-700 disabled:text-slate-600"
+          >
+            Undo
+          </Button>
+          <Button
+            onClick={redo}
+            disabled={historyIndex >= history.length - 1}
+            className="flex-1 h-auto py-2 text-[11px] bg-card border border-slate-700 rounded-md text-muted-foreground hover:bg-slate-700 disabled:text-slate-600"
+          >
+            Redo
+          </Button>
+        </div>
+
+        <SectionCutControls showSeparator={false} />
+
+        <Separator className="mt-3 bg-slate-700" />
+        <div className="mt-3">
+          <p className="text-slate-500 text-[11px] mb-2">
+            Grow {selectedCubeId ? 'from selected' : '(random)'}
+          </p>
+          <div className="flex gap-1.5">
+            {[5, 10, 25].map(count => (
+              <Button
+                key={count}
+                onClick={() => handleAutoFill(count)}
+                className="flex-1 h-auto py-2 text-[11px] bg-emerald-800 hover:bg-emerald-700 text-white border-0"
+              >
+                +{count}
+              </Button>
+            ))}
           </div>
+        </div>
+
+        {placedCubes.length > 0 && (
+          <Button
+            onClick={handleClearAll}
+            className="mt-2 w-full h-auto py-2.5 text-xs bg-red-900 hover:bg-red-800 text-white border-0"
+          >
+            Clear All
+          </Button>
         )}
       </div>
 
       {/* Variation thumbnail grid */}
-      <ScrollArea className={isMobile ? 'max-h-[200px]' : 'flex-1'}>
-        <div className="grid grid-cols-3 gap-1.5 p-1">
+      {isMobile ? (
+        <div className="flex-shrink-0 flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
           {CUBE_VARIATIONS.map((v, i) => (
-            <CubeThumbnail
-              key={v.id}
-              variation={v}
-              selected={selectedIdx === i}
-              onClick={() => setSelectedIdx(i)}
-            />
+            <div key={v.id} className="flex-shrink-0">
+              <CubeThumbnail
+                variation={v}
+                selected={selectedIdx === i}
+                onClick={() => setSelectedIdx(i)}
+              />
+            </div>
           ))}
         </div>
-      </ScrollArea>
-
-      {/* Undo/Redo buttons */}
-      <div className="flex gap-2 mt-3">
-        <Button
-          onClick={undo}
-          disabled={historyIndex <= 0}
-          className="flex-1 h-auto py-2 text-[11px] bg-card border border-slate-700 rounded-md text-muted-foreground hover:bg-slate-700 disabled:text-slate-600"
-        >
-          Undo
-        </Button>
-        <Button
-          onClick={redo}
-          disabled={historyIndex >= history.length - 1}
-          className="flex-1 h-auto py-2 text-[11px] bg-card border border-slate-700 rounded-md text-muted-foreground hover:bg-slate-700 disabled:text-slate-600"
-        >
-          Redo
-        </Button>
-      </div>
-
-      <SectionCutControls />
-
-      {/* Auto-fill (Grow) buttons */}
-      <Separator className="mt-3 bg-slate-700" />
-      <div className="mt-3">
-        <p className="text-slate-500 text-[11px] mb-2">
-          Grow {selectedCubeId ? 'from selected' : '(random)'}
-        </p>
-        <div className="flex gap-1.5">
-          {[5, 10, 25].map(count => (
-            <Button
-              key={count}
-              onClick={() => handleAutoFill(count)}
-              className="flex-1 h-auto py-2 text-[11px] bg-emerald-800 hover:bg-emerald-700 text-white border-0"
-            >
-              +{count}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {placedCubes.length > 0 && (
-        <Button
-          onClick={handleClearAll}
-          className="mt-2 w-full h-auto py-2.5 text-xs bg-red-900 hover:bg-red-800 text-white border-0"
-        >
-          Clear All
-        </Button>
+      ) : (
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="grid grid-cols-3 gap-1.5 p-1">
+            {CUBE_VARIATIONS.map((v, i) => (
+              <CubeThumbnail
+                key={v.id}
+                variation={v}
+                selected={selectedIdx === i}
+                onClick={() => setSelectedIdx(i)}
+              />
+            ))}
+          </div>
+        </ScrollArea>
       )}
-    </>
+    </div>
   );
 };
