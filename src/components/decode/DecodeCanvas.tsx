@@ -98,6 +98,12 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
         onDragEnd(tile, e.target as Konva.Group);
       }}
     >
+      <Rect
+        width={TILE_SIZE}
+        height={TILE_SIZE}
+        fill="rgba(0,0,0,0)"
+        listening
+      />
       {image && (
         <Image
           image={image}
