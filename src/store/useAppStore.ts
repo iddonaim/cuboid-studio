@@ -40,6 +40,10 @@ interface AppState {
   setActiveMode: (mode: AppMode) => void;
   floatingPanelOpen: boolean;
   toggleFloatingPanel: () => void;
+  /** True orthographic projection in the main 3D viewport. */
+  orthographic: boolean;
+  setOrthographic: (value: boolean) => void;
+  toggleOrthographic: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -47,4 +51,7 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveMode: (mode) => set({ activeMode: mode }),
   floatingPanelOpen: true,
   toggleFloatingPanel: () => set(s => ({ floatingPanelOpen: !s.floatingPanelOpen })),
+  orthographic: false,
+  setOrthographic: (value) => set({ orthographic: value }),
+  toggleOrthographic: () => set(s => ({ orthographic: !s.orthographic })),
 }));

@@ -9,20 +9,22 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 // surfaces are mounted as contextual sub-modes inside Encode and Evolution.
 type HelpKey = 'encoding' | 'encoding-builder' | 'evolution-evolve' | 'evolution-pataphysical' | 'decode';
 
+const ORTHO_HINT = ' \u2022 Ortho to switch projection';
+
 const HELP_DESKTOP: Record<HelpKey, string> = {
-  'decode':                'Read-only assembly \u2022 Right-drag to orbit',
-  'encoding':              'Right-drag to orbit',
-  'encoding-builder':      'Editing seed \u2022 Click to place \u2022 Space to rotate \u2022 R to tip \u2022 Esc to release \u2022 Right-drag to orbit',
-  'evolution-evolve':      'Click cubes to select favorites \u2022 Right-drag to orbit',
-  'evolution-pataphysical':'Enter a meme description and click Translate \u2022 Right-drag to orbit',
+  'decode':                'Read-only assembly \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
+  'encoding':              'Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
+  'encoding-builder':      'Editing seed \u2022 Click to place \u2022 Space to rotate \u2022 R to tip \u2022 Esc to release \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
+  'evolution-evolve':      'Click cubes to select favorites \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
+  'evolution-pataphysical':'Enter a meme description and click Translate \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
 };
 
 const HELP_TOUCH: Record<HelpKey, string> = {
-  'decode':                'Read-only assembly \u2022 One finger to orbit \u2022 Pinch to zoom',
-  'encoding':              'One finger to orbit \u2022 Pinch to zoom',
-  'encoding-builder':      'Editing seed \u2022 Tap to place \u2022 One finger to orbit \u2022 Pinch to zoom',
-  'evolution-evolve':      'Tap cubes to select favorites \u2022 Pinch to zoom',
-  'evolution-pataphysical':'One finger to orbit \u2022 Pinch to zoom',
+  'decode':                'Read-only assembly \u2022 One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
+  'encoding':              'One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
+  'encoding-builder':      'Editing seed \u2022 Tap to place \u2022 One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
+  'evolution-evolve':      'Tap cubes to select favorites \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
+  'evolution-pataphysical':'One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
 };
 
 const pillStyle: React.CSSProperties = {

@@ -1,6 +1,8 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { ViewportControls } from './ViewportControls';
+import { CameraController } from './CameraController';
+import { ViewportCameraToggle } from './ViewportCameraToggle';
 import * as THREE from 'three';
 import {
   registerCaptureFunction,
@@ -419,32 +421,33 @@ export const Viewport3D: React.FC = () => {
     activeMode === 'decode';
 
   return (
-    <Canvas
-      camera={{ position: [150, 150, 150], fov: 50 }}
-      style={{ background: '#f1f5f9' }}
-      gl={{ localClippingEnabled: true, preserveDrawingBuffer: true }}
-    >
-      <SceneCapture />
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[50, 50, 50]} intensity={0.8} />
-      <OrbitControls
-        mouseButtons={{
-          LEFT: undefined as any,  // left-click used for placement, not orbit
-          MIDDLE: THREE.MOUSE.DOLLY,
-          RIGHT: THREE.MOUSE.ROTATE,
-        }}
-        // Touch must be set explicitly: mouseButtons.LEFT=undefined would
-        // otherwise disable single-finger orbit on touch screens.
-        touches={{
-          ONE: THREE.TOUCH.ROTATE,
-          TWO: THREE.TOUCH.DOLLY_PAN,
-        }}
-      />
+    <>
+      <Canvas
+        style={{ background: '#f1f5f9' }}
+        gl={{ localClippingEnabled: true, preserveDrawingBuffer: true }}
+      >
+        <CameraController
+          showBuilderScene={showBuilderScene}
+          showEncodingScene={showEncodingScene}
+          showPataphysicalScene={showPataphysicalScene}
+          showEvolutionScene={showEvolutionScene}
+        />
+        <SceneCapture />
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[50, 50, 50]} intensity={0.8} />
+        <ViewportControls
+          showBuilderScene={showBuilderScene}
+          showEncodingScene={showEncodingScene}
+          showPataphysicalScene={showPataphysicalScene}
+          showEvolutionScene={showEvolutionScene}
+        />
 
-      {showBuilderScene       && <BuilderScene />}
-      {showEncodingScene      && <EncodingScene />}
-      {showPataphysicalScene  && <PataphysicalScene />}
-      {showEvolutionScene     && <EvolutionScene />}
-    </Canvas>
+        {showBuilderScene       && <BuilderScene />}
+        {showEncodingScene      && <EncodingScene />}
+        {showPataphysicalScene  && <PataphysicalScene />}
+        {showEvolutionScene     && <EvolutionScene />}
+      </Canvas>
+      <ViewportCameraToggle />
+    </>
   );
 };
