@@ -65,6 +65,7 @@ interface BuilderState {
 
   // Actions
   handlePlace: () => void;
+  confirmPlacement: () => void;
   handleDelete: () => void;
   handleClearAll: () => void;
   handleAutoFill: (count: number) => void;
@@ -217,6 +218,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       set({ placedCubes: newCubes });
       state.pushToHistory(newCubes);
     }
+  },
+
+  confirmPlacement: () => {
+    const state = get();
+    state.handlePlace();
+    set({ hoverPos: null, hoverInfo: null });
   },
 
   handleDelete: () => {

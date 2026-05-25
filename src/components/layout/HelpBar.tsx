@@ -22,7 +22,7 @@ const HELP_DESKTOP: Record<HelpKey, string> = {
 const HELP_TOUCH: Record<HelpKey, string> = {
   'decode':                'Read-only assembly \u2022 One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
   'encoding':              'One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
-  'encoding-builder':      'Editing seed \u2022 Tap to place \u2022 One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
+  'encoding-builder':      'Editing seed \u2022 Tap grid to preview \u2022 Place to confirm \u2022 One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
   'evolution-evolve':      'Tap cubes to select favorites \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
   'evolution-pataphysical':'One finger to orbit \u2022 Two fingers to pan/zoom' + ORTHO_HINT,
 };

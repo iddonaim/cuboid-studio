@@ -27,6 +27,9 @@ export const BuilderSidebar: React.FC = () => {
   const handleAutoFill = useBuilderStore(s => s.handleAutoFill);
   const handleClearAll = useBuilderStore(s => s.handleClearAll);
   const selectedCubeId = useBuilderStore(s => s.selectedCubeId);
+  const hoverPos = useBuilderStore(s => s.hoverPos);
+  const pickerActive = useBuilderStore(s => s.pickerActive);
+  const confirmPlacement = useBuilderStore(s => s.confirmPlacement);
   const showInstallButton = useBuilderStore(s => s.showInstallButton);
   const deferredPrompt = useBuilderStore(s => s.deferredPrompt);
   const setDeferredPrompt = useBuilderStore(s => s.setDeferredPrompt);
@@ -100,6 +103,16 @@ export const BuilderSidebar: React.FC = () => {
         </div>
 
         <SectionCutControls showSeparator={false} />
+
+        {isMobile && (
+          <Button
+            onClick={confirmPlacement}
+            disabled={!pickerActive || !hoverPos || !!selectedCubeId}
+            className="mt-2 w-full h-auto py-2.5 text-xs bg-blue-700 hover:bg-blue-600 text-white border-0 disabled:bg-slate-800 disabled:text-slate-600"
+          >
+            Place
+          </Button>
+        )}
 
         <Separator className="mt-3 bg-slate-700" />
         <div className="mt-3">
