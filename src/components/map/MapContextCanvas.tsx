@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { SiteContextData } from '../../lib/storage/siteContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const DEFAULT_MAP_CONTEXT_URL = 'https://map-context-production.up.railway.app';
 
@@ -19,6 +20,7 @@ interface MapContextCanvasProps {
 }
 
 export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisComplete }) => {
+  const isMobile = useIsMobile();
   const mapContextUrl = useMemo(
     () => import.meta.env.VITE_MAP_CONTEXT_URL || DEFAULT_MAP_CONTEXT_URL,
     []
@@ -39,7 +41,11 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
     <iframe
       src={mapContextUrl}
       title="Map context analysis"
-      className="absolute inset-0 w-full h-full border-0 bg-white"
+      className={
+        isMobile
+          ? 'absolute inset-0 w-full h-full border-0 bg-white'
+          : 'absolute top-[42px] left-0 right-0 bottom-0 w-full border-0 bg-white'
+      }
       allow="clipboard-read; clipboard-write"
     />
   );
