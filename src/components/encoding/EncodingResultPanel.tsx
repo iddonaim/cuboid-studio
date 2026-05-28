@@ -1,7 +1,9 @@
 import React from 'react';
 import { useEncodingStore } from '../../store/useEncodingStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 export const EncodingResultPanel: React.FC = () => {
+  const isMobile = useIsMobile();
   const encodingReasoning = useEncodingStore(s => s.encodingReasoning);
   const isEncoding = useEncodingStore(s => s.isEncoding);
   const seedCubes = useEncodingStore(s => s.seedCubes);
@@ -11,7 +13,11 @@ export const EncodingResultPanel: React.FC = () => {
   if (!encodingReasoning && !isEncoding) return null;
 
   return (
-    <div className="absolute top-4 right-4 bg-slate-950 border border-slate-700 rounded-lg p-4 w-[260px]">
+    <div
+      className={`absolute right-4 bg-slate-950 border border-slate-700 rounded-lg p-4 w-[260px] ${
+        isMobile ? 'top-4' : 'top-[42px]'
+      }`}
+    >
       {isEncoding ? (
         <p className="text-slate-400 text-xs">Encoding space...</p>
       ) : (
