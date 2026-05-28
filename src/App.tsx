@@ -22,9 +22,10 @@ import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { ExportPanel } from './components/export/ExportPanel';
 import { DecodePanel } from './components/decode/DecodePanel';
-import { MapPanel } from './components/map/MapPanel';
+import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
+import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
 
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
@@ -98,16 +99,37 @@ const PataphysicalSurface: React.FC = () => (
   </div>
 );
 
+const SiteAnalysisToast: React.FC<{ onGoToEncode: () => void }> = ({ onGoToEncode }) => (
+  <div
+    className="absolute bottom-4 right-4 z-[70] max-w-sm rounded-md border px-3 py-2 text-[11px] text-slate-200 shadow-xl"
+    style={{
+      background: 'rgba(15, 23, 42, 0.94)',
+      borderColor: 'rgba(148, 163, 184, 0.35)',
+    }}
+  >
+    <div className="mb-2">Site analysis ready — continue to Encode whenever you'd like.</div>
+    <Button
+      onClick={onGoToEncode}
+      className="h-auto py-1.5 px-2.5 text-[10px] bg-blue-900 hover:bg-blue-800 text-white border-0"
+    >
+      Go to Encode
+    </Button>
+  </div>
+);
+
 const App: React.FC = () => {
   const activeMode          = useAppStore(s => s.activeMode);
+  const setActiveMode       = useAppStore(s => s.setActiveMode);
   const floatingPanelOpen   = useAppStore(s => s.floatingPanelOpen);
   const seedEditOpen        = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode    = useEvolutionStore(s => s.subMode);
   const isMobile            = useIsMobile();
+  const [showSiteToast, setShowSiteToast] = React.useState(false);
 
   // Convenience predicates for what to mount.
   const showBuilderSurface     = activeMode === 'encoding' && seedEditOpen;
   const showPataphysicalSurface = activeMode === 'evolution' && evolutionSubMode === 'pataphysical';
+  const showMapCanvas = activeMode === 'map';
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -219,20 +241,110 @@ const App: React.FC = () => {
         {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
         <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]">
-          <Viewport3D />
-          {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
-              otherwise the standard EncodingResultPanel */}
-          {activeMode === 'encoding' && (
-            showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
+          {showMapCanvas ? (
+            <MapContextCanvas
+              onAnalysisComplete={(context: SiteContextData) => {
+                setActiveSiteContext(context);
+                setShowSiteToast(true);
+              }}
+            />
+          ) : (
+            <>
+              <Viewport3D />
+              {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
+                  otherwise the standard EncodingResultPanel */}
+              {activeMode === 'encoding' && (
+                showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
+              )}
+              {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel */}
+              {showPataphysicalSurface && <OperatorResultPanel />}
+              <CaptureButton />
+              <HelpBar />
+            </>
           )}
-          {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel */}
-          {showPataphysicalSurface && <OperatorResultPanel />}
-          <CaptureButton />
-          <HelpBar />
+          {showSiteToast && (
+            <SiteAnalysisToast
+              onGoToEncode={() => {
+                setShowSiteToast(false);
+                setActiveMode('encoding');
+              }}
+            />
+          )}
         </div>
 
         {/* BottomSheet contains mode content + MobileTabBar */}
-        <BottomSheet>
+        {!showMapCanvas && (
+          <BottomSheet>
+            {activeMode === 'encoding' && (
+              showBuilderSurface ? (
+                <>
+                  <SeedEditBanner />
+                  <BuilderSidebar />
+                </>
+              ) : (
+                <EncodingPanel />
+              )
+            )}
+            {activeMode === 'evolution' && (
+              <>
+                <EvolutionSubModeToggle />
+                {evolutionSubMode === 'evolve'
+                  ? <EvolutionPanel />
+                  : <PataphysicalSurface />}
+              </>
+            )}
+            {activeMode === 'decode' && <DecodePanel />}
+            {activeMode !== 'decode' && <ExportPanel />}
+          </BottomSheet>
+        )}
+      </div>
+    );
+  }
+
+  // ── Desktop layout ─────────────────────────────────────────────────────────
+  return (
+    <div className="relative w-screen h-screen overflow-hidden">
+      {/* TopBar: fixed glass bar, full width */}
+      <TopBar />
+
+      {/* Viewport: full bleed behind all overlays.
+          transform:translateZ(0) keeps the WebGL layer below React overlays. */}
+      <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
+        {showMapCanvas ? (
+          <MapContextCanvas
+            onAnalysisComplete={(context: SiteContextData) => {
+              setActiveSiteContext(context);
+              setShowSiteToast(true);
+            }}
+          />
+        ) : (
+          <>
+            <Viewport3D />
+            {activeMode === 'encoding' && (
+              showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
+            )}
+            {showPataphysicalSurface && <OperatorResultPanel />}
+            <CaptureButton />
+            <HelpBar />
+          </>
+        )}
+        {showSiteToast && (
+          <SiteAnalysisToast
+            onGoToEncode={() => {
+              setShowSiteToast(false);
+              setActiveMode('encoding');
+            }}
+          />
+        )}
+      </div>
+
+      {/* FloatingPanel: glass overlay on the left side */}
+      {!showMapCanvas && (
+        <FloatingPanel
+          mode={activeMode}
+          isOpen={floatingPanelOpen}
+          exportSlot={activeMode === 'decode' ? undefined : <ExportPanel />}
+        >
           {activeMode === 'encoding' && (
             showBuilderSurface ? (
               <>
@@ -251,59 +363,9 @@ const App: React.FC = () => {
                 : <PataphysicalSurface />}
             </>
           )}
-          {activeMode === 'map' && <MapPanel />}
           {activeMode === 'decode' && <DecodePanel />}
-          {activeMode !== 'decode' && <ExportPanel />}
-        </BottomSheet>
-      </div>
-    );
-  }
-
-  // ── Desktop layout ─────────────────────────────────────────────────────────
-  return (
-    <div className="relative w-screen h-screen overflow-hidden">
-      {/* TopBar: fixed glass bar, full width */}
-      <TopBar />
-
-      {/* Viewport: full bleed behind all overlays.
-          transform:translateZ(0) keeps the WebGL layer below React overlays. */}
-      <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
-        <Viewport3D />
-        {activeMode === 'encoding' && (
-          showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
-        )}
-        {showPataphysicalSurface && <OperatorResultPanel />}
-        <CaptureButton />
-        <HelpBar />
-      </div>
-
-      {/* FloatingPanel: glass overlay on the left side */}
-      <FloatingPanel
-        mode={activeMode}
-        isOpen={floatingPanelOpen}
-        exportSlot={activeMode === 'decode' ? undefined : <ExportPanel />}
-      >
-        {activeMode === 'encoding' && (
-          showBuilderSurface ? (
-            <>
-              <SeedEditBanner />
-              <BuilderSidebar />
-            </>
-          ) : (
-            <EncodingPanel />
-          )
-        )}
-        {activeMode === 'evolution' && (
-          <>
-            <EvolutionSubModeToggle />
-            {evolutionSubMode === 'evolve'
-              ? <EvolutionPanel />
-              : <PataphysicalSurface />}
-          </>
-        )}
-        {activeMode === 'map' && <MapPanel />}
-        {activeMode === 'decode' && <DecodePanel />}
-      </FloatingPanel>
+        </FloatingPanel>
+      )}
     </div>
   );
 };
