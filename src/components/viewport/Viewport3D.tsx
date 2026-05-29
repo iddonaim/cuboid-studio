@@ -31,8 +31,8 @@ function snapGroundHoverPos(point: { x: number; z: number }): [number, number, n
 /** Builder mode scene contents */
 const BuilderScene: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
-  const selectedCubeId = useBuilderStore(s => s.selectedCubeId);
-  const setSelectedCubeId = useBuilderStore(s => s.setSelectedCubeId);
+  const selectedCubeIds = useBuilderStore(s => s.selectedCubeIds);
+  const setSelectedCubeIds = useBuilderStore(s => s.setSelectedCubeIds);
   const hoverPos = useBuilderStore(s => s.hoverPos);
   const setHoverPos = useBuilderStore(s => s.setHoverPos);
   const setHoverInfo = useBuilderStore(s => s.setHoverInfo);
@@ -73,19 +73,33 @@ const BuilderScene: React.FC = () => {
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
-            selected={cube.id === selectedCubeId}
+            selected={selectedCubeIds.includes(cube.id)}
             clippingPlanes={clippingPlanes}
-            onClick={() => {
-              if (selectedCubeId === cube.id) {
-                setSelectedCubeId(null);
+            onClick={(nativeEvent) => {
+              const isShift = nativeEvent.shiftKey;
+              const isCtrlMeta = nativeEvent.ctrlKey || nativeEvent.metaKey;
+
+              if (isCtrlMeta) {
+                setSelectedCubeIds(selectedCubeIds.filter(id => id !== cube.id));
+              } else if (isShift) {
+                if (selectedCubeIds.includes(cube.id)) {
+                  setSelectedCubeIds(selectedCubeIds.filter(id => id !== cube.id));
+                } else {
+                  setSelectedCubeIds([...selectedCubeIds, cube.id]);
+                }
+              } else if (selectedCubeIds.length > 1) {
+                // Narrow multi-selection to just this cube
+                setSelectedCubeIds([cube.id]);
+              } else if (selectedCubeIds.length === 1 && selectedCubeIds[0] === cube.id) {
+                setSelectedCubeIds([]);
               } else if (!hoverPos) {
-                setSelectedCubeId(cube.id);
+                setSelectedCubeIds([cube.id]);
               } else if (!touchPlacement) {
                 handlePlace();
               }
             }}
             onFaceHover={touchPlacement ? undefined : (info: FaceHoverInfo | null) => {
-              if (pickerActive && !selectedCubeId) {
+              if (pickerActive && selectedCubeIds.length === 0) {
                 if (info) {
                   setHoverPos(info.adjacentPosition);
                   setHoverInfo(info);
@@ -99,7 +113,7 @@ const BuilderScene: React.FC = () => {
       })}
 
       {/* Hover / touch ghost preview */}
-      {pickerActive && hoverPos && !selectedCubeId && (
+      {pickerActive && hoverPos && selectedCubeIds.length === 0 && (
         <CubeWithCuts
           variation={selectedVariation}
           position={hoverPos}
@@ -145,7 +159,10 @@ const BuilderScene: React.FC = () => {
             }
             return;
           }
-          if (selectedCubeId) return;
+          if (selectedCubeIds.length > 0) {
+            setSelectedCubeIds([]);
+            return;
+          }
 
           if (touchPlacement) {
             setHoverPos(snapped);

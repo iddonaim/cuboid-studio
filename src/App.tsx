@@ -13,6 +13,8 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { Viewport3D } from './components/viewport/Viewport3D';
 import { BuilderSidebar } from './components/builder/BuilderSidebar';
 import { SelectedCubePanel } from './components/builder/SelectedCubePanel';
+import { TaggingPanel } from './components/builder/TaggingPanel';
+import { useTagStore } from './store/useTagStore';
 import { MemeInputPanel } from './components/meme/MemeInputPanel';
 import { OperatorResultPanel } from './components/meme/OperatorResultPanel';
 import { OperatorHistoryList } from './components/meme/OperatorHistoryList';
@@ -117,6 +119,29 @@ const SiteAnalysisToast: React.FC<{ onGoToEncode: () => void }> = ({ onGoToEncod
   </div>
 );
 
+const DecodeTagsOverlay: React.FC = () => {
+  const compositionTags = useTagStore(s => s.compositionTags);
+  if (compositionTags.length === 0) return null;
+  return (
+    <div className="absolute bottom-8 left-4 z-20 max-w-[220px] rounded-lg border border-slate-700 p-3" style={{ background: 'rgba(15,23,42,0.85)' }}>
+      <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+        Composition tags
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {compositionTags.map((tag, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] bg-slate-800 border border-slate-600 text-slate-300"
+          >
+            {tag.word}
+            <span className="text-slate-500">· {tag.intensity}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const activeMode          = useAppStore(s => s.activeMode);
   const setActiveMode       = useAppStore(s => s.setActiveMode);
@@ -173,7 +198,7 @@ const App: React.FC = () => {
         store.setPickerActive(false);
         store.setHoverPos(null);
         store.setHoverInfo(null);
-        store.setSelectedCubeId(null);
+        store.setSelectedCubeIds([]);
       }
 
       if (e.key === ' ' && store.pickerActive && store.hoverPos) {
@@ -198,12 +223,12 @@ const App: React.FC = () => {
         }));
       }
 
-      if (e.key === ' ' && store.selectedCubeId && !store.pickerActive) {
+      if (e.key === ' ' && store.selectedCubeIds.length > 0 && !store.pickerActive) {
         e.preventDefault();
         store.rotateSelectedCube('y');
       }
 
-      if (e.key === 'r' && store.selectedCubeId && !store.pickerActive) {
+      if (e.key === 'r' && store.selectedCubeIds.length > 0 && !store.pickerActive) {
         e.preventDefault();
         store.rotateSelectedCube('x');
       }
@@ -216,7 +241,7 @@ const App: React.FC = () => {
         e.preventDefault();
         store.redo();
       }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedCubeId) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedCubeIds.length > 0) {
         e.preventDefault();
         store.handleDelete();
       }
@@ -258,6 +283,8 @@ const App: React.FC = () => {
               )}
               {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel */}
               {showPataphysicalSurface && <OperatorResultPanel />}
+              {/* Decode: read-only composition tags overlay on the 3D background */}
+              {activeMode === 'decode' && <DecodeTagsOverlay />}
               <CaptureButton />
               <HelpBar />
             </>
@@ -280,6 +307,7 @@ const App: React.FC = () => {
                 <>
                   <SeedEditBanner />
                   <BuilderSidebar />
+                  <TaggingPanel />
                 </>
               ) : (
                 <EncodingPanel />
@@ -324,6 +352,7 @@ const App: React.FC = () => {
               showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
             )}
             {showPataphysicalSurface && <OperatorResultPanel />}
+            {activeMode === 'decode' && <DecodeTagsOverlay />}
             <CaptureButton />
             <HelpBar />
           </>
