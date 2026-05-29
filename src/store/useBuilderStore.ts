@@ -35,6 +35,8 @@ interface BuilderState {
   // Selection
   selectedCubeId: string | null;
   setSelectedCubeId: (id: string | null) => void;
+  selectedCubeIds: string[];
+  setSelectedCubeIds: (ids: string[]) => void;
 
   // Tool state
   pickerActive: boolean;
@@ -102,7 +104,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   // Selection
   selectedCubeId: null,
-  setSelectedCubeId: (id) => set({ selectedCubeId: id }),
+  selectedCubeIds: [],
+  setSelectedCubeId: (id) => set({ selectedCubeId: id, selectedCubeIds: id ? [id] : [] }),
+  setSelectedCubeIds: (ids) => set({ selectedCubeIds: ids, selectedCubeId: ids[0] ?? null }),
 
   // Tool state
   pickerActive: true,
@@ -142,6 +146,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       historyIndex: newIndex,
       placedCubes: state.history[newIndex],
       selectedCubeId: null,
+      selectedCubeIds: [],
     };
   }),
   redo: () => set((state) => {
@@ -151,6 +156,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       historyIndex: newIndex,
       placedCubes: state.history[newIndex],
       selectedCubeId: null,
+      selectedCubeIds: [],
     };
   }),
 
@@ -228,9 +234,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   handleDelete: () => {
     const state = get();
-    if (state.selectedCubeId) {
-      const newCubes = state.placedCubes.filter(c => c.id !== state.selectedCubeId);
-      set({ placedCubes: newCubes, selectedCubeId: null });
+    if (state.selectedCubeIds.length > 0) {
+      const toDelete = new Set(state.selectedCubeIds);
+      const newCubes = state.placedCubes.filter(c => !toDelete.has(c.id));
+      set({ placedCubes: newCubes, selectedCubeId: null, selectedCubeIds: [] });
       state.pushToHistory(newCubes);
     }
   },
@@ -238,7 +245,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   handleClearAll: () => {
     const state = get();
     if (state.placedCubes.length > 0) {
-      set({ placedCubes: [], selectedCubeId: null });
+      set({ placedCubes: [], selectedCubeId: null, selectedCubeIds: [] });
       state.pushToHistory([]);
     }
   },
@@ -383,6 +390,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }
 
     state.pushToHistory(currentCubes);
-    set({ placedCubes: currentCubes, selectedCubeId: null });
+    set({ placedCubes: currentCubes, selectedCubeId: null, selectedCubeIds: [] });
   },
 }));

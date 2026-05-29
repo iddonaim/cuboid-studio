@@ -15,7 +15,7 @@ interface CubeWithCutsProps {
   selected?: boolean;
   targeted?: boolean;
   validPlacement?: boolean | null;
-  onClick?: () => void;
+  onClick?: (nativeEvent: MouseEvent) => void;
   onFaceHover?: (info: FaceHoverInfo | null) => void;
   isPreview?: boolean;
   clippingPlanes?: THREE.Plane[];
@@ -128,7 +128,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     <group
       position={position}
       rotation={[xRotationRad, yRotationRad, 0]}
-      onClick={isPreview ? undefined : (e) => { e.stopPropagation(); onClick?.(); }}
+      onClick={isPreview ? undefined : (e) => { e.stopPropagation(); onClick?.(e.nativeEvent as MouseEvent); }}
       onPointerMove={handlePointerMove}
       onPointerOut={isPreview ? undefined : () => onFaceHover?.(null)}
     >
