@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// Security rules for Cuboid Studio "Projects" persistence.
+//
+// Model:
+//   projects/{projectId}                                  — owned doc
+//   projects/{projectId}/sites/{siteId}                   — subcollection
+//   projects/{projectId}/sites/{siteId}/compositions/{id} — subcollection
+//
+// Only the authenticated owner (ownerId == request.auth.uid) may read or write
+// a project and everything beneath it. Unauthenticated users get nothing.
+//
+// NOTE: This repo shares the `archthesis` Firebase project. Deploy these rules
+// ADDITIVELY alongside the existing archthesis rules (e.g. memes/...) — do not
+// replace them. Merge the `projects/**` match block into the live ruleset.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /projects/{projectId} {
+      // The owner field is set on create and must match the caller.
+      allow create: if request.auth != null
+                    && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid;
+
+      // Sites + compositions inherit access from the parent project's owner.
+      match /sites/{siteId} {
+        allow read, write: if request.auth != null
+          && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+
+        match /compositions/{compositionId} {
+          allow read, write: if request.auth != null
+            && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+        }
+      }
+    }
+  }
+}

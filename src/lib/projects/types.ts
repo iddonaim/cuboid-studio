@@ -1,0 +1,116 @@
+/**
+ * Data model for persisted Projects / Sites / Compositions.
+ *
+ * Firestore hierarchy:
+ *   projects/{projectId}
+ *   projects/{projectId}/sites/{siteId}
+ *   projects/{projectId}/sites/{siteId}/compositions/{compositionId}
+ *
+ * A "composition" is the complete serialisable working state across all modes
+ * (Builder, Encode, Pataphysical, Evolution, Decode) plus the active site
+ * context at save time. Live THREE.BufferGeometry objects are NOT stored —
+ * they're reproducible by re-applying the saved operator records on load.
+ */
+import type { PlacedCube } from '../cube/types';
+import type { EncodedCube } from '../api/encodeSpace';
+import type {
+  OperatorRecord,
+  TranslationPass1,
+  TranslationPass2,
+  ConfidenceVector,
+} from '../operators/types';
+import type { CanvasTile } from '../../store/useDecodeStore';
+import type { SiteContextData } from '../storage/siteContext';
+import type {
+  EvolutionCandidate,
+  EvolutionConfig,
+  EvolutionSubMode,
+} from '../../store/useEvolutionStore';
+import type { CompressibilitySnapshot, CompressibilityScore } from '../evolution/compressibility';
+import type { PassMode } from '../../store/useMemeStore';
+
+// --- Per-mode serialised slices -------------------------------------------
+
+export interface BuilderAssemblyData {
+  placedCubes: PlacedCube[];
+  selectedIdx: number;
+  rulesEnabled: boolean;
+  strictRulesEnabled: boolean;
+}
+
+export interface EncodeData {
+  /** Snapped cube result from the last encode (no raw images — by design). */
+  encodedCubes: EncodedCube[] | null;
+  encodingReasoning: string | null;
+  mode: 'standalone' | 'merge' | 'remix';
+  seedCubes: PlacedCube[];
+}
+
+export interface PataphysicalData {
+  memeDescription: string;
+  locationTag: string;
+  engagementLevel: number;
+  selectedMemeImageUrl: string | null;
+  selectedMemeTitle: string | null;
+  baseVariationId: string;
+  targetCubeId: string | null;
+  passMode: PassMode;
+  /** Standalone working-cube operator stack. */
+  operators: OperatorRecord[];
+  /** Per-placed-cube operator stacks (assembly mode). */
+  cubeOperators: Record<string, OperatorRecord[]>;
+  lastPass1: TranslationPass1 | null;
+  lastPass2: TranslationPass2 | null;
+  lastConfidenceVector: ConfidenceVector | null;
+  lastModel: string | null;
+}
+
+export interface EvolutionData {
+  subMode: EvolutionSubMode;
+  generation: number;
+  candidates: EvolutionCandidate[];
+  compressibilityLog: CompressibilitySnapshot[];
+  config: EvolutionConfig;
+  baselineScore: CompressibilityScore | null;
+  lastAppliedCubeId: string | null;
+}
+
+export interface DecodeData {
+  canvasTiles: CanvasTile[];
+  freestyle: boolean;
+}
+
+/** The full composition payload stored under a composition document. */
+export interface CompositionData {
+  builderAssembly: BuilderAssemblyData;
+  encode: EncodeData | null;
+  pataphysical: PataphysicalData;
+  evolution: EvolutionData;
+  decode: DecodeData;
+  siteContextSnapshot: SiteContextData | null;
+}
+
+// --- Firestore document shapes --------------------------------------------
+
+export interface ProjectDoc {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SiteDoc {
+  id: string;
+  name: string;
+  createdAt: number;
+  siteContext: SiteContextData | null;
+}
+
+export interface CompositionDoc {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  data: CompositionData;
+}

@@ -24,6 +24,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dxf-writer": "^1.18.4",
+    "firebase": "^12.14.0",
     "jszip": "^3.10.1",
     "konva": "^10.3.0",
     "leaflet": "^1.9.4",

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore, AppMode, VISIBLE_NAV_SLOTS } from '../../store/useAppStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
+import { AuthControls } from '../auth/AuthControls';
 
 const glassStyle: React.CSSProperties = {
   background: '#0f172a',
@@ -78,8 +79,10 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
           : null}
       </div>
 
-      {/* ── Right: cube count + panel toggle ── */}
+      {/* ── Right: account/projects + cube count + panel toggle ── */}
       <div className="flex items-center justify-end gap-2 px-4">
+        <AuthControls />
+
         <span className="font-mono text-[11px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-full select-none">
           {placedCubes.length}
         </span>
