@@ -15,6 +15,7 @@ import { BuilderSidebar } from './components/builder/BuilderSidebar';
 import { SelectedCubePanel } from './components/builder/SelectedCubePanel';
 import { TaggingPanel } from './components/builder/TaggingPanel';
 import { useTagStore } from './store/useTagStore';
+import { useMemeStore } from './store/useMemeStore';
 import { MemeInputPanel } from './components/meme/MemeInputPanel';
 import { OperatorResultPanel } from './components/meme/OperatorResultPanel';
 import { OperatorHistoryList } from './components/meme/OperatorHistoryList';
@@ -148,6 +149,8 @@ const App: React.FC = () => {
   const floatingPanelOpen   = useAppStore(s => s.floatingPanelOpen);
   const seedEditOpen        = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode    = useEvolutionStore(s => s.subMode);
+  const selectedCubeIds     = useBuilderStore(s => s.selectedCubeIds);
+  const targetCubeId        = useMemeStore(s => s.targetCubeId);
   const isMobile            = useIsMobile();
   const [showSiteToast, setShowSiteToast] = React.useState(false);
 
@@ -276,15 +279,21 @@ const App: React.FC = () => {
           ) : (
             <>
               <Viewport3D />
-              {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
-                  otherwise the standard EncodingResultPanel */}
-              {activeMode === 'encoding' && (
-                showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
-              )}
-              {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel */}
+              {activeMode === 'encoding' && !showBuilderSurface && <EncodingResultPanel />}
               {showPataphysicalSurface && <OperatorResultPanel />}
-              {/* Decode: read-only composition tags overlay on the 3D background */}
               {activeMode === 'decode' && <DecodeTagsOverlay />}
+              {/* Tagging popup — appears on cube selection in builder and pataphysical */}
+              {showBuilderSurface && selectedCubeIds.length > 0 && (
+                <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                  <SelectedCubePanel />
+                  <TaggingPanel cubeIds={selectedCubeIds} />
+                </div>
+              )}
+              {showPataphysicalSurface && targetCubeId && (
+                <div className="absolute top-4 right-4 z-20">
+                  <TaggingPanel cubeIds={[targetCubeId]} />
+                </div>
+              )}
               <CaptureButton />
               <HelpBar />
             </>
@@ -307,7 +316,6 @@ const App: React.FC = () => {
                 <>
                   <SeedEditBanner />
                   <BuilderSidebar />
-                  <TaggingPanel />
                 </>
               ) : (
                 <EncodingPanel />
@@ -348,11 +356,20 @@ const App: React.FC = () => {
         ) : (
           <>
             <Viewport3D />
-            {activeMode === 'encoding' && (
-              showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
-            )}
+            {activeMode === 'encoding' && !showBuilderSurface && <EncodingResultPanel />}
             {showPataphysicalSurface && <OperatorResultPanel />}
             {activeMode === 'decode' && <DecodeTagsOverlay />}
+            {showBuilderSurface && selectedCubeIds.length > 0 && (
+              <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                <SelectedCubePanel />
+                <TaggingPanel cubeIds={selectedCubeIds} />
+              </div>
+            )}
+            {showPataphysicalSurface && targetCubeId && (
+              <div className="absolute top-4 right-4 z-20">
+                <TaggingPanel cubeIds={[targetCubeId]} />
+              </div>
+            )}
             <CaptureButton />
             <HelpBar />
           </>

@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 
-export type TagIntensity = 'a little' | 'moderate' | 'a lot';
-
 export interface Tag {
   word: string;
-  intensity: TagIntensity;
+  intensity: string;
 }
 
 interface TagState {

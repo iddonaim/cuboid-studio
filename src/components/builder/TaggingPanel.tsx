@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
-import { useTagStore, Tag, TagIntensity } from '../../store/useTagStore';
+import { useTagStore, Tag } from '../../store/useTagStore';
 
-const INTENSITIES: TagIntensity[] = ['a little', 'moderate', 'a lot'];
+interface TaggingPanelProps {
+  cubeIds: string[];
+}
 
-export const TaggingPanel: React.FC = () => {
-  const selectedCubeIds = useBuilderStore(s => s.selectedCubeIds);
+export const TaggingPanel: React.FC<TaggingPanelProps> = ({ cubeIds }) => {
   const lastPass1 = useMemeStore(s => s.lastPass1);
   const {
     compositionTags,
@@ -20,37 +20,35 @@ export const TaggingPanel: React.FC = () => {
   } = useTagStore();
 
   const [word, setWord] = useState('');
-  const [intensity, setIntensity] = useState<TagIntensity | null>(null);
+  const [intensity, setIntensity] = useState('');
 
-  const isCuboidContext = selectedCubeIds.length > 0;
-  const isSingle = selectedCubeIds.length === 1;
+  const isCuboidContext = cubeIds.length > 0;
+  const isSingle = cubeIds.length === 1;
 
   const contextLabel = isCuboidContext
-    ? `${selectedCubeIds.length} cuboid${selectedCubeIds.length > 1 ? 's' : ''}`
+    ? `${cubeIds.length} cuboid${cubeIds.length > 1 ? 's' : ''}`
     : 'Composition';
 
-  // Tags shown when one cuboid is selected or composition context
   const displayTags: Tag[] = isSingle
-    ? (cuboidTags[selectedCubeIds[0]] ?? [])
+    ? (cuboidTags[cubeIds[0]] ?? [])
     : isCuboidContext
     ? []
     : compositionTags;
 
-  const canSubmit = word.trim().length > 0 && intensity !== null;
+  const canSubmit = word.trim().length > 0 && intensity.trim().length > 0;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const tag: Tag = { word: word.trim(), intensity: intensity! };
+    const tag: Tag = { word: word.trim(), intensity: intensity.trim() };
     if (isCuboidContext) {
-      selectedCubeIds.forEach((id) => addCuboidTag(id, tag));
+      cubeIds.forEach((id) => addCuboidTag(id, tag));
     } else {
       addCompositionTag(tag);
     }
     setWord('');
-    setIntensity(null);
+    setIntensity('');
   };
 
-  // Hint chips: Pass-1 affects + previously used words, de-duped
   const affectWords = lastPass1?.functional_affects ?? [];
   const usedWords = getAllUsedWords();
   const hints = Array.from(new Set([...affectWords, ...usedWords])).filter(
@@ -58,12 +56,12 @@ export const TaggingPanel: React.FC = () => {
   );
 
   return (
-    <div className="mt-2 pt-2 border-t border-slate-700/60">
+    <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 w-52">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
         Tags — {contextLabel}
       </p>
 
-      {/* Existing tags (single cuboid or composition) */}
+      {/* Existing tags */}
       {displayTags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
           {displayTags.map((tag, i) => (
@@ -76,12 +74,10 @@ export const TaggingPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={() =>
-                  isSingle
-                    ? removeCuboidTag(selectedCubeIds[0], i)
-                    : removeCompositionTag(i)
+                  isSingle ? removeCuboidTag(cubeIds[0], i) : removeCompositionTag(i)
                 }
                 className="ml-0.5 text-slate-500 hover:text-slate-300 leading-none"
-                aria-label={`Remove tag ${tag.word}`}
+                aria-label={`Remove ${tag.word}`}
               >
                 <X className="h-2.5 w-2.5" />
               </button>
@@ -90,17 +86,16 @@ export const TaggingPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Multi-select info */}
-      {selectedCubeIds.length > 1 && (
+      {cubeIds.length > 1 && (
         <p className="text-[10px] text-slate-500 mb-2">
-          Tag will be added to all {selectedCubeIds.length} selected cuboids.
+          Adds to all {cubeIds.length} selected cuboids.
         </p>
       )}
 
       {/* Hint chips */}
       {hints.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
-          {hints.slice(0, 12).map((hint) => (
+          {hints.slice(0, 10).map((hint) => (
             <button
               key={hint}
               type="button"
@@ -113,14 +108,24 @@ export const TaggingPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Word input + submit */}
-      <div className="flex gap-1.5 mb-2">
+      {/* Word field */}
+      <input
+        type="text"
+        value={word}
+        onChange={(e) => setWord(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+        placeholder="What does this feel like?"
+        className="w-full rounded px-2 py-1.5 text-[11px] bg-slate-800 border border-slate-600 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-slate-400 mb-1.5"
+      />
+
+      {/* Intensity field + submit */}
+      <div className="flex gap-1.5">
         <input
           type="text"
-          value={word}
-          onChange={(e) => setWord(e.target.value)}
+          value={intensity}
+          onChange={(e) => setIntensity(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-          placeholder="What does this feel like?"
+          placeholder="How much?"
           className="flex-1 min-w-0 rounded px-2 py-1.5 text-[11px] bg-slate-800 border border-slate-600 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-slate-400"
         />
         <button
@@ -132,24 +137,6 @@ export const TaggingPanel: React.FC = () => {
         >
           +
         </button>
-      </div>
-
-      {/* Intensity selector */}
-      <div className="flex gap-1">
-        {INTENSITIES.map((level) => (
-          <button
-            key={level}
-            type="button"
-            onClick={() => setIntensity(intensity === level ? null : level)}
-            className={`flex-1 rounded px-1 py-1.5 text-[9px] border transition-colors ${
-              intensity === level
-                ? 'bg-blue-900 border-blue-500 text-blue-200 font-semibold'
-                : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-400'
-            }`}
-          >
-            {level}
-          </button>
-        ))}
       </div>
     </div>
   );

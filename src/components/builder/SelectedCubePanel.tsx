@@ -17,7 +17,7 @@ export const SelectedCubePanel: React.FC = () => {
     : null;
 
   return (
-    <div className={`absolute top-4 right-4 bg-slate-900 border border-slate-700 rounded-lg p-4 ${isMobile ? 'w-40' : 'w-48'}`}>
+    <div className={`bg-slate-900 border border-slate-700 rounded-lg p-4 w-52`}>
       <p className="text-white text-sm mb-1">
         {selectedCubeIds.length === 1 ? 'Selected Cube' : `${selectedCubeIds.length} Cubes`}
       </p>
