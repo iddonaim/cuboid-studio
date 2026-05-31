@@ -8,6 +8,29 @@
 
 const STORAGE_KEY = 'cuboid:activeSiteContext';
 
+/**
+ * Custom event fired whenever the active site context is written or cleared.
+ * The browser's native `storage` event only fires in *other* tabs, so it can't
+ * notify components in the same document (e.g. the Map tab updating the
+ * Pataphysical panel's button). This in-document event fills that gap.
+ */
+const CHANGE_EVENT = 'cuboid:siteContextChanged';
+
+function notifyChange(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+/**
+ * Subscribes to active site context changes. Returns an unsubscribe function.
+ * Fires when context is set or cleared anywhere in the app (Map tab, curator).
+ */
+export function subscribeActiveSiteContext(listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(CHANGE_EVENT, listener);
+  return () => window.removeEventListener(CHANGE_EVENT, listener);
+}
+
 export interface PoiItem {
   name: string;
   type: string;
@@ -74,6 +97,7 @@ export function getActiveSiteContext(): SiteContextData | null {
 export function setActiveSiteContext(context: SiteContextData): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(context));
+    notifyChange();
   } catch (err) {
     console.error('Failed to save site context to localStorage:', err);
   }
@@ -83,6 +107,7 @@ export function setActiveSiteContext(context: SiteContextData): void {
 export function clearActiveSiteContext(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    notifyChange();
   } catch {
     // Ignore
   }
