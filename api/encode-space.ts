@@ -181,7 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Validate and sanitize each cube
     const validCubes = parsed.cubes
-      .filter((c: { variationId?: string; position?: number[] }) => {
+      .filter((c): c is { variationId: string; position: number[]; rotation?: { x?: number; y?: number } } => {
         if (!c.variationId || typeof c.variationId !== 'string') return false;
         const match = c.variationId.match(/^v-(\d+)$/);
         if (!match) return false;
@@ -190,7 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!c.position || !Array.isArray(c.position) || c.position.length !== 3) return false;
         return true;
       })
-      .map((c: { variationId: string; position: number[]; rotation?: { x?: number; y?: number } }) => ({
+      .map((c) => ({
         variationId: c.variationId,
         position: c.position.map(Number) as [number, number, number],
         rotation: {
