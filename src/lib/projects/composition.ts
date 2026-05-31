@@ -1,0 +1,253 @@
+/**
+ * Composition snapshot + restore.
+ *
+ * `captureComposition()` reads serialisable state out of every store and the
+ * active site context into a single plain-JSON CompositionData object.
+ *
+ * `restoreComposition()` writes that state back into all stores. The only
+ * non-trivial part is the Pataphysical geometry: cut meshes live as
+ * THREE.BufferGeometry (not serialisable), so we DON'T store them — instead we
+ * re-apply the saved operator records to the base cube geometry to rebuild the
+ * identical meshes on load.
+ */
+import * as THREE from 'three';
+import { useBuilderStore } from '../../store/useBuilderStore';
+import { useEncodingStore } from '../../store/useEncodingStore';
+import { useMemeStore } from '../../store/useMemeStore';
+import { useEvolutionStore } from '../../store/useEvolutionStore';
+import { useDecodeStore } from '../../store/useDecodeStore';
+import { getActiveSiteContext, setActiveSiteContext } from '../storage/siteContext';
+import { CUBE_VARIATIONS } from '../cube/specifications';
+import { getVariationGeometryAsync } from '../cube/csgUtils';
+import { applyLLMOperator } from '../operators/applyOperator';
+import type { OperatorRecord, LLMOperatorResult } from '../operators/types';
+import type { CompositionData } from './types';
+
+/** OperatorRecord carries every field applyLLMOperator needs. */
+function recordToResult(record: OperatorRecord): LLMOperatorResult {
+  return {
+    operator: record.operator,
+    targets: record.targets,
+    magnitude: record.magnitude,
+    decay: record.decay,
+    cutter: record.cutter,
+    reasoning: record.reasoning,
+  };
+}
+
+/** Read the complete working state into a plain-JSON snapshot. */
+export function captureComposition(): CompositionData {
+  const builder = useBuilderStore.getState();
+  const encoding = useEncodingStore.getState();
+  const meme = useMemeStore.getState();
+  const evolution = useEvolutionStore.getState();
+  const decode = useDecodeStore.getState();
+
+  const hasEncodeState =
+    encoding.encodedCubes !== null || encoding.seedCubes.length > 0;
+
+  return {
+    builderAssembly: {
+      placedCubes: builder.placedCubes,
+      selectedIdx: builder.selectedIdx,
+      rulesEnabled: builder.rulesEnabled,
+      strictRulesEnabled: builder.strictRulesEnabled,
+    },
+    encode: hasEncodeState
+      ? {
+          encodedCubes: encoding.encodedCubes,
+          encodingReasoning: encoding.encodingReasoning,
+          mode: encoding.mode,
+          seedCubes: encoding.seedCubes,
+        }
+      : null,
+    pataphysical: {
+      memeDescription: meme.memeDescription,
+      locationTag: meme.locationTag,
+      engagementLevel: meme.engagementLevel,
+      selectedMemeImageUrl: meme.selectedMemeImageUrl,
+      selectedMemeTitle: meme.selectedMemeTitle,
+      baseVariationId: meme.baseVariationId,
+      targetCubeId: meme.targetCubeId,
+      passMode: meme.passMode,
+      operators: meme.operators,
+      cubeOperators: meme.cubeOperators,
+      lastPass1: meme.lastPass1,
+      lastPass2: meme.lastPass2,
+      lastConfidenceVector: meme.lastConfidenceVector,
+      lastModel: meme.lastModel,
+    },
+    evolution: {
+      subMode: evolution.subMode,
+      generation: evolution.generation,
+      candidates: evolution.candidates,
+      compressibilityLog: evolution.compressibilityLog,
+      config: evolution.config,
+      baselineScore: evolution.baselineScore,
+      lastAppliedCubeId: evolution.lastAppliedCubeId,
+    },
+    decode: {
+      canvasTiles: decode.canvasTiles,
+      freestyle: decode.freestyle,
+    },
+    siteContextSnapshot: getActiveSiteContext(),
+  };
+}
+
+/** Rebuild the standalone working-cube geometry by replaying its operators. */
+async function rebuildStandaloneGeometry(
+  baseVariationId: string,
+  operators: OperatorRecord[],
+): Promise<{ workingGeometry: THREE.BufferGeometry | null; geometryStack: THREE.BufferGeometry[] }> {
+  const variation = CUBE_VARIATIONS.find(v => v.id === baseVariationId);
+  if (!variation) return { workingGeometry: null, geometryStack: [] };
+
+  let current = await getVariationGeometryAsync(variation);
+  const stack: THREE.BufferGeometry[] = [];
+  for (const record of operators) {
+    stack.push(current.clone());
+    current = applyLLMOperator(current, recordToResult(record));
+  }
+  return { workingGeometry: current, geometryStack: stack };
+}
+
+/**
+ * Rebuild per-cube geometry overrides + stacks by replaying each cube's
+ * operators against its base variation geometry.
+ */
+async function rebuildAssemblyGeometry(
+  placedCubeVariations: Record<string, string>,
+  cubeOperators: Record<string, OperatorRecord[]>,
+): Promise<{
+  cubeGeometryOverrides: Record<string, THREE.BufferGeometry>;
+  cubeGeometryStacks: Record<string, THREE.BufferGeometry[]>;
+}> {
+  const overrides: Record<string, THREE.BufferGeometry> = {};
+  const stacks: Record<string, THREE.BufferGeometry[]> = {};
+
+  for (const [cubeId, records] of Object.entries(cubeOperators)) {
+    if (!records || records.length === 0) continue;
+    const variationId = placedCubeVariations[cubeId];
+    const variation = variationId
+      ? CUBE_VARIATIONS.find(v => v.id === variationId)
+      : undefined;
+    if (!variation) continue;
+
+    let current = await getVariationGeometryAsync(variation);
+    const stack: THREE.BufferGeometry[] = [];
+    for (const record of records) {
+      stack.push(current.clone());
+      current = applyLLMOperator(current, recordToResult(record));
+    }
+    overrides[cubeId] = current;
+    stacks[cubeId] = stack;
+  }
+
+  return { cubeGeometryOverrides: overrides, cubeGeometryStacks: stacks };
+}
+
+/**
+ * Restore a composition into every store. Async because it rebuilds cut
+ * geometry. Returns a suggested landing mode for the caller to switch to.
+ */
+export async function restoreComposition(
+  data: CompositionData,
+): Promise<{ landingMode: 'encoding' | 'decode' }> {
+  // --- Site context (restore first so encode/other reads see it) ---
+  if (data.siteContextSnapshot) {
+    setActiveSiteContext(data.siteContextSnapshot);
+  }
+
+  // --- Builder ---
+  const builder = useBuilderStore.getState();
+  builder.setPlacedCubes(data.builderAssembly.placedCubes);
+  useBuilderStore.setState({
+    selectedIdx: data.builderAssembly.selectedIdx,
+    rulesEnabled: data.builderAssembly.rulesEnabled,
+    strictRulesEnabled: data.builderAssembly.strictRulesEnabled,
+    selectedCubeId: null,
+    selectedCubeIds: [],
+    // Reset undo history to the restored assembly so undo can't escape it.
+    history: [data.builderAssembly.placedCubes],
+    historyIndex: 0,
+  });
+
+  // --- Encode ---
+  if (data.encode) {
+    useEncodingStore.setState({
+      encodedCubes: data.encode.encodedCubes,
+      encodingReasoning: data.encode.encodingReasoning,
+      mode: data.encode.mode,
+      seedCubes: data.encode.seedCubes,
+      seedCubeIds: new Set(data.encode.seedCubes.map(c => c.id)),
+    });
+  }
+
+  // --- Pataphysical (meme) + geometry rebuild ---
+  const p = data.pataphysical;
+  const placedCubeVariations: Record<string, string> = {};
+  for (const cube of data.builderAssembly.placedCubes) {
+    placedCubeVariations[cube.id] = cube.variationId;
+  }
+
+  const [standalone, assembly] = await Promise.all([
+    rebuildStandaloneGeometry(p.baseVariationId, p.operators),
+    rebuildAssemblyGeometry(placedCubeVariations, p.cubeOperators),
+  ]);
+
+  useMemeStore.setState({
+    memeDescription: p.memeDescription,
+    locationTag: p.locationTag,
+    engagementLevel: p.engagementLevel,
+    selectedMemeImageUrl: p.selectedMemeImageUrl,
+    selectedMemeTitle: p.selectedMemeTitle,
+    baseVariationId: p.baseVariationId,
+    targetCubeId: p.targetCubeId,
+    passMode: p.passMode,
+    operators: p.operators,
+    cubeOperators: p.cubeOperators,
+    workingGeometry: standalone.workingGeometry,
+    geometryStack: standalone.geometryStack,
+    cubeGeometryOverrides: assembly.cubeGeometryOverrides,
+    cubeGeometryStacks: assembly.cubeGeometryStacks,
+    lastPass1: p.lastPass1,
+    lastPass2: p.lastPass2,
+    lastConfidenceVector: p.lastConfidenceVector,
+    lastModel: p.lastModel,
+    lastResult: null,
+    lastCutterGeometry: null,
+    lastError: null,
+    isTranslating: false,
+    translationPhase: 'idle',
+  });
+
+  // --- Evolution ---
+  useEvolutionStore.setState({
+    subMode: data.evolution.subMode,
+    generation: data.evolution.generation,
+    candidates: data.evolution.candidates,
+    compressibilityLog: data.evolution.compressibilityLog,
+    config: data.evolution.config,
+    baselineScore: data.evolution.baselineScore,
+    lastAppliedCubeId: data.evolution.lastAppliedCubeId,
+    selectedCandidateId: null,
+    previewCandidateId: null,
+    isGenerating: false,
+    generationPhase: null,
+    lastError: null,
+  });
+
+  // --- Decode ---
+  useDecodeStore.setState({
+    canvasTiles: data.decode.canvasTiles,
+    freestyle: data.decode.freestyle,
+    selectedTileId: null,
+    pendingPlacementVariationId: null,
+  });
+
+  // Landing mode: Decode if it has the only meaningful content, else Encode.
+  const hasDecode = data.decode.canvasTiles.length > 0;
+  const hasBuild = data.builderAssembly.placedCubes.length > 0 || data.encode != null;
+  const landingMode: 'encoding' | 'decode' = hasDecode && !hasBuild ? 'decode' : 'encoding';
+  return { landingMode };
+}

@@ -28,6 +28,10 @@ import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProjectsPanel } from './components/projects/ProjectsPanel';
+import { SaveCompositionButton } from './components/projects/SaveCompositionButton';
+import { ToastContainer } from './components/layout/ToastContainer';
 
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
@@ -142,7 +146,7 @@ const DecodeTagsOverlay: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+const AppInner: React.FC = () => {
   const activeMode          = useAppStore(s => s.activeMode);
   const setActiveMode       = useAppStore(s => s.setActiveMode);
   const floatingPanelOpen   = useAppStore(s => s.floatingPanelOpen);
@@ -398,5 +402,20 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * App shell — wraps the existing UI in the AuthProvider and mounts the
+ * cross-cutting overlays (Projects slide-over, Save button, toasts). These all
+ * render nothing for logged-out / unconfigured users, so the base experience
+ * is unchanged.
+ */
+const App: React.FC = () => (
+  <AuthProvider>
+    <AppInner />
+    <ProjectsPanel />
+    <SaveCompositionButton />
+    <ToastContainer />
+  </AuthProvider>
+);
 
 export default App;
