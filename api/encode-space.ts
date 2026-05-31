@@ -146,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Strip markdown code fences if present
     rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
 
-    let parsed: { reasoning?: string; cubes?: unknown[] };
+    let parsed: { reasoning?: string; cubes?: { variationId?: string; position?: number[]; rotation?: { x?: number; y?: number } }[] };
     try {
       parsed = JSON.parse(rawText);
     } catch {
