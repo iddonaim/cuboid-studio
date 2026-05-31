@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { encodeSpace, EncodedCube } from '../lib/api/encodeSpace';
+import { encodeSpace, EncodedCube, SpatialReading } from '../lib/api/encodeSpace';
 import { getActiveSiteContext } from '../lib/storage/siteContext';
 import { PlacedCube } from '../lib/cube/types';
 import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
@@ -23,6 +23,7 @@ interface EncodingState {
   setImage: (dataUrl: string, base64: string, mediaType: string) => void;
   clearImage: () => void;
 
+
   // Multi-photo mode
   multiPhotoEnabled: boolean;
   uploadedImages: UploadedEncodingImage[];
@@ -37,6 +38,7 @@ interface EncodingState {
   isEncoding: boolean;
   encodedCubes: EncodedCube[] | null;
   encodingReasoning: string | null;
+  encodingReading: SpatialReading | null;
   lastError: string | null;
 
   // Mode & seed
@@ -70,6 +72,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     imageMediaType: mediaType,
     encodedCubes: null,
     encodingReasoning: null,
+    encodingReading: null,
     lastError: null,
   }),
   clearImage: () => set({
@@ -78,6 +81,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     imageMediaType: null,
     encodedCubes: null,
     encodingReasoning: null,
+    encodingReading: null,
     lastError: null,
   }),
 
@@ -128,6 +132,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       primaryImageId,
       encodedCubes: null,
       encodingReasoning: null,
+      encodingReading: null,
       lastError: null,
     };
   }),
@@ -143,6 +148,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       primaryImageId,
       encodedCubes: null,
       encodingReasoning: null,
+      encodingReading: null,
       lastError: null,
     };
   }),
@@ -157,6 +163,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     primaryImageId: null,
     encodedCubes: null,
     encodingReasoning: null,
+    encodingReading: null,
     lastError: null,
   }),
 
@@ -164,6 +171,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   isEncoding: false,
   encodedCubes: null,
   encodingReasoning: null,
+  encodingReading: null,
   lastError: null,
 
   // Mode & seed
@@ -177,6 +185,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     seedCubeIds: new Set<string>(),
     encodedCubes: null,
     encodingReasoning: null,
+    encodingReading: null,
     lastError: null,
   }),
 
@@ -225,7 +234,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       return;
     }
 
-    set({ isEncoding: true, lastError: null, encodedCubes: null, encodingReasoning: null });
+    set({ isEncoding: true, lastError: null, encodedCubes: null, encodingReasoning: null, encodingReading: null });
 
     const activeSite = getActiveSiteContext();
     const hasSiteCoords =
@@ -268,6 +277,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       set({
         encodedCubes: processed,
         encodingReasoning: result.reasoning,
+        encodingReading: result.reading ?? null,
         isEncoding: false,
       });
     } catch (error) {

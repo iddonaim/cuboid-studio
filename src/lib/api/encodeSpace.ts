@@ -1,3 +1,5 @@
+import { DEFAULT_LEXICON, type SpatialLexicon } from '../../prompts/lexicon.default';
+
 export interface EncodeSpaceImage {
   base64: string;
   mediaType: string;
@@ -16,7 +18,30 @@ export interface EncodedCube {
   rotation: { x: number; y: number };
 }
 
+// --- Reading types ----------------------------------------------------------
+
+export interface ContinuousAxisReading {
+  phrase: string;
+  position: number; // 0–1; never display this number to the user
+}
+
+export interface CategoricalAxisReading {
+  phrase: string;
+  option: string;
+}
+
+export interface SpatialReading {
+  atmosphere: ContinuousAxisReading;
+  light: ContinuousAxisReading;
+  emotion: ContinuousAxisReading;
+  rhythm: CategoricalAxisReading;
+  placement: CategoricalAxisReading;
+}
+
+// --- Response ---------------------------------------------------------------
+
 export interface EncodeSpaceResponse {
+  reading?: SpatialReading;
   reasoning: string;
   cubes: EncodedCube[];
 }
@@ -25,12 +50,17 @@ export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSp
   const siteContext =
     'siteContext' in request && request.siteContext ? request.siteContext : undefined;
 
+  // Always send DEFAULT_LEXICON so the server can compose the grammar prompt.
+  // In L3, the active Firestore lexicon will be sent here instead.
+  const lexicon: SpatialLexicon = DEFAULT_LEXICON;
+
   const body =
     'images' in request
-      ? { images: request.images, ...(siteContext ? { siteContext } : {}) }
+      ? { images: request.images, lexicon, ...(siteContext ? { siteContext } : {}) }
       : {
           imageBase64: request.imageBase64,
           imageMediaType: request.imageMediaType || 'image/jpeg',
+          lexicon,
           ...(siteContext ? { siteContext } : {}),
         };
 

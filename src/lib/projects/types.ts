@@ -12,7 +12,8 @@
  * they're reproducible by re-applying the saved operator records on load.
  */
 import type { PlacedCube } from '../cube/types';
-import type { EncodedCube } from '../api/encodeSpace';
+import type { EncodedCube, SpatialReading } from '../api/encodeSpace';
+import type { SpatialLexicon } from '../../prompts/lexicon.default';
 import type {
   OperatorRecord,
   TranslationPass1,
@@ -44,6 +45,11 @@ export interface EncodeData {
   encodingReasoning: string | null;
   mode: 'standalone' | 'merge' | 'remix';
   seedCubes: PlacedCube[];
+  /** Five-axis qualitative reading produced by the model. Optional — absent in
+   *  compositions saved before L1 and when the model omits the reading. */
+  reading?: SpatialReading;
+  /** Snapshot of the lexicon active at encode time (provenance for L3). */
+  lexiconSnapshot?: SpatialLexicon;
 }
 
 export interface PataphysicalData {
