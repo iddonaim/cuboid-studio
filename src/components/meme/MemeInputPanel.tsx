@@ -4,7 +4,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
 import { SiteContextCurator } from './SiteContextCurator';
-import { getActiveSiteContext } from '../../lib/storage/siteContext';
+import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -39,6 +39,15 @@ export const MemeInputPanel: React.FC = () => {
   // updates this panel on close. Reading localStorage directly on every render
   // looks cheap but never reflects writes from the modal.
   const [activeSiteContext, setActiveSiteContextState] = useState(() => getActiveSiteContext());
+
+  // Stay in sync with site context set elsewhere — notably the Map tab, which
+  // writes the active context without ever touching this panel's modal. Without
+  // this, the button label could show a stale site until the curator is reopened.
+  useEffect(() => {
+    return subscribeActiveSiteContext(() => {
+      setActiveSiteContextState(getActiveSiteContext());
+    });
+  }, []);
 
   const handleCloseSiteContext = () => {
     setShowSiteContext(false);
