@@ -44,7 +44,7 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
       className={
         isMobile
           ? 'absolute inset-0 w-full h-full border-0 bg-white'
-          : 'absolute top-[42px] left-0 right-0 bottom-0 w-full border-0 bg-white'
+          : 'absolute top-[42px] left-0 right-0 bottom-0 w-full h-full border-0 bg-white'
       }
       allow="clipboard-read; clipboard-write"
     />
