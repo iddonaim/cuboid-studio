@@ -12,10 +12,20 @@ rules_version = '2';
 //
 // NOTE: This repo shares the `archthesis` Firebase project. Deploy these rules
 // ADDITIVELY alongside the existing archthesis rules (e.g. memes/...) — do not
-// replace them. Merge the `projects/**` match block into the live ruleset.
+// replace them. Merge the `projects/**` and `lexicons/**` match blocks into the
+// live ruleset.
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Lexicons — top-level collection, scoped per owner (L3).
+    // Only the authenticated owner may read or write their lexicons.
+    match /lexicons/{lexiconId} {
+      allow create: if request.auth != null
+                    && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid;
+    }
 
     match /projects/{projectId} {
       // The owner field is set on create and must match the caller.
