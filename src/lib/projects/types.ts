@@ -53,8 +53,11 @@ export interface EncodeData {
   readingOriginal?: SpatialReading;
   /** True when the architect revised the reading from the model original. */
   readingEdited?: boolean;
-  /** Snapshot of the lexicon active at encode time (provenance for L3). */
+  /** Snapshot of the lexicon active at encode time (by value; self-describing). */
   lexiconSnapshot?: SpatialLexicon;
+  /** Reference to the saved lexicon document used for this encode, if any.
+   *  Absent when the encode used DEFAULT_LEXICON (no saved lexicon was active). */
+  lexiconId?: string;
 }
 
 export interface PataphysicalData {

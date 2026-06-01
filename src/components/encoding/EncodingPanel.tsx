@@ -6,6 +6,7 @@ import { listSavedStates, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
 import { EncodingReadingPanel } from './EncodingReadingPanel';
+import { LexiconEditor } from './LexiconEditor';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
   try {
@@ -38,7 +39,6 @@ export const EncodingPanel: React.FC = () => {
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const encodingReading = useEncodingStore(s => s.encodingReading);
   const readingEdited = useEncodingStore(s => s.readingEdited);
-  const updateEncodingReading = useEncodingStore(s => s.updateEncodingReading);
   const lastError = useEncodingStore(s => s.lastError);
   const encode = useEncodingStore(s => s.encode);
   const loadIntoBuilder = useEncodingStore(s => s.loadIntoBuilder);
@@ -131,6 +131,9 @@ export const EncodingPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-2.5">
+
+      {/* Active lexicon selector + editor (L3 backstage — throwaway test surface) */}
+      <LexiconEditor />
 
       {/* Multi-photo toggle */}
       <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-400">
@@ -391,7 +394,6 @@ export const EncodingPanel: React.FC = () => {
             <EncodingReadingPanel
               reading={encodingReading}
               readingEdited={readingEdited}
-              onReadingChange={updateEncodingReading}
             />
           )}
 

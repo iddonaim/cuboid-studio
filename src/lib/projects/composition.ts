@@ -22,7 +22,6 @@ import { getVariationGeometryAsync } from '../cube/csgUtils';
 import { applyLLMOperator } from '../operators/applyOperator';
 import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
 import type { OperatorRecord, LLMOperatorResult } from '../operators/types';
-import type { SpatialLexicon } from '../../prompts/lexicon.default';
 import type { CompositionData } from './types';
 
 /** OperatorRecord carries every field applyLLMOperator needs. */
@@ -61,15 +60,20 @@ export function captureComposition(): CompositionData {
           encodingReasoning: encoding.encodingReasoning,
           mode: encoding.mode,
           seedCubes: encoding.seedCubes,
-          // Reading provenance — only written when a reading exists.
+          // Reading + lexicon provenance — only written when a reading exists.
           ...(encoding.encodingReading
             ? {
                 reading: encoding.encodingReading,
                 readingOriginal: encoding.encodingReadingOriginal ?? undefined,
                 readingEdited: encoding.readingEdited,
+                // By-value snapshot: self-describing even if the lexicon later changes.
                 lexiconSnapshot: JSON.parse(
-                  JSON.stringify(DEFAULT_LEXICON),
-                ) as SpatialLexicon,
+                  JSON.stringify(encoding.encodingLexicon ?? DEFAULT_LEXICON),
+                ),
+                // Reference to the saved lexicon, if one was active at encode time.
+                ...(encoding.encodingLexiconId
+                  ? { lexiconId: encoding.encodingLexiconId }
+                  : {}),
               }
             : {}),
         }
@@ -199,6 +203,9 @@ export async function restoreComposition(
       // Restore the saved boolean directly — do not recompute from a comparison,
       // as reconstruction risks provenance errors after a round-trip.
       readingEdited: data.encode.readingEdited ?? false,
+      // Lexicon provenance — restore so a re-save after load preserves the snapshot.
+      encodingLexicon: data.encode.lexiconSnapshot ?? null,
+      encodingLexiconId: data.encode.lexiconId ?? null,
     });
   }
 

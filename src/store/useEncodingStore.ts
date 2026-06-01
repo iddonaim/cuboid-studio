@@ -5,6 +5,8 @@ import { PlacedCube } from '../lib/cube/types';
 import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
 import { GRID_STRIDE, CUBE_SIZE } from '../lib/cube/constants';
 import { useBuilderStore } from './useBuilderStore';
+import { useLexiconStore } from './useLexiconStore';
+import type { SpatialLexicon } from '../prompts/lexicon.default';
 
 type EncodingMode = 'standalone' | 'merge' | 'remix';
 
@@ -21,6 +23,8 @@ function clearReadingFields() {
     encodingReading: null as SpatialReading | null,
     encodingReadingOriginal: null as SpatialReading | null,
     readingEdited: false,
+    encodingLexicon: null as SpatialLexicon | null,
+    encodingLexiconId: null as string | null,
   };
 }
 
@@ -60,6 +64,10 @@ interface EncodingState {
   encodingReadingOriginal: SpatialReading | null;
   /** True when working copy differs from the model original. */
   readingEdited: boolean;
+  /** The full lexicon value used for this encode (captured at encode time). */
+  encodingLexicon: SpatialLexicon | null;
+  /** The Firestore id of the lexicon used, if it was a saved one. Null = DEFAULT_LEXICON. */
+  encodingLexiconId: string | null;
   lastError: string | null;
   updateEncodingReading: (reading: SpatialReading) => void;
 
@@ -196,6 +204,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   encodingReading: null,
   encodingReadingOriginal: null,
   readingEdited: false,
+  encodingLexicon: null,
+  encodingLexiconId: null,
   lastError: null,
 
   updateEncodingReading: (reading) => {
@@ -266,6 +276,11 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       return;
     }
 
+    // Capture the active lexicon now (synchronously) so provenance is consistent
+    // even if the user switches lexicons while the encode is in flight.
+    const capturedLexiconId = useLexiconStore.getState().activeLexiconId;
+    const capturedLexicon = useLexiconStore.getState().getActiveLexicon();
+
     // Keep prior cubes / reasoning / reading visible until a new encode succeeds (L2 safety floor).
     set({ isEncoding: true, lastError: null });
 
@@ -314,6 +329,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         encodingReadingOriginal: modelReading,
         encodingReading: modelReading ? cloneReading(modelReading) : null,
         readingEdited: false,
+        encodingLexicon: capturedLexicon,
+        encodingLexiconId: capturedLexiconId,
         isEncoding: false,
       });
     } catch (error) {
