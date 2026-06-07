@@ -12,6 +12,26 @@ I'm Iddo, an architecture student working on my B.Arch thesis at Tel Aviv Univer
 
 ---
 
+## CURRENT STATE (2026-06-07) — read this first
+
+> The dated session log further down is **build history**, not a description of the
+> current app. For the authoritative, reconciled picture of what's live and usable,
+> see [`CONTEXT.md`](../../CONTEXT.md). Quick summary:
+
+- **Four live nav tabs:** **Map → Encode → Evolution → Decode** (`AppMode = 'map' | 'encoding' | 'evolution' | 'decode'`). All `NAV_SLOTS` are `mounted: true`. The old "two visible tabs, Map/Decode hidden" arrangement is gone.
+- **Builder** is no longer a tab — it surfaces inline inside Encode (Merge seed editor) and underpins Evolution.
+- **Pataphysical** is a **sub-mode of Evolution** (`EvolutionSubMode = 'evolve' | 'pataphysical'`), not a top-level mode.
+- **Map** (live): Leaflet site picker + an embedded external site-analysis app (`VITE_MAP_CONTEXT_URL`); Nominatim geocode proxy + Overpass POI proxy; writes site context to `localStorage` for Encode/Pataphysical.
+- **Encode** (live): 1–7 images, five-axis reading (L1), prompt composed at runtime from `spatial-encoding-grammar.md` + `lexicon.default.ts`; standalone / merge / remix modes.
+- **Evolution / Evolve** (live, **implemented** — not stubbed): compressibility engine with **four** sub-scores — geometric clustering (0.3), spatial regularity (0.3), operator sequence (0.2), meme coherence (0.2). Candidate generation + apply/undo + sparkline. *Note: the spec's two extra axes (CSG tree edit distance, topological genus) are NOT implemented.*
+- **Evolution / Pataphysical** (live): v1 single-pass and v2 two-pass both wired to UI; default `passMode = 'single'`, user-toggleable. Operators: inversion/amplification/drift/reassignment/preservation/shuffle (v1) + consolidation/erosion/reinforcement (v2). 4-axis confidence vector. OpenRouter default (`anthropic/claude-sonnet-4`), Anthropic fallback.
+- **Decode** (live, **implemented**): Konva 2D notation canvas — drag/place/rotate glyph tiles, snap grid, SVG + DXF export, history.
+- **Projects / Auth (NEW, not in older docs):** Firebase email/password auth + Firestore Projects→Sites→Compositions cloud persistence. Opt-in via `VITE_FIREBASE_*` (same Firebase project as archthesis); invisible when unconfigured.
+- **Export/AR:** JSON, GLB, DXF, SVG; AR via `<model-viewer>`; WebSocket live-link to the `grasshopper/` bridge; local saved-states layer.
+- **Stack additions since the log below:** Leaflet, Konva/react-konva, `dxf-writer`, Firebase, jszip, shadcn/Radix, Zustand 5.
+
+---
+
 ## IMPORTANT: Git Configuration
 
 **ALWAYS** ensure these git settings are configured:
