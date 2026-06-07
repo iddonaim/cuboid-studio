@@ -8,8 +8,9 @@
  * A lexicon document holds:
  *   - a full SpatialLexicon value (the vocabulary sent to the encoder)
  *   - light metadata: name, ownerId, timestamps
- *   - an optional descriptions map (reserved for the designed editor's hints;
- *     not authored or displayed in this phase)
+ *   - tags: free-text string array for filtering the library
+ *   - descriptions: per-axis hint text shown in the editor (consequence-
+ *     framed plain language explaining what editing each axis does)
  *
  * DEFAULT_LEXICON always exists as the built-in baseline; it is never stored
  * in Firestore. The null activeLexiconId in useLexiconStore means "use default."
@@ -36,12 +37,25 @@ export interface LexiconDoc {
   updatedAt: number;
   lexicon: SpatialLexicon;
   /**
-   * Reserved for the designed editor's per-parameter hints. Not authored or
-   * displayed in this phase — the slot exists so the schema can absorb them
-   * without a migration.
+   * Free-text tags for filtering the library. An architect can tag lexicons
+   * e.g. "residential", "museum", "Tel Aviv" and filter by these in the library.
+   */
+  tags?: string[];
+  /**
+   * Per-axis hint text shown in the editor. Keys are axis names:
+   * "atmosphere" | "light" | "emotion" | "rhythm" | "placement".
+   * Seeded from DEFAULT_DESCRIPTIONS when a new lexicon is created.
+   * Stored per-lexicon so architects can customise the notes.
    */
   descriptions?: Record<string, string>;
 }
+
+export type LexiconUpdatePayload = {
+  name?: string;
+  lexicon?: SpatialLexicon;
+  tags?: string[];
+  descriptions?: Record<string, string>;
+};
 
 function requireDb() {
   if (!db) throw new Error('Firestore is not configured.');
@@ -62,16 +76,25 @@ export async function createLexicon(
   ownerId: string,
   name: string,
   lexicon: SpatialLexicon,
+  opts: { tags?: string[]; descriptions?: Record<string, string> } = {},
 ): Promise<LexiconDoc> {
   const now = Date.now();
-  const payload: Omit<LexiconDoc, 'id'> = { name, ownerId, createdAt: now, updatedAt: now, lexicon };
+  const payload: Omit<LexiconDoc, 'id'> = {
+    name,
+    ownerId,
+    createdAt: now,
+    updatedAt: now,
+    lexicon,
+    ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
+    ...(opts.descriptions !== undefined ? { descriptions: opts.descriptions } : {}),
+  };
   const ref = await addDoc(collection(requireDb(), 'lexicons'), payload);
   return { id: ref.id, ...payload };
 }
 
 export async function updateLexicon(
   id: string,
-  updates: { name?: string; lexicon?: SpatialLexicon },
+  updates: LexiconUpdatePayload,
 ): Promise<void> {
   await updateDoc(doc(requireDb(), 'lexicons', id), {
     ...updates,
