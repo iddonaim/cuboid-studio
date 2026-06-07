@@ -16,4 +16,4 @@ He reads code pragmatically (can follow shape, variable names, control flow at a
 
 ## Project context
 
-See `docs/internal/HANDOFF.md` and `PATAPHYSICAL_V2_SPEC.md` for the substantive project state. This file is only about collaboration style.
+See `CONTEXT.md` for the authoritative, reconciled map of what's actually live and usable (start here), with `PATAPHYSICAL_V2_SPEC.md` for the translation-pipeline spec/theory and `docs/internal/HANDOFF.md` for build history. This file is only about collaboration style.

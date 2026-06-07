@@ -10,16 +10,18 @@ Cuboid Studio is the application layer of **Topological Translation**, a B.Arch 
 
 ## What it does
 
-The studio is built around a single primitive — a 42 mm cube cut by combinations of four boolean cutters drawn from a fixed set of eight. This yields **70 cube variations** (C(8,4)) that snap together in a 3D grid. The four modes operate on this substrate in different ways:
+The studio is built around a single primitive — a 42 mm cube cut by combinations of four boolean cutters drawn from a fixed set of eight. This yields **70 cube variations** (C(8,4)) that snap together in a 3D grid. There are four primary modes — **Map → Encode → Evolution → Decode** — operating on this substrate in different ways:
 
 | Mode | Status | What it does |
 |------|--------|--------------|
-| **Builder** | Complete | Place, rotate, and delete cubes on a 3D grid. Connection rules enforce face-to-face compatibility between cutters. Auto-fill, section cuts, undo/redo. |
-| **Encode** | Complete | Upload or capture a photo of an inhabited space. Claude's vision model reads the space and proposes a cuboid assembly that mirrors its spatial logic. |
-| **Pataphysical** | Complete | Browse memes from the archmeme database, optionally injected with site context. An LLM translates each meme into a spatial operator (inversion, drift, erosion, etc.) that re-cuts cubes in the assembly. |
-| **Evolution** | Stubbed | Genetic algorithm driven by Schmidhuber-style compression progress. See [`EVOLUTION_SPEC.md`](EVOLUTION_SPEC.md). |
+| **Map** | Live | Site picker. Leaflet map plus an embedded site-analysis app; geocode an address, set a radius, fetch nearby POIs, and store the resulting site context for the other modes. |
+| **Encode** | Live | Upload or capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading and proposes a cuboid assembly that mirrors its logic. The cube Builder is reachable inline here. |
+| **Evolution** | Live | Two sub-modes: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (browse memes from the archmeme database; an LLM translates each meme into a spatial operator — inversion, drift, erosion, etc. — that re-cuts cubes). |
+| **Decode** | Live | A 2D notation canvas. Place and rotate glyph tiles of the variations on a snap grid and export the composition as SVG or DXF. |
 
-The output of any mode can be exported as JSON for round-tripping into Grasshopper for parametric reconstruction. A small Python bridge in [`grasshopper/`](grasshopper/) supports live linking from the browser to a running Grasshopper definition.
+The **Builder** (place/rotate/delete cubes on a 3D grid, connection rules, strict alignment, auto-fill, section cuts, undo/redo) is not a separate tab — it surfaces inline inside Encode (seed editing) and underpins Evolution.
+
+Assemblies can be exported as JSON, GLB, SVG, or DXF, viewed in AR, saved to a Firebase-backed project (optional), or round-tripped into Grasshopper. A small Python bridge in [`grasshopper/`](grasshopper/) supports live linking from the browser to a running Grasshopper definition.
 
 ---
 
@@ -30,8 +32,10 @@ The translation pipeline treats memes as a participatory data layer that traditi
 The system prompts that mediate this translation are committed to the repo as first-class artifacts:
 
 - [`src/prompts/pataphysical-translation-v2.md`](src/prompts/pataphysical-translation-v2.md) — two-pass meme → operator translator
-- [`src/prompts/pataphysical-translation.md`](src/prompts/pataphysical-translation.md) — v1 single-pass translator (still used by Evolution mode)
-- [`src/prompts/spatial-encoding.md`](src/prompts/spatial-encoding.md) — vision prompt for the Encode mode
+- [`src/prompts/pataphysical-translation.md`](src/prompts/pataphysical-translation.md) — v1 single-pass translator (still used by Evolve)
+- [`src/prompts/spatial-encoding-grammar.md`](src/prompts/spatial-encoding-grammar.md) — Encode vision prompt template, composed at runtime with the lexicon
+- [`src/prompts/lexicon.default.ts`](src/prompts/lexicon.default.ts) — the spatial vocabulary injected into the Encode grammar (edit to change reading behavior)
+- [`src/prompts/spatial-encoding.md`](src/prompts/spatial-encoding.md) — earlier standalone Encode vision prompt
 - [`PATAPHYSICAL_V2_SPEC.md`](PATAPHYSICAL_V2_SPEC.md) — full system spec and theoretical framing
 
 These files are the thesis. The code around them is plumbing.
@@ -40,12 +44,16 @@ These files are the thesis. The code around them is plumbing.
 
 ## Tech stack
 
-- **Frontend:** React 18 + TypeScript, Vite 5, Tailwind + shadcn/ui, Zustand for state
+- **Frontend:** React 18 + TypeScript, Vite 5, Tailwind + shadcn/ui + Radix primitives, Zustand for state
 - **3D:** Three.js + React Three Fiber + drei, [`three-bvh-csg`](https://github.com/gkjohnson/three-bvh-csg) for boolean geometry
+- **2D notation:** Konva + react-konva, `dxf-writer` for DXF export
+- **Map:** Leaflet, plus an embedded external site-analysis app (`VITE_MAP_CONTEXT_URL`)
+- **Auth & cloud projects (optional):** Firebase Auth + Firestore — invisible unless `VITE_FIREBASE_*` is configured
+- **AR:** Google `<model-viewer>` (Scene Viewer / Quick Look)
 - **API:** Vercel serverless functions in [`api/`](api/)
 - **LLM gateway:** [OpenRouter](https://openrouter.ai) by default, with an Anthropic-native fallback
 - **Meme database:** [archmeme](https://github.com/iddonaim/archthesis) on Firebase
-- **Geocoding:** Nominatim, proxied server-side
+- **Geocoding & POIs:** Nominatim + Overpass, proxied server-side
 - **Hosting:** Vercel, installable as a PWA
 
 ---
@@ -67,12 +75,14 @@ The app runs at http://localhost:3000.
 
 ### Required environment variables
 
-| Variable | Purpose |
-|----------|---------|
-| `OPENROUTER_API_KEY` | Primary LLM gateway. Get one at [openrouter.ai/keys](https://openrouter.ai/keys). |
-| `ANTHROPIC_API_KEY` | Legacy fallback. Used only when `OPENROUTER_API_KEY` is not set. |
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `OPENROUTER_API_KEY` | Yes* | Primary LLM gateway. Get one at [openrouter.ai/keys](https://openrouter.ai/keys). |
+| `ANTHROPIC_API_KEY` | Yes* | Legacy fallback. Used only when `OPENROUTER_API_KEY` is not set. |
+| `VITE_MAP_CONTEXT_URL` | No | URL of the embedded Map-tab site-analysis app. Defaults to the hosted deployment. |
+| `VITE_FIREBASE_*` | No | Firebase Auth + Firestore config for cloud-saved projects. Leave blank to hide the feature entirely. |
 
-Neither key needs to be present in the browser — they are only read by the serverless functions in `api/`. See [`.env.example`](.env.example) for the full list including feature flags.
+\* Set at least one LLM key. The LLM keys are never exposed to the browser — they are read only by the serverless functions in `api/`. See [`.env.example`](.env.example) for the full list including Firebase config and feature flags.
 
 ### Useful scripts
 
@@ -93,15 +103,18 @@ api/                       Vercel serverless functions
   translate-meme.ts          POST — meme → spatial operator (text/vision)
   fetch-memes.ts             GET  — list memes from archmeme via Firestore REST
   fetch-meme-by-id.ts        GET  — fetch one meme with cuboid-ready input
-  geocode.ts                 GET  — Nominatim proxy for the site context curator
+  geocode.ts                 GET  — Nominatim proxy for the Map site picker
+  fetch-context-pois.ts      GET  — Overpass POI proxy for the Map site picker
 
 src/
-  App.tsx                  Top-level shell and mode router
-  components/              Builder, encoding, evolution, meme, layout, viewport
+  App.tsx                  Top-level shell and mode→panel router
+  components/              map, encoding, evolution, meme, decode, builder,
+                           projects, auth, export, ar, tools, viewport, layout, ui
   store/                   Zustand stores per mode
-  lib/                     CSG, connection rules, cutter specs, export helpers
+  lib/                     CSG, connection rules, cutter specs, evolution,
+                           operators, decode, export, projects, siteContext
   prompts/                 LLM system prompts (the thesis artifacts)
-  types/                   Shared TypeScript types
+  contexts/, hooks/, types/
 
 grasshopper/               Optional live-link bridge to Rhino/Grasshopper
 public/models/             Pre-computed GLB files for the 70 cube variations

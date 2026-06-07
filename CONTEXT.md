@@ -2,7 +2,11 @@
 
 > This file is the always-on context for the Cuboid Studio Claude Project.
 > Read it in full before responding to any message in this project.
-> Last updated: 2026-05-23
+> Last updated: 2026-06-07
+>
+> This is a factual map of what is **actually in the repo and usable today**,
+> reconciled against the live code (not aspirational spec). Where a feature is
+> only specced and not built, it says so explicitly.
 
 ---
 
@@ -10,11 +14,11 @@
 
 A web-based 3D modular architectural design system built as Iddo Naim's B.Arch thesis project at Tel Aviv University (David Azrieli School of Architecture). The core claim: architecture can reconnect with cultural conversation by using internet memes as compressed cultural observations that drive spatial organization through measurable, transparent processes.
 
-The system translates memes into geometry. Not metaphorically — computationally.
+The system translates memes — and inhabited spaces — into geometry. Not metaphorically, computationally.
 
 **Live app:** https://cuboidstudio.vercel.app
 **Repo:** https://github.com/iddonaim/cuboid-studio (public)
-**Stack:** React 18 + TypeScript + Three.js + React Three Fiber + Vite + Vercel serverless functions
+**Stack:** React 18 + TypeScript + Vite 5 + Three.js / React Three Fiber + Vercel serverless functions
 
 ---
 
@@ -24,141 +28,236 @@ The system translates memes into geometry. Not metaphorically — computationall
 
 Because the cutter set is finite and fixed, all relational operations (assembly, matching, mutation) are unambiguous: two cubes either share a cutter or they don't.
 
+Variations are pre-computed GLB meshes (`public/models/v-00.glb … v-69.glb`) exported from Grasshopper; thumbnails live in `public/thumbnails/`. Cutter specifications and connection rules are computed from cutter **metadata** (`src/lib/cube/specifications.ts`), independent of the visual mesh.
+
 ---
 
 ## Information Architecture
 
-The app has two primary modes in the nav: **Encode** and **Evolution**. Builder and Pataphysical are not top-level — Builder is accessible from within Encode (as a seed editor), and Pataphysical is a sub-mode toggle within Evolution.
+The app has **four** primary nav modes, all mounted and live: **Map**, **Encode**, **Evolution**, **Decode**.
 
-`AppMode = 'encoding' | 'evolution'` — the only values `setActiveMode` accepts at runtime. TopBar and MobileTabBar render **Encode** and **Evolution** from `VISIBLE_NAV_SLOTS` (`NAV_SLOTS` filtered to `mounted: true`).
-
-The nav has four named slots, two currently hidden:
-`['map' (hidden), 'encoding', 'evolution', 'decode' (hidden)]`
-
-Map and Decode are structural placeholders — not rendered yet, but the nav accepts them without restructuring.
+`AppMode = 'map' | 'encoding' | 'evolution' | 'decode'` (`src/store/useAppStore.ts`). All four `NAV_SLOTS` are `mounted: true`; `VISIBLE_NAV_SLOTS` (which TopBar and the mobile nav render) currently equals all four. There are no hidden placeholder slots anymore.
 
 **Workflow spine:** Map → Encode → Evolution → Decode
 
-| Slot | Status | What it does |
+| Tab | Status | What it does |
 |------|--------|--------------|
-| **Map** | Mounted — functional wireframe with OSM map, address search, radius selector, Overpass POI enrichment. Feeds into existing siteContext system. | Site picker: geocode, pin, radius, POI fetch → `localStorage` active site context. |
-| **Encode** | Complete | Upload or capture photos of an inhabited space. Claude's vision model proposes a cuboid assembly mirroring the spatial logic. Supports multi-image (see below). |
-| **Evolution** | Stubbed | Genetic algorithm layer. Sub-modes: Evolve (default) and Pataphysical. |
-| **Decode** | Hidden — not yet built | 2D notational view driven by Evolution output. |
+| **Map** | Live | Site picker. Leaflet map + an embedded iframe to a separate "map-context" app (`VITE_MAP_CONTEXT_URL`, Railway-hosted). Geocode via Nominatim proxy, radius selector, Overpass POI enrichment. Writes active site context to `localStorage`, feeds Encode + Pataphysical. |
+| **Encode** | Live | Upload/capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading and proposes a cuboid assembly. Builder is reachable inline here (Merge mode). |
+| **Evolution** | Live | Two sub-modes toggled in-panel: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (meme → operator translation). |
+| **Decode** | Live | 2D notation canvas (Konva). Drag/place/rotate tile glyphs of variations, snap-to-grid, export as SVG or DXF. |
 
-**Builder** is reachable inline from Encode via "build / edit seed". On Done it returns to Encode and re-snapshots the seed.
+**Builder is not a top-level tab.** It surfaces inline:
+- Inside **Encode** when Merge mode opens the seed editor (`seedEditOpen` → BuilderSidebar replaces the EncodingPanel).
+- The built assembly is the substrate that **Pataphysical** re-cuts (you select a target cube from it).
 
-**Sandbox tab** (off-spine): Not yet implemented — pending isolated store instances for Builder and Pataphysical. No Sandbox tab, route, or separate store instances exist in the repo today.
-
----
-
-## Encode Mode — Multi-image
-
-Encode supports 1–7 images per encoding (1 primary + up to 6 supplementary).
-
-**How it works:**
-- Multi-photo checkbox above the Standalone / Merge / Remix state selector. Off by default.
-- When on: multi-file upload with thumbnail strip, radio to designate primary (defaults to first; adding images does not change primary automatically).
-- All images are resized client-side to max 1600px on the long edge before sending (JPEG at 0.88 quality, PNG stays PNG, no upscaling for smaller images). Keeps payloads well under Vercel's 4.5MB request body limit.
-- Request shape: `{ images: [{ base64, mediaType, isPrimary }] }`. Legacy single-image shape `{ imageBase64, imageMediaType }` still accepted for backwards compatibility.
-- The API passes all images to the vision model with the primary labeled explicitly in the prompt context.
-- Synthesis logic is in `src/prompts/spatial-encoding.md` under MULTI-IMAGE SYNTHESIS.
-
-**Key files:**
-- `api/encode-space.ts` — serverless handler
-- `src/prompts/spatial-encoding.md` — architect's curatorial artifact (edit this to change encoding behavior, no code changes needed)
-- `src/lib/encoding/resizeImageToBase64.ts` — client-side resize utility
-- `EncodingPanel.tsx` — upload UI
+**Pataphysical is a sub-mode of Evolution**, not a top-level tab. `EvolutionSubMode = 'evolve' | 'pataphysical'`, toggled by the sub-mode switch in the Evolution panel.
 
 ---
 
-## Pataphysical Mode — v2 Architecture
+## Map Mode
 
-The translation pipeline was substantially redesigned. Key decisions:
-
-**Two-pass structure:**
-- Pass 1 extracts cultural operators from the meme: rhetorical moves, tensions, functional affects, site resonance.
-- Pass 2 translates those operators into geometry given the active site context.
-- The separation ensures the cultural reading happens before geometry is committed.
-
-**4D confidence vector** (replaces scalar score):
-`rhetorical_clarity`, `site_resonance`, `affective_coherence`, `operational_specificity`
-
-**New operator types:** consolidation, erosion, reinforcement (added to existing vocabulary)
-
-**OpenRouter migration:** The API route was migrated from direct Anthropic SDK to OpenRouter (`https://openrouter.ai/api/v1/chat/completions`). Default model: `anthropic/claude-sonnet-4` via OpenRouter. This makes the prompt the artifact, not the model — you can swap models for multi-model comparison without touching the prompt.
-
-**Pass mode:** Controlled per-request via the `pass_mode` field (`single` | `two_pass`). The env var `TRANSLATION_PASS_MODE` is documented in `.env.example` for reference but is not read by the API handler — pass mode is always set by the caller, not the environment.
-
-**Backwards compatibility:** `translateMeme()` (used by Evolution mode) is preserved exactly — always calls `single` pass, returns flat `LLMOperatorResult`. New `translateMemeTwoPass()` is for Pataphysical v2 consumers only. Evolution mode never sees the two-pass shape.
-
-**Site Context Curator:** Embedded modal in Pataphysical mode. Persists active site context in `localStorage` via `src/lib/storage/siteContext.ts` (`getActiveSiteContext()` / `setActiveSiteContext()`). Has tabs: Quantitative, Programmatic, Architect's Reading, Export. `translateMemeTwoPass()` auto-injects the active site context into requests.
-
-**Geocoding:** Nominatim proxy via Vercel serverless `api/geocode.ts` (browser can't hit Nominatim directly due to CORS).
-
-**Implementation status:** Backend route implemented: OpenRouter when `OPENROUTER_API_KEY` is set, otherwise Anthropic Messages API fallback; per-request `pass_mode` (`single` | `two_pass`), optional `model`, `site_context` injection into the v2 prompt (two_pass only), and two-pass response validation (JSON array with `pass: 1` / `pass: 2` or `{ pass1, pass2 }` object). Client helpers: `translateMeme()` always sends `pass_mode: 'single'`; `translateMemeTwoPass()` sends `pass_mode: 'two_pass'` plus site context. Frontend: complete — Pass 1 panel, confidence vector, reasoning text visible in Pataphysical tab (`OperatorResultPanel`, floating overlay while cutter shows on canvas). Multi-model selector UI still deferred.
+- **Leaflet** map (`src/components/map/MapPanel.tsx`): click-to-pin, address search, radius slider (50–2000 m), ESRI→OSM tile fallback.
+- **Embedded "map-context" app** (`src/components/map/MapContextCanvas.tsx`): an iframe to an external service at `VITE_MAP_CONTEXT_URL` (defaults to the Railway deployment). When Map is active, this canvas replaces the 3D viewport. On analysis-complete it writes the site context and surfaces a toast offering to jump to Encode.
+- **Geocoding:** `api/geocode.ts` — Nominatim proxy (browser can't hit Nominatim directly due to CORS / User-Agent).
+- **POIs:** `api/fetch-context-pois.ts` — Overpass query, categorizes ~22 element types (transit, education, healthcare, civic, green space, markets, major roads).
+- **Persistence:** `src/lib/storage/siteContext.ts` (`getActiveSiteContext()` / `setActiveSiteContext()`), built via `src/lib/siteContext/mapSiteContext.ts`. The site context (location + quantitative + programmatic + architect's reading) is injected into both Encode and Pataphysical requests.
 
 ---
 
-## Evolution Mode — Fitness Function
+## Encode Mode
 
-Six-axis vector, equal weighting (pluralist rationale: more independent lenses, richer signature):
+Reads a photographed space and proposes a cuboid assembly that mirrors its spatial logic.
 
-1. Geometric clustering
-2. Spatial regularity
-3. Operator sequence coherence
-4. Meme coherence
-5. CSG tree structural similarity (mean pairwise tree edit distance across assembly)
-6. Topological complexity (voxelized genus counting)
+- **Multi-image:** 1–7 images (1 primary + up to 6 supplementary). Primary anchors the assembly character. Images are resized client-side before upload (`src/lib/encoding/resizeImageToBase64.ts`) to stay under Vercel's request-body limit.
+- **Five-axis reading (L1):** the model emits a structured reading **before** committing geometry — three continuous axes (atmosphere, light, emotion) and two categorical axes (rhythm, placement). Rendered in `EncodingResultPanel.tsx`.
+- **Prompt is composed at runtime** from a grammar template + a lexicon, not a single static file:
+  - `src/prompts/spatial-encoding-grammar.md` — template with `{{slot}}` vocabulary injections.
+  - `src/prompts/lexicon.default.ts` — the `SpatialLexicon` (atmosphere/light/emotion poles, rhythm/placement options). Edit the lexicon to change vocabulary without touching code.
+  - `src/prompts/spatial-encoding.md` — the older standalone curatorial artifact (still present).
+- **Three modes:** `standalone` (image only), `merge` (image + seed cubes from Builder — opens the inline seed editor), `remix` (image + a saved state).
 
-Symmetry group order was explicitly rejected — the cubes are structurally asymmetric by construction. Spectral decomposition deferred as future work.
+**Key files:** `api/encode-space.ts`, `src/lib/api/encodeSpace.ts`, `src/components/encoding/EncodingPanel.tsx`, `src/store/useEncodingStore.ts`.
 
-The vector is reported axis-by-axis in thesis outputs, never collapsed to a scalar. Schmidhuber's compression progress framework is the theoretical scaffolding, not the literal implementation; the mathematical signature matrix replaces the LLM-as-compressor assumption.
+---
+
+## Evolution Mode — Evolve sub-mode
+
+The fitness/compressibility engine is **implemented** (`src/lib/evolution/compressibility.ts`, `src/store/useEvolutionStore.ts`, `src/components/evolution/EvolutionPanel.tsx`).
+
+**Actual fitness function = four sub-scores** (weighted sum, each normalised [0,1]):
+
+1. **Geometric clustering** — 0.3 — cosine similarity of 13-D per-cube cutter feature vectors.
+2. **Spatial regularity** — 0.3 — row/column consistency (60%) + mirror symmetry (40%) along X/Y/Z.
+3. **Operator sequence** — 0.2 — n-gram repetition ratio across operator classes.
+4. **Meme coherence** — 0.2 — within-meme-group parameter variance, scored via `exp(-variance)`.
+
+Compression progress (interestingness) = score_after − score_before. A sparkline (`CompressibilitySparkline.tsx`) tracks the trend.
+
+> **Spec vs build:** earlier docs described a *six*-axis vector that also included CSG-tree-edit-distance and topological-genus (voxelized) axes. Those two are **not implemented** — they remain aspirational. The shipping engine is the four sub-scores above.
+
+**Loop:** pre-fetch a meme pool from archthesis (`/api/fetch-memes`) → generate N candidates in parallel (`translateMemeTwoPass()`), each scored by compression progress → rank → preview a candidate (target cube highlighted amber in the viewport) → Apply or Undo.
+
+---
+
+## Evolution Mode — Pataphysical sub-mode (meme translation)
+
+Translates a meme into a spatial operator that re-cuts a target cube. **Both v1 (single-pass) and v2 (two-pass) are implemented and wired to the UI.**
+
+**Pass mode:** per-request, set by the client. `passMode` defaults to `'single'` (`useMemeStore`); the user can toggle to `'two_pass'` in `MemeInputPanel`. `translateMeme()` always sends `single` (used by Evolve); `translateMemeTwoPass()` always sends `two_pass` and auto-injects active site context. The `TRANSLATION_PASS_MODE` env var is only the server-side default / rollback switch.
+
+**Two-pass structure (v2):**
+- Pass 1 — cultural extraction: rhetorical moves, cultural tensions, functional affects, site resonance, meme summary.
+- Pass 2 — geometric translation: operator + targets + magnitude/decay + cutter (with `geometry_reasoning`) + a **4-axis confidence vector** (`rhetorical_clarity`, `site_resonance`, `affective_coherence`, `operational_specificity`) and a confidence note.
+
+**Operators** (`src/lib/operators/types.ts`, applied in `applyOperator.ts`):
+- v1 set (also used by Evolve): inversion, amplification, drift, reassignment, preservation, shuffle.
+- v2 additions: consolidation, erosion, reinforcement.
+
+**LLM gateway:** `api/translate-meme.ts` uses **OpenRouter** when `OPENROUTER_API_KEY` is set (default model `anthropic/claude-sonnet-4`), otherwise falls back to the Anthropic Messages API. The prompt is the artifact, not the model.
+
+**Prompts:** `src/prompts/pataphysical-translation-v2.md` (two-pass), `src/prompts/pataphysical-translation.md` (v1). **Editing the prompt is how you change behavior; code rarely needs to change.**
+
+**UI:** `MemeInputPanel`, `OperatorResultPanel`, `CutterTweakPanel` (tweak parameters before apply), `OperatorHistoryList`, `ArchthesisBrowser` (browse memes from archthesis), `SiteContextCurator` (set/clear active site context).
+
+---
+
+## Decode Mode
+
+A 2D notational view of the assembly — **implemented**, not a placeholder.
+
+- **Canvas:** Konva / react-konva (`src/components/decode/DecodeCanvas.tsx`). Drag-place tiles (desktop) or tap-to-place (mobile), rotate in 90° steps, snap-to-grid.
+- **Tile glyphs:** per-variation 2D paths (`src/lib/decode/variation2dPath.ts`), snap points (`snapPoints.ts` / `snapUtils.ts`).
+- **Palette:** all 70 variations (freestyle) or only those present in the current assembly.
+- **Export:** SVG (`decodeSvgExport.ts`) and DXF (`decodeDxfExport.ts`, via `dxf-writer`). History up to 5 undo states.
+- Tags assigned in the Builder show as an overlay on the canvas.
+
+---
+
+## Builder (inline)
+
+Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly substrate for Pataphysical).
+
+- Variation picker (all 70), hover preview, click-to-place on a 3D grid.
+- **Connection rules** (`rulesEnabled`) + **strict alignment** (`strictRulesEnabled`) — `src/lib/cube/connectionRules.ts`.
+- Rotate (Space = Y / preview cycles valid rotations, R = X), delete, undo/redo (Ctrl/Cmd+Z, +Shift to redo), auto-fill, section cuts.
+- Tagging (`TaggingPanel.tsx`): word + intensity per cube.
+
+**Key files:** `src/components/builder/*`, `src/store/useBuilderStore.ts`, `src/lib/cube/*` (constants `CUBE_SIZE = 42`, `GRID_STRIDE = 42.6`).
+
+---
+
+## Projects, Auth & Cloud Persistence (Firebase)
+
+**This is a real, shipping feature** — opt-in via env vars, invisible when unconfigured.
+
+- **Auth:** Firebase email/password (`src/contexts/AuthContext.tsx`, `src/hooks/useAuth.ts`, `src/components/auth/AuthControls.tsx` in the TopBar).
+- **Data model:** Projects → Sites → Compositions (`src/lib/projects/types.ts`, CRUD in `src/lib/projects/firestore.ts`, UI in `src/components/projects/ProjectsPanel.tsx`).
+- **Capture/restore:** `captureComposition()` serialises the full Builder + meme state; `restoreComposition()` loads it back (`src/lib/projects/composition.ts`). "Save to project" button is `SaveCompositionButton.tsx`.
+- **Config:** `VITE_FIREBASE_*` env vars, pointing at the **same Firebase project as archthesis** (`adaptivememeticarchitect-2776f`). Firestore access rules in `firestore.rules`.
+- When `isFirebaseConfigured` is false, none of the auth/projects UI mounts and the app behaves exactly as the local-only version.
+
+There is also a **local-only** save layer independent of Firebase: `src/lib/savedStates.ts` + `SavedStatesPanel.tsx` (up to 20 named slots in `localStorage`), used for the Encode "remix" seed.
+
+---
+
+## Export / AR / Live-Link
+
+- **JSON:** `src/lib/export/assemblyExport.ts` — positions, variation/cutter indices, rotations, per-cube operator history, grid metadata.
+- **GLB:** `src/lib/export/glbExport.ts` — merged mesh of the assembly (used by the AR viewer and downloadable).
+- **AR:** `src/components/ar/ARViewer.tsx` — Google `<model-viewer>` web component. Android → Scene Viewer (ARCore), iOS 15+ → Quick Look (ARKit), desktop → 3D orbit. Scale slider for real-world sizing.
+- **Live-link:** `src/lib/export/liveLinkClient.ts` — WebSocket client (default port 9876) to a local Python bridge in `grasshopper/` for round-tripping into a running Grasshopper definition.
+- **Screenshot:** `src/components/tools/CaptureButton.tsx` (uses `preserveDrawingBuffer` on the canvas; shares via Web Share API on mobile, downloads on desktop).
+- **Decode** has its own SVG/DXF export (above).
+
+---
+
+## Tech Stack (actual, from `package.json`)
+
+- **Frontend:** React 18.3 + TypeScript 5.6, Vite 5.4, Tailwind 3.4 + shadcn / Radix UI primitives, **Zustand 5** for state (one store per mode).
+- **3D:** Three.js 0.169 + React Three Fiber 8 + drei, `three-bvh-csg` for boolean geometry.
+- **2D notation:** Konva 10 + react-konva, `dxf-writer` for DXF.
+- **Map:** Leaflet 1.9 (+ external map-context iframe).
+- **Auth/DB:** Firebase 12 (Auth + Firestore).
+- **Misc:** jszip (bundled exports), model-viewer (AR, via CDN), PWA via `vite-plugin-pwa`.
+- **API:** Vercel serverless functions in `api/`.
+- **LLM gateway:** OpenRouter by default, Anthropic-native fallback.
+
+---
+
+## Repository Layout (high level)
+
+```
+api/                  Vercel serverless: encode-space, translate-meme,
+                      fetch-memes, fetch-meme-by-id, geocode, fetch-context-pois
+src/
+  App.tsx             Shell + mode→panel router (desktop & mobile layouts)
+  store/              Zustand stores (app, builder, encoding, evolution, meme,
+                      decode, projects, sectionCut, tag, toast)
+  components/         map, encoding, evolution, meme, decode, builder, projects,
+                      auth, export, ar, tools, viewport, layout, ui
+  lib/                cube (CSG/rules/specs), evolution, operators, decode,
+                      export, projects, siteContext, storage, encoding, capture
+  prompts/            LLM artifacts (grammar + lexicon + v1/v2 translators)
+  contexts/, hooks/, types/
+grasshopper/          Python live-link bridge to Rhino/Grasshopper
+public/models/        Pre-computed GLBs v-00..v-69
+public/thumbnails/    Pre-rendered variation thumbnails
+```
+
+**Key specs / docs:** `PATAPHYSICAL_V2_SPEC.md` (translation pipeline + theory — read first), `EVOLUTION_SPEC.md`, `SERIALIZATION_GUIDE.md`, `docs/internal/HANDOFF.md` (build history).
+
+---
+
+## Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENROUTER_API_KEY` | Primary LLM gateway (default model `anthropic/claude-sonnet-4`). |
+| `ANTHROPIC_API_KEY` | Legacy fallback, used only when OpenRouter key is absent. |
+| `VITE_MAP_CONTEXT_URL` | URL of the embedded map-context iframe (defaults to the Railway deployment). |
+| `VITE_FIREBASE_*` | Firebase Auth + Firestore config (Projects/Compositions). Blank → feature hidden. |
+| `TRANSLATION_PASS_MODE` | Server-side default pass mode (`single` / `two_pass`); clients override per request. |
+
+LLM keys are read only by the serverless functions, never exposed to the browser. See `.env.example` for the full list.
+
+---
+
+## Theoretical Framework
+
+- **Schmidhuber (compression progress):** scaffolding for the fitness function — interestingness as the first derivative of compressibility. Not used literally; the shipping engine is the four-sub-score signature, not an LLM-as-compressor.
+- **Pataphysics (Alfred Jarry):** the translation logic layer — science of imaginary solutions; grounds the meme→geometry pipeline.
+- **Deleuze (virtual/real):** the meme layer captures the cultural-virtual dimension that physical site analysis misses — additive, not a replacement.
+- **Krier (urban typologies):** referenced in the notation/operator framework for spatial grammar.
 
 ---
 
 ## Related Repositories
 
 ### archthesis (`github.com/iddonaim/archthesis`)
-The meme database and platform. Hosts `memes.iddonaim.com`. Backend: Firestore. This is the source of all memes flowing into Cuboid Studio's Pataphysical mode. The two repos are not yet converged but integration is the direction of travel.
+The participatory meme database and platform (hosts `memes.iddonaim.com`), Firebase-backed. Source of all memes flowing into Pataphysical mode, and **the same Firebase project** that Cuboid Studio's Projects/Auth layer now uses. Integration is the direction of travel.
+
+### map-context (Railway-hosted)
+The site-analysis app embedded as the Map tab iframe (`VITE_MAP_CONTEXT_URL`). Treat it as a peer project moving toward tighter merger.
 
 ### step2views (shelved)
-A 2D notation system for cube assembly. **Currently shelved** — do not prioritize or suggest work here unless Iddo explicitly brings it back.
-
-Key concepts for reference:
-- Assembly rule: connect blocks by matching identical cutters via external tangency (circle-circle or circle-rect perimeter contact, corners included). Rotation in configurable increments (default 90°).
-- `cuboid_gen.py`: parametric catalog generator. Builds all 70 variations in OpenCascade, runs HLR from 6 orthographic directions, outputs `catalog.html`. Ghost representation mode: single HLR pass on cube + cutters union (not boolean diff), showing "transparent cube with cutters through it."
-- `assembly.html`: drag-and-drop composer with snap-to-matching-cutter logic, SVG export.
-
-### ContextMapper (new, active)
-Being developed as a separate project. Will eventually integrate into Cuboid Studio as the **Map tab**. Treat it as a peer project moving toward merger, not a standalone tool.
-
----
-
-## Theoretical Framework
-
-- **Schmidhuber (compression progress):** Theoretical scaffolding for the fitness function. Interestingness as first derivative of compressibility. Not used literally — the LLM-as-compressor assumption was rejected in favor of a mathematical signature matrix.
-- **Pataphysics (Alfred Jarry):** The translation logic layer. Science of imaginary solutions. Grounds the meme→geometry pipeline philosophically.
-- **Deleuze (virtual/real):** Meme layer captures the cultural-virtual dimension that physical site analysis misses. The meme enrichment is additive, not a replacement for traditional analysis.
-- **Krier (urban typologies):** Referenced in the notation/operator framework for spatial grammar.
+A 2D notation system for cube assembly. **Shelved** — much of its intent now lives in the built-in Decode mode. Do not prioritize unless Iddo explicitly revives it.
 
 ---
 
 ## Developer Context
 
-- **Iddo** is sole architect and developer. Not a coder — trusts the model on implementation decisions.
-- Works in **Cursor** with Claude Sonnet as default, escalating to Opus when tasks stall.
-- Uses **Claude Code** for implementation sessions. Always write handoffs as direct plain-language instruction sets — no code snippets in the handoff itself. Iddo cannot evaluate code independently.
-- When handing off to Claude Code, always use investigate-first format: agent reports current state before changing anything.
+- **Iddo** is sole architect and developer. Not a coder — trusts the model on implementation decisions (see `CLAUDE.md` for collaboration style).
+- Uses **Claude Code** for implementation. Write handoffs as plain-language instruction sets, investigate-first (report current state before changing anything).
 - Always continue from the existing working version — never rewrite from scratch without asking.
-- Verify current implementation state against the repo before speccing changes; prior Claude Code sessions may have partially implemented things.
+- Verify implementation state against the repo before speccing changes; prior sessions may have partially implemented things.
 
 ---
 
-## What's Deferred / Not Yet Built
+## What's Actually Deferred / Not Yet Built
 
-- Evolution mode implementation (stubbed)
-- Pataphysical v2 multi-model selector UI
-- Map tab (pending ContextMapper integration)
-- Decode tab (not yet built)
-- step2views revival (shelved)
+- **Evolution fitness axes 5 & 6** (CSG tree edit distance, topological genus) — specced, not implemented. Four sub-scores ship.
+- **Pataphysical v2 multi-model selector UI** — `model` param exists server-side; no UI to pick models for cross-model comparison.
+- **Pataphysical translation history per site** — comparing confidence vectors across memes on one site is still a spec item.
+- **Map ↔ map-context full convergence** — currently an iframe + shared site-context handoff, not a single codebase.
+- **step2views revival** — shelved.
