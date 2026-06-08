@@ -15,7 +15,7 @@ The studio is built around a single primitive — a 42 mm cube cut by combinatio
 | Mode | Status | What it does |
 |------|--------|--------------|
 | **Map** | Live | Site picker. Leaflet map plus an embedded site-analysis app; geocode an address, set a radius, fetch nearby POIs, and store the resulting site context for the other modes. |
-| **Encode** | Live | Upload or capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading and proposes a cuboid assembly that mirrors its logic. The cube Builder is reachable inline here. |
+| **Encode** | Live | Upload or capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading (which the architect can lightly edit, with the model's original preserved) and proposes a cuboid assembly that mirrors its logic. The reading vocabulary is driven by an **editable lexicon** — author named lexicons, save them to a cloud library, and pick which one is active. The cube Builder is reachable inline here. |
 | **Evolution** | Live | Two sub-modes: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (browse memes from the archmeme database; an LLM translates each meme into a spatial operator — inversion, drift, erosion, etc. — that re-cuts cubes). |
 | **Decode** | Live | A 2D notation canvas. Place and rotate glyph tiles of the variations on a snap grid and export the composition as SVG or DXF. |
 
@@ -34,7 +34,7 @@ The system prompts that mediate this translation are committed to the repo as fi
 - [`src/prompts/pataphysical-translation-v2.md`](src/prompts/pataphysical-translation-v2.md) — two-pass meme → operator translator
 - [`src/prompts/pataphysical-translation.md`](src/prompts/pataphysical-translation.md) — v1 single-pass translator (still used by Evolve)
 - [`src/prompts/spatial-encoding-grammar.md`](src/prompts/spatial-encoding-grammar.md) — Encode vision prompt template, composed at runtime with the lexicon
-- [`src/prompts/lexicon.default.ts`](src/prompts/lexicon.default.ts) — the spatial vocabulary injected into the Encode grammar (edit to change reading behavior)
+- [`src/prompts/lexicon.default.ts`](src/prompts/lexicon.default.ts) — the built-in baseline spatial vocabulary injected into the Encode grammar (signed-in users can author and save their own editable lexicons on top of this default)
 - [`src/prompts/spatial-encoding.md`](src/prompts/spatial-encoding.md) — earlier standalone Encode vision prompt
 - [`PATAPHYSICAL_V2_SPEC.md`](PATAPHYSICAL_V2_SPEC.md) — full system spec and theoretical framing
 
