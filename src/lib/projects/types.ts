@@ -48,8 +48,16 @@ export interface EncodeData {
   /** Five-axis qualitative reading produced by the model. Optional — absent in
    *  compositions saved before L1 and when the model omits the reading. */
   reading?: SpatialReading;
-  /** Snapshot of the lexicon active at encode time (provenance for L3). */
+  /** Model-produced reading preserved for provenance; never mutated by edits.
+   *  Absent when no reading was produced, or in pre-L1 compositions. */
+  readingOriginal?: SpatialReading;
+  /** True when the architect revised the reading from the model original. */
+  readingEdited?: boolean;
+  /** Snapshot of the lexicon active at encode time (by value; self-describing). */
   lexiconSnapshot?: SpatialLexicon;
+  /** Reference to the saved lexicon document used for this encode, if any.
+   *  Absent when the encode used DEFAULT_LEXICON (no saved lexicon was active). */
+  lexiconId?: string;
 }
 
 export interface PataphysicalData {

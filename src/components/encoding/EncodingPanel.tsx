@@ -5,6 +5,8 @@ import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { listSavedStates, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
+import { EncodingReadingPanel } from './EncodingReadingPanel';
+import { LexiconEditor } from './LexiconEditor';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
   try {
@@ -35,7 +37,9 @@ export const EncodingPanel: React.FC = () => {
   const clearAllImages = useEncodingStore(s => s.clearAllImages);
   const isEncoding = useEncodingStore(s => s.isEncoding);
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
-  const encodingReasoning = useEncodingStore(s => s.encodingReasoning);
+  const encodingReading = useEncodingStore(s => s.encodingReading);
+  const encodingLexicon = useEncodingStore(s => s.encodingLexicon);
+  const readingEdited = useEncodingStore(s => s.readingEdited);
   const lastError = useEncodingStore(s => s.lastError);
   const encode = useEncodingStore(s => s.encode);
   const loadIntoBuilder = useEncodingStore(s => s.loadIntoBuilder);
@@ -51,7 +55,6 @@ export const EncodingPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [savedStates, setSavedStates] = React.useState<SavedState[]>([]);
   const [selectedSeedId, setSelectedSeedId] = React.useState<string | null>(null);
-
   const hasImages = multiPhotoEnabled
     ? uploadedImages.length > 0
     : Boolean(uploadedImage);
@@ -129,6 +132,9 @@ export const EncodingPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-2.5">
+
+      {/* Active lexicon selector + editor (L3 backstage — throwaway test surface) */}
+      <LexiconEditor />
 
       {/* Multi-photo toggle */}
       <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-400">
@@ -373,13 +379,24 @@ export const EncodingPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Result */}
+      {/* Result — reading in sidebar; reasoning stays on the floating canvas card */}
       {encodedCubes && (
-        <div className="flex flex-col gap-2">
-          {encodingReasoning && (
-            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-slate-300 text-[11px] leading-relaxed italic">
-              {encodingReasoning}
+        <div
+          className={`flex flex-col gap-2 relative ${isEncoding ? 'opacity-60 pointer-events-none' : ''}`}
+        >
+          {isEncoding && (
+            <div className="absolute inset-0 z-10 flex items-start justify-center pt-1 pointer-events-none">
+              <span className="text-[10px] text-sky-300/90 bg-slate-900/90 border border-slate-600 rounded px-2 py-0.5">
+                Updating…
+              </span>
             </div>
+          )}
+          {encodingReading && (
+            <EncodingReadingPanel
+              reading={encodingReading}
+              readingEdited={readingEdited}
+              lexicon={encodingLexicon}
+            />
           )}
 
           <div className="text-slate-400 text-[11px]">
@@ -409,12 +426,12 @@ export const EncodingPanel: React.FC = () => {
           </Button>
 
           <button
-            onClick={() => {
-              useEncodingStore.setState({ encodedCubes: null, encodingReasoning: null });
-            }}
-            className="py-1.5 bg-transparent border border-slate-700 rounded-md text-slate-500 cursor-pointer text-[10px]"
+            type="button"
+            onClick={handleEncode}
+            disabled={isEncoding}
+            className="py-1.5 bg-transparent border border-slate-700 rounded-md text-slate-500 cursor-pointer text-[10px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Re-encode
+            {isEncoding ? 'Re-encoding…' : 'Re-encode'}
           </button>
         </div>
       )}

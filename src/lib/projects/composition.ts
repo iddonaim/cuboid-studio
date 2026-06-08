@@ -20,6 +20,7 @@ import { getActiveSiteContext, setActiveSiteContext } from '../storage/siteConte
 import { CUBE_VARIATIONS } from '../cube/specifications';
 import { getVariationGeometryAsync } from '../cube/csgUtils';
 import { applyLLMOperator } from '../operators/applyOperator';
+import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
 import type { OperatorRecord, LLMOperatorResult } from '../operators/types';
 import type { CompositionData } from './types';
 
@@ -59,6 +60,22 @@ export function captureComposition(): CompositionData {
           encodingReasoning: encoding.encodingReasoning,
           mode: encoding.mode,
           seedCubes: encoding.seedCubes,
+          // Reading + lexicon provenance — only written when a reading exists.
+          ...(encoding.encodingReading
+            ? {
+                reading: encoding.encodingReading,
+                readingOriginal: encoding.encodingReadingOriginal ?? undefined,
+                readingEdited: encoding.readingEdited,
+                // By-value snapshot: self-describing even if the lexicon later changes.
+                lexiconSnapshot: JSON.parse(
+                  JSON.stringify(encoding.encodingLexicon ?? DEFAULT_LEXICON),
+                ),
+                // Reference to the saved lexicon, if one was active at encode time.
+                ...(encoding.encodingLexiconId
+                  ? { lexiconId: encoding.encodingLexiconId }
+                  : {}),
+              }
+            : {}),
         }
       : null,
     pataphysical: {
@@ -180,6 +197,15 @@ export async function restoreComposition(
       mode: data.encode.mode,
       seedCubes: data.encode.seedCubes,
       seedCubeIds: new Set(data.encode.seedCubes.map(c => c.id)),
+      // Reading provenance — gracefully absent on pre-L3 compositions.
+      encodingReading: data.encode.reading ?? null,
+      encodingReadingOriginal: data.encode.readingOriginal ?? null,
+      // Restore the saved boolean directly — do not recompute from a comparison,
+      // as reconstruction risks provenance errors after a round-trip.
+      readingEdited: data.encode.readingEdited ?? false,
+      // Lexicon provenance — restore so a re-save after load preserves the snapshot.
+      encodingLexicon: data.encode.lexiconSnapshot ?? null,
+      encodingLexiconId: data.encode.lexiconId ?? null,
     });
   }
 

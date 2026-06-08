@@ -1,4 +1,5 @@
-import { DEFAULT_LEXICON, type SpatialLexicon } from '../../prompts/lexicon.default';
+import { type SpatialLexicon } from '../../prompts/lexicon.default';
+import { useLexiconStore } from '../../store/useLexiconStore';
 
 export interface EncodeSpaceImage {
   base64: string;
@@ -50,9 +51,9 @@ export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSp
   const siteContext =
     'siteContext' in request && request.siteContext ? request.siteContext : undefined;
 
-  // Always send DEFAULT_LEXICON so the server can compose the grammar prompt.
-  // In L3, the active Firestore lexicon will be sent here instead.
-  const lexicon: SpatialLexicon = DEFAULT_LEXICON;
+  // Send the active lexicon so the server composes the grammar prompt from it.
+  // null activeLexiconId falls back to DEFAULT_LEXICON inside getActiveLexicon().
+  const lexicon: SpatialLexicon = useLexiconStore.getState().getActiveLexicon();
 
   const body =
     'images' in request

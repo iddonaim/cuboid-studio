@@ -5,8 +5,28 @@ import { PlacedCube } from '../lib/cube/types';
 import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
 import { GRID_STRIDE, CUBE_SIZE } from '../lib/cube/constants';
 import { useBuilderStore } from './useBuilderStore';
+import { useLexiconStore } from './useLexiconStore';
+import type { SpatialLexicon } from '../prompts/lexicon.default';
 
 type EncodingMode = 'standalone' | 'merge' | 'remix';
+
+function cloneReading(reading: SpatialReading): SpatialReading {
+  return JSON.parse(JSON.stringify(reading)) as SpatialReading;
+}
+
+function readingsEqual(a: SpatialReading, b: SpatialReading): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function clearReadingFields() {
+  return {
+    encodingReading: null as SpatialReading | null,
+    encodingReadingOriginal: null as SpatialReading | null,
+    readingEdited: false,
+    encodingLexicon: null as SpatialLexicon | null,
+    encodingLexiconId: null as string | null,
+  };
+}
 
 export interface UploadedEncodingImage {
   id: string;
@@ -38,8 +58,18 @@ interface EncodingState {
   isEncoding: boolean;
   encodedCubes: EncodedCube[] | null;
   encodingReasoning: string | null;
+  /** Working copy shown in the panel (may be architect-revised). */
   encodingReading: SpatialReading | null;
+  /** Model-produced reading preserved for provenance; never mutated by edits. */
+  encodingReadingOriginal: SpatialReading | null;
+  /** True when working copy differs from the model original. */
+  readingEdited: boolean;
+  /** The full lexicon value used for this encode (captured at encode time). */
+  encodingLexicon: SpatialLexicon | null;
+  /** The Firestore id of the lexicon used, if it was a saved one. Null = DEFAULT_LEXICON. */
+  encodingLexiconId: string | null;
   lastError: string | null;
+  updateEncodingReading: (reading: SpatialReading) => void;
 
   // Mode & seed
   mode: EncodingMode;
@@ -72,7 +102,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     imageMediaType: mediaType,
     encodedCubes: null,
     encodingReasoning: null,
-    encodingReading: null,
+    ...clearReadingFields(),
     lastError: null,
   }),
   clearImage: () => set({
@@ -81,7 +111,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     imageMediaType: null,
     encodedCubes: null,
     encodingReasoning: null,
-    encodingReading: null,
+    ...clearReadingFields(),
     lastError: null,
   }),
 
@@ -132,7 +162,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       primaryImageId,
       encodedCubes: null,
       encodingReasoning: null,
-      encodingReading: null,
+      ...clearReadingFields(),
       lastError: null,
     };
   }),
@@ -148,7 +178,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       primaryImageId,
       encodedCubes: null,
       encodingReasoning: null,
-      encodingReading: null,
+      ...clearReadingFields(),
       lastError: null,
     };
   }),
@@ -163,7 +193,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     primaryImageId: null,
     encodedCubes: null,
     encodingReasoning: null,
-    encodingReading: null,
+    ...clearReadingFields(),
     lastError: null,
   }),
 
@@ -172,7 +202,19 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   encodedCubes: null,
   encodingReasoning: null,
   encodingReading: null,
+  encodingReadingOriginal: null,
+  readingEdited: false,
+  encodingLexicon: null,
+  encodingLexiconId: null,
   lastError: null,
+
+  updateEncodingReading: (reading) => {
+    const { encodingReadingOriginal } = get();
+    const readingEdited = encodingReadingOriginal
+      ? !readingsEqual(reading, encodingReadingOriginal)
+      : true;
+    set({ encodingReading: reading, readingEdited });
+  },
 
   // Mode & seed
   mode: 'standalone',
@@ -185,7 +227,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     seedCubeIds: new Set<string>(),
     encodedCubes: null,
     encodingReasoning: null,
-    encodingReading: null,
+    ...clearReadingFields(),
     lastError: null,
   }),
 
@@ -234,7 +276,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       return;
     }
 
-    set({ isEncoding: true, lastError: null, encodedCubes: null, encodingReasoning: null, encodingReading: null });
+    // Capture the active lexicon now (synchronously) so provenance is consistent
+    // even if the user switches lexicons while the encode is in flight.
+    const capturedLexiconId = useLexiconStore.getState().activeLexiconId;
+    const capturedLexicon = useLexiconStore.getState().getActiveLexicon();
+
+    // Keep prior cubes / reasoning / reading visible until a new encode succeeds (L2 safety floor).
+    set({ isEncoding: true, lastError: null });
 
     const activeSite = getActiveSiteContext();
     const hasSiteCoords =
@@ -274,10 +322,15 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         }))
         .filter(cube => !occupied.has(cube.position.join(',')));
 
+      const modelReading = result.reading ?? null;
       set({
         encodedCubes: processed,
         encodingReasoning: result.reasoning,
-        encodingReading: result.reading ?? null,
+        encodingReadingOriginal: modelReading,
+        encodingReading: modelReading ? cloneReading(modelReading) : null,
+        readingEdited: false,
+        encodingLexicon: capturedLexicon,
+        encodingLexiconId: capturedLexiconId,
         isEncoding: false,
       });
     } catch (error) {
