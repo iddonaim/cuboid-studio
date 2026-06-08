@@ -1357,8 +1357,32 @@ App.tsx (isMobile branch)
 
 ---
 
-**Last Updated:** 2026-04-20
-**Status:** Pataphysical v2 Phase 1 complete (infra + prompt + curator + geocode proxy). Phase 2 = frontend two-pass UI + new operators. See `PATAPHYSICAL_V2_SPEC.md`.
-**Next Feature:** Phase 2 checklist above.
+## Session Log — 2026-06-08 — Encode reading layer (L1/L2) + editable lexicons (L3)
+
+Three waves on the Encode mode, all merged to `main` (PRs #57–#59).
+
+**L1 — five-axis reading** (`587589e`):
+- The vision model emits a structured reading *before* committing geometry: three continuous axes (atmosphere, light, emotion) + two categorical (rhythm, placement).
+- The Encode prompt is now **composed at runtime** from `spatial-encoding-grammar.md` (template with `{{slot}}` injections) + a lexicon, instead of a single static prompt file.
+
+**L2 — editable reading + provenance** (`f28c096`, `0a00004`, `adb3a9b`):
+- Floating reasoning card for the sidebar/floating split (`EncodingReadingPanel.tsx`).
+- The architect can lightly edit the reading. The model's original is preserved (`encodingReadingOriginal`, never mutated) next to the working copy, with a `readingEdited` flag.
+- Reading + lexicon provenance is persisted on save and restored on load (`composition.ts`); pre-L1/L2 compositions degrade gracefully (fields absent).
+
+**L3 — editable lexicons** (`a8fc606`, `afb784a`, `8fa81eb`, `d541a1e`):
+- Lexicons are no longer code-only. Full authoring surface (`LexiconEditor.tsx`) at the top of the Encode panel: edit poles/options/triggers, tag, save to a cloud library, pick the active one.
+- `DEFAULT_LEXICON` is the built-in baseline (never stored); `activeLexiconId === null` means "use default."
+- Active id persisted in `localStorage` (`src/lib/storage/activeLexicon.ts`) and **validated against the loaded list on init** — a deleted/stale id silently falls back to default, never points at a ghost lexicon (avoids the silent-wrong-vocabulary trap).
+- Firestore: top-level `lexicons` collection scoped by `ownerId` (`lexiconFirestore.ts`); security rules added to `firestore.rules` (deploy additively alongside archthesis rules).
+- Reading panel pole labels are sourced from the active lexicon, so editing vocabulary re-labels the reading axes.
+
+**Key new files:** `src/store/useLexiconStore.ts`, `src/lib/projects/lexiconFirestore.ts`, `src/lib/storage/activeLexicon.ts`, `src/components/encoding/LexiconEditor.tsx`, `src/components/encoding/EncodingReadingPanel.tsx`.
+
+---
+
+**Last Updated:** 2026-06-08
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 complete; Phase 2 checklist above still open.
+**Next Feature:** Pataphysical v2 Phase 2 (frontend two-pass UI + new operators).
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio

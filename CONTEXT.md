@@ -2,7 +2,7 @@
 
 > This file is the always-on context for the Cuboid Studio Claude Project.
 > Read it in full before responding to any message in this project.
-> Last updated: 2026-06-07
+> Last updated: 2026-06-08
 >
 > This is a factual map of what is **actually in the repo and usable today**,
 > reconciled against the live code (not aspirational spec). Where a feature is
@@ -70,14 +70,17 @@ The app has **four** primary nav modes, all mounted and live: **Map**, **Encode*
 Reads a photographed space and proposes a cuboid assembly that mirrors its spatial logic.
 
 - **Multi-image:** 1–7 images (1 primary + up to 6 supplementary). Primary anchors the assembly character. Images are resized client-side before upload (`src/lib/encoding/resizeImageToBase64.ts`) to stay under Vercel's request-body limit.
-- **Five-axis reading (L1):** the model emits a structured reading **before** committing geometry — three continuous axes (atmosphere, light, emotion) and two categorical axes (rhythm, placement). Rendered in `EncodingResultPanel.tsx`.
+- **Five-axis reading (L1):** the model emits a structured reading **before** committing geometry — three continuous axes (atmosphere, light, emotion) and two categorical axes (rhythm, placement). Rendered in `EncodingReadingPanel.tsx` (with a floating reasoning card in the sidebar/floating split).
+- **Editable reading + provenance (L2):** the architect can lightly revise the reading after the model produces it. The model's original is always preserved (`encodingReadingOriginal`, never mutated) alongside the working copy, and a `readingEdited` flag records whether it was touched. The reading's pole labels are sourced from the active lexicon, so editing vocabulary re-labels the reading axes. Provenance (original reading, edited flag, lexicon snapshot) is persisted on save and restored on load; pre-L1/L2 compositions degrade gracefully.
 - **Prompt is composed at runtime** from a grammar template + a lexicon, not a single static file:
   - `src/prompts/spatial-encoding-grammar.md` — template with `{{slot}}` vocabulary injections.
-  - `src/prompts/lexicon.default.ts` — the `SpatialLexicon` (atmosphere/light/emotion poles, rhythm/placement options). Edit the lexicon to change vocabulary without touching code.
+  - `src/prompts/lexicon.default.ts` — `DEFAULT_LEXICON`, the built-in baseline `SpatialLexicon` (atmosphere/light/emotion poles, rhythm/placement options).
   - `src/prompts/spatial-encoding.md` — the older standalone curatorial artifact (still present).
+- **Editable lexicons (L3):** the vocabulary is no longer code-only. Signed-in architects author named lexicons in a full editor (`LexiconEditor.tsx`, surfaced at the top of the Encode panel), tag them, save them to a Firestore-backed library, and pick which one is active. The active lexicon drives every encode; `activeLexiconId === null` means "use `DEFAULT_LEXICON`". The active id is persisted in `localStorage` and **validated against the loaded list on init** — a deleted/stale id silently falls back to the default rather than pointing at a ghost (guards against silently encoding on the wrong vocabulary). Each axis carries consequence-framed hint text (`DEFAULT_DESCRIPTIONS`) explaining in plain language what editing it does.
+  - **Stores/lib:** `src/store/useLexiconStore.ts` (list + active selection + Firestore CRUD, callable from plain functions via `getState()`), `src/lib/projects/lexiconFirestore.ts` (top-level `lexicons` collection, scoped by `ownerId`), `src/lib/storage/activeLexicon.ts` (localStorage wrapper for the active id).
 - **Three modes:** `standalone` (image only), `merge` (image + seed cubes from Builder — opens the inline seed editor), `remix` (image + a saved state).
 
-**Key files:** `api/encode-space.ts`, `src/lib/api/encodeSpace.ts`, `src/components/encoding/EncodingPanel.tsx`, `src/store/useEncodingStore.ts`.
+**Key files:** `api/encode-space.ts`, `src/lib/api/encodeSpace.ts`, `src/components/encoding/EncodingPanel.tsx`, `src/components/encoding/EncodingReadingPanel.tsx`, `src/components/encoding/LexiconEditor.tsx`, `src/store/useEncodingStore.ts`, `src/store/useLexiconStore.ts`.
 
 ---
 
@@ -153,8 +156,9 @@ Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly s
 
 - **Auth:** Firebase email/password (`src/contexts/AuthContext.tsx`, `src/hooks/useAuth.ts`, `src/components/auth/AuthControls.tsx` in the TopBar).
 - **Data model:** Projects → Sites → Compositions (`src/lib/projects/types.ts`, CRUD in `src/lib/projects/firestore.ts`, UI in `src/components/projects/ProjectsPanel.tsx`).
-- **Capture/restore:** `captureComposition()` serialises the full Builder + meme state; `restoreComposition()` loads it back (`src/lib/projects/composition.ts`). "Save to project" button is `SaveCompositionButton.tsx`.
-- **Config:** `VITE_FIREBASE_*` env vars, pointing at the **same Firebase project as archthesis** (`adaptivememeticarchitect-2776f`). Firestore access rules in `firestore.rules`.
+- **Capture/restore:** `captureComposition()` serialises the full Builder + meme state, plus the Encode **reading + lexicon provenance** (model-original reading, edited flag, and a by-value lexicon snapshot so the record is self-describing even if the lexicon later changes); `restoreComposition()` loads it back (`src/lib/projects/composition.ts`). "Save to project" button is `SaveCompositionButton.tsx`.
+- **Lexicons:** a separate top-level `lexicons` collection (L3, `lexiconFirestore.ts`), scoped per `ownerId` — the editable Encode vocabularies (see Encode Mode). The built-in `DEFAULT_LEXICON` is never stored.
+- **Config:** `VITE_FIREBASE_*` env vars, pointing at the **same Firebase project as archthesis** (`adaptivememeticarchitect-2776f`). Firestore access rules in `firestore.rules` (covers `projects/**` and `lexicons/**`, deployed additively alongside archthesis's own rules).
 - When `isFirebaseConfigured` is false, none of the auth/projects UI mounts and the app behaves exactly as the local-only version.
 
 There is also a **local-only** save layer independent of Firebase: `src/lib/savedStates.ts` + `SavedStatesPanel.tsx` (up to 20 named slots in `localStorage`), used for the Encode "remix" seed.
@@ -192,8 +196,8 @@ api/                  Vercel serverless: encode-space, translate-meme,
                       fetch-memes, fetch-meme-by-id, geocode, fetch-context-pois
 src/
   App.tsx             Shell + mode→panel router (desktop & mobile layouts)
-  store/              Zustand stores (app, builder, encoding, evolution, meme,
-                      decode, projects, sectionCut, tag, toast)
+  store/              Zustand stores (app, builder, encoding, lexicon, evolution,
+                      meme, decode, projects, sectionCut, tag, toast)
   components/         map, encoding, evolution, meme, decode, builder, projects,
                       auth, export, ar, tools, viewport, layout, ui
   lib/                cube (CSG/rules/specs), evolution, operators, decode,
