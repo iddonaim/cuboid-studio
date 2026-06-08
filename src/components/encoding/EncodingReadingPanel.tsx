@@ -4,7 +4,7 @@ import type {
   ContinuousAxisReading,
   SpatialReading,
 } from '../../lib/api/encodeSpace';
-import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
+import { DEFAULT_LEXICON, type SpatialLexicon } from '../../prompts/lexicon.default';
 
 /** Strip trailing "spaces" and semicolon tails for compact pole labels. */
 function compactPole(label: string): string {
@@ -22,22 +22,6 @@ function compactPole(label: string): string {
   return `${shortHead} / ${tail}`;
 }
 
-const ATMOSPHERE = {
-  low: compactPole(DEFAULT_LEXICON.atmosphere.pole_low),
-  mid: compactPole(DEFAULT_LEXICON.atmosphere.pole_mid),
-  high: compactPole(DEFAULT_LEXICON.atmosphere.pole_high),
-};
-
-const LIGHT = {
-  low: compactPole(DEFAULT_LEXICON.light.pole_low),
-  high: compactPole(DEFAULT_LEXICON.light.pole_high),
-};
-
-const EMOTION = {
-  low: compactPole(DEFAULT_LEXICON.emotion.pole_low),
-  high: compactPole(DEFAULT_LEXICON.emotion.pole_high),
-};
-
 const AXIS_LABELS: Record<keyof SpatialReading, string> = {
   atmosphere: 'Atmosphere',
   light: 'Light',
@@ -54,14 +38,13 @@ function ContinuousRow({
   axisKey,
   reading,
   variant,
+  poles,
 }: {
   axisKey: 'atmosphere' | 'light' | 'emotion';
   reading: ContinuousAxisReading;
   variant: 'three-pole' | 'two-pole';
+  poles: { low: string; mid?: string; high: string };
 }) {
-  const poles =
-    axisKey === 'atmosphere' ? ATMOSPHERE : axisKey === 'light' ? LIGHT : EMOTION;
-
   const markerLeft = `${clamp01(reading.position) * 100}%`;
 
   return (
@@ -81,9 +64,9 @@ function ContinuousRow({
           <span className="text-[9px] text-slate-500 leading-tight max-w-[38%] text-left">
             {poles.low}
           </span>
-          {variant === 'three-pole' && (
+          {variant === 'three-pole' && poles.mid && (
             <span className="text-[9px] text-slate-600 leading-tight max-w-[28%] text-center">
-              {ATMOSPHERE.mid}
+              {poles.mid}
             </span>
           )}
           <span className="text-[9px] text-slate-500 leading-tight max-w-[38%] text-right">
@@ -98,15 +81,12 @@ function ContinuousRow({
 function CategoricalRow({
   axisKey,
   reading,
+  options,
 }: {
   axisKey: 'rhythm' | 'placement';
   reading: CategoricalAxisReading;
+  options: Array<{ id: string; label: string }>;
 }) {
-  const options =
-    axisKey === 'rhythm'
-      ? DEFAULT_LEXICON.rhythm.options
-      : DEFAULT_LEXICON.placement.options;
-
   return (
     <div className="flex flex-col gap-1.5">
       <div className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -129,6 +109,13 @@ function CategoricalRow({
             </span>
           );
         })}
+        {/* If the model returned an option id not in the lexicon (open vocabulary),
+            show it as an active chip so the reading isn't silent about it. */}
+        {reading.option && !options.some(o => o.id === reading.option) && (
+          <span className="px-1.5 py-0.5 rounded text-[9px] leading-snug bg-slate-600 text-slate-100 border border-slate-500">
+            {reading.option}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -137,12 +124,41 @@ function CategoricalRow({
 export interface EncodingReadingPanelProps {
   reading: SpatialReading;
   readingEdited?: boolean;
+  /**
+   * The lexicon that produced this reading. When provided, pole labels and
+   * option sets are sourced from it — this is what makes a custom-lexicon
+   * encode display its own vocabulary rather than the default's.
+   *
+   * Pass `encodingLexicon` from useEncodingStore (captured at encode time;
+   * restored from `lexiconSnapshot` when a composition is loaded).
+   * Falls back to DEFAULT_LEXICON when absent.
+   */
+  lexicon?: SpatialLexicon | null;
 }
 
 export const EncodingReadingPanel: React.FC<EncodingReadingPanelProps> = ({
   reading,
   readingEdited = false,
+  lexicon,
 }) => {
+  // Source all vocabulary from the lexicon that produced the reading.
+  // Null / undefined both fall back to the built-in default.
+  const lex = lexicon ?? DEFAULT_LEXICON;
+
+  const atmospherePoles = {
+    low: compactPole(lex.atmosphere.pole_low),
+    mid: compactPole(lex.atmosphere.pole_mid),
+    high: compactPole(lex.atmosphere.pole_high),
+  };
+  const lightPoles = {
+    low: compactPole(lex.light.pole_low),
+    high: compactPole(lex.light.pole_high),
+  };
+  const emotionPoles = {
+    low: compactPole(lex.emotion.pole_low),
+    high: compactPole(lex.emotion.pole_high),
+  };
+
   return (
     <div className="p-2 bg-slate-800 border border-slate-700 rounded flex flex-col gap-3">
       <div className="min-w-0">
@@ -159,11 +175,34 @@ export const EncodingReadingPanel: React.FC<EncodingReadingPanelProps> = ({
         )}
       </div>
 
-      <ContinuousRow axisKey="atmosphere" reading={reading.atmosphere} variant="three-pole" />
-      <ContinuousRow axisKey="light" reading={reading.light} variant="two-pole" />
-      <ContinuousRow axisKey="emotion" reading={reading.emotion} variant="two-pole" />
-      <CategoricalRow axisKey="rhythm" reading={reading.rhythm} />
-      <CategoricalRow axisKey="placement" reading={reading.placement} />
+      <ContinuousRow
+        axisKey="atmosphere"
+        reading={reading.atmosphere}
+        variant="three-pole"
+        poles={atmospherePoles}
+      />
+      <ContinuousRow
+        axisKey="light"
+        reading={reading.light}
+        variant="two-pole"
+        poles={lightPoles}
+      />
+      <ContinuousRow
+        axisKey="emotion"
+        reading={reading.emotion}
+        variant="two-pole"
+        poles={emotionPoles}
+      />
+      <CategoricalRow
+        axisKey="rhythm"
+        reading={reading.rhythm}
+        options={lex.rhythm.options}
+      />
+      <CategoricalRow
+        axisKey="placement"
+        reading={reading.placement}
+        options={lex.placement.options}
+      />
     </div>
   );
 };

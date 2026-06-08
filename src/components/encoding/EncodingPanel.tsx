@@ -38,6 +38,7 @@ export const EncodingPanel: React.FC = () => {
   const isEncoding = useEncodingStore(s => s.isEncoding);
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const encodingReading = useEncodingStore(s => s.encodingReading);
+  const encodingLexicon = useEncodingStore(s => s.encodingLexicon);
   const readingEdited = useEncodingStore(s => s.readingEdited);
   const lastError = useEncodingStore(s => s.lastError);
   const encode = useEncodingStore(s => s.encode);
@@ -394,6 +395,7 @@ export const EncodingPanel: React.FC = () => {
             <EncodingReadingPanel
               reading={encodingReading}
               readingEdited={readingEdited}
+              lexicon={encodingLexicon}
             />
           )}
 
