@@ -1334,16 +1334,18 @@ App.tsx (isMobile branch)
 - Filled `src/prompts/pataphysical-translation-v2.md` with the canonical curatorial artifact (Pass 1 + Pass 2 full instructions, not skeleton placeholders)
 - Imported the canonical implementation spec as `PATAPHYSICAL_V2_SPEC.md` at repo root
 
-**What's next — Phase 2 checklist** (see `PATAPHYSICAL_V2_SPEC.md` §4 for full detail):
+**Phase 2 status** (see `PATAPHYSICAL_V2_SPEC.md` §4 for full detail). *Re-verified against the live code on 2026-06-16 — the bulk of Phase 2 shipped after this session log was first written; the boxes below now reflect what is actually in the codebase.*
 
-- [ ] **Cube operators** (§4.3): implement `consolidation`, `erosion`, `reinforcement` alongside existing `inversion`/`amplification`/`drift`/`reassignment`/`preservation`/`shuffle`. Extend the existing operator application logic, do not rewrite.
-- [ ] **Wire `translateMemeTwoPass()` to UI** — the client function exists but nothing calls it yet.
-- [ ] **Pass 1 display** (§4.2b): render rhetorical moves (as tags), cultural tensions, functional affects, site resonance, meme summary — before Pass 2 geometry.
-- [ ] **Pass 2 additions** (§4.2c): show `target_reasoning`, `geometry_reasoning` as readable text alongside existing cutter visualization.
-- [ ] **Confidence vector display** (§4.2d): four-axis readout (RC / SR / AC / OS) with `confidence_note` text.
-- [ ] **Site context selector** (§4.2a): dropdown over saved site contexts, active one visible, switchable without reload.
-- [ ] **Translation history** (§4.2e): store past translations per site; compare confidence vectors across memes on the same site.
-- [ ] **Optional — model selector** (§4.1c): expose `model` parameter in UI for cross-model comparison experiments (Sonnet/Opus/Haiku/GPT-4o/Gemini/Llama via OpenRouter).
+- [x] **Cube operators** (§4.3): `consolidation`/`erosion`/`reinforcement` live alongside the original six — typed in `operators/types.ts`, accepted by the validator (`VALID_OPERATORS_V2`), and grouped by the compressibility scorer. (Note: the operator name is a label for scoring + reasoning; the actual geometry comes from the `cutter`, so operators do not have per-name geometry branches.)
+- [x] **Wire `translateMemeTwoPass()` to UI** — called by both `useMemeStore` (Pataphysical panel; `passMode` now defaults to `'two_pass'`) and `useEvolutionStore` (every evolution candidate).
+- [x] **Pass 1 display** (§4.2b): rendered in `OperatorResultPanel.tsx` (rhetorical moves as tags, meme summary, etc.) and per-candidate in `EvolutionPanel.tsx`.
+- [x] **Pass 2 additions** (§4.2c): `target_reasoning` and `cutter.geometry_reasoning` shown as readable text in `OperatorResultPanel.tsx`.
+- [x] **Confidence vector display** (§4.2d): four-axis readout via `ConfidenceVectorDisplay` with `confidence_note`.
+- [~] **Site context selector** (§4.2a): partial. There is one **active** site context, curated in `SiteContextCurator.tsx` and live-switchable without reload (via the `cuboid:siteContextChanged` event). What's *not* built is a saved **library** of multiple contexts with a dropdown to pick between them — storage holds a single active context only (`siteContext.ts`).
+- [ ] **Translation history** (§4.2e): not built. No store of past translations per site; no cross-meme confidence-vector comparison.
+- [ ] **Optional — model selector** (§4.1c): not built. The `model` parameter exists end-to-end (client `TranslateMemeV2Request.model` → API), but no UI exposes it.
+
+**Next up — editable translation vocabulary ("Level A"):** give Pataphysical/Evolution the same prompt-as-UI-layer treatment Encode got with lexicons (L3) — edit operator definitions, the rhetorical-move→operator mapping, edge-type and affect→geometry wording, decay and confidence text, while keeping the fixed set of nine operators. In progress (branch `claude/busy-albattani-790leq`).
 
 **Key files for phase 2:**
 - `src/prompts/pataphysical-translation-v2.md` — the curatorial artifact. **Editing this is how you change behavior; code rarely needs to change.**
@@ -1381,8 +1383,8 @@ Three waves on the Encode mode, all merged to `main` (PRs #57–#59).
 
 ---
 
-**Last Updated:** 2026-06-08
-**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 complete; Phase 2 checklist above still open.
-**Next Feature:** Pataphysical v2 Phase 2 (frontend two-pass UI + new operators).
+**Last Updated:** 2026-06-16
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Remaining Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
+**Next Feature:** Editable translation vocabulary for Pataphysical/Evolution ("Level A") — the Encode-lexicon (L3) pattern applied to the translation prompt.
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
