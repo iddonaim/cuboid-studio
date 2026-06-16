@@ -82,6 +82,11 @@ async function parseAndRoute(
   passMode: PassMode,
   selectedModel: string,
 ): Promise<VercelResponse> {
+  const validate = (value: any): ValidationResult =>
+    passMode === 'two_pass'
+      ? validateAndReturnTwoPass(value, selectedModel)
+      : validateAndReturnSingle(value);
+
   let parsed: any;
   try {
     const rawText = stripCodeFences(await caller());
@@ -108,9 +113,34 @@ async function parseAndRoute(
     });
   }
 
-  return passMode === 'two_pass'
-    ? validateAndReturnTwoPass(res, parsed, selectedModel)
-    : validateAndReturnSingle(res, parsed);
+  // The JSON parsed, but a value may be semantically invalid (e.g. an operator
+  // outside the allowed set, which the model occasionally emits by reaching for
+  // a rhetorical-move name instead of an operator class). Re-ask the model once,
+  // quoting the exact validation error, before giving up.
+  let result = validate(parsed);
+  if (!result.ok) {
+    console.log('Validation failed, retrying with corrective instruction:', result.error);
+    try {
+      const retryText = stripCodeFences(await caller(
+        userMessage +
+        `\n\nYour previous response was rejected for this reason: ${result.error}. ` +
+        'Return ONLY corrected, valid JSON that satisfies this constraint. ' +
+        'No markdown fences, no backticks, no explanation outside the JSON.'
+      ));
+      result = validate(JSON.parse(retryText));
+    } catch (retryErr) {
+      // Keep the original validation error if the retry itself fails to parse.
+      console.log('Validation retry failed to parse, returning original error:', retryErr);
+    }
+  }
+
+  if (!result.ok) {
+    return res.status(422).json({
+      error: result.error,
+      raw: JSON.stringify(result.raw).substring(0, 500),
+    });
+  }
+  return res.status(200).json(result.payload);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -357,11 +387,17 @@ const VALID_OPERATORS_V2 = new Set([...VALID_OPERATORS_V1, 'consolidation', 'ero
 const VALID_CUTTER_TYPES = new Set(['box', 'sphere', 'cylinder', 'plane']);
 const VALID_EDGE_TYPES = new Set(['adjacency', 'access', 'visibility', 'conflict', 'overlap', 'threshold']);
 
-function fail(res: VercelResponse, message: string, raw: unknown) {
-  return res.status(422).json({
-    error: message,
-    raw: JSON.stringify(raw).substring(0, 500),
-  });
+/**
+ * Validators return a result instead of writing to the response directly, so
+ * the caller can retry the model once on a semantic failure (e.g. an operator
+ * value outside the allowed set) before giving up with a 422.
+ */
+type ValidationResult =
+  | { ok: true; payload: unknown }
+  | { ok: false; error: string; raw: unknown };
+
+function invalid(message: string, raw: unknown): ValidationResult {
+  return { ok: false, error: message, raw };
 }
 
 function isFiniteNumber(x: unknown): x is number {
@@ -388,33 +424,33 @@ function validateCutter(cutter: any, label: string): string | null {
   return null;
 }
 
-function validateAndReturnSingle(res: VercelResponse, parsed: any) {
+function validateAndReturnSingle(parsed: any): ValidationResult {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return fail(res, 'Response must be a JSON object', parsed);
+    return invalid('Response must be a JSON object', parsed);
   }
 
   if (!VALID_OPERATORS_V2.has(parsed.operator)) {
-    return fail(res, `Invalid operator: must be one of ${[...VALID_OPERATORS_V2].join(', ')}`, parsed);
+    return invalid(`Invalid operator: must be one of ${[...VALID_OPERATORS_V2].join(', ')}`, parsed);
   }
   if (!isStringArrayOfValid(parsed.targets, VALID_EDGE_TYPES)) {
-    return fail(res, `targets must be an array of valid edge types`, parsed);
+    return invalid(`targets must be an array of valid edge types`, parsed);
   }
   if (!isFiniteNumber(parsed.magnitude) || parsed.magnitude < 0 || parsed.magnitude > 1) {
-    return fail(res, 'magnitude must be a number in [0, 1]', parsed);
+    return invalid('magnitude must be a number in [0, 1]', parsed);
   }
   if (!isFiniteNumber(parsed.decay) || parsed.decay < 0 || parsed.decay > 1) {
-    return fail(res, 'decay must be a number in [0, 1]', parsed);
+    return invalid('decay must be a number in [0, 1]', parsed);
   }
   if (typeof parsed.reasoning !== 'string') {
-    return fail(res, 'reasoning must be a string', parsed);
+    return invalid('reasoning must be a string', parsed);
   }
   const cutterErr = validateCutter(parsed.cutter, 'single');
-  if (cutterErr) return fail(res, cutterErr, parsed);
+  if (cutterErr) return invalid(cutterErr, parsed);
 
-  return res.status(200).json(parsed);
+  return { ok: true, payload: parsed };
 }
 
-function validateAndReturnTwoPass(res: VercelResponse, parsed: any, model: string) {
+function validateAndReturnTwoPass(parsed: any, model: string): ValidationResult {
   // Accept either a JSON array [pass1, pass2] or a top-level object with pass1/pass2
   let pass1: any;
   let pass2: any;
@@ -428,66 +464,62 @@ function validateAndReturnTwoPass(res: VercelResponse, parsed: any, model: strin
   }
 
   if (!pass1 || !pass2 || typeof pass1 !== 'object' || typeof pass2 !== 'object') {
-    return fail(res, 'Expected two-pass output: JSON array [{ pass: 1, ... }, { pass: 2, ... }]', parsed);
+    return invalid('Expected two-pass output: JSON array [{ pass: 1, ... }, { pass: 2, ... }]', parsed);
   }
 
   // --- Pass 1 ---
   if (!Array.isArray(pass1.rhetorical_moves) || !pass1.rhetorical_moves.every((s: any) => typeof s === 'string')) {
-    return fail(res, 'Pass 1: rhetorical_moves must be a string array', pass1);
+    return invalid('Pass 1: rhetorical_moves must be a string array', pass1);
   }
   if (!Array.isArray(pass1.cultural_tensions)) {
-    return fail(res, 'Pass 1: cultural_tensions must be an array', pass1);
+    return invalid('Pass 1: cultural_tensions must be an array', pass1);
   }
   for (const t of pass1.cultural_tensions) {
     if (!t || typeof t !== 'object' || typeof t.description !== 'string'
         || !['internal', 'external', 'both'].includes(t.friction_type)) {
-      return fail(res, 'Pass 1: each cultural_tension needs description:string + friction_type:"internal"|"external"|"both"', t);
+      return invalid('Pass 1: each cultural_tension needs description:string + friction_type:"internal"|"external"|"both"', t);
     }
   }
   if (!Array.isArray(pass1.functional_affects) || !pass1.functional_affects.every((s: any) => typeof s === 'string')) {
-    return fail(res, 'Pass 1: functional_affects must be a string array', pass1);
+    return invalid('Pass 1: functional_affects must be a string array', pass1);
   }
   if (typeof pass1.site_resonance !== 'string') {
-    return fail(res, 'Pass 1: site_resonance must be a string', pass1);
+    return invalid('Pass 1: site_resonance must be a string', pass1);
   }
   if (typeof pass1.meme_summary !== 'string') {
-    return fail(res, 'Pass 1: meme_summary must be a string', pass1);
+    return invalid('Pass 1: meme_summary must be a string', pass1);
   }
 
   // --- Pass 2 ---
   if (!VALID_OPERATORS_V2.has(pass2.operator)) {
-    return fail(res, `Pass 2: operator must be one of ${[...VALID_OPERATORS_V2].join(', ')}`, pass2);
+    return invalid(`Pass 2: operator must be one of ${[...VALID_OPERATORS_V2].join(', ')}`, pass2);
   }
   if (!isStringArrayOfValid(pass2.targets, VALID_EDGE_TYPES)) {
-    return fail(res, 'Pass 2: targets must be an array of valid edge types', pass2);
+    return invalid('Pass 2: targets must be an array of valid edge types', pass2);
   }
   if (!isFiniteNumber(pass2.magnitude) || pass2.magnitude < 0 || pass2.magnitude > 1) {
-    return fail(res, 'Pass 2: magnitude must be a number in [0, 1]', pass2);
+    return invalid('Pass 2: magnitude must be a number in [0, 1]', pass2);
   }
   if (!isFiniteNumber(pass2.decay) || pass2.decay < 0 || pass2.decay > 1) {
-    return fail(res, 'Pass 2: decay must be a number in [0, 1]', pass2);
+    return invalid('Pass 2: decay must be a number in [0, 1]', pass2);
   }
   if (typeof pass2.reasoning !== 'string') {
-    return fail(res, 'Pass 2: reasoning must be a string', pass2);
+    return invalid('Pass 2: reasoning must be a string', pass2);
   }
   const cutterErr = validateCutter(pass2.cutter, 'Pass 2');
-  if (cutterErr) return fail(res, cutterErr, pass2);
+  if (cutterErr) return invalid(cutterErr, pass2);
 
   // --- Confidence vector ---
   const cv = pass2.confidence_vector;
   const cvKeys = ['rhetorical_clarity', 'site_resonance', 'affective_coherence', 'operational_specificity'];
   if (!cv || typeof cv !== 'object') {
-    return fail(res, 'Pass 2: confidence_vector must be an object', pass2);
+    return invalid('Pass 2: confidence_vector must be an object', pass2);
   }
   for (const k of cvKeys) {
     if (!isFiniteNumber(cv[k]) || cv[k] < 0 || cv[k] > 1) {
-      return fail(res, `Pass 2: confidence_vector.${k} must be a number in [0, 1]`, cv);
+      return invalid(`Pass 2: confidence_vector.${k} must be a number in [0, 1]`, cv);
     }
   }
 
-  return res.status(200).json({
-    pass1,
-    pass2,
-    model,
-  });
+  return { ok: true, payload: { pass1, pass2, model } };
 }

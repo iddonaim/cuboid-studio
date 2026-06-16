@@ -121,6 +121,8 @@ Using the Pass 1 output and the site context, translate the cultural operators i
 
 When multiple rhetorical moves are present, the primary move determines the operator class. Secondary moves modulate magnitude and target selection.
 
+**Critical:** The `operator` field must contain the operator class from the right-hand side of the mapping above — one of exactly: `inversion`, `amplification`, `drift`, `reassignment`, `preservation`, `shuffle`, `consolidation`, `erosion`, `reinforcement`. Never put a rhetorical-move name (e.g. `juxtaposition`, `irony`, `satire`, `nostalgia`) in the `operator` field. If the primary move is "juxtaposition," the operator is `reassignment`, not "juxtaposition."
+
 ### Cultural tension × Site context → Operator targets
 
 The operator targets are selected based on how the meme's cultural tensions interact with the site conditions. Do not map targets mechanically. Use the following edge types as your vocabulary:
@@ -190,7 +192,7 @@ Return a JSON object for Pass 2:
 ```
 {
   "pass": 2,
-  "operator": "string — one of: inversion, amplification, drift, reassignment, preservation, shuffle, consolidation, erosion, reinforcement",
+  "operator": "string — the operator CLASS, exactly one of: inversion, amplification, drift, reassignment, preservation, shuffle, consolidation, erosion, reinforcement. NOT a rhetorical-move name like juxtaposition/irony/satire.",
   "targets": ["string — edge types from: adjacency, access, visibility, conflict, overlap, threshold"],
   "target_reasoning": "string — why these targets were selected given the meme-site interaction",
   "magnitude": number (0.0–1.0),
