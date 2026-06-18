@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fs from 'fs';
 import path from 'path';
+import {
+  DEFAULT_TRANSLATION_LEXICON,
+  composeTranslationPrompt,
+  isTranslationLexicon,
+} from '../src/prompts/translationLexicon.default.js';
 
 /**
  * Vercel serverless function: POST /api/translate-meme
@@ -156,6 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     model,
     site_context,
     pass_mode,
+    translation_lexicon,
   } = req.body || {};
 
   if (!memeDescription || typeof memeDescription !== 'string') {
@@ -167,6 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const MAX_MEME_DESCRIPTION = 8_000;       // ~8 KB of prose
   const MAX_LOCATION_TAG = 256;
   const MAX_SITE_CONTEXT_CHARS = 32_000;    // ~32 KB stringified
+  const MAX_TRANSLATION_LEXICON_CHARS = 32_000; // ~32 KB stringified
 
   if (memeDescription.length > MAX_MEME_DESCRIPTION) {
     return res.status(413).json({ error: `memeDescription too long (max ${MAX_MEME_DESCRIPTION} chars)` });
@@ -181,6 +188,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (siteContextSize > MAX_SITE_CONTEXT_CHARS) {
       return res.status(413).json({ error: `site_context too large (max ${MAX_SITE_CONTEXT_CHARS} chars)` });
     }
+  }
+  if (translation_lexicon !== undefined && translation_lexicon !== null
+      && JSON.stringify(translation_lexicon).length > MAX_TRANSLATION_LEXICON_CHARS) {
+    return res.status(413).json({ error: `translation_lexicon too large (max ${MAX_TRANSLATION_LEXICON_CHARS} chars)` });
   }
 
   const engagement = typeof engagementLevel === 'number'
@@ -215,6 +226,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.warn(`Prompt ${promptFile} has no {site_context} placeholder — site context was NOT injected`);
     }
     systemPrompt = systemPrompt.replace('{site_context}', contextStr);
+  }
+
+  // Fill the v2 prompt's vocabulary slots ({{...}}) from the active translation
+  // lexicon. A request may supply a custom lexicon; anything malformed falls
+  // back to the built-in default. With the default, the composed prompt is
+  // byte-identical to the original file, so default behaviour is unchanged.
+  if (passMode === 'two_pass') {
+    const lexicon = isTranslationLexicon(translation_lexicon)
+      ? translation_lexicon
+      : DEFAULT_TRANSLATION_LEXICON;
+    if (translation_lexicon != null && lexicon === DEFAULT_TRANSLATION_LEXICON
+        && !isTranslationLexicon(translation_lexicon)) {
+      console.warn('translation_lexicon was malformed — falling back to DEFAULT_TRANSLATION_LEXICON');
+    }
+    systemPrompt = composeTranslationPrompt(systemPrompt, lexicon);
   }
 
   const userMessage = buildUserMessage(memeDescription, locationTag || null, engagement);

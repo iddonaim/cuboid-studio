@@ -1,5 +1,6 @@
 import { LLMOperatorResult, TwoPassTranslationResult } from '../operators/types';
 import { getActiveSiteContext } from '../storage/siteContext';
+import { useTranslationLexiconStore } from '../../store/useTranslationLexiconStore';
 
 export interface TranslateMemeRequest {
   memeDescription: string;
@@ -66,6 +67,12 @@ export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise
 
   const { skipSiteContext, site_context: _ignored, ...rest } = req;
 
+  // Send the active translation lexicon so the server composes the v2 prompt's
+  // vocabulary from it. A null active id resolves to DEFAULT_TRANSLATION_LEXICON
+  // inside getActiveTranslationLexicon(), which composes byte-identically to the
+  // original prompt — so default behaviour is unchanged.
+  const translation_lexicon = useTranslationLexiconStore.getState().getActiveTranslationLexicon();
+
   const response = await fetch('/api/translate-meme', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -73,6 +80,7 @@ export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise
       ...rest,
       pass_mode: 'two_pass',
       site_context: siteContext,
+      translation_lexicon,
     }),
   });
 

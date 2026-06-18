@@ -4,6 +4,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
 import { SiteContextCurator } from './SiteContextCurator';
+import { TranslationLexiconEditor } from './TranslationLexiconEditor';
 import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
@@ -224,6 +225,9 @@ export const MemeInputPanel: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Editable translation vocabulary — only affects two-pass translation */}
+      {passMode === 'two_pass' && <TranslationLexiconEditor />}
 
       {/* Translate button */}
       <Button
