@@ -1383,8 +1383,33 @@ Three waves on the Encode mode, all merged to `main` (PRs #57–#59).
 
 ---
 
+## Session Log — 2026-06-16 — Test harness (Phase 1) + translation pipeline hardening
+
+Two features shipped to `main` first (PRs #62, #63): the translation API now
+**retries on an invalid operator** instead of dropping the evolution candidate
+(fixed the intermittent 422 where the model emitted `juxtaposition` in the
+operator field), and Pataphysical/Evolution gained an **editable translation
+vocabulary** ("Level A") — the Encode-lexicon (L3) pattern applied to the v2
+prompt, composed at runtime and byte-identical to the old static file on the
+default vocabulary.
+
+This session adds the project's **first test harness** (Vitest), Phase 1 —
+pure logic only, no browser, no mocking:
+- `src/prompts/translationLexicon.default.test.ts` — prompt composition + a
+  byte-for-byte snapshot guard + the `isTranslationLexicon` validator.
+- `api/translate-meme.test.ts` — the Pass 1/2/single validators, including the
+  exact #62 case (`juxtaposition` operator → rejected).
+- `src/lib/cube/connectionRules.test.ts` — face geometry + connection invariants.
+
+35 tests, run with `npm test`. The validators in `api/translate-meme.ts` are now
+exported for testing (inert at runtime — Vercel only uses the default export).
+See **`docs/internal/TESTING.md`** for the full plan and how the scope grows in
+later passes (more pure logic → stores → components → API orchestration → e2e).
+
+---
+
 **Last Updated:** 2026-06-16
-**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Remaining Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
-**Next Feature:** Editable translation vocabulary for Pataphysical/Evolution ("Level A") — the Encode-lexicon (L3) pattern applied to the translation prompt.
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phase 1 in progress on branch `claude/test-harness-phase1`. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
+**Next Feature:** Grow test coverage (Phase 2 — more pure logic; then stores and the translation-lexicon editor component). See `docs/internal/TESTING.md`.
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
