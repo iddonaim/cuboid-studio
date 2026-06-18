@@ -14,8 +14,8 @@ npm run test:watch # re-run on change while developing
 
 Config lives in `vitest.config.ts` (kept separate from `vite.config.ts` so the
 test runner doesn't pull in the PWA/build plugins). Test files are named
-`*.test.ts` and sit next to the code they cover. Phase 1 runs in the `node`
-environment — no browser/jsdom — because it only exercises pure logic.
+`*.test.ts` and sit next to the code they cover. Phases 1–2 run in the `node`
+environment — no browser/jsdom — because they only exercise pure logic.
 
 ## Philosophy — a pyramid, built bottom-up
 
@@ -23,7 +23,7 @@ Cheap, deterministic tests at the bottom; expensive, brittle ones at the top.
 We add a layer only when it earns its keep.
 
 1. **Pure logic** — functions that map input to output with no UI and no
-   network. Highest value, zero mocking. *(Phase 1 — done.)*
+   network. Highest value, zero mocking. *(Phases 1–2 — done.)*
 2. **Stores** — Zustand state logic, with Firestore faked out.
 3. **Components** — render in a simulated browser (jsdom + Testing Library),
    assert wiring and behaviour.
@@ -41,7 +41,7 @@ We add a layer only when it earns its keep.
 - **Coverage for its own sake.** A few tests on load-bearing logic beat a
   hundred on trivial getters.
 
-## Phase 1 — pure logic (current)
+## Phase 1 — pure logic: prompt + API + core geometry (done)
 
 Locks in the two most recently shipped, highest-risk pieces (the operator-422
 fix and the editable translation vocabulary), plus a slice of core geometry.
@@ -59,14 +59,24 @@ change makes it fail, update it with `npx vitest run -u` and review the diff.
 > be unit-tested. Vercel uses only the file's default export as the handler;
 > named exports are inert at runtime.
 
+## Phase 2 — more pure logic: evolution scoring + cut geometry (done)
+
+| File | Covers |
+|---|---|
+| `src/lib/evolution/compressibility.test.ts` | `computeCompressibility`'s four sub-scores (geometric clustering, spatial regularity, operator sequence, meme coherence) against a hand-verified known assembly and an unrelated-cubes case that lands on zero; the documented 0.3/0.3/0.2/0.2 weighting; the "fewer than 2 operated cubes" guard; `compressionProgress`'s sign convention; `createSnapshot`'s delta/pass-through fields. |
+| `src/lib/operators/applyOperator.test.ts` | `normalizedPositionToCubeLocal`'s clamping and range mapping; `createCutterFromLLMOutput`'s per-cutter-type sizing (box/sphere/cylinder/plane) and proportion clamping; `applyLLMOperator`'s CSG subtraction — result stays within the original bounds, a cut measurably changes the geometry (vs. the silent-fallback-on-failure path), and the target geometry isn't mutated in place. |
+| `src/lib/decode/snapUtils.test.ts` | `rotatePoint`/`transformWorldPoint` quarter-turn rotation math; `worldSnapPoints` scaling and offsetting real lexicon data by tile position/rotation; `findClosestSnap`'s radius cutoff, self-exclusion, closest-of-multiple-candidates tie-breaking, and reported alignment offset. |
+| `src/lib/decode/variation2dPath.test.ts` | The `/2d/{id}.svg` path helper. |
+
+The CSG tests exercise the real `three-bvh-csg` boolean evaluator (no mocking)
+— it runs fine in plain Node since it's pure geometry math, no DOM/WebGL
+needed. Console output from the cut pipeline's own logging shows up in test
+output; that's existing production logging, not a test artifact.
+
 ## How we grow it — next passes
 
 Roughly in priority order. Each is a self-contained follow-up PR.
 
-- **Phase 2 — more pure logic.** `compressibility.ts` (the evolution scoring —
-  `compressionProgress`, then the heavier `computeCompressibility` with cube
-  fixtures), `applyOperator.ts`, and the decode geometry helpers
-  (`snapUtils`, `variation2dPath`). Same node environment, no new tooling.
 - **Phase 3 — stores.** `useTranslationLexiconStore` and `useLexiconStore` are
   the first targets: the stale-active-id-falls-back-to-default behaviour is a
   real correctness guarantee worth a test. Requires a small Firestore mock.
