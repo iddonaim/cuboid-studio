@@ -1421,17 +1421,20 @@ are exported for testing (inert at runtime — Vercel only uses the default
 export). See **`docs/internal/TESTING.md`** for the full plan and how scope
 grows in later passes (stores → components → API orchestration → e2e).
 
-**Aside, not acted on:** while typechecking this branch, `tsc --noEmit` ran
-clean on TypeScript 5.9.3 even with the *old* `baseUrl: "."` config — the
-deprecation error PR #65 (open, draft, separate branch) was written to fix
-didn't reproduce. Worth a second look before merging #65; it's a harmless
-change either way (the relative-path form works fine without `baseUrl`), it
-may just be fixing a misdiagnosed problem.
+**Resolved — PR #65 closed (2026-06-19):** PR #65 was opened to fix a claimed
+`TS5101: baseUrl is deprecated` error breaking `tsc`. On re-verification the
+premise didn't hold: `tsc --noEmit` runs clean (exit 0) on the *old*
+`baseUrl: "."` config under TypeScript 5.9.3, and in the 5.9.3 option table
+`baseUrl` carries no deprecation/removal marker (the only deprecated options
+this version flags are `target: es3` and `moduleResolution: node`). The
+proposed replacement config typechecked clean too, so the change was harmless
+but unnecessary — a fix for a non-reproducing problem. Closed rather than
+merged. `tsconfig.json` is unchanged.
 
 ---
 
-**Last Updated:** 2026-06-18
-**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–2 in progress on branch `claude/test-harness-phase1` (PR #64, open/draft). `tsconfig.json` baseUrl fix in progress on `claude/fix-tsconfig-baseurl` (PR #65, open/draft) — see aside above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
+**Last Updated:** 2026-06-19
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–2 in progress on branch `claude/test-harness-phase1` (PR #64, open/draft). PR #65 (`tsconfig.json` baseUrl) closed unmerged — fixed a non-reproducing problem; see note above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
 **Next Feature:** Grow test coverage (Phase 3 — stores; then the translation-lexicon editor component). See `docs/internal/TESTING.md`.
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
