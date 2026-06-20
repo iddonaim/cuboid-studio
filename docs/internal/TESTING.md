@@ -14,8 +14,10 @@ npm run test:watch # re-run on change while developing
 
 Config lives in `vitest.config.ts` (kept separate from `vite.config.ts` so the
 test runner doesn't pull in the PWA/build plugins). Test files are named
-`*.test.ts` and sit next to the code they cover. Phases 1–2 run in the `node`
-environment — no browser/jsdom — because they only exercise pure logic.
+`*.test.ts`/`*.test.tsx` and sit next to the code they cover. Phases 1–3 run in
+the `node` environment — no browser/jsdom — because they only exercise pure
+logic and store state. Phase 4 (component) tests opt into `jsdom` per-file via
+a `// @vitest-environment jsdom` pragma.
 
 ## Philosophy — a pyramid, built bottom-up
 
@@ -88,15 +90,24 @@ stores already import through — rather than the raw Firebase SDK or
 `useXStore.setState(...)` rather than re-importing the module, since the
 store is a plain Zustand singleton.
 
+## Phase 4 — components: TranslationLexiconEditor (done)
+
+| File | Covers |
+|---|---|
+| `src/components/meme/TranslationLexiconEditor.test.tsx` | The sign-in gate when there is no user; the default vocabulary renders as active for a signed-in user with no saved lexicons; saving a new draft (`Edit` → fill name → `Save as new`) calls `createTranslationLexicon` with the expected payload and switches the active vocabulary to the new doc; activating a saved lexicon from the library switches `activeLexiconId` and the row's `Active` badge. |
+
+Added `jsdom` and `@testing-library/react` as dev dependencies. This file uses
+the real `useTranslationLexiconStore` (reset via `setState` between tests,
+same as Phase 3) with the Firestore and `localStorage` boundary modules
+mocked, plus a mocked `useAuthContext` — so the test exercises real
+component-store wiring, not a fully-stubbed store. Other files stay in the
+`node` environment; only `.test.tsx` files pay the jsdom cost, opted in
+per-file via the `// @vitest-environment jsdom` pragma.
+
 ## How we grow it — next passes
 
 Roughly in priority order. Each is a self-contained follow-up PR.
 
-- **Phase 4 — components.** Add `jsdom` + `@testing-library/react`, then start
-  with the `TranslationLexiconEditor` (the editor shipped in #63 that could not
-  be click-tested at build time): assert it renders, saves a draft, and switches
-  the active vocabulary. Switch only these files to the jsdom environment via a
-  `// @vitest-environment jsdom` pragma.
 - **Phase 5 — API orchestration.** Test `parseAndRoute`'s retry behaviour (bad
   JSON retried once; a semantically-invalid response re-asked once, then 422)
   by mocking the transport caller — no real network or model calls.
