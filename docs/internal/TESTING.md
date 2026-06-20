@@ -77,9 +77,45 @@ output; that's existing production logging, not a test artifact.
 
 Roughly in priority order. Each is a self-contained follow-up PR.
 
-- **Phase 3 — stores.** `useTranslationLexiconStore` and `useLexiconStore` are
-  the first targets: the stale-active-id-falls-back-to-default behaviour is a
-  real correctness guarantee worth a test. Requires a small Firestore mock.
+- **Phase 3 — stores.** `useTranslationLexiconStore` and `useLexiconStore`
+  (`src/store/`) are the first targets — they're structurally identical
+  (one mirrors the other), so one well-built test file is a near-template
+  for the second.
+
+  **Mocking:** `vi.mock()` each store's own Firestore wrapper module
+  (`src/lib/projects/lexiconFirestore.ts` / `translationLexiconFirestore.ts`)
+  rather than the raw `firebase/firestore` SDK — that's the boundary the
+  store already imports through, so faking `listLexicons`/`createLexicon`/
+  `updateLexicon`/`deleteLexicon` is enough; no need to fake `db`, `collection`,
+  `query`, etc. Optionally also mock `src/lib/storage/active(Translation)Lexicon.ts`
+  to assert *which* persistence call fires (see below) — **not** because it's
+  required: confirmed empirically that plain Node (no jsdom) has no global
+  `localStorage` (`ReferenceError` on access), and every function in those
+  storage helpers already wraps its body in try/catch, degrading to a no-op /
+  `null` return. So the store is safe to test in the existing `node`
+  environment with zero storage setup; mock it only if a test wants to assert
+  the *choice* of persistence call, not just the resulting state.
+
+  **Specific behaviours worth locking in** (each store, ~mirrored):
+  1. *Stale active id falls back to default* — seed `activeLexiconId` with an
+     id, call `loadLexicons(ownerId)` with a mocked list that excludes it →
+     `activeLexiconId` becomes `null`. The inverse case matters too: a
+     *valid* id present in the loaded list must survive `loadLexicons`
+     unchanged (don't reset valid selections).
+  2. `getActiveLexicon()` / `getActiveTranslationLexicon()` resolution: `null`
+     → the built-in default; a set id matching a loaded doc → that doc's
+     vocabulary; a set id with no matching doc (the defensive `??` branch,
+     distinct from the loadLexicons-validation path above) → falls back to
+     the default rather than throwing.
+  3. CRUD plumbing: `createLexicon` prepends (newest-first, not appended);
+     `updateLexicon` patches the matching doc in place and stamps a fresh
+     `updatedAt`; `deleteLexicon` resets `activeLexiconId` to `null` **only
+     when the deleted doc was active** (assert it does *not* reset on
+     deleting a non-active doc — easy regression to introduce);
+     `duplicateLexicon` names the copy `"${name} (copy)"`, clones
+     tags/descriptions, and throws if the source id doesn't exist.
+  4. `setActiveLexiconId`: `null` clears persisted storage, a real id sets
+     it — two different calls, easy to swap by accident.
 - **Phase 4 — components.** Add `jsdom` + `@testing-library/react`, then start
   with the `TranslationLexiconEditor` (the editor shipped in #63 that could not
   be click-tested at build time): assert it renders, saves a draft, and switches
