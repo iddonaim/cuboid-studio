@@ -3,10 +3,10 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 // Standalone Vitest config — intentionally separate from vite.config.ts so the
-// test runner doesn't pull in the PWA/build plugins. Phase 1 covers pure logic
-// only, so the default `node` environment is enough (no jsdom). When component
-// tests arrive (next pass), add jsdom + @testing-library and switch those files
-// to the jsdom environment via a per-file `// @vitest-environment jsdom` pragma.
+// test runner doesn't pull in the PWA/build plugins. Pure-logic and store tests
+// (Phases 1-3) run in the default `node` environment — no jsdom. Component
+// tests (Phase 4, .test.tsx) opt into jsdom per-file via a
+// `// @vitest-environment jsdom` pragma rather than switching the whole suite.
 export default defineConfig({
   resolve: {
     alias: {
@@ -15,7 +15,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'api/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'api/**/*.test.ts'],
     // Surface unhandled assertions loudly rather than passing silently.
     passWithNoTests: false,
   },

@@ -14,8 +14,10 @@ npm run test:watch # re-run on change while developing
 
 Config lives in `vitest.config.ts` (kept separate from `vite.config.ts` so the
 test runner doesn't pull in the PWA/build plugins). Test files are named
-`*.test.ts` and sit next to the code they cover. Phases 1–2 run in the `node`
-environment — no browser/jsdom — because they only exercise pure logic.
+`*.test.ts`/`*.test.tsx` and sit next to the code they cover. Phases 1–3 run in
+the `node` environment — no browser/jsdom — because they only exercise pure
+logic and store state. Phase 4 (component) tests opt into `jsdom` per-file via
+a `// @vitest-environment jsdom` pragma.
 
 ## Philosophy — a pyramid, built bottom-up
 
@@ -55,9 +57,9 @@ fix and the editable translation vocabulary), plus a slice of core geometry.
 The snapshot baseline is `src/prompts/__snapshots__/`. If an intentional prompt
 change makes it fail, update it with `npx vitest run -u` and review the diff.
 
-> Note: the validators in `api/translate-meme.ts` are exported solely so they can
-> be unit-tested. Vercel uses only the file's default export as the handler;
-> named exports are inert at runtime.
+> Note: the validators and `parseAndRoute` in `api/translate-meme.ts` are
+> exported solely so they can be unit-tested. Vercel uses only the file's
+> default export as the handler; named exports are inert at runtime.
 
 ## Phase 2 — more pure logic: evolution scoring + cut geometry (done)
 
@@ -88,18 +90,33 @@ stores already import through — rather than the raw Firebase SDK or
 `useXStore.setState(...)` rather than re-importing the module, since the
 store is a plain Zustand singleton.
 
+## Phase 4 — components: TranslationLexiconEditor (done)
+
+| File | Covers |
+|---|---|
+| `src/components/meme/TranslationLexiconEditor.test.tsx` | The sign-in gate when there is no user; the default vocabulary renders as active for a signed-in user with no saved lexicons; saving a new draft (`Edit` → fill name → `Save as new`) calls `createTranslationLexicon` with the expected payload and switches the active vocabulary to the new doc; activating a saved lexicon from the library switches `activeLexiconId` and the row's `Active` badge. |
+
+Added `jsdom` and `@testing-library/react` as dev dependencies. This file uses
+the real `useTranslationLexiconStore` (reset via `setState` between tests,
+same as Phase 3) with the Firestore and `localStorage` boundary modules
+mocked, plus a mocked `useAuthContext` — so the test exercises real
+component-store wiring, not a fully-stubbed store. Other files stay in the
+`node` environment; only `.test.tsx` files pay the jsdom cost, opted in
+per-file via the `// @vitest-environment jsdom` pragma.
+
+## Phase 5 — API orchestration: parseAndRoute retries (done)
+
+| File | Covers |
+|---|---|
+| `api/translate-meme.test.ts` (`describe('parseAndRoute')`) | The happy path (valid JSON first try) for both pass modes, including the two-pass `{ pass1, pass2, model }` wrapping; retrying once with an explicit JSON instruction when the first response isn't valid JSON, then succeeding; the `422 malformed_response` when both the original and retried response fail to parse; the `500` when the caller itself throws (transport failure); re-asking once with the quoted validation error on a semantically-invalid response, then succeeding; the `422` carrying the *original* validation error when the corrective retry is still invalid; and the same when the corrective retry doesn't even parse as JSON. |
+
+`parseAndRoute` takes the model `caller` as a plain async closure, so each
+test hand-rolls a `vi.fn()` stub for it — no real network or model calls. `res`
+is a two-method double (`status`/`json`, each returning `res` for the
+Vercel-style chained call) rather than a real `VercelResponse`.
+
 ## How we grow it — next passes
 
-Roughly in priority order. Each is a self-contained follow-up PR.
-
-- **Phase 4 — components.** Add `jsdom` + `@testing-library/react`, then start
-  with the `TranslationLexiconEditor` (the editor shipped in #63 that could not
-  be click-tested at build time): assert it renders, saves a draft, and switches
-  the active vocabulary. Switch only these files to the jsdom environment via a
-  `// @vitest-environment jsdom` pragma.
-- **Phase 5 — API orchestration.** Test `parseAndRoute`'s retry behaviour (bad
-  JSON retried once; a semantically-invalid response re-asked once, then 422)
-  by mocking the transport caller — no real network or model calls.
 - **Later — end-to-end.** Only if the app surface stabilises enough to justify
   Playwright's maintenance cost.
 
