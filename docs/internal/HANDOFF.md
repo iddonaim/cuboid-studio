@@ -1452,7 +1452,7 @@ re-diagnosing the script.
 ---
 
 **Last Updated:** 2026-06-20
-**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–2 shipped and merged (PR #64). PR #65 (`tsconfig.json` baseUrl) closed unmerged — fixed a non-reproducing problem; see note above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
-**Next Feature:** Grow test coverage — Phase 3 (stores: `useLexiconStore` + `useTranslationLexiconStore`, mock boundary and the specific behaviours to lock in are now spelled out in `docs/internal/TESTING.md`), then the translation-lexicon editor component (Phase 4).
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–3 shipped: Phases 1–2 merged (PR #64); Phase 3 (stores — `useLexiconStore` + `useTranslationLexiconStore`, 28 tests) added this session. PR #65 (`tsconfig.json` baseUrl) closed unmerged — fixed a non-reproducing problem; see note above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
+**Next Feature:** Grow test coverage — Phase 4: components. Add `jsdom` + `@testing-library/react`, then test `TranslationLexiconEditor`. See `docs/internal/TESTING.md`.
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
