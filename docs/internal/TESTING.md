@@ -22,6 +22,18 @@ a `// @vitest-environment jsdom` pragma. Phase 6 is the exception to all of
 the above: it runs under Playwright, not Vitest, against a real browser and a
 real dev server — see below.
 
+## CI
+
+`.github/workflows/test.yml` runs on every push to `main` and every pull
+request: one job for typecheck + the full Vitest suite, a second for the
+Playwright e2e test (installs Chromium fresh each run via `npx playwright
+install --with-deps chromium` — GitHub-hosted runners aren't subject to the
+network restrictions some sandboxed dev environments have, so this works
+without the version-pin workaround noted in Phase 6 below). A failing e2e run
+uploads the Playwright HTML report as a build artifact. Vercel's deploy step
+does **not** run either suite — it only builds (`vercel.json`) — so CI is the
+only thing actually gating merges/deploys on tests passing.
+
 ## Philosophy — a pyramid, built bottom-up
 
 Cheap, deterministic tests at the bottom; expensive, brittle ones at the top.
