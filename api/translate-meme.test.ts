@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { validateAndReturnSingle, validateAndReturnTwoPass } from './translate-meme';
+import { describe, it, expect, vi } from 'vitest';
+import type { VercelResponse } from '@vercel/node';
+import { validateAndReturnSingle, validateAndReturnTwoPass, parseAndRoute } from './translate-meme';
 
 // A geometrically valid cutter shared across fixtures.
 const validCutter = {
@@ -89,16 +90,16 @@ describe('validateAndReturnTwoPass', () => {
   });
 });
 
-describe('validateAndReturnSingle', () => {
-  const validSingle = {
-    operator: 'amplification',
-    targets: ['visibility'],
-    magnitude: 0.6,
-    decay: 0.1,
-    reasoning: 'amplify the visible edges',
-    cutter: validCutter,
-  };
+const validSingle = {
+  operator: 'amplification',
+  targets: ['visibility'],
+  magnitude: 0.6,
+  decay: 0.1,
+  reasoning: 'amplify the visible edges',
+  cutter: validCutter,
+};
 
+describe('validateAndReturnSingle', () => {
   it('accepts a well-formed single-pass response', () => {
     expect(validateAndReturnSingle(validSingle).ok).toBe(true);
   });
@@ -109,5 +110,125 @@ describe('validateAndReturnSingle', () => {
 
   it('rejects an array (must be a JSON object)', () => {
     expect(validateAndReturnSingle([validSingle]).ok).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseAndRoute — retry orchestration around the model caller. No real
+// network or model calls: `caller` is a hand-rolled stub per test, and `res`
+// is a minimal Vercel-response double that just records status/json calls.
+
+function fakeRes() {
+  const res = {} as VercelResponse;
+  res.status = vi.fn().mockReturnValue(res) as unknown as VercelResponse['status'];
+  res.json = vi.fn().mockReturnValue(res) as unknown as VercelResponse['json'];
+  return res;
+}
+
+describe('parseAndRoute', () => {
+  it('returns 200 with the validated payload on a clean first response', async () => {
+    const caller = vi.fn().mockResolvedValue(JSON.stringify(validSingle));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(caller).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(validSingle);
+  });
+
+  it('dispatches to the two-pass validator and wraps the payload with the model name', async () => {
+    const caller = vi.fn().mockResolvedValue(JSON.stringify([validPass1, validPass2]));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'two_pass', 'test-model');
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ pass1: validPass1, pass2: validPass2, model: 'test-model' });
+  });
+
+  it('retries once with an explicit JSON instruction when the first response is not valid JSON, then succeeds', async () => {
+    const caller = vi.fn()
+      .mockResolvedValueOnce('sure, here it is: ' + JSON.stringify(validSingle))
+      .mockResolvedValueOnce(JSON.stringify(validSingle));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(caller).toHaveBeenCalledTimes(2);
+    expect(caller).toHaveBeenNthCalledWith(1);
+    expect(caller).toHaveBeenNthCalledWith(2, expect.stringContaining('Return ONLY valid JSON'));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(validSingle);
+  });
+
+  it('returns a 422 malformed_response when both the original and retried response fail to parse as JSON', async () => {
+    const caller = vi.fn().mockResolvedValue('not json at all');
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(caller).toHaveBeenCalledTimes(2);
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'malformed_response' }));
+  });
+
+  it('returns a 500 when the caller itself throws (transport failure)', async () => {
+    const caller = vi.fn().mockRejectedValue(new Error('OpenRouter API error (503): upstream down'));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'OpenRouter API error (503): upstream down' });
+  });
+
+  it('re-asks once on a semantically-invalid response, quoting the validation error, then succeeds', async () => {
+    const bad = { ...validSingle, operator: 'juxtaposition' };
+    const caller = vi.fn()
+      .mockResolvedValueOnce(JSON.stringify(bad))
+      .mockResolvedValueOnce(JSON.stringify(validSingle));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(caller).toHaveBeenCalledTimes(2);
+    expect(caller).toHaveBeenNthCalledWith(2, expect.stringContaining('Invalid operator'));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(validSingle);
+  });
+
+  it('returns 422 with the original validation error when the corrective retry is still semantically invalid', async () => {
+    const bad = { ...validSingle, operator: 'juxtaposition' };
+    const stillBad = { ...validSingle, operator: 'some-other-bad-op' };
+    const caller = vi.fn()
+      .mockResolvedValueOnce(JSON.stringify(bad))
+      .mockResolvedValueOnce(JSON.stringify(stillBad));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(caller).toHaveBeenCalledTimes(2);
+    expect(res.status).toHaveBeenCalledWith(422);
+    // The error quoted back is the *original* failure (on `bad`), not the retry's.
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: expect.stringContaining('Invalid operator'),
+    }));
+  });
+
+  it('keeps the original validation error when the corrective retry response fails to parse as JSON at all', async () => {
+    const bad = { ...validSingle, operator: 'juxtaposition' };
+    const caller = vi.fn()
+      .mockResolvedValueOnce(JSON.stringify(bad))
+      .mockResolvedValueOnce('not json either');
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model');
+
+    expect(caller).toHaveBeenCalledTimes(2);
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: expect.stringContaining('Invalid operator'),
+    }));
   });
 });

@@ -80,7 +80,7 @@ function stripCodeFences(s: string): string {
  * validator. `caller(retry?)` is the transport-specific closure that hits
  * OpenRouter or Anthropic.
  */
-async function parseAndRoute(
+export async function parseAndRoute(
   res: VercelResponse,
   caller: (retryMessage?: string) => Promise<string>,
   userMessage: string,

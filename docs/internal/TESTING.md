@@ -57,9 +57,9 @@ fix and the editable translation vocabulary), plus a slice of core geometry.
 The snapshot baseline is `src/prompts/__snapshots__/`. If an intentional prompt
 change makes it fail, update it with `npx vitest run -u` and review the diff.
 
-> Note: the validators in `api/translate-meme.ts` are exported solely so they can
-> be unit-tested. Vercel uses only the file's default export as the handler;
-> named exports are inert at runtime.
+> Note: the validators and `parseAndRoute` in `api/translate-meme.ts` are
+> exported solely so they can be unit-tested. Vercel uses only the file's
+> default export as the handler; named exports are inert at runtime.
 
 ## Phase 2 — more pure logic: evolution scoring + cut geometry (done)
 
@@ -104,13 +104,19 @@ component-store wiring, not a fully-stubbed store. Other files stay in the
 `node` environment; only `.test.tsx` files pay the jsdom cost, opted in
 per-file via the `// @vitest-environment jsdom` pragma.
 
+## Phase 5 — API orchestration: parseAndRoute retries (done)
+
+| File | Covers |
+|---|---|
+| `api/translate-meme.test.ts` (`describe('parseAndRoute')`) | The happy path (valid JSON first try) for both pass modes, including the two-pass `{ pass1, pass2, model }` wrapping; retrying once with an explicit JSON instruction when the first response isn't valid JSON, then succeeding; the `422 malformed_response` when both the original and retried response fail to parse; the `500` when the caller itself throws (transport failure); re-asking once with the quoted validation error on a semantically-invalid response, then succeeding; the `422` carrying the *original* validation error when the corrective retry is still invalid; and the same when the corrective retry doesn't even parse as JSON. |
+
+`parseAndRoute` takes the model `caller` as a plain async closure, so each
+test hand-rolls a `vi.fn()` stub for it — no real network or model calls. `res`
+is a two-method double (`status`/`json`, each returning `res` for the
+Vercel-style chained call) rather than a real `VercelResponse`.
+
 ## How we grow it — next passes
 
-Roughly in priority order. Each is a self-contained follow-up PR.
-
-- **Phase 5 — API orchestration.** Test `parseAndRoute`'s retry behaviour (bad
-  JSON retried once; a semantically-invalid response re-asked once, then 422)
-  by mocking the transport caller — no real network or model calls.
 - **Later — end-to-end.** Only if the app surface stabilises enough to justify
   Playwright's maintenance cost.
 
