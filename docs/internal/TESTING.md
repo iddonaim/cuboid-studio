@@ -10,6 +10,7 @@ coverage in deliberate passes.
 ```bash
 npm test          # run the whole suite once (CI mode)
 npm run test:watch # re-run on change while developing
+npm run test:e2e  # Phase 6 — real-browser smoke test (needs `npx playwright install chromium` once)
 ```
 
 Config lives in `vitest.config.ts` (kept separate from `vite.config.ts` so the
@@ -17,7 +18,9 @@ test runner doesn't pull in the PWA/build plugins). Test files are named
 `*.test.ts`/`*.test.tsx` and sit next to the code they cover. Phases 1–3 run in
 the `node` environment — no browser/jsdom — because they only exercise pure
 logic and store state. Phase 4 (component) tests opt into `jsdom` per-file via
-a `// @vitest-environment jsdom` pragma.
+a `// @vitest-environment jsdom` pragma. Phase 6 is the exception to all of
+the above: it runs under Playwright, not Vitest, against a real browser and a
+real dev server — see below.
 
 ## Philosophy — a pyramid, built bottom-up
 
@@ -115,10 +118,31 @@ test hand-rolls a `vi.fn()` stub for it — no real network or model calls. `res
 is a two-method double (`status`/`json`, each returning `res` for the
 Vercel-style chained call) rather than a real `VercelResponse`.
 
+## Phase 6 — end-to-end: nav smoke test (in progress)
+
+| File | Covers |
+|---|---|
+| `e2e/nav.spec.ts` | The app boots in a real Chromium browser with Encode as the default mode, and each of the four workflow-spine tabs (Map, Encode, Evolution, Decode) mounts its panel when clicked, in either order. Deliberately shallow — proves the substrate works, not that any feature's logic is correct (that's the job of the lower phases). |
+
+Run with `npm run test:e2e` (first run needs browser binaries: `npx
+playwright install chromium`). Config lives in `playwright.config.ts`,
+separate from `vitest.config.ts` — it boots a real `npm run dev` server
+(`webServer` in the config) rather than running in-process. Tests live in
+`e2e/` (not `src/`) since they don't co-locate with any single source file.
+
+This phase exists as a regression safety net ahead of recording an onboarding
+/ usability video: a quick run before recording catches a broken nav/panel
+before it ends up in the footage. It is intentionally not yet scripted to
+*look* good on screen (pacing, demo data, viewport size) — that's a follow-up
+once the nav coverage above is stable, and would extend `e2e/` rather than
+duplicate it.
+
 ## How we grow it — next passes
 
-- **Later — end-to-end.** Only if the app surface stabilises enough to justify
-  Playwright's maintenance cost.
+- **More end-to-end coverage**, if it earns its keep: a real Encode upload
+  → assembly round trip, a Decode export. Each one raises Playwright's
+  maintenance cost, so add only where a real regression would otherwise slip
+  through silently.
 
 ## Conventions
 
