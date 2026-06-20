@@ -130,6 +130,17 @@ separate from `vitest.config.ts` — it boots a real `npm run dev` server
 (`webServer` in the config) rather than running in-process. Tests live in
 `e2e/` (not `src/`) since they don't co-locate with any single source file.
 
+> **Version pin:** `@playwright/test` is pinned to `1.56.1` rather than
+> latest. `npx playwright install` downloads a browser build matching the
+> installed `@playwright/test` version from `cdn.playwright.dev`; some
+> sandboxed environments (e.g. Claude Code's web/cloud sessions) only
+> pre-cache one specific browser build and block that download host by
+> default, so a newer `@playwright/test` can fail to find a matching browser
+> with no network workaround available. `1.56.1` matches what's pre-cached
+> in that environment. If you bump this dependency, either add
+> `cdn.playwright.dev` to the relevant network allowlist first, or re-pin to
+> whatever version matches the pre-cached browser.
+
 This phase exists as a regression safety net ahead of recording an onboarding
 / usability video: a quick run before recording catches a broken nav/panel
 before it ends up in the footage. It is intentionally not yet scripted to
