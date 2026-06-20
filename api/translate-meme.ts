@@ -358,7 +358,7 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
   // Resolve model name for Anthropic-native API. Clients send OpenRouter-style
   // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix. If the
   // result doesn't look like an Anthropic model, fall back to the default.
-  const anthropicDefault = 'claude-sonnet-4-20250514';
+  const anthropicDefault = 'claude-sonnet-4-6';
   let anthropicModel = opts.selectedModel.startsWith('anthropic/')
     ? opts.selectedModel.slice('anthropic/'.length)
     : opts.selectedModel;
