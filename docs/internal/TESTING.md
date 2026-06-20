@@ -156,9 +156,38 @@ separate from `vitest.config.ts` — it boots a real `npm run dev` server
 This phase exists as a regression safety net ahead of recording an onboarding
 / usability video: a quick run before recording catches a broken nav/panel
 before it ends up in the footage. It is intentionally not yet scripted to
-*look* good on screen (pacing, demo data, viewport size) — that's a follow-up
-once the nav coverage above is stable, and would extend `e2e/` rather than
-duplicate it.
+*look* good on screen — that's a separate, not-yet-started follow-up (see
+below), since a script that's good at catching regressions and a script
+that's good at producing footage have different jobs.
+
+### Follow-up — using Playwright as a footage source (not started)
+
+The idea: instead of (or in addition to) being a safety net, a Playwright
+script could drive the app for a real screen recording of the onboarding
+flow. `e2e/nav.spec.ts` is not that script today — it's optimized to fail
+fast, not to look good on screen. Turning it into one means:
+
+1. **Turn on video recording.** Off by default; needs `use: { video: 'on' }`
+   in a dedicated config, plus a fixed `viewport`/canvas size matching the
+   target output resolution (e.g. 1920×1080) instead of the test default.
+2. **Slow the pacing down.** Test clicks happen in milliseconds; footage
+   needs deliberate pauses between steps so a viewer can follow each one.
+3. **Add a visible cursor.** Playwright's clicks are invisible DOM-level
+   actions — no mouse pointer moves on screen by default. Needs a small
+   injected cursor-overlay so it reads as a person using a mouse.
+4. **Pre-seed realistic content.** Right now the script walks an empty app
+   (no photo uploaded, no cubes placed — Decode literally shows "No cubes in
+   the assembly yet"). Footage needs a few cubes already placed and a sample
+   photo already uploaded so each tab shows something worth filming.
+5. **Keep it as its own script**, outside the CI-gated suite — a recording
+   script isn't pass/fail, and deliberate pauses shouldn't slow down every
+   PR's test run. Lives in `e2e/` per the note above, but not run by
+   `npm run test:e2e` / CI.
+6. **Convert the output.** Playwright records WebM; editing will likely want
+   mp4, which is a quick extra conversion step, not a blocker.
+
+Rough size: a separate half-day-ish pass of scripting and eyeballing the
+result until pacing/look is right — not a tweak to the existing nav test.
 
 ## How we grow it — next passes
 
