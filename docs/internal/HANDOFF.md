@@ -1383,8 +1383,58 @@ Three waves on the Encode mode, all merged to `main` (PRs #57–#59).
 
 ---
 
-**Last Updated:** 2026-06-16
-**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Remaining Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
-**Next Feature:** Editable translation vocabulary for Pataphysical/Evolution ("Level A") — the Encode-lexicon (L3) pattern applied to the translation prompt.
+## Session Log — 2026-06-16 → 2026-06-18 — Test harness (Phases 1–2) + translation pipeline hardening
+
+Two features shipped to `main` first (PRs #62, #63): the translation API now
+**retries on an invalid operator** instead of dropping the evolution candidate
+(fixed the intermittent 422 where the model emitted `juxtaposition` in the
+operator field), and Pataphysical/Evolution gained an **editable translation
+vocabulary** ("Level A") — the Encode-lexicon (L3) pattern applied to the v2
+prompt, composed at runtime and byte-identical to the old static file on the
+default vocabulary.
+
+This session adds the project's **first test harness** (Vitest), still on
+branch `claude/test-harness-phase1` (PR #64 — open, draft; both phases below
+landed there rather than splitting Phase 2 into its own PR, since #64 hadn't
+merged yet).
+
+**Phase 1 — pure logic: prompt + API + core geometry:**
+- `src/prompts/translationLexicon.default.test.ts` — prompt composition + a
+  byte-for-byte snapshot guard + the `isTranslationLexicon` validator.
+- `api/translate-meme.test.ts` — the Pass 1/2/single validators, including the
+  exact #62 case (`juxtaposition` operator → rejected).
+- `src/lib/cube/connectionRules.test.ts` — face geometry + connection invariants.
+
+**Phase 2 — more pure logic: evolution scoring + cut geometry:**
+- `src/lib/evolution/compressibility.test.ts` — `computeCompressibility`'s four
+  sub-scores against a hand-verified known assembly, the documented weighting,
+  the low-cube-count guard, `compressionProgress`, `createSnapshot`.
+- `src/lib/operators/applyOperator.test.ts` — cutter sizing per type (box/
+  sphere/cylinder/plane), proportion clamping, and the real CSG subtraction
+  (`three-bvh-csg`, unmocked — it's pure geometry math, runs fine in Node).
+- `src/lib/decode/snapUtils.test.ts` — tile rotation/transform math and
+  `findClosestSnap`'s radius cutoff and closest-candidate selection.
+- `src/lib/decode/variation2dPath.test.ts` — trivial path helper.
+
+71 tests total, run with `npm test`. The validators in `api/translate-meme.ts`
+are exported for testing (inert at runtime — Vercel only uses the default
+export). See **`docs/internal/TESTING.md`** for the full plan and how scope
+grows in later passes (stores → components → API orchestration → e2e).
+
+**Resolved — PR #65 closed (2026-06-19):** PR #65 was opened to fix a claimed
+`TS5101: baseUrl is deprecated` error breaking `tsc`. On re-verification the
+premise didn't hold: `tsc --noEmit` runs clean (exit 0) on the *old*
+`baseUrl: "."` config under TypeScript 5.9.3, and in the 5.9.3 option table
+`baseUrl` carries no deprecation/removal marker (the only deprecated options
+this version flags are `target: es3` and `moduleResolution: node`). The
+proposed replacement config typechecked clean too, so the change was harmless
+but unnecessary — a fix for a non-reproducing problem. Closed rather than
+merged. `tsconfig.json` is unchanged.
+
+---
+
+**Last Updated:** 2026-06-19
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–2 in progress on branch `claude/test-harness-phase1` (PR #64, open/draft). PR #65 (`tsconfig.json` baseUrl) closed unmerged — fixed a non-reproducing problem; see note above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
+**Next Feature:** Grow test coverage (Phase 3 — stores; then the translation-lexicon editor component). See `docs/internal/TESTING.md`.
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio

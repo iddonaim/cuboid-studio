@@ -418,7 +418,7 @@ const VALID_EDGE_TYPES = new Set(['adjacency', 'access', 'visibility', 'conflict
  * the caller can retry the model once on a semantic failure (e.g. an operator
  * value outside the allowed set) before giving up with a 422.
  */
-type ValidationResult =
+export type ValidationResult =
   | { ok: true; payload: unknown }
   | { ok: false; error: string; raw: unknown };
 
@@ -450,7 +450,7 @@ function validateCutter(cutter: any, label: string): string | null {
   return null;
 }
 
-function validateAndReturnSingle(parsed: any): ValidationResult {
+export function validateAndReturnSingle(parsed: any): ValidationResult {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return invalid('Response must be a JSON object', parsed);
   }
@@ -476,7 +476,7 @@ function validateAndReturnSingle(parsed: any): ValidationResult {
   return { ok: true, payload: parsed };
 }
 
-function validateAndReturnTwoPass(parsed: any, model: string): ValidationResult {
+export function validateAndReturnTwoPass(parsed: any, model: string): ValidationResult {
   // Accept either a JSON array [pass1, pass2] or a top-level object with pass1/pass2
   let pass1: any;
   let pass2: any;
