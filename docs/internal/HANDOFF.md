@@ -1433,21 +1433,21 @@ merged. `tsconfig.json` is unchanged.
 
 ---
 
-**Open elsewhere — map-context picker broken (flagged 2026-06-20):** the
-address picker on the separate `iddonaim/map-context` repo's Railway deploy
-(embedded in Cuboid Studio's Map tab via iframe — `MapContextCanvas`) has a
-dead inline `<script>`: `launcher.js` serves its page from a Node template
-literal containing unescaped `\n` inside what should be a client-side string
+**Resolved — map-context picker fixed (2026-06-20):** the address picker on
+the separate `iddonaim/map-context` repo's Railway deploy (embedded in
+Cuboid Studio's Map tab via iframe — `MapContextCanvas`) had a dead inline
+`<script>`: `launcher.js` served its page from a Node template literal
+containing unescaped `\n` inside what should be a client-side string
 literal (added in `0fcc8a9`, "feat: add SSE progress indicator"). Node's
-parser converts those to real newlines at serve time, producing an
-unterminated string in the served JS → `SyntaxError` → the whole script dies
-→ no autocomplete, no run button. Fix is two lines (`\n` → `\\n` at the two
-call sites around line 508/515) and was fully diagnosed and verified against
-production, but **not yet applied** — `map-context` isn't in this Cuboid
-Studio session's repo scope, so it's being handled in a separate session.
-Cuboid Studio itself needs no changes either way (the iframe just points at
-whatever Railway is serving). Check `iddonaim/map-context`'s `main` branch /
-Railway deploy directly to see if this has since been fixed.
+parser converted those to real newlines at serve time, producing an
+unterminated string in the served JS → `SyntaxError` → the whole script
+died → no autocomplete, no run button. Fixed with the two-line escape
+(`\n` → `\\n` at the two call sites around line 508/515) in
+`map-context` PR #10, merged into `main`. Cuboid Studio itself needed no
+changes (the iframe just points at whatever Railway serves) — Railway
+should auto-deploy from `main`; if the picker still looks broken after
+that, check the Railway dashboard for a stuck deploy rather than
+re-diagnosing the script.
 
 ---
 
