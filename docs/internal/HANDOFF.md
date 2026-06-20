@@ -1433,8 +1433,26 @@ merged. `tsconfig.json` is unchanged.
 
 ---
 
-**Last Updated:** 2026-06-19
-**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–2 in progress on branch `claude/test-harness-phase1` (PR #64, open/draft). PR #65 (`tsconfig.json` baseUrl) closed unmerged — fixed a non-reproducing problem; see note above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
-**Next Feature:** Grow test coverage (Phase 3 — stores; then the translation-lexicon editor component). See `docs/internal/TESTING.md`.
+**Open elsewhere — map-context picker broken (flagged 2026-06-20):** the
+address picker on the separate `iddonaim/map-context` repo's Railway deploy
+(embedded in Cuboid Studio's Map tab via iframe — `MapContextCanvas`) has a
+dead inline `<script>`: `launcher.js` serves its page from a Node template
+literal containing unescaped `\n` inside what should be a client-side string
+literal (added in `0fcc8a9`, "feat: add SSE progress indicator"). Node's
+parser converts those to real newlines at serve time, producing an
+unterminated string in the served JS → `SyntaxError` → the whole script dies
+→ no autocomplete, no run button. Fix is two lines (`\n` → `\\n` at the two
+call sites around line 508/515) and was fully diagnosed and verified against
+production, but **not yet applied** — `map-context` isn't in this Cuboid
+Studio session's repo scope, so it's being handled in a separate session.
+Cuboid Studio itself needs no changes either way (the iframe just points at
+whatever Railway is serving). Check `iddonaim/map-context`'s `main` branch /
+Railway deploy directly to see if this has since been fixed.
+
+---
+
+**Last Updated:** 2026-06-20
+**Status:** Encode reading layer (L1/L2) + editable lexicons (L3) shipped. Pataphysical v2 Phase 1 + the bulk of Phase 2 shipped (two-pass UI live and default; Pass 1/2 display, confidence vector, expanded operators all in). Editable translation vocabulary ("Level A") shipped (#63). Test harness (Vitest) Phases 1–2 shipped and merged (PR #64). PR #65 (`tsconfig.json` baseUrl) closed unmerged — fixed a non-reproducing problem; see note above. Remaining Pataphysical Phase 2: a saved site-context library/dropdown, translation history, and the optional model selector.
+**Next Feature:** Grow test coverage — Phase 3 (stores: `useLexiconStore` + `useTranslationLexiconStore`, mock boundary and the specific behaviours to lock in are now spelled out in `docs/internal/TESTING.md`), then the translation-lexicon editor component (Phase 4).
 **Deployed:** https://cuboidstudio.vercel.app
 **Repository:** https://github.com/iddonaim/cuboid-studio
