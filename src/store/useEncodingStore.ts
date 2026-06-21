@@ -33,6 +33,8 @@ export interface UploadedEncodingImage {
   dataUrl: string;
   base64: string;
   mediaType: string;
+  /** Small JPEG (~240px) persisted with saved compositions. */
+  thumbnailDataUrl: string;
 }
 
 interface EncodingState {
@@ -40,8 +42,13 @@ interface EncodingState {
   uploadedImage: string | null;
   imageBase64: string | null;
   imageMediaType: string | null;
-  setImage: (dataUrl: string, base64: string, mediaType: string) => void;
+  imageThumbnail: string | null;
+  setImage: (dataUrl: string, base64: string, mediaType: string, thumbnailDataUrl: string) => void;
   clearImage: () => void;
+  /** True after a composition load restored thumbnails only (no full-res
+   *  photo data, by design — keeps saves small). Encoding is disabled until
+   *  the architect re-uploads the real photo(s). */
+  imagesRestoredOnly: boolean;
 
 
   // Multi-photo mode
@@ -96,10 +103,14 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   uploadedImage: null,
   imageBase64: null,
   imageMediaType: null,
-  setImage: (dataUrl, base64, mediaType) => set({
+  imageThumbnail: null,
+  imagesRestoredOnly: false,
+  setImage: (dataUrl, base64, mediaType, thumbnailDataUrl) => set({
     uploadedImage: dataUrl,
     imageBase64: base64,
     imageMediaType: mediaType,
+    imageThumbnail: thumbnailDataUrl,
+    imagesRestoredOnly: false,
     encodedCubes: null,
     encodingReasoning: null,
     ...clearReadingFields(),
@@ -109,6 +120,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     uploadedImage: null,
     imageBase64: null,
     imageMediaType: null,
+    imageThumbnail: null,
+    imagesRestoredOnly: false,
     encodedCubes: null,
     encodingReasoning: null,
     ...clearReadingFields(),
@@ -130,11 +143,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
           dataUrl: state.uploadedImage,
           base64: state.imageBase64,
           mediaType: state.imageMediaType || 'image/jpeg',
+          thumbnailDataUrl: state.imageThumbnail || state.uploadedImage,
         }],
         primaryImageId: id,
         uploadedImage: null,
         imageBase64: null,
         imageMediaType: null,
+        imageThumbnail: null,
       });
       return;
     }
@@ -146,6 +161,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         uploadedImage: primary.dataUrl,
         imageBase64: primary.base64,
         imageMediaType: primary.mediaType,
+        imageThumbnail: primary.thumbnailDataUrl,
         uploadedImages: [],
         primaryImageId: null,
       });
@@ -160,6 +176,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     return {
       uploadedImages: merged,
       primaryImageId,
+      imagesRestoredOnly: false,
       encodedCubes: null,
       encodingReasoning: null,
       ...clearReadingFields(),
@@ -189,6 +206,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     uploadedImage: null,
     imageBase64: null,
     imageMediaType: null,
+    imageThumbnail: null,
+    imagesRestoredOnly: false,
     uploadedImages: [],
     primaryImageId: null,
     encodedCubes: null,
@@ -266,7 +285,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       primaryImageId,
       imageBase64,
       imageMediaType,
+      imagesRestoredOnly,
     } = get();
+
+    if (imagesRestoredOnly) {
+      set({ lastError: 'This composition only has saved thumbnails — re-upload the photo(s) to encode.' });
+      return;
+    }
 
     const hasMulti = multiPhotoEnabled && uploadedImages.length > 0;
     const hasSingle = !multiPhotoEnabled && imageBase64;

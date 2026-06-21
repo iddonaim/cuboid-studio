@@ -5,7 +5,7 @@ import { useProjectsStore } from '../../store/useProjectsStore';
 import { useToastStore } from '../../store/useToastStore';
 import {
   listProjects, createProject, deleteProject,
-  listSites, createSite, deleteSite,
+  listSites, createSite, deleteSite, updateSite,
   listCompositions, createComposition, deleteComposition,
 } from '../../lib/projects/firestore';
 import { captureComposition, restoreComposition } from '../../lib/projects/composition';
@@ -182,6 +182,13 @@ export const ProjectsPanel: React.FC = () => {
     const data = captureComposition();
     const c = await createComposition(activeProject.id, activeSite.id, name, data);
     setCompositions(prev => [c, ...prev]);
+    // Keep the Site's own site context in sync — it's only seeded once at
+    // creation otherwise, so context set/changed afterwards (Map tab) would
+    // never reach the Site document.
+    const activeSiteContext = getActiveSiteContext();
+    if (activeSiteContext) {
+      await updateSite(activeProject.id, activeSite.id, activeSiteContext);
+    }
     showToast('Composition saved', 'success');
   };
   const handleDeleteComposition = async (c: CompositionDoc) => {

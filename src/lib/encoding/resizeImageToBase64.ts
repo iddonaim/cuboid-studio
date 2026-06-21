@@ -1,13 +1,8 @@
-/**
- * Resize a photo for the encode API: longest edge capped at maxDimension,
- * no upscaling, JPEG 0.88 or PNG output.
- */
-export async function resizeImageToBase64(
-  file: File,
-  maxDimension = 1600
-): Promise<{ base64: string; mediaType: string }> {
-  const bitmap = await createImageBitmap(file);
+/** Longest edge (px) for the thumbnail kept alongside saved compositions. */
+const THUMBNAIL_MAX_DIMENSION = 240;
+const THUMBNAIL_QUALITY = 0.6;
 
+function drawToCanvas(bitmap: ImageBitmap, maxDimension: number): HTMLCanvasElement {
   let width = bitmap.width;
   let height = bitmap.height;
   const longest = Math.max(width, height);
@@ -21,14 +16,27 @@ export async function resizeImageToBase64(
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    bitmap.close();
-    throw new Error('Could not get canvas context');
-  }
-
+  if (!ctx) throw new Error('Could not get canvas context');
   ctx.drawImage(bitmap, 0, 0, width, height);
+  return canvas;
+}
+
+/**
+ * Resize a photo for the encode API: longest edge capped at maxDimension,
+ * no upscaling, JPEG 0.88 or PNG output. Also produces a small JPEG
+ * thumbnail (longest edge 240px) cheap enough to persist with a saved
+ * composition, so a save always carries a visual record of the photo(s)
+ * that informed it.
+ */
+export async function resizeImageToBase64(
+  file: File,
+  maxDimension = 1600
+): Promise<{ base64: string; mediaType: string; thumbnailDataUrl: string }> {
+  const bitmap = await createImageBitmap(file);
+
+  const canvas = drawToCanvas(bitmap, maxDimension);
+  const thumbCanvas = drawToCanvas(bitmap, THUMBNAIL_MAX_DIMENSION);
   bitmap.close();
 
   const isPng =
@@ -44,7 +52,8 @@ export async function resizeImageToBase64(
   }
 
   const base64 = await blobToBase64(blob);
-  return { base64, mediaType };
+  const thumbnailDataUrl = thumbCanvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY);
+  return { base64, mediaType, thumbnailDataUrl };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

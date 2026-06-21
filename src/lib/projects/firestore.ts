@@ -88,6 +88,21 @@ export async function deleteSite(projectId: string, siteId: string): Promise<voi
   await deleteDoc(doc(requireDb(), 'projects', projectId, 'sites', siteId));
 }
 
+/**
+ * Refresh a Site's stored site context. `createSite` only seeds it once at
+ * creation time, so without this, a site context set or changed afterwards
+ * (e.g. via the Map tab) never makes it onto the Site document — call this
+ * whenever a composition is saved so the Site stays in sync with whatever
+ * context was active.
+ */
+export async function updateSite(
+  projectId: string,
+  siteId: string,
+  siteContext: SiteContextData,
+): Promise<void> {
+  await updateDoc(doc(requireDb(), 'projects', projectId, 'sites', siteId), { siteContext });
+}
+
 // --- Compositions ----------------------------------------------------------
 
 export async function listCompositions(

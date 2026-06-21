@@ -3,7 +3,8 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { useProjectsStore } from '../../store/useProjectsStore';
 import { useToastStore } from '../../store/useToastStore';
 import { captureComposition } from '../../lib/projects/composition';
-import { createComposition } from '../../lib/projects/firestore';
+import { createComposition, updateSite } from '../../lib/projects/firestore';
+import { getActiveSiteContext } from '../../lib/storage/siteContext';
 
 function defaultName(): string {
   const d = new Date();
@@ -40,6 +41,13 @@ export const SaveCompositionButton: React.FC = () => {
     try {
       const data = captureComposition();
       await createComposition(activeProject.id, activeSite.id, name.trim() || defaultName(), data);
+      // Keep the Site's own site context in sync — it's only seeded once at
+      // creation otherwise, so context set/changed afterwards (Map tab) would
+      // never reach the Site document.
+      const activeSiteContext = getActiveSiteContext();
+      if (activeSiteContext) {
+        await updateSite(activeProject.id, activeSite.id, activeSiteContext);
+      }
       showToast('Composition saved', 'success');
       setOpen(false);
     } catch (err) {

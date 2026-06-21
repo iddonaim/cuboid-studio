@@ -10,13 +10,14 @@ import { LexiconEditor } from './LexiconEditor';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
   try {
-    const { base64, mediaType } = await resizeImageToBase64(file);
+    const { base64, mediaType, thumbnailDataUrl } = await resizeImageToBase64(file);
     const dataUrl = `data:${mediaType};base64,${base64}`;
     return {
       id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       dataUrl,
       base64,
       mediaType,
+      thumbnailDataUrl,
     };
   } catch {
     return null;
@@ -35,6 +36,7 @@ export const EncodingPanel: React.FC = () => {
   const removeImage = useEncodingStore(s => s.removeImage);
   const setPrimaryImage = useEncodingStore(s => s.setPrimaryImage);
   const clearAllImages = useEncodingStore(s => s.clearAllImages);
+  const imagesRestoredOnly = useEncodingStore(s => s.imagesRestoredOnly);
   const isEncoding = useEncodingStore(s => s.isEncoding);
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const encodingReading = useEncodingStore(s => s.encodingReading);
@@ -72,7 +74,7 @@ export const EncodingPanel: React.FC = () => {
       if (parsed.length > 0) addImages(parsed);
     } else {
       const img = await readImageFile(files[0]);
-      if (img) setImage(img.dataUrl, img.base64, img.mediaType);
+      if (img) setImage(img.dataUrl, img.base64, img.mediaType, img.thumbnailDataUrl);
     }
     e.target.value = '';
   };
@@ -114,6 +116,7 @@ export const EncodingPanel: React.FC = () => {
 
   const encodeDisabled =
     isEncoding ||
+    imagesRestoredOnly ||
     (mode === 'merge' && seedCubes.length === 0) ||
     (mode === 'remix' && seedCubes.length === 0);
 
@@ -211,6 +214,13 @@ export const EncodingPanel: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {imagesRestoredOnly && (
+        <div className="p-2 bg-amber-950 border border-amber-800 rounded text-amber-300 text-[10px] leading-relaxed">
+          Loaded from a saved composition — these are small preview thumbnails only.
+          Re-upload the photo(s) to encode or re-encode.
         </div>
       )}
 
@@ -428,7 +438,8 @@ export const EncodingPanel: React.FC = () => {
           <button
             type="button"
             onClick={handleEncode}
-            disabled={isEncoding}
+            disabled={isEncoding || imagesRestoredOnly}
+            title={imagesRestoredOnly ? 'Re-upload the photo(s) first' : undefined}
             className="py-1.5 bg-transparent border border-slate-700 rounded-md text-slate-500 cursor-pointer text-[10px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isEncoding ? 'Re-encoding…' : 'Re-encode'}
