@@ -15,6 +15,7 @@
  * back to null (default) — preventing the silent-wrong-vocabulary trap.
  */
 import { create } from 'zustand';
+import { useToastStore } from './useToastStore';
 import {
   DEFAULT_TRANSLATION_LEXICON,
   DEFAULT_TRANSLATION_DESCRIPTIONS,
@@ -100,7 +101,9 @@ export const useTranslationLexiconStore = create<TranslationLexiconState>((set, 
       }
 
       set({ lexicons: docs, loading: false, activeLexiconId: validatedId });
-    } catch {
+    } catch (err) {
+      console.error(err);
+      useToastStore.getState().showToast('Could not load translation lexicons', 'error');
       set({ loading: false });
     }
   },

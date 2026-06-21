@@ -18,6 +18,7 @@
  *   assuming their custom lexicon was active.
  */
 import { create } from 'zustand';
+import { useToastStore } from './useToastStore';
 import { DEFAULT_LEXICON, type SpatialLexicon } from '../prompts/lexicon.default';
 import {
   listLexicons,
@@ -118,7 +119,9 @@ export const useLexiconStore = create<LexiconState>((set, get) => ({
       }
 
       set({ lexicons: docs, loading: false, activeLexiconId: validatedId });
-    } catch {
+    } catch (err) {
+      console.error(err);
+      useToastStore.getState().showToast('Could not load lexicons', 'error');
       set({ loading: false });
     }
   },
