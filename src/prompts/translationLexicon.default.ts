@@ -132,7 +132,7 @@ export const DEFAULT_TRANSLATION_LEXICON: TranslationLexicon = {
   affect_geometry: [
     { trigger: 'compression or constriction', examples: 'anxiety, claustrophobia, scarcity', implication: 'cutters that remove from the interior, create internal voids' },
     { trigger: 'expansion or release', examples: 'defiance, celebration, liberation', implication: 'cutters that open surfaces, create porosity' },
-    { trigger: 'division or separation', examples: 'alienation, displacement, conflict', implication: 'cutters that bisect, slice, create hard boundaries' },
+    { trigger: 'division or separation', examples: 'alienation, displacement, conflict', implication: 'cutters that bisect or carve a hard boundary through the volume — prefer box or cylinder shapes proportioned as a deep wedge or partition, substantial enough to register visually. Reserve the literal "plane" cutter type for cases that call for a thin, surgical slice rather than a forceful cut' },
     { trigger: 'accumulation or layering', examples: 'nostalgia, solidarity, densification', implication: 'cutters that add mass or create nested volumes' },
     { trigger: 'erosion or entropy', examples: 'resignation, mourning, neglect', implication: 'cutters that subtract from edges and corners, soften geometry' },
     { trigger: 'instability or disruption', examples: 'rage, absurdity, dark humor', implication: 'cutters at oblique angles, off-axis positions, asymmetric proportions' },
