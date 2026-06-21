@@ -44,8 +44,24 @@ export function captureComposition(): CompositionData {
   const evolution = useEvolutionStore.getState();
   const decode = useDecodeStore.getState();
 
+  const hasUploadedPhotos = encoding.multiPhotoEnabled
+    ? encoding.uploadedImages.length > 0
+    : Boolean(encoding.uploadedImage);
+
   const hasEncodeState =
-    encoding.encodedCubes !== null || encoding.seedCubes.length > 0;
+    encoding.encodedCubes !== null || encoding.seedCubes.length > 0 || hasUploadedPhotos;
+
+  // Small thumbnails of whatever photo(s) are currently loaded — restored-only
+  // thumbnails (from a prior load) carry forward unchanged on re-save.
+  const imageThumbnails = encoding.multiPhotoEnabled
+    ? encoding.uploadedImages.map(img => ({
+        id: img.id,
+        thumbnailDataUrl: img.thumbnailDataUrl,
+        isPrimary: img.id === encoding.primaryImageId,
+      }))
+    : encoding.imageThumbnail
+      ? [{ id: 'single', thumbnailDataUrl: encoding.imageThumbnail, isPrimary: true }]
+      : [];
 
   return {
     builderAssembly: {
@@ -60,6 +76,9 @@ export function captureComposition(): CompositionData {
           encodingReasoning: encoding.encodingReasoning,
           mode: encoding.mode,
           seedCubes: encoding.seedCubes,
+          // Thumbnails of the photo(s) that informed this encode — only
+          // written when at least one is loaded.
+          ...(imageThumbnails.length > 0 ? { images: imageThumbnails } : {}),
           // Reading + lexicon provenance — only written when a reading exists.
           ...(encoding.encodingReading
             ? {
@@ -191,6 +210,9 @@ export async function restoreComposition(
 
   // --- Encode ---
   if (data.encode) {
+    const images = data.encode.images ?? [];
+    const isMultiPhoto = images.length > 1;
+
     useEncodingStore.setState({
       encodedCubes: data.encode.encodedCubes,
       encodingReasoning: data.encode.encodingReasoning,
@@ -206,6 +228,23 @@ export async function restoreComposition(
       // Lexicon provenance — restore so a re-save after load preserves the snapshot.
       encodingLexicon: data.encode.lexiconSnapshot ?? null,
       encodingLexiconId: data.encode.lexiconId ?? null,
+      // Photo thumbnails — display-only, no full-res base64 to re-encode with.
+      multiPhotoEnabled: isMultiPhoto,
+      uploadedImage: !isMultiPhoto && images[0] ? images[0].thumbnailDataUrl : null,
+      imageBase64: null,
+      imageMediaType: !isMultiPhoto && images[0] ? 'image/jpeg' : null,
+      imageThumbnail: !isMultiPhoto && images[0] ? images[0].thumbnailDataUrl : null,
+      uploadedImages: isMultiPhoto
+        ? images.map(img => ({
+            id: img.id,
+            dataUrl: img.thumbnailDataUrl,
+            base64: '',
+            mediaType: 'image/jpeg',
+            thumbnailDataUrl: img.thumbnailDataUrl,
+          }))
+        : [],
+      primaryImageId: isMultiPhoto ? (images.find(img => img.isPrimary)?.id ?? images[0]?.id ?? null) : null,
+      imagesRestoredOnly: images.length > 0,
     });
   }
 
