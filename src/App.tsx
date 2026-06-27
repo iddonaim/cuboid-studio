@@ -270,14 +270,19 @@ const AppInner: React.FC = () => {
         {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
         <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]">
-          {showMapCanvas ? (
+          {/* Kept mounted (just hidden) instead of unmounted when leaving Map
+              mode — the embedded map-context app runs its own address search
+              and analysis run inside this iframe, and destroying the iframe
+              on every tab switch was wiping that in-progress state. */}
+          <div className={showMapCanvas ? undefined : 'hidden'}>
             <MapContextCanvas
               onAnalysisComplete={(context: SiteContextData) => {
                 setActiveSiteContext(context);
                 setShowSiteToast(true);
               }}
             />
-          ) : (
+          </div>
+          {!showMapCanvas && (
             <>
               <Viewport3D />
               {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
@@ -342,14 +347,17 @@ const AppInner: React.FC = () => {
       {/* Viewport: full bleed behind all overlays.
           transform:translateZ(0) keeps the WebGL layer below React overlays. */}
       <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
-        {showMapCanvas ? (
+        {/* Kept mounted (just hidden) instead of unmounted when leaving Map
+            mode — see matching comment in the mobile layout above. */}
+        <div className={showMapCanvas ? undefined : 'hidden'}>
           <MapContextCanvas
             onAnalysisComplete={(context: SiteContextData) => {
               setActiveSiteContext(context);
               setShowSiteToast(true);
             }}
           />
-        ) : (
+        </div>
+        {!showMapCanvas && (
           <>
             <Viewport3D />
             {activeMode === 'encoding' && (
