@@ -51,11 +51,26 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* html is the actual scrolling element on iOS/iPadOS Safari in standards mode —
+ * overflow:hidden on body alone does not stop the page from rubber-band
+ * scrolling there, which can drag position:fixed bars out of view. Lock both,
+ * plus overscroll-behavior to stop bounce from propagating out of the
+ * embedded map-context iframe. */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
-  overflow: hidden;
   background-color: #020617;
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Mobile root: use dynamic viewport height so the layout fits exactly
