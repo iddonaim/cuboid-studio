@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useSectionCutStore } from '../../store/useSectionCutStore';
+import { useBuilderStore } from '../../store/useBuilderStore';
+import { assemblyBoundsFromPositions } from '../../lib/viewport/assemblyBounds';
+import { CUBE_SIZE } from '../../lib/cube/constants';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -10,6 +13,9 @@ interface SectionCutControlsProps {
   showSeparator?: boolean;
 }
 
+/** Margin past the assembly's actual extent, so the cut plane can clear both ends entirely. */
+const CUT_RANGE_MARGIN = CUBE_SIZE;
+
 export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
   showSeparator = true,
 }) => {
@@ -19,6 +25,23 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
   const setAxis = useSectionCutStore(s => s.setAxis);
   const position = useSectionCutStore(s => s.position);
   const setPosition = useSectionCutStore(s => s.setPosition);
+
+  const placedCubes = useBuilderStore(s => s.placedCubes);
+  const bounds = useMemo(
+    () => assemblyBoundsFromPositions(placedCubes.map(c => c.position)),
+    [placedCubes]
+  );
+
+  const min = bounds.min[axis] - CUT_RANGE_MARGIN;
+  const max = bounds.max[axis] + CUT_RANGE_MARGIN;
+
+  // Re-clamp the stored cut position whenever the assembly (or selected axis) changes
+  // its range, so the plane never gets stuck outside the composition's actual extent.
+  useEffect(() => {
+    if (position < min) setPosition(min);
+    else if (position > max) setPosition(max);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [min, max]);
 
   return (
     <>
@@ -42,13 +65,13 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
               ))}
             </div>
             <Slider
-              min={-100}
-              max={200}
+              min={min}
+              max={max}
               value={[position]}
               onValueChange={([v]) => setPosition(v)}
             />
             <span className="text-slate-500 text-[10px] text-center">
-              {axis.toUpperCase()} = {position}
+              {axis.toUpperCase()} = {Math.round(position)}
             </span>
           </div>
         )}

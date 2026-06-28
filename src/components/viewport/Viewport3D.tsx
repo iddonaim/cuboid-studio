@@ -14,6 +14,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useClippingPlanes } from '../../hooks/useClippingPlanes';
 import { useAppStore } from '../../store/useAppStore';
 import { SpatialGrid } from './SpatialGrid';
+import { gridExtentFromPositions } from '../../lib/viewport/spatialGridExtent';
 import { CubeWithCuts } from './CubeWithCuts';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
@@ -58,10 +59,14 @@ const BuilderScene: React.FC = () => {
   const touchPlacement = useCoarsePointer();
 
   const clippingPlanes = useClippingPlanes();
+  const gridExtent = useMemo(
+    () => gridExtentFromPositions(placedCubes.map(c => c.position)),
+    [placedCubes]
+  );
 
   return (
     <>
-      <SpatialGrid size={7} levels={4} />
+      <SpatialGrid extent={gridExtent} />
 
       {/* Placed cubes */}
       {placedCubes.map(cube => {
@@ -214,7 +219,7 @@ const StandalonePataphysicalScene: React.FC = () => {
 
   return (
     <>
-      <SpatialGrid size={3} levels={2} />
+      <SpatialGrid extent={{ minCellX: -1, maxCellX: 1, minCellZ: -1, maxCellZ: 1, levels: 2 }} />
       {workingGeometry && edgesGeometry && (
         <group position={[0, CUBE_SIZE / 2, 0]}>
           <mesh geometry={workingGeometry} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
@@ -239,10 +244,14 @@ const AssemblyPataphysicalScene: React.FC = () => {
 
   // Find the targeted cube's position for the cutter overlay
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
+  const gridExtent = useMemo(
+    () => gridExtentFromPositions(placedCubes.map(c => c.position)),
+    [placedCubes]
+  );
 
   return (
     <>
-      <SpatialGrid size={7} levels={4} />
+      <SpatialGrid extent={gridExtent} />
 
       {/* Render all placed cubes, with overrides where they exist */}
       {placedCubes.map(cube => {
@@ -310,13 +319,20 @@ const EncodingScene: React.FC = () => {
   const hasSeed = mode !== 'standalone' && seedCubes.length > 0;
   const hasEncoded = encodedCubes && encodedCubes.length > 0;
 
+  const allPositions = useMemo(() => {
+    const positions: [number, number, number][] = [];
+    if (hasSeed) for (const c of seedCubes) positions.push(c.position);
+    if (hasEncoded) for (const c of encodedCubes) positions.push(c.position);
+    return positions;
+  }, [hasSeed, seedCubes, hasEncoded, encodedCubes]);
+
   if (!hasSeed && !hasEncoded) {
-    return <SpatialGrid size={3} levels={2} />;
+    return <SpatialGrid extent={{ minCellX: -1, maxCellX: 1, minCellZ: -1, maxCellZ: 1, levels: 2 }} />;
   }
 
   return (
     <>
-      <SpatialGrid size={7} levels={4} />
+      <SpatialGrid extent={gridExtentFromPositions(allPositions)} />
 
       {/* Seed cubes — only in merge/remix mode */}
       {hasSeed && seedCubes.map((cube, i) => {
@@ -387,9 +403,14 @@ const EvolutionScene: React.FC = () => {
     return new THREE.EdgesGeometry(cutterPreview, 1);
   }, [cutterPreview]);
 
+  const gridExtent = useMemo(
+    () => gridExtentFromPositions(placedCubes.map(c => c.position)),
+    [placedCubes]
+  );
+
   return (
     <>
-      <SpatialGrid size={7} levels={4} />
+      <SpatialGrid extent={gridExtent} />
 
       {placedCubes.map(cube => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
