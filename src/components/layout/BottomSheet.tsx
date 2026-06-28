@@ -30,6 +30,10 @@ const glassStyle: React.CSSProperties = {
 
 interface BottomSheetProps {
   children: React.ReactNode;
+  /** Pin to the 56px collapsed (tab-bar-only) height and ignore drag/tap-to-expand.
+   *  Used in Map mode, which has no sheet content of its own — letting it expand
+   *  would just show an empty sheet and steal height from the map canvas. */
+  forceCollapsed?: boolean;
 }
 
 /**
@@ -45,11 +49,12 @@ interface BottomSheetProps {
  * [transform:translateZ(0)] promotes the element to its own GPU compositing
  * layer so it always renders above the WebGL canvas on iOS Safari.
  */
-export const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
+export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollapsed = false }) => {
   const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
   const activeMode       = useAppStore(s => s.activeMode);
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
+  const effectiveHeightState = forceCollapsed ? 'collapsed' : heightState;
 
   // Context-aware label that reflects the current sub-mode (e.g. Encode → Builder
   // while editing the merge seed, Evolution → Pataphysical while the sub-mode is
@@ -61,15 +66,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
         ? 'Evolution → Pataphysical'
         : MODE_LABELS[activeMode] ?? activeMode;
 
-  const cycleHeight    = () => setHeightState(s => NEXT_STATE[s]);
-  const expandToHalf   = () => { if (heightState === 'collapsed') setHeightState('half'); };
-  const isCollapsed    = heightState === 'collapsed';
+  const cycleHeight    = () => { if (!forceCollapsed) setHeightState(s => NEXT_STATE[s]); };
+  const expandToHalf   = () => { if (!forceCollapsed && heightState === 'collapsed') setHeightState('half'); };
+  const isCollapsed    = effectiveHeightState === 'collapsed';
 
   return (
     <div
       className="relative w-full flex flex-col flex-shrink-0 z-50 [transform:translateZ(0)]"
       style={{
-        height: HEIGHT_MAP[heightState],
+        height: HEIGHT_MAP[effectiveHeightState],
         transition: 'height 0.38s cubic-bezier(0.32, 0.72, 0, 1)',
         ...glassStyle,
       }}
@@ -109,7 +114,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
       )}
 
       {/* ── Tab bar — always visible ────────────────────────────────────── */}
-      <MobileTabBar heightState={heightState} onExpandToHalf={expandToHalf} />
+      <MobileTabBar heightState={effectiveHeightState} onExpandToHalf={expandToHalf} />
     </div>
   );
 };

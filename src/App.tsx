@@ -308,32 +308,37 @@ const AppInner: React.FC = () => {
           )}
         </div>
 
-        {/* BottomSheet contains mode content + MobileTabBar */}
-        {!showMapCanvas && (
-          <BottomSheet>
-            {activeMode === 'encoding' && (
-              showBuilderSurface ? (
+        {/* BottomSheet contains mode content + MobileTabBar. Always mounted —
+            MobileTabBar is the *only* way to switch tabs on this layout, so it
+            must stay reachable even while in Map mode (it used to unmount
+            itself the instant you tapped into Map, with no way back). */}
+        <BottomSheet forceCollapsed={showMapCanvas}>
+          {!showMapCanvas && (
+            <>
+              {activeMode === 'encoding' && (
+                showBuilderSurface ? (
+                  <>
+                    <SeedEditBanner />
+                    <BuilderSidebar />
+                    <TaggingPanel />
+                  </>
+                ) : (
+                  <EncodingPanel />
+                )
+              )}
+              {activeMode === 'evolution' && (
                 <>
-                  <SeedEditBanner />
-                  <BuilderSidebar />
-                  <TaggingPanel />
+                  <EvolutionSubModeToggle />
+                  {evolutionSubMode === 'evolve'
+                    ? <EvolutionPanel />
+                    : <PataphysicalSurface />}
                 </>
-              ) : (
-                <EncodingPanel />
-              )
-            )}
-            {activeMode === 'evolution' && (
-              <>
-                <EvolutionSubModeToggle />
-                {evolutionSubMode === 'evolve'
-                  ? <EvolutionPanel />
-                  : <PataphysicalSurface />}
-              </>
-            )}
-            {activeMode === 'decode' && <DecodePanel />}
-            {activeMode !== 'decode' && <ExportPanel />}
-          </BottomSheet>
-        )}
+              )}
+              {activeMode === 'decode' && <DecodePanel />}
+              {activeMode !== 'decode' && <ExportPanel />}
+            </>
+          )}
+        </BottomSheet>
       </div>
     );
   }
