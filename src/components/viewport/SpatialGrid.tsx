@@ -50,7 +50,7 @@ export const SpatialGrid: React.FC<{ extent: GridExtent }> = ({ extent }) => {
           itemSize={3}
         />
       </bufferGeometry>
-      <lineBasicMaterial color="#94a3b8" transparent opacity={0.4} />
+      <lineBasicMaterial color="#a39f93" transparent opacity={0.35} />
     </lineSegments>
   );
 };

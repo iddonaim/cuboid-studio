@@ -116,7 +116,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
         <Rect
           width={TILE_SIZE}
           height={TILE_SIZE}
-          stroke="#2563eb"
+          stroke="#bc4a1f"
           strokeWidth={2}
           listening={false}
         />
@@ -127,7 +127,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
           x={sp.x * TILE_SIZE}
           y={sp.y * TILE_SIZE}
           radius={SNAP_POINT_RADIUS}
-          fill="#dc2626"
+          fill="#bc4a1f"
           stroke="#ffffff"
           strokeWidth={1}
           opacity={isSnapPointActive(activeSnap, tile.id, index) ? 1 : 0.75}
@@ -358,11 +358,11 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full min-h-[180px] overflow-hidden rounded-md border border-slate-300 bg-white shadow-inner"
+      className="relative h-full w-full min-h-[180px] overflow-hidden rounded-md border border-ink-400 bg-white shadow-inner"
     >
       {canvasTiles.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 text-center">
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-ink-500">
             {isMobile
               ? 'Select a part above, then tap here to place it'
               : 'Drag a part from the strip above onto this canvas'}
@@ -390,7 +390,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
             <Line
               key={`v-${i}`}
               points={[i * 24, 0, i * 24, size.height]}
-              stroke="#e2e8f0"
+              stroke="#e6e3d9"
               strokeWidth={1}
             />
           ))}
@@ -398,7 +398,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
             <Line
               key={`h-${i}`}
               points={[0, i * 24, size.width, i * 24]}
-              stroke="#e2e8f0"
+              stroke="#e6e3d9"
               strokeWidth={1}
             />
           ))}

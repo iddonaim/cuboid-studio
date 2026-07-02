@@ -16,21 +16,21 @@ export const RulesToggle: React.FC<RulesToggleProps> = ({ enabled, onChange }) =
           checked={enabled}
           onCheckedChange={onChange}
           id="rules-toggle"
-          className="data-[state=checked]:bg-green-600"
+          className="data-[state=checked]:bg-primary"
         />
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className={`text-xs cursor-pointer underline decoration-dotted ${enabled ? 'text-green-500' : 'text-slate-400'}`}
+          className={`text-xs cursor-pointer underline decoration-dotted ${enabled ? 'text-green-600' : 'text-ink-600'}`}
         >
           Rules {showDetails ? '▼' : '▶'}
         </button>
       </div>
       {showDetails && (
-        <div className="mt-2 ml-6 p-2 bg-slate-800 rounded text-[11px] text-slate-400 leading-relaxed">
-          <div className="text-green-500">✓ Door ↔ Door (sphere↔sphere)</div>
-          <div className="text-green-500">✓ Window ↔ Window (cylinder↔cylinder)</div>
-          <div className="text-red-500">✗ Wall ↔ anything (blocks growth)</div>
-          <div className="text-red-500">✗ Door ↔ Window</div>
+        <div className="mt-2 ml-6 p-2 bg-ink-100 rounded text-[11px] text-ink-600 leading-relaxed">
+          <div className="text-green-600">✓ Door ↔ Door (sphere↔sphere)</div>
+          <div className="text-green-600">✓ Window ↔ Window (cylinder↔cylinder)</div>
+          <div className="text-destructive">✗ Wall ↔ anything (blocks growth)</div>
+          <div className="text-destructive">✗ Door ↔ Window</div>
         </div>
       )}
     </div>

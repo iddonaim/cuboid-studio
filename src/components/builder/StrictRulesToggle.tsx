@@ -25,18 +25,18 @@ export const StrictRulesToggle: React.FC<StrictRulesToggleProps> = ({ enabled, o
           disabled={disabled}
           className={`text-xs underline decoration-dotted ${
             disabled
-              ? 'cursor-not-allowed opacity-50 text-slate-600'
+              ? 'cursor-not-allowed opacity-50 text-ink-400'
               : enabled
-              ? 'cursor-pointer text-amber-400'
-              : 'cursor-pointer text-slate-400'
+              ? 'cursor-pointer text-amber-600'
+              : 'cursor-pointer text-ink-600'
           }`}
         >
           Strict Alignment {showDetails ? '▼' : '▶'}
         </button>
       </div>
       {showDetails && (
-        <div className="mt-2 ml-6 p-2 bg-slate-800 rounded text-[11px] text-slate-400 leading-relaxed">
-          <div className="text-amber-400 mb-1">Additional constraints:</div>
+        <div className="mt-2 ml-6 p-2 bg-ink-100 rounded text-[11px] text-ink-600 leading-relaxed">
+          <div className="text-amber-600 mb-1">Additional constraints:</div>
           <div>• Sphere ↔ Sphere: centers must align</div>
           <div>• Cylinder ↔ Cylinder: centers must align</div>
           <div className="text-[10px] mt-1">(Tolerance: ~10% of cutter radius)</div>

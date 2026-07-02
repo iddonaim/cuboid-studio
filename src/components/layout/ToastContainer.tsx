@@ -2,9 +2,9 @@ import React from 'react';
 import { useToastStore } from '../../store/useToastStore';
 
 const VARIANT_STYLES: Record<string, React.CSSProperties> = {
-  success: { borderColor: 'rgba(16, 185, 129, 0.5)', color: '#6ee7b7' },
-  error: { borderColor: 'rgba(239, 68, 68, 0.5)', color: '#fca5a5' },
-  info: { borderColor: 'rgba(148, 163, 184, 0.4)', color: '#cbd5e1' },
+  success: { borderColor: 'hsl(150 40% 40% / 0.5)', color: 'hsl(150 45% 26%)' },
+  error: { borderColor: 'hsl(var(--destructive) / 0.5)', color: 'hsl(var(--destructive))' },
+  info: { borderColor: 'hsl(var(--border))', color: 'hsl(45 6% 30%)' },
 };
 
 /** Fixed bottom-center stack of auto-dismissing toasts. */
@@ -21,7 +21,11 @@ export const ToastContainer: React.FC = () => {
           key={t.id}
           onClick={() => dismiss(t.id)}
           className="pointer-events-auto rounded-md border px-3.5 py-2 text-[12px] font-mono shadow-xl cursor-pointer"
-          style={{ background: 'rgba(15, 23, 42, 0.96)', ...VARIANT_STYLES[t.variant] }}
+          style={{
+            background: 'hsl(var(--card) / 0.97)',
+            boxShadow: '0 6px 24px hsl(45 9% 13% / 0.12)',
+            ...VARIANT_STYLES[t.variant],
+          }}
         >
           {t.message}
         </button>

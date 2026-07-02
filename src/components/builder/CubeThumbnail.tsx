@@ -12,7 +12,7 @@ export const CubeThumbnail: React.FC<CubeThumbnailProps> = ({ variation, selecte
     <div
       onClick={onClick}
       className={`w-[70px] h-[70px] rounded-md cursor-pointer border-2 overflow-hidden ${
-        selected ? 'border-indigo-400 bg-indigo-600' : 'border-transparent bg-slate-800'
+        selected ? 'border-primary bg-primary' : 'border-transparent bg-ink-100'
       }`}
     >
       <img

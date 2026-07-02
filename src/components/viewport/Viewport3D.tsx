@@ -199,10 +199,10 @@ const CutterOverlay: React.FC<{ offset: [number, number, number] }> = ({ offset 
   return (
     <>
       <mesh geometry={lastCutterGeometry} position={offset}>
-        <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#b03a2e" transparent opacity={0.08} side={THREE.DoubleSide} />
       </mesh>
       <lineSegments geometry={cutterEdgesGeometry} position={offset}>
-        <lineBasicMaterial color="#ef4444" linewidth={1} transparent opacity={0.6} />
+        <lineBasicMaterial color="#b03a2e" linewidth={1} transparent opacity={0.6} />
       </lineSegments>
     </>
   );
@@ -440,10 +440,10 @@ const EvolutionScene: React.FC = () => {
           ]}
         >
           <mesh geometry={cutterPreview} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-            <meshBasicMaterial color="#f59e0b" transparent opacity={0.1} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#bc4a1f" transparent opacity={0.1} side={THREE.DoubleSide} />
           </mesh>
           <lineSegments geometry={cutterEdges} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-            <lineBasicMaterial color="#f59e0b" linewidth={1} transparent opacity={0.7} />
+            <lineBasicMaterial color="#bc4a1f" linewidth={1} transparent opacity={0.7} />
           </lineSegments>
         </group>
       )}
@@ -481,7 +481,7 @@ export const Viewport3D: React.FC = () => {
   return (
     <>
       <Canvas
-        style={{ background: '#f1f5f9' }}
+        style={{ background: '#f7f5f0' }}
         gl={{ localClippingEnabled: true, preserveDrawingBuffer: true }}
       >
         <CameraController

@@ -23,7 +23,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
   if (log.length < 2) {
     return (
       <div
-        className="flex items-center justify-center text-slate-600 text-[10px] border border-slate-700 rounded bg-slate-800"
+        className="flex items-center justify-center text-ink-400 text-[10px] border border-ink-200 rounded bg-ink-100"
         style={{ width, height }}
       >
         {log.length === 0 ? 'No data yet' : 'Need 2+ generations'}
@@ -50,7 +50,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
   const segments: React.ReactNode[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     const delta = log[i + 1].delta;
-    const color = delta > 0.001 ? '#22c55e' : delta < -0.001 ? '#ef4444' : '#64748b';
+    const color = delta > 0.001 ? '#3d8a4e' : delta < -0.001 ? '#b03a2e' : '#7c786c';
     segments.push(
       <line
         key={i}
@@ -72,19 +72,19 @@ export const CompressibilitySparkline: React.FC<Props> = ({
       cx={p.x}
       cy={p.y}
       r={2}
-      fill={i === points.length - 1 ? '#f59e0b' : '#94a3b8'}
+      fill={i === points.length - 1 ? '#bc4a1f' : '#a39f93'}
     />
   ));
 
   return (
-    <div className="border border-slate-700 rounded bg-slate-800">
+    <div className="border border-ink-200 rounded bg-ink-100">
       <svg width={width} height={height}>
         {segments}
         {dots}
       </svg>
-      <div className="flex justify-between px-1.5 pb-1 pt-0.5 text-[9px] text-slate-500">
+      <div className="flex justify-between px-1.5 pb-1 pt-0.5 text-[9px] text-ink-500">
         <span>Gen 1</span>
-        <span className="text-slate-400">{scores[scores.length - 1].toFixed(3)}</span>
+        <span className="text-ink-600">{scores[scores.length - 1].toFixed(3)}</span>
         <span>Gen {log.length}</span>
       </div>
     </div>

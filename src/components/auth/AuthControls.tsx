@@ -28,7 +28,7 @@ const SignInForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       onSubmit={handleSubmit}
       className="flex flex-col gap-2 p-3 w-60"
     >
-      <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+      <span className="font-mono text-[10px] uppercase tracking-wider text-ink-600">
         Sign in
       </span>
       <input
@@ -37,20 +37,20 @@ const SignInForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         value={email}
         onChange={e => setEmail(e.target.value)}
         autoFocus
-        className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-[12px] text-slate-200 outline-none focus:border-slate-500"
+        className="bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-[12px] text-ink-800 outline-none focus:border-ink-400"
       />
       <input
         type="password"
         placeholder="Password"
         value={password}
         onChange={e => setPassword(e.target.value)}
-        className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-[12px] text-slate-200 outline-none focus:border-slate-500"
+        className="bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-[12px] text-ink-800 outline-none focus:border-ink-400"
       />
-      {error && <span className="text-[11px] text-red-400">{error}</span>}
+      {error && <span className="text-[11px] text-destructive">{error}</span>}
       <button
         type="submit"
         disabled={submitting || !email || !password}
-        className="mt-1 rounded bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-[12px] py-1.5 cursor-pointer border-0"
+        className="mt-1 rounded bg-primary hover:bg-primary/85 disabled:opacity-50 text-white text-[12px] py-1.5 cursor-pointer border-0"
       >
         {submitting ? 'Signing in…' : 'Sign in'}
       </button>
@@ -63,12 +63,12 @@ const AccountMenu: React.FC<{ email: string; onClose: () => void }> = ({ email, 
   const { signOut } = useAuthContext();
   return (
     <div className="flex flex-col p-2 w-56">
-      <span className="px-2 py-1 text-[11px] text-slate-400 truncate" title={email}>
+      <span className="px-2 py-1 text-[11px] text-ink-600 truncate" title={email}>
         {email}
       </span>
       <button
         onClick={async () => { await signOut(); onClose(); }}
-        className="text-left rounded px-2 py-1.5 text-[12px] text-slate-200 hover:bg-slate-800 cursor-pointer border-0 bg-transparent"
+        className="text-left rounded px-2 py-1.5 text-[12px] text-ink-800 hover:bg-ink-100 cursor-pointer border-0 bg-transparent"
       >
         Sign out
       </button>
@@ -106,7 +106,7 @@ export const AuthControls: React.FC = () => {
       {user && (
         <button
           onClick={() => setPanelOpen(true)}
-          className="font-mono text-[11px] text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
+          className="font-mono text-[11px] text-ink-700 hover:text-ink-900 bg-ink-100/60 hover:bg-ink-200/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
           title="Open Projects"
         >
           Projects
@@ -117,7 +117,7 @@ export const AuthControls: React.FC = () => {
         {user ? (
           <button
             onClick={() => setOpen(o => !o)}
-            className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-700 text-white text-[11px] font-semibold cursor-pointer border-0"
+            className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-white text-[11px] font-semibold cursor-pointer border-0"
             title={user.email ?? 'Account'}
           >
             {initial}
@@ -125,7 +125,7 @@ export const AuthControls: React.FC = () => {
         ) : (
           <button
             onClick={() => setOpen(o => !o)}
-            className="font-mono text-[11px] text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
+            className="font-mono text-[11px] text-ink-700 hover:text-ink-900 bg-ink-100/60 hover:bg-ink-200/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
           >
             Sign in
           </button>
@@ -133,8 +133,8 @@ export const AuthControls: React.FC = () => {
 
         {open && (
           <div
-            className="absolute right-0 top-full mt-1.5 rounded-lg border border-slate-700 shadow-xl z-[60]"
-            style={{ background: '#0f172a' }}
+            className="absolute right-0 top-full mt-1.5 rounded-lg border border-ink-200 shadow-xl z-[60]"
+            style={{ background: 'hsl(var(--card))', boxShadow: '0 12px 40px hsl(45 9% 13% / 0.14)' }}
           >
             {user
               ? <AccountMenu email={user.email ?? ''} onClose={() => setOpen(false)} />

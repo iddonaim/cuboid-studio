@@ -45,7 +45,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
 
   return (
     <>
-      {showSeparator && <Separator className="mt-3 bg-slate-700" />}
+      {showSeparator && <Separator className="mt-3 bg-ink-200" />}
       <div className="mt-3">
         {enabled && (
           <div className="flex flex-col gap-1.5 mb-2">
@@ -57,7 +57,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
                   className={`flex-1 h-auto py-1 px-0 text-[11px] rounded-sm border-0 ${
                     axis === a
                       ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                      : 'bg-card text-muted-foreground hover:bg-slate-700'
+                      : 'bg-card text-muted-foreground hover:bg-ink-200'
                   }`}
                 >
                   {a.toUpperCase()}
@@ -70,7 +70,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
               value={[position]}
               onValueChange={([v]) => setPosition(v)}
             />
-            <span className="text-slate-500 text-[10px] text-center">
+            <span className="text-ink-500 text-[10px] text-center">
               {axis.toUpperCase()} = {Math.round(position)}
             </span>
           </div>
@@ -84,7 +84,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
           />
           <label
             htmlFor="section-cut"
-            className={`text-xs cursor-pointer ${enabled ? 'text-accent' : 'text-slate-500'}`}
+            className={`text-xs cursor-pointer ${enabled ? 'text-accent' : 'text-ink-500'}`}
           >
             Section Cut
           </label>

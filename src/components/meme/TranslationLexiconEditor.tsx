@@ -52,12 +52,12 @@ interface EditorDraft {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[9px] text-ink-500 uppercase tracking-wide">{label}</span>
       <input
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-slate-500 w-full"
+        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-800 outline-none focus:border-ink-400 w-full"
       />
     </div>
   );
@@ -68,11 +68,11 @@ function SelectField<T extends string>({
 }: { label: string; value: T; options: readonly T[]; onChange: (v: T) => void }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[9px] text-ink-500 uppercase tracking-wide">{label}</span>
       <select
         value={value}
         onChange={e => onChange(e.target.value as T)}
-        className="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-slate-500 w-full"
+        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-800 outline-none focus:border-ink-400 w-full"
       >
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -86,7 +86,7 @@ function HintField({ value, onChange }: { value: string; onChange: (v: string) =
       value={value}
       onChange={e => onChange(e.target.value)}
       rows={3}
-      className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[9px] text-slate-500 italic outline-none focus:border-slate-600 resize-y w-full"
+      className="bg-ink-100 border border-ink-200 rounded px-1.5 py-1 text-[9px] text-ink-500 italic outline-none focus:border-ink-300 resize-y w-full"
     />
   );
 }
@@ -100,13 +100,13 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
   };
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-slate-500 uppercase tracking-wide">Tags</span>
+      <span className="text-[9px] text-ink-500 uppercase tracking-wide">Tags</span>
       <div className="flex flex-wrap gap-1 mb-0.5">
         {tags.map(tag => (
-          <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-700 rounded text-[9px] text-slate-300">
+          <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-ink-200 rounded text-[9px] text-ink-700">
             {tag}
             <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))}
-              className="text-slate-500 hover:text-red-400 bg-transparent border-0 cursor-pointer p-0 leading-none">×</button>
+              className="text-ink-500 hover:text-destructive bg-transparent border-0 cursor-pointer p-0 leading-none">×</button>
           </span>
         ))}
       </div>
@@ -117,7 +117,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
           placeholder="type a tag, press Enter"
-          className="flex-1 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-slate-500"
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-800 outline-none focus:border-ink-400"
         />
         <button type="button" onClick={add} className="px-1.5 text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Add</button>
       </div>
@@ -126,14 +126,14 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return <span className="text-[9px] text-slate-300 font-semibold uppercase tracking-wide">{title}</span>;
+  return <span className="text-[9px] text-ink-700 font-semibold uppercase tracking-wide">{title}</span>;
 }
 
 function RemoveRow({ index, label, onRemove }: { index: number; label: string; onRemove: () => void }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-[9px] text-slate-600">{label} {index + 1}</span>
-      <button type="button" onClick={onRemove} className="text-[9px] text-red-700 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0">remove</button>
+      <span className="text-[9px] text-ink-400">{label} {index + 1}</span>
+      <button type="button" onClick={onRemove} className="text-[9px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0">remove</button>
     </div>
   );
 }
@@ -147,7 +147,7 @@ function MoveList({ moves, onChange }: { moves: RhetoricalMoveEntry[]; onChange:
   return (
     <div className="flex flex-col gap-1">
       {moves.map((m, i) => (
-        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700">
+        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
           <RemoveRow index={i} label="Move" onRemove={() => onChange(moves.filter((_, j) => j !== i))} />
           <Field label="label (e.g. Irony)" value={m.label} onChange={v => patch(i, { label: v })} />
           <Field label="definition (Pass 1: how it's recognised)" value={m.definition} onChange={v => patch(i, { definition: v })} />
@@ -168,7 +168,7 @@ function EdgeList({ edges, onChange }: { edges: EdgeTypeEntry[]; onChange: (e: E
   return (
     <div className="flex flex-col gap-1">
       {edges.map((e, i) => (
-        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700">
+        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
           <RemoveRow index={i} label="Edge" onRemove={() => onChange(edges.filter((_, j) => j !== i))} />
           <SelectField<EdgeType> label="edge type (fixed set)" value={e.id} options={EDGE_TYPE_IDS} onChange={v => patch(i, { id: v })} />
           <Field label="definition" value={e.definition} onChange={v => patch(i, { definition: v })} />
@@ -187,7 +187,7 @@ function AffectList({ affects, onChange }: { affects: AffectGeometryEntry[]; onC
   return (
     <div className="flex flex-col gap-1">
       {affects.map((a, i) => (
-        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700">
+        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
           <RemoveRow index={i} label="Rule" onRemove={() => onChange(affects.filter((_, j) => j !== i))} />
           <Field label="trigger (geometric tendency)" value={a.trigger} onChange={v => patch(i, { trigger: v })} />
           <Field label="example affects" value={a.examples} onChange={v => patch(i, { examples: v })} />
@@ -224,7 +224,7 @@ function EditorForm({
   const hint = (k: string) => draft.descriptions[k] ?? DEFAULT_TRANSLATION_DESCRIPTIONS[k] ?? '';
 
   return (
-    <div className="flex flex-col gap-2 pt-1 border-t border-slate-700 mt-1">
+    <div className="flex flex-col gap-2 pt-1 border-t border-ink-200 mt-1">
       <Field label="name" value={draft.name} onChange={v => onChangeDraft({ ...draft, name: v })} />
       <TagInput tags={draft.tags} onChange={t => onChangeDraft({ ...draft, tags: t })} />
 
@@ -263,8 +263,8 @@ function EditorForm({
         <SectionHeader title="Confidence vector axes" />
         <HintField value={hint('confidence_axes')} onChange={v => patchHint('confidence_axes', v)} />
         {draft.lexicon.confidence_axes.map((ax, i) => (
-          <div key={ax.key} className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700">
-            <span className="text-[9px] text-slate-600">{ax.key}</span>
+          <div key={ax.key} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
+            <span className="text-[9px] text-ink-400">{ax.key}</span>
             <Field label="label" value={ax.label} onChange={v => patchLexicon({ confidence_axes: draft.lexicon.confidence_axes.map((a, j) => j === i ? { ...a, label: v } : a) })} />
             <Field label="abbr" value={ax.abbr} onChange={v => patchLexicon({ confidence_axes: draft.lexicon.confidence_axes.map((a, j) => j === i ? { ...a, abbr: v } : a) })} />
             <Field label="description" value={ax.description} onChange={v => patchLexicon({ confidence_axes: draft.lexicon.confidence_axes.map((a, j) => j === i ? { ...a, description: v } : a) })} />
@@ -275,26 +275,26 @@ function EditorForm({
       {/* Reset */}
       <button type="button"
         onClick={() => onChangeDraft({ ...draft, lexicon: deepClone(DEFAULT_TRANSLATION_LEXICON), descriptions: { ...DEFAULT_TRANSLATION_DESCRIPTIONS } })}
-        className="self-start text-[9px] text-slate-600 hover:text-slate-400 bg-transparent border-0 cursor-pointer p-0">
+        className="self-start text-[9px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0">
         Reset vocabulary to default values
       </button>
 
-      {error && <span className="text-[9px] text-red-400">{error}</span>}
+      {error && <span className="text-[9px] text-destructive">{error}</span>}
 
       {/* Save actions */}
       <div className="flex gap-1.5 flex-wrap items-center">
         {sourceId && (
           <button type="button" onClick={onUpdate} disabled={saving || !draft.name.trim()}
-            className="px-2 py-1 text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border-0 cursor-pointer disabled:opacity-50">
+            className="px-2 py-1 text-[10px] bg-ink-200 hover:bg-ink-300 text-ink-800 rounded border-0 cursor-pointer disabled:opacity-50">
             {saving ? 'Saving…' : `Update "${draft.name || '…'}"`}
           </button>
         )}
         <button type="button" onClick={onSaveAsNew} disabled={saving || !draft.name.trim()}
-          className="px-2 py-1 text-[10px] bg-emerald-900 hover:bg-emerald-800 text-emerald-200 rounded border-0 cursor-pointer disabled:opacity-50">
+          className="px-2 py-1 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary rounded border-0 cursor-pointer disabled:opacity-50">
           {saving ? 'Saving…' : 'Save as new'}
         </button>
         <button type="button" onClick={onClose}
-          className="px-2 py-1 text-[10px] text-slate-500 hover:text-slate-300 bg-transparent border-0 cursor-pointer p-0">
+          className="px-2 py-1 text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer p-0">
           Close editor
         </button>
       </div>
@@ -331,18 +331,18 @@ function LibraryPanel({
   const commitRename = (id: string) => { if (renameValue.trim()) onRename(id, renameValue.trim()); setRenamingId(null); };
 
   return (
-    <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-700 mt-1">
+    <div className="flex flex-col gap-1.5 pt-1 border-t border-ink-200 mt-1">
       <div className="flex gap-1 items-center">
         <input type="text" value={tagFilter} onChange={e => onTagFilterChange(e.target.value)} placeholder="filter by tag…"
-          className="flex-1 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-300 outline-none focus:border-slate-500" />
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-700 outline-none focus:border-ink-400" />
         {tagFilter && (
-          <button type="button" onClick={() => onTagFilterChange('')} className="text-[9px] text-slate-600 hover:text-slate-400 bg-transparent border-0 cursor-pointer p-0">clear</button>
+          <button type="button" onClick={() => onTagFilterChange('')} className="text-[9px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0">clear</button>
         )}
       </div>
 
       {/* Default row */}
-      <div className={`flex items-center justify-between gap-1 px-1.5 py-1 rounded border ${activeLexiconId === null ? 'border-sky-700 bg-slate-900' : 'border-slate-700'}`}>
-        <span className="text-[10px] text-slate-200">Default (built-in)</span>
+      <div className={`flex items-center justify-between gap-1 px-1.5 py-1 rounded border ${activeLexiconId === null ? 'border-sky-700 bg-ink-50' : 'border-ink-200'}`}>
+        <span className="text-[10px] text-ink-800">Default (built-in)</span>
         {activeLexiconId === null ? (
           <span className="text-[9px] text-sky-400 shrink-0">Active</span>
         ) : (
@@ -351,22 +351,22 @@ function LibraryPanel({
       </div>
 
       {filtered.map(l => (
-        <div key={l.id} className={`flex flex-col gap-1 px-1.5 py-1 rounded border ${activeLexiconId === l.id ? 'border-sky-700 bg-slate-900' : 'border-slate-700'}`}>
+        <div key={l.id} className={`flex flex-col gap-1 px-1.5 py-1 rounded border ${activeLexiconId === l.id ? 'border-sky-700 bg-ink-50' : 'border-ink-200'}`}>
           <div className="flex items-center justify-between gap-1">
             {renamingId === l.id ? (
               <input autoFocus type="text" value={renameValue} onChange={e => setRenameValue(e.target.value)}
                 onBlur={() => commitRename(l.id)}
                 onKeyDown={e => { if (e.key === 'Enter') commitRename(l.id); if (e.key === 'Escape') setRenamingId(null); }}
-                className="flex-1 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-[10px] text-slate-200 outline-none" />
+                className="flex-1 bg-ink-100 border border-ink-300 rounded px-1 py-0.5 text-[10px] text-ink-800 outline-none" />
             ) : (
-              <span className="text-[10px] text-slate-200 truncate flex-1">{l.name}</span>
+              <span className="text-[10px] text-ink-800 truncate flex-1">{l.name}</span>
             )}
             {activeLexiconId === l.id && <span className="text-[9px] text-sky-400 shrink-0">Active</span>}
           </div>
 
           {(l.tags ?? []).length > 0 && (
             <div className="flex flex-wrap gap-0.5">
-              {(l.tags ?? []).map(t => <span key={t} className="px-1 py-0.5 bg-slate-700 rounded text-[8px] text-slate-400">{t}</span>)}
+              {(l.tags ?? []).map(t => <span key={t} className="px-1 py-0.5 bg-ink-200 rounded text-[8px] text-ink-600">{t}</span>)}
             </div>
           )}
 
@@ -374,15 +374,15 @@ function LibraryPanel({
             {activeLexiconId !== l.id && (
               <button type="button" onClick={() => onActivate(l.id)} className="text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Activate</button>
             )}
-            <button type="button" onClick={() => onEdit(l)} className="text-[9px] text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer p-0">Edit</button>
-            <button type="button" onClick={() => startRename(l)} className="text-[9px] text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer p-0">Rename</button>
-            <button type="button" onClick={() => onDuplicate(l.id)} className="text-[9px] text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer p-0">Duplicate</button>
-            <button type="button" onClick={() => onDelete(l.id, l.name)} className="text-[9px] text-red-700 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0">Delete</button>
+            <button type="button" onClick={() => onEdit(l)} className="text-[9px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Edit</button>
+            <button type="button" onClick={() => startRename(l)} className="text-[9px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Rename</button>
+            <button type="button" onClick={() => onDuplicate(l.id)} className="text-[9px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Duplicate</button>
+            <button type="button" onClick={() => onDelete(l.id, l.name)} className="text-[9px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0">Delete</button>
           </div>
         </div>
       ))}
 
-      <button type="button" onClick={onNewFromDefault} className="self-start text-[9px] text-emerald-600 hover:text-emerald-400 bg-transparent border-0 cursor-pointer p-0 mt-0.5">
+      <button type="button" onClick={onNewFromDefault} className="self-start text-[9px] text-green-700 hover:text-green-600 bg-transparent border-0 cursor-pointer p-0 mt-0.5">
         + New translation lexicon from default
       </button>
     </div>
@@ -516,7 +516,7 @@ export const TranslationLexiconEditor: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="text-slate-600 text-[10px] italic px-1">
+      <div className="text-ink-400 text-[10px] italic px-1">
         Sign in to create and use custom translation lexicons.
       </div>
     );
@@ -527,21 +527,21 @@ export const TranslationLexiconEditor: React.FC = () => {
     : 'Default';
 
   return (
-    <div className="flex flex-col gap-1.5 p-2 bg-slate-800 border border-slate-700 rounded">
+    <div className="flex flex-col gap-1.5 p-2 bg-ink-100 border border-ink-200 rounded">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-[10px] text-slate-400 font-medium">
+        <span className="text-[10px] text-ink-600 font-medium">
           Translation vocabulary:&nbsp;
-          <span className="text-slate-200">{loading ? '…' : activeName}</span>
+          <span className="text-ink-800">{loading ? '…' : activeName}</span>
         </span>
         <div className="flex gap-2">
           <button type="button"
             onClick={() => { setLibraryOpen(v => !v); if (editorOpen) setEditorOpen(false); }}
-            className="text-[9px] text-slate-500 hover:text-slate-300 bg-transparent border-0 cursor-pointer underline p-0">
+            className="text-[9px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
             {libraryOpen ? 'Close library' : 'Library'}
           </button>
           <button type="button"
             onClick={() => { openEditorForActive(); setLibraryOpen(false); }}
-            className="text-[9px] text-slate-500 hover:text-slate-300 bg-transparent border-0 cursor-pointer underline p-0">
+            className="text-[9px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
             {editorOpen ? 'Close editor' : 'Edit'}
           </button>
         </div>

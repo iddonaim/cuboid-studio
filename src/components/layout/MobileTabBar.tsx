@@ -75,7 +75,7 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpan
       style={{
         height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        borderTop: '1px solid hsl(var(--border))',
       }}
     >
       {VISIBLE_NAV_SLOTS.map((slot) => {
@@ -87,7 +87,7 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpan
             onClick={() => handlePress(slot.key as AppMode)}
             className="flex-1 flex flex-col items-center justify-center gap-[3px] bg-transparent border-none cursor-pointer transition-colors"
             style={{
-              color:      active ? '#ffffff' : 'rgb(148 163 184)',
+              color:      active ? 'hsl(var(--primary))' : 'hsl(45 6% 55%)',
               fontWeight: active ? 600 : 400,
             }}
           >

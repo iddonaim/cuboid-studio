@@ -4,9 +4,11 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { AuthControls } from '../auth/AuthControls';
 
 const glassStyle: React.CSSProperties = {
-  background: '#0f172a',
-  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-  boxShadow: '0 8px 48px rgba(0, 0, 0, 0.4)',
+  background: 'hsl(var(--card) / 0.94)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  borderBottom: '1px solid hsl(var(--border))',
+  boxShadow: '0 1px 12px hsl(45 9% 13% / 0.05)',
 };
 
 // Inline SVG panel-toggle icon — two vertical regions suggesting a sidebar
@@ -49,7 +51,9 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
     >
       {/* ── Left: logo ── */}
       <div className="flex items-center px-4">
-        <span className="font-mono text-[13px] text-slate-300 select-none">CS</span>
+        <span className="font-mono text-[13px] font-semibold tracking-tight text-ink-900 select-none">
+          Cuboid<span className="text-primary">·</span>Studio
+        </span>
       </div>
 
       {/* ── Center: mode tabs ──
@@ -65,12 +69,16 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
                   key={slot.key}
                   onClick={() => setActiveMode(slot.key as AppMode)}
                   className={[
-                    'h-full px-3 flex items-center font-mono text-[11px] transition-colors border-b-2 bg-transparent border-0 cursor-pointer',
+                    'h-full px-3 flex items-center font-mono text-[11px] uppercase tracking-wider transition-colors bg-transparent border-0 cursor-pointer',
                     active
-                      ? 'text-white border-b-white'
-                      : 'text-slate-400 border-b-transparent hover:text-slate-200',
+                      ? 'text-ink-900 font-semibold'
+                      : 'text-ink-500 hover:text-ink-800',
                   ].join(' ')}
-                  style={{ borderBottom: active ? '2px solid #fff' : '2px solid transparent' }}
+                  style={{
+                    borderBottom: active
+                      ? '2px solid hsl(var(--primary))'
+                      : '2px solid transparent',
+                  }}
                 >
                   {slot.label}
                 </button>
@@ -83,14 +91,17 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
       <div className="flex items-center justify-end gap-2 px-4">
         <AuthControls />
 
-        <span className="font-mono text-[11px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-full select-none">
+        <span
+          className="font-mono text-[11px] text-ink-600 bg-ink-100 border border-ink-200 px-2 py-0.5 rounded-full select-none"
+          title="Cubes in assembly"
+        >
           {placedCubes.length}
         </span>
 
         {showModeTabs && (
           <button
             onClick={togglePanel}
-            className="text-slate-400 hover:text-slate-200 transition-colors bg-transparent border-none cursor-pointer p-1 flex items-center"
+            className="text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer p-1 flex items-center"
             title={floatingPanelOpen ? 'Hide panel' : 'Show panel'}
           >
             <PanelIcon open={floatingPanelOpen} />

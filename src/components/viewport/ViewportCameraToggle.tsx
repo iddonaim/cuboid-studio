@@ -15,10 +15,10 @@ export const ViewportCameraToggle: React.FC = () => {
       onClick={toggleOrthographic}
       title={orthographic ? 'Switch to perspective' : 'Switch to orthographic'}
       aria-pressed={orthographic}
-      className={`absolute bottom-[132px] right-3 z-10 h-7 min-w-[52px] px-2 rounded-full border border-slate-700 font-mono text-[10px] uppercase tracking-wide shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-colors duration-100 ${
+      className={`absolute bottom-[132px] right-3 z-10 h-7 min-w-[52px] px-2 rounded-full border border-ink-200 font-mono text-[10px] uppercase tracking-wide shadow-[0_2px_8px_rgba(35,33,24,0.18)] transition-colors duration-100 ${
         orthographic
-          ? 'bg-slate-200 text-slate-900 cursor-pointer'
-          : 'bg-slate-950 text-slate-400 cursor-pointer hover:text-slate-300'
+          ? 'bg-ink-200 text-ink-900 cursor-pointer'
+          : 'bg-ink-100 text-ink-600 cursor-pointer hover:text-ink-700'
       }`}
     >
       Ortho

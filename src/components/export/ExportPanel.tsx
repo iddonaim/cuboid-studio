@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Box } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { buildAssemblyExport, downloadAssemblyJSON } from '../../lib/export/assemblyExport';
@@ -55,21 +56,21 @@ export const ExportPanel: React.FC = () => {
 
   // Status dot color via Tailwind bg classes
   const statusDotClass: Record<string, string> = {
-    disconnected: 'bg-slate-500',
+    disconnected: 'bg-ink-300',
     connecting: 'bg-amber-400',
     connected: 'bg-green-500',
-    error: 'bg-red-500',
+    error: 'bg-destructive',
   };
 
   const hasCubes = placedCubes.length > 0;
 
   return (
-    <div className="border-t border-slate-700 pt-3 mt-3">
+    <div className="border-t border-ink-200 pt-3 mt-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-slate-400 text-[11px] font-semibold">Export</span>
+        <span className="text-ink-600 text-[11px] font-semibold">Export</span>
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="bg-transparent border-0 text-slate-600 hover:text-slate-400 cursor-pointer text-[10px] px-1 py-0.5"
+          className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[10px] px-1 py-0.5"
         >
           {showSettings ? 'hide' : 'settings'}
         </button>
@@ -79,10 +80,10 @@ export const ExportPanel: React.FC = () => {
       <Button
         onClick={downloadAssemblyJSON}
         disabled={!hasCubes}
-        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-slate-700 ${
+        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-ink-200 ${
           hasCubes
-            ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            : 'bg-slate-950 text-slate-600 cursor-default'
+            ? 'bg-ink-100 text-ink-600 hover:bg-ink-200'
+            : 'bg-ink-100 text-ink-400 cursor-default'
         }`}
       >
         Download Assembly JSON
@@ -92,13 +93,13 @@ export const ExportPanel: React.FC = () => {
       <Button
         onClick={() => setShowAR(true)}
         disabled={!hasCubes}
-        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-slate-700 flex items-center justify-center gap-1.5 ${
+        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-ink-200 flex items-center justify-center gap-1.5 ${
           hasCubes
-            ? 'bg-blue-950 text-blue-300 hover:bg-blue-900'
-            : 'bg-slate-950 text-slate-600 cursor-default'
+            ? 'bg-primary/10 text-primary hover:bg-primary/20'
+            : 'bg-ink-100 text-ink-400 cursor-default'
         }`}
       >
-        <i className="fas fa-cube text-[10px]" />
+        <Box size={12} />
         View in AR
       </Button>
 
@@ -109,19 +110,19 @@ export const ExportPanel: React.FC = () => {
       {showAR && <ARViewer onClose={() => setShowAR(false)} />}
 
       {/* Live-link section */}
-      <Separator className="bg-slate-700 my-2" />
-      <div className="p-2 bg-slate-950 border border-slate-700 rounded-md">
+      <Separator className="bg-ink-200 my-2" />
+      <div className="p-2 bg-ink-100 border border-ink-200 rounded-md">
         <div className="flex items-center gap-1.5 mb-1.5">
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass[linkStatus] ?? 'bg-slate-500'}`} />
-          <span className="text-slate-400 text-[10px] flex-1">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass[linkStatus] ?? 'bg-ink-300'}`} />
+          <span className="text-ink-600 text-[10px] flex-1">
             GH Live-Link: {linkStatus}
           </span>
           <Button
             onClick={handleConnect}
             className={`h-auto py-0.5 px-2 text-[10px] border-0 ${
               linkStatus === 'connected'
-                ? 'bg-red-900 hover:bg-red-800 text-white'
-                : 'bg-emerald-900 hover:bg-emerald-800 text-white'
+                ? 'bg-destructive/10 hover:bg-destructive/20 text-destructive'
+                : 'bg-primary hover:bg-primary/85 text-white'
             }`}
           >
             {linkStatus === 'connected' ? 'Stop' : 'Connect'}
@@ -133,37 +134,37 @@ export const ExportPanel: React.FC = () => {
             <Button
               onClick={handleManualPush}
               disabled={!hasCubes}
-              className={`flex-1 h-auto py-1 text-[10px] border border-slate-700 ${
+              className={`flex-1 h-auto py-1 text-[10px] border border-ink-200 ${
                 hasCubes
-                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                  : 'bg-transparent text-slate-600 cursor-default'
+                  ? 'bg-ink-100 text-ink-600 hover:bg-ink-200'
+                  : 'bg-transparent text-ink-400 cursor-default'
               }`}
             >
               Push Now
             </Button>
             {lastPush && (
-              <span className="text-slate-600 text-[9px]">{lastPush}</span>
+              <span className="text-ink-400 text-[9px]">{lastPush}</span>
             )}
           </div>
         )}
 
         {linkStatus === 'disconnected' && (
-          <div className="text-slate-600 text-[9px] leading-relaxed">
-            Run <code className="text-blue-400">python cuboid_bridge_server.py</code> first
+          <div className="text-ink-400 text-[9px] leading-relaxed">
+            Run <code className="text-primary">python cuboid_bridge_server.py</code> first
           </div>
         )}
       </div>
 
       {/* Settings (port config) */}
       {showSettings && (
-        <div className="mt-1.5 p-1.5 bg-slate-950 border border-slate-800 rounded">
-          <label className="flex items-center gap-1.5 text-[10px] text-slate-500">
+        <div className="mt-1.5 p-1.5 bg-ink-100 border border-ink-200 rounded">
+          <label className="flex items-center gap-1.5 text-[10px] text-ink-500">
             Port:
             <input
               type="number"
               value={port}
               onChange={(e) => setPort(Number(e.target.value))}
-              className="w-16 px-1 py-0.5 text-[10px] bg-slate-800 border border-slate-700 rounded text-slate-400"
+              className="w-16 px-1 py-0.5 text-[10px] bg-ink-100 border border-ink-200 rounded text-ink-600"
             />
           </label>
         </div>

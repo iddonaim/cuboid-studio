@@ -62,7 +62,7 @@ export const SaveCompositionButton: React.FC = () => {
     <div className="absolute top-[50px] right-3 z-30 flex flex-col items-end gap-1.5">
       <button
         onClick={handleOpen}
-        className="rounded-full bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-mono px-3 py-1.5 shadow-lg cursor-pointer border-0"
+        className="rounded-full bg-primary hover:bg-primary/85 text-white text-[11px] font-mono px-3 py-1.5 shadow-lg cursor-pointer border-0"
         title={`Save to ${activeProject.name} / ${activeSite.name}`}
       >
         Save to project
@@ -71,30 +71,30 @@ export const SaveCompositionButton: React.FC = () => {
       {open && (
         <form
           onSubmit={handleSave}
-          className="flex flex-col gap-2 p-3 w-64 rounded-lg border border-slate-700 shadow-xl"
-          style={{ background: '#0f172a' }}
+          className="flex flex-col gap-2 p-3 w-64 rounded-lg border border-ink-200 shadow-xl"
+          style={{ background: 'hsl(var(--card))', boxShadow: '0 12px 40px hsl(45 9% 13% / 0.14)' }}
         >
-          <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-ink-600">
             Save composition to {activeSite.name}
           </span>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
             autoFocus
-            className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-[12px] text-slate-200 outline-none focus:border-slate-500"
+            className="bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-[12px] text-ink-800 outline-none focus:border-ink-400"
           />
           <div className="flex gap-2 justify-end">
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-[12px] text-slate-400 hover:text-slate-200 px-2 py-1 cursor-pointer bg-transparent border-0"
+              className="text-[12px] text-ink-600 hover:text-ink-800 px-2 py-1 cursor-pointer bg-transparent border-0"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] px-3 py-1 cursor-pointer border-0"
+              className="rounded bg-primary hover:bg-primary/85 disabled:opacity-50 text-white text-[12px] px-3 py-1 cursor-pointer border-0"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

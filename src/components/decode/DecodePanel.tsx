@@ -43,11 +43,11 @@ const DrawerTile: React.FC<{
       onClick={onSelect}
       className={`flex-shrink-0 w-[72px] rounded-md border p-1.5 transition-colors ${
         selected
-          ? 'border-blue-500 bg-slate-800 ring-2 ring-blue-500/40'
-          : 'border-slate-600 bg-slate-800/80 hover:border-slate-400'
+          ? 'border-primary bg-ink-100 ring-2 ring-primary/40'
+          : 'border-ink-300 bg-ink-100/80 hover:border-ink-400'
       } ${!isMobile ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
     >
-      <div className="aspect-square w-full overflow-hidden rounded border border-slate-200 bg-white">
+      <div className="aspect-square w-full overflow-hidden rounded border border-ink-300 bg-white">
         {!imgFailed ? (
           <img
             src={variation2dPath(variationId)}
@@ -57,12 +57,12 @@ const DrawerTile: React.FC<{
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-slate-400">
+          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-ink-600">
             {variationId}
           </div>
         )}
       </div>
-      <span className="mt-1 block text-center font-mono text-[9px] text-slate-400">
+      <span className="mt-1 block text-center font-mono text-[9px] text-ink-600">
         {variationId}
       </span>
     </button>
@@ -179,7 +179,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
     <div className={`flex flex-col gap-2 ${expanded ? 'h-full' : ''}`}>
       {/* Zone 1 — Toolbar */}
       <div className="flex items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-[11px] text-slate-400">
+        <label className="flex items-center gap-2 text-[11px] text-ink-600">
           <Switch checked={freestyle} onCheckedChange={setFreestyle} />
           <span>Freestyle</span>
         </label>
@@ -190,7 +190,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+              className="h-8 w-8 text-ink-600 hover:text-ink-800"
               onClick={() => rotateTile(selectedTileId)}
               aria-label="Rotate tile"
             >
@@ -203,7 +203,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+              className="h-8 w-8 text-ink-600 hover:text-ink-800"
               onClick={onCloseExpanded}
               aria-label="Close expanded canvas"
             >
@@ -214,7 +214,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-slate-200"
+              className="h-8 w-8 text-ink-600 hover:text-ink-800"
               onClick={toggleCanvasExpanded}
               aria-label="Expand canvas"
             >
@@ -226,11 +226,11 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
 
       {/* Zone 2 — Parts drawer */}
       <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
           Parts
         </p>
         {drawerVariations.length === 0 ? (
-          <p className="text-[10px] text-slate-600">
+          <p className="text-[10px] text-ink-400">
             {freestyle
               ? 'No variations available.'
               : 'No cubes in the assembly yet — enable Freestyle to browse all 70 parts.'}
@@ -259,19 +259,19 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           </div>
         )}
         {!isMobile && drawerVariations.length > 0 && (
-          <p className="mt-1 text-[10px] text-slate-600">Drag a part onto the canvas below.</p>
+          <p className="mt-1 text-[10px] text-ink-400">Drag a part onto the canvas below.</p>
         )}
       </div>
 
       {isMobile && pendingPlacementVariationId && (
-        <p className="text-[10px] text-blue-400">
+        <p className="text-[10px] text-primary">
           Tap the canvas to place {pendingPlacementVariationId}
         </p>
       )}
 
       {/* Zone 3 — Canvas */}
       <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
           Canvas
         </p>
         <div
@@ -296,7 +296,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           type="button"
           disabled={isEmpty}
           onClick={clearCanvas}
-          className="flex-1 h-auto py-2 text-[11px] border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:bg-slate-950 disabled:text-slate-600"
+          className="flex-1 h-auto py-2 text-[11px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
         >
           Clear
         </Button>
@@ -304,7 +304,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           type="button"
           disabled={isEmpty || exporting}
           onClick={() => void handleExportDxf()}
-          className="flex-1 h-auto py-2 text-[11px] border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:bg-slate-950 disabled:text-slate-600"
+          className="flex-1 h-auto py-2 text-[11px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
         >
           {exporting ? 'Exporting…' : 'Export DXF'}
         </Button>
@@ -337,7 +337,7 @@ export const DecodePanel: React.FC = () => {
           onClick={() => setCanvasExpanded(false)}
         >
           <div
-            className="flex w-[90vw] h-[85vh] flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-3 shadow-2xl"
+            className="flex w-[90vw] h-[85vh] flex-col overflow-hidden rounded-xl border border-ink-200 bg-ink-50 p-3 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <DecodeComposer

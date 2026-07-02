@@ -101,25 +101,25 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   let edgeColor = '#000000';
 
   if (provenance === 'added') {
-    fillColor = '#d4edfe';
-    edgeColor = '#1d4ed8';
+    fillColor = '#fdf0e9';
+    edgeColor = '#c96a45';
   }
 
   if (targeted) {
-    fillColor = '#fff7e0';
-    edgeColor = '#d97706';
+    fillColor = '#f9e2d8';
+    edgeColor = '#bc4a1f';
   }
   if (selected) {
-    fillColor = '#e0e0ff';
-    edgeColor = '#4444ff';
+    fillColor = '#e4e9ef';
+    edgeColor = '#3b5a80';
   }
   if (validPlacement === true) {
-    fillColor = '#b8f5b8';
-    edgeColor = '#15803d';
+    fillColor = '#e4efe2';
+    edgeColor = '#3d8a4e';
   }
   if (validPlacement === false) {
-    fillColor = '#ffe0e0';
-    edgeColor = '#ef4444';
+    fillColor = '#f8e3e0';
+    edgeColor = '#b03a2e';
   }
 
   if (!geometry || !edgesGeometry) return null;
@@ -144,7 +144,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       {clippingPlanes && clippingPlanes.length > 0 && (
         <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>
           <meshBasicMaterial
-            color="#404040"
+            color="#33312a"
             side={THREE.BackSide}
             clippingPlanes={clippingPlanes}
           />

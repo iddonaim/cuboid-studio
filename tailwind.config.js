@@ -4,7 +4,27 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["'Geist Variable'", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["'Geist Mono Variable'", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
       colors: {
+        // Warm-gray "ink" ramp for the drafting-instrument theme.
+        // 50 is paper-bright, 950 is full ink — components use this ramp
+        // for all neutral surfaces, rules, and text.
+        ink: {
+          50:  "#FAF9F6",
+          100: "#F1EFE9",
+          200: "#E4E1D7",
+          300: "#CFCBBF",
+          400: "#A39F93",
+          500: "#7C786C",
+          600: "#5D5A50",
+          700: "#47443C",
+          800: "#33312A",
+          900: "#24221C",
+          950: "#16150F",
+        },
         border:      "hsl(var(--border) / <alpha-value>)",
         input:       "hsl(var(--input) / <alpha-value>)",
         ring:        "hsl(var(--ring) / <alpha-value>)",

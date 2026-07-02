@@ -11,7 +11,7 @@ interface ArchthesisBrowserProps {
 
 type SortMode = 'recent' | 'popular' | 'oldest';
 
-const inputCls = "flex-1 min-w-[120px] px-1.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs";
+const inputCls = "flex-1 min-w-[120px] px-1.5 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-xs";
 
 export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onClose, onSelect }) => {
   const [memes, setMemes] = useState<ArchthesisMeme[]>([]);
@@ -84,22 +84,22 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
       onClick={onClose}
     >
       <div
-        className="bg-slate-950 rounded-xl border border-slate-800 w-[90vw] max-w-[800px] max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-ink-100 rounded-xl border border-ink-200 w-[90vw] max-w-[800px] max-h-[85vh] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-slate-800">
-          <h2 className="text-white text-base font-semibold m-0">Browse archthesis memes</h2>
+        <div className="flex justify-between items-center px-5 py-4 border-b border-ink-200">
+          <h2 className="text-ink-900 text-base font-semibold m-0">Browse archthesis memes</h2>
           <button
             onClick={onClose}
-            className="bg-transparent border-0 text-slate-400 text-2xl cursor-pointer p-1 leading-none"
+            className="bg-transparent border-0 text-ink-600 text-2xl cursor-pointer p-1 leading-none"
           >
             &times;
           </button>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 px-5 py-3 border-b border-slate-800 flex-wrap">
+        <div className="flex gap-2 px-5 py-3 border-b border-ink-200 flex-wrap">
           <input
             type="text"
             value={search}
@@ -117,7 +117,7 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
           <select
             value={sort}
             onChange={e => setSort(e.target.value as SortMode)}
-            className="px-1.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs"
+            className="px-1.5 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-xs"
           >
             <option value="recent">Recent</option>
             <option value="popular">Popular</option>
@@ -127,7 +127,7 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
 
         {/* Error */}
         {error && (
-          <div className="mx-5 my-2 p-2 bg-red-900 rounded text-red-300 text-[11px]">
+          <div className="mx-5 my-2 p-2 bg-destructive/10 rounded text-destructive text-[11px]">
             {error}
           </div>
         )}
@@ -137,26 +137,26 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
           {memes.map(meme => (
             <div
               key={meme.id}
-              className={`bg-slate-800 rounded-lg overflow-hidden cursor-pointer transition-colors border-2 ${
-                selectedMeme?.id === meme.id ? 'border-cyan-400' : 'border-transparent'
+              className={`bg-ink-100 rounded-lg overflow-hidden cursor-pointer transition-colors border-2 ${
+                selectedMeme?.id === meme.id ? 'border-primary' : 'border-transparent'
               }`}
               onClick={() => handleSelect(meme)}
             >
               <img
                 src={meme.imageUrl}
                 alt={meme.topText || meme.description || 'meme'}
-                className="w-full h-[120px] object-contain block bg-slate-950"
+                className="w-full h-[120px] object-contain block bg-ink-100"
                 loading="lazy"
               />
               <div className="p-2 flex flex-col gap-1">
-                <div className="text-white text-[11px] leading-snug line-clamp-2">
+                <div className="text-ink-900 text-[11px] leading-snug line-clamp-2">
                   {meme.topText && <span>{meme.topText}</span>}
                   {meme.bottomText && <span className="opacity-70"> / {meme.bottomText}</span>}
                   {!meme.topText && !meme.bottomText && meme.description && (
                     <span className="opacity-70">{meme.description.slice(0, 60)}</span>
                   )}
                 </div>
-                <div className="text-slate-500 text-[10px]">
+                <div className="text-ink-500 text-[10px]">
                   <span>{meme.likes} likes</span>
                   {meme.location?.display_name && (
                     <span className="opacity-60"> &middot; {meme.location.display_name}</span>
@@ -165,12 +165,12 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
                 {meme.tags.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
                     {meme.tags.slice(0, 3).map(t => (
-                      <span key={t} className="bg-slate-700 text-slate-400 text-[9px] px-1 py-px rounded">
+                      <span key={t} className="bg-ink-200 text-ink-600 text-[9px] px-1 py-px rounded">
                         {t}
                       </span>
                     ))}
                     {meme.tags.length > 3 && (
-                      <span className="bg-slate-700 text-slate-400 text-[9px] px-1 py-px rounded opacity-50">
+                      <span className="bg-ink-200 text-ink-600 text-[9px] px-1 py-px rounded opacity-50">
                         +{meme.tags.length - 3}
                       </span>
                     )}
@@ -181,12 +181,12 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
           ))}
 
           {loading && (
-            <div className="col-span-full text-center text-slate-500 py-8 text-sm">
+            <div className="col-span-full text-center text-ink-500 py-8 text-sm">
               Loading...
             </div>
           )}
           {!loading && memes.length === 0 && (
-            <div className="col-span-full text-center text-slate-500 py-8 text-sm">
+            <div className="col-span-full text-center text-ink-500 py-8 text-sm">
               No memes found
             </div>
           )}
@@ -196,7 +196,7 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
         {hasMore && !loading && (
           <button
             onClick={() => fetchMemes(true)}
-            className="mx-5 mb-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-400 cursor-pointer text-xs"
+            className="mx-5 mb-3 py-2 bg-ink-100 border border-ink-200 rounded-md text-ink-600 cursor-pointer text-xs"
           >
             Load more
           </button>
@@ -204,7 +204,7 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
 
         {/* Footer: selection preview + confirm */}
         {selectedMeme && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800 gap-3">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-ink-200 gap-3">
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
               <img
                 src={selectedMeme.imageUrl}
@@ -212,10 +212,10 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
                 className="w-10 h-10 rounded object-cover flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <div className="text-white text-xs font-semibold truncate">
+                <div className="text-ink-900 text-xs font-semibold truncate">
                   {selectedMeme.topText || selectedMeme.description?.slice(0, 40) || selectedMeme.id}
                 </div>
-                <div className="text-slate-400 text-[10px]">
+                <div className="text-ink-600 text-[10px]">
                   {selectedMeme.likes} likes
                   {selectedMeme.location?.display_name && ` · ${selectedMeme.location.display_name}`}
                   {` · engagement → ${mapMemeToCuboidInput(selectedMeme).engagementLevel}/100`}
@@ -224,7 +224,7 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
             </div>
             <Button
               onClick={handleConfirm}
-              className="h-auto py-2 px-4 text-xs font-semibold bg-emerald-900 hover:bg-emerald-800 text-white border-0 whitespace-nowrap"
+              className="h-auto py-2 px-4 text-xs font-semibold bg-primary hover:bg-primary/85 text-white border-0 whitespace-nowrap"
             >
               Use this meme
             </Button>

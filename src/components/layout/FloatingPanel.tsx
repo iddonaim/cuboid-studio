@@ -20,14 +20,14 @@ const MODE_LABELS: Record<AppMode, string> = {
 };
 
 const panelStyle: React.CSSProperties = {
-  background: '#0f172a',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
-  boxShadow: '0 8px 48px rgba(0, 0, 0, 0.4)',
+  background: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  boxShadow: '0 12px 40px hsl(45 9% 13% / 0.10), 0 1px 3px hsl(45 9% 13% / 0.06)',
   touchAction: 'none',
 };
 
 const exportBorderStyle: React.CSSProperties = {
-  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+  borderTop: '1px solid hsl(var(--border))',
 };
 
 type Geometry = { top: number; left: number; width: number; height: number };
@@ -329,9 +329,9 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
       >
         <div
           className="rounded-full flex-shrink-0"
-          style={{ width: 5, height: 5, background: 'hsl(var(--accent))' }}
+          style={{ width: 5, height: 5, background: 'hsl(var(--primary))' }}
         />
-        <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
           {contextLabel}
         </span>
       </div>
