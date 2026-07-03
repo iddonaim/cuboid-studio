@@ -47,9 +47,13 @@ const CYLINDER_SEGMENTS = 24;
 
 const evaluator = new Evaluator();
 
-// Set up DRACO loader for compressed GLB files
+// Set up DRACO loader for compressed GLB files. The decoder is bundled with
+// the app (public/draco/, copied from three's examples) so model loading
+// never depends on an external CDN — if the decoder fetch failed, every cube
+// silently fell back to locally-computed CSG geometry with much messier
+// triangulated edges.
 const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+dracoLoader.setDecoderPath('/draco/');
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(dracoLoader);
