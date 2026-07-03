@@ -35,3 +35,6 @@ REFERENCES/
 
 # Claude Code local permissions (per-machine, not shared)
 .claude/settings.local.json
+
+# Demo recordings (scripts/record-demo.mjs output)
+/recordings/
