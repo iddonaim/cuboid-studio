@@ -6,6 +6,7 @@ import { listSavedStates, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
 import { EncodingReadingPanel } from './EncodingReadingPanel';
+import { Section } from '@/components/ui/section';
 import { LexiconEditor } from './LexiconEditor';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
@@ -134,10 +135,11 @@ export const EncodingPanel: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col">
 
-      {/* Active lexicon selector + editor (L3 backstage — throwaway test surface) */}
-      <LexiconEditor />
+      {/* Primary task: photograph an inhabited space */}
+      <Section id="encode-photograph" title="Photograph" defaultOpen>
+      <div className="flex flex-col gap-2.5">
 
       {/* Multi-photo toggle */}
       <label className="flex items-center gap-2 cursor-pointer text-[11px] text-ink-600">
@@ -357,7 +359,17 @@ export const EncodingPanel: React.FC = () => {
           </button>
         </div>
       )}
+      </div>
+      </Section>
 
+      {/* Active lexicon selector + editor (L3) — collapsed; edits change how
+          every encode reads a space, so it's deliberately out of the everyday
+          path. */}
+      <Section id="encode-vocabulary" title="Vocabulary">
+        <LexiconEditor />
+      </Section>
+
+      <div className="flex flex-col gap-2.5 pt-2.5 border-t border-ink-200">
       {/* Encode button */}
       {hasImages && !encodedCubes && (
         <Button
@@ -396,7 +408,7 @@ export const EncodingPanel: React.FC = () => {
         >
           {isEncoding && (
             <div className="absolute inset-0 z-10 flex items-start justify-center pt-1 pointer-events-none">
-              <span className="text-[10px] text-sky-300/90 bg-ink-50/90 border border-ink-300 rounded px-2 py-0.5">
+              <span className="text-[10px] text-primary bg-ink-50/90 border border-ink-300 rounded px-2 py-0.5">
                 Updating…
               </span>
             </div>
@@ -446,6 +458,7 @@ export const EncodingPanel: React.FC = () => {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 };

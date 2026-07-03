@@ -9,6 +9,7 @@ import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/stor
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Section } from '@/components/ui/section';
 
 export const MemeInputPanel: React.FC = () => {
   const memeDescription = useMemeStore(s => s.memeDescription);
@@ -70,45 +71,32 @@ export const MemeInputPanel: React.FC = () => {
   const isDisabled = !memeDescription.trim() || (hasAssembly && !targetCubeId);
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col">
       {/* Assembly mode: target cube indicator */}
       {hasAssembly && (
-        <div className={`p-2 rounded-md border ${
-          targetCubeId ? 'bg-stone-900 border-amber-500' : 'bg-ink-100 border-ink-200'
+        <div className={`p-2 mb-2.5 rounded-md border ${
+          targetCubeId ? 'bg-primary/10 border-primary' : 'bg-ink-100 border-ink-200'
         }`}>
           {targetCubeId && targetCube ? (
             <div>
-              <div className="text-amber-600 text-[10px] font-semibold mb-0.5">
+              <div className="text-primary text-[10px] font-semibold mb-0.5">
                 Target: {targetCube.variationId}
               </div>
-              <div className="text-stone-500 text-[9px]">
+              <div className="text-ink-500 text-[9px]">
                 pos ({targetCube.position.map(p => p.toFixed(0)).join(', ')})
               </div>
             </div>
           ) : (
-            <div className="text-stone-500 text-[11px]">
+            <div className="text-ink-500 text-[11px]">
               Click a cube in the assembly to target it
             </div>
           )}
         </div>
       )}
 
-      {/* Base variation selector — standalone mode only */}
-      {!hasAssembly && (
-        <div>
-          <label className="text-ink-600 text-[11px] block mb-1">Base Variation</label>
-          <select
-            value={baseVariationId}
-            onChange={(e) => setBaseVariation(e.target.value)}
-            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[11px]"
-          >
-            {CUBE_VARIATIONS.map(v => (
-              <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
+      {/* Primary task: the meme */}
+      <Section id="pata-meme" title="Meme" defaultOpen>
+      <div className="flex flex-col gap-2.5">
       {/* Browse from archthesis */}
       <Button
         onClick={() => setShowBrowser(true)}
@@ -117,25 +105,17 @@ export const MemeInputPanel: React.FC = () => {
         Browse from archthesis...
       </Button>
 
-      <ArchthesisBrowser
-        open={showBrowser}
-        onClose={() => setShowBrowser(false)}
-        onSelect={handleArchthesisSelect}
-      />
-
       {/* Site context curator */}
       <Button
         onClick={() => setShowSiteContext(true)}
         className={`w-full h-auto py-2 px-3 text-[11px] font-medium justify-start border ${
           activeSiteContext
-            ? 'bg-green-50 border-green-600/50/40 text-green-700 hover:bg-primary/15'
+            ? 'bg-green-50 border-green-600/40 text-green-700 hover:bg-green-100'
             : 'bg-ink-100 border-ink-200 text-ink-600 hover:bg-ink-200'
         }`}
       >
         {activeSiteContext ? `Site: ${activeSiteContext.site_name}` : 'Set site context...'}
       </Button>
-
-      <SiteContextCurator open={showSiteContext} onClose={handleCloseSiteContext} />
 
       {/* Selected meme thumbnail */}
       {selectedMemeImageUrl && (
@@ -200,6 +180,26 @@ export const MemeInputPanel: React.FC = () => {
           <span>High</span>
         </div>
       </div>
+      </div>
+      </Section>
+
+      {/* Secondary: how the translation runs — collapsed by default */}
+      <Section id="pata-settings" title="Translation settings">
+      <div className="flex flex-col gap-2.5">
+      {!hasAssembly && (
+        <div>
+          <label className="text-ink-600 text-[11px] block mb-1">Base Variation</label>
+          <select
+            value={baseVariationId}
+            onChange={(e) => setBaseVariation(e.target.value)}
+            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[11px]"
+          >
+            {CUBE_VARIATIONS.map(v => (
+              <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Pass mode: v1 single-pass vs v2 two-pass */}
       <div>
@@ -228,7 +228,10 @@ export const MemeInputPanel: React.FC = () => {
 
       {/* Editable translation vocabulary — only affects two-pass translation */}
       {passMode === 'two_pass' && <TranslationLexiconEditor />}
+      </div>
+      </Section>
 
+      <div className="flex flex-col gap-2.5 pt-2.5 border-t border-ink-200">
       {/* Translate button */}
       <Button
         onClick={translate}
@@ -246,6 +249,16 @@ export const MemeInputPanel: React.FC = () => {
           {lastError}
         </div>
       )}
+      </div>
+
+      {/* Modals — mounted at panel root so collapsing sections can't unmount
+          them while open */}
+      <ArchthesisBrowser
+        open={showBrowser}
+        onClose={() => setShowBrowser(false)}
+        onSelect={handleArchthesisSelect}
+      />
+      <SiteContextCurator open={showSiteContext} onClose={handleCloseSiteContext} />
     </div>
   );
 };

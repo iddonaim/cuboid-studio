@@ -3,8 +3,10 @@ import { useMemeStore } from '../../store/useMemeStore';
 import type { ConfidenceVector } from '../../lib/operators/types';
 import { Button } from '@/components/ui/button';
 
-const panelCls =
+const floatingCls =
   'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto';
+const dockedCls =
+  'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]';
 
 const Chip: React.FC<{ children: React.ReactNode; variant?: 'rhetoric' | 'affect' }> = ({
   children,
@@ -13,7 +15,7 @@ const Chip: React.FC<{ children: React.ReactNode; variant?: 'rhetoric' | 'affect
   <span
     className={`inline-block px-1.5 py-0.5 mr-1 mb-1 rounded text-[10px] border ${
       variant === 'affect'
-        ? 'bg-violet-950 text-violet-200 border-violet-800'
+        ? 'bg-violet-50 text-violet-700 border-violet-200'
         : 'bg-ink-100 text-ink-700 border-ink-200'
     }`}
   >
@@ -72,8 +74,8 @@ const ConfidenceVectorDisplay: React.FC<{
   </div>
 );
 
-const TranslationLoadingPanel: React.FC<{ phase: 'reading' | 'geometry' }> = ({ phase }) => (
-  <div className={panelCls}>
+const TranslationLoadingPanel: React.FC<{ phase: 'reading' | 'geometry'; docked?: boolean }> = ({ phase, docked }) => (
+  <div className={docked ? dockedCls : floatingCls}>
     <p className="text-ink-600 text-[11px] font-semibold mb-1">Translating meme</p>
     <p className="text-ink-900 text-xs m-0">
       {phase === 'reading' ? 'Reading the meme...' : 'Translating to geometry...'}
@@ -81,7 +83,7 @@ const TranslationLoadingPanel: React.FC<{ phase: 'reading' | 'geometry' }> = ({ 
   </div>
 );
 
-export const OperatorResultPanel: React.FC = () => {
+export const OperatorResultPanel: React.FC<{ docked?: boolean }> = ({ docked = false }) => {
   const lastResult = useMemeStore(s => s.lastResult);
   const lastPass1 = useMemeStore(s => s.lastPass1);
   const lastPass2 = useMemeStore(s => s.lastPass2);
@@ -97,7 +99,7 @@ export const OperatorResultPanel: React.FC = () => {
 
   if (isTranslating && passMode === 'two_pass') {
     const phase = translationPhase === 'geometry' ? 'geometry' : 'reading';
-    return <TranslationLoadingPanel phase={phase} />;
+    return <TranslationLoadingPanel phase={phase} docked={docked} />;
   }
 
   if (!lastResult) return null;
@@ -106,7 +108,7 @@ export const OperatorResultPanel: React.FC = () => {
   const confidenceNote = lastPass2?.confidence_note;
 
   return (
-    <div className={panelCls}>
+    <div className={docked ? dockedCls : floatingCls}>
       {lastPass1 && (
         <div className="mb-4 pb-3 border-b border-ink-200">
           <p className="text-ink-600 text-[11px] font-semibold mb-1.5">
@@ -211,7 +213,7 @@ export const OperatorResultPanel: React.FC = () => {
       {operators.length > 0 && (
         <Button
           onClick={revertLastOperator}
-          className="w-full h-auto py-2 text-xs bg-destructive/10 hover:bg-destructive/20 text-white border-0"
+          className="w-full h-auto py-2 text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border-0"
         >
           Revert Last
         </Button>

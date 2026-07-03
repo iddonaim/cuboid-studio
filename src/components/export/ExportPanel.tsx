@@ -8,6 +8,7 @@ import { ARViewer } from '../ar/ARViewer';
 import { SavedStatesPanel } from '../tools/SavedStatesPanel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Section } from '@/components/ui/section';
 
 /**
  * Export & Live-Link panel — shown at the bottom of the sidebar.
@@ -65,14 +66,14 @@ export const ExportPanel: React.FC = () => {
   const hasCubes = placedCubes.length > 0;
 
   return (
-    <div className="border-t border-ink-200 pt-3 mt-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-ink-600 text-[11px] font-semibold">Export</span>
+    <div>
+      <Section id="util-export" title="Export & Grasshopper">
+      <div className="flex items-center justify-end mb-1 -mt-1">
         <button
           onClick={() => setShowSettings(!showSettings)}
           className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[10px] px-1 py-0.5"
         >
-          {showSettings ? 'hide' : 'settings'}
+          {showSettings ? 'hide settings' : 'settings'}
         </button>
       </div>
 
@@ -102,12 +103,6 @@ export const ExportPanel: React.FC = () => {
         <Box size={12} />
         View in AR
       </Button>
-
-      {/* Saved States */}
-      <SavedStatesPanel />
-
-      {/* AR Viewer modal */}
-      {showAR && <ARViewer onClose={() => setShowAR(false)} />}
 
       {/* Live-link section */}
       <Separator className="bg-ink-200 my-2" />
@@ -169,6 +164,13 @@ export const ExportPanel: React.FC = () => {
           </label>
         </div>
       )}
+      </Section>
+
+      {/* Saved States — own collapsible header */}
+      <SavedStatesPanel />
+
+      {/* AR Viewer modal */}
+      {showAR && <ARViewer onClose={() => setShowAR(false)} />}
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
 
-export const SelectedCubePanel: React.FC = () => {
+export const SelectedCubePanel: React.FC<{ docked?: boolean }> = ({ docked = false }) => {
   const selectedCubeIds = useBuilderStore(s => s.selectedCubeIds);
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const handleDelete = useBuilderStore(s => s.handleDelete);
@@ -17,7 +17,13 @@ export const SelectedCubePanel: React.FC = () => {
     : null;
 
   return (
-    <div className={`absolute top-4 right-4 bg-ink-50 border border-ink-200 rounded-lg p-4 ${isMobile ? 'w-40' : 'w-48'}`}>
+    <div
+      className={
+        docked
+          ? 'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]'
+          : `absolute top-4 right-4 bg-ink-50 border border-ink-200 rounded-lg p-4 ${isMobile ? 'w-40' : 'w-48'}`
+      }
+    >
       <p className="text-ink-900 text-sm mb-1">
         {selectedCubeIds.length === 1 ? 'Selected Cube' : `${selectedCubeIds.length} Cubes`}
       </p>
@@ -46,7 +52,7 @@ export const SelectedCubePanel: React.FC = () => {
 
       <Button
         onClick={handleDelete}
-        className={`w-full h-auto ${isMobile ? 'py-3' : 'py-2'} text-xs bg-destructive/10 hover:bg-destructive/20 text-white border-0`}
+        className={`w-full h-auto ${isMobile ? 'py-3' : 'py-2'} text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border-0`}
       >
         {selectedCubeIds.length === 1 ? 'Delete' : `Delete ${selectedCubeIds.length}`}
       </Button>

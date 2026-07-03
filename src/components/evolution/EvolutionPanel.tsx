@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { SectionCutControls } from '../viewport/SectionCutControls';
+import { Section } from '@/components/ui/section';
 
 /**
  * Evolution Mode sidebar panel.
@@ -106,8 +107,8 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Score breakdown */}
       {currentScore.total > 0 && (
-        <div className="border-t border-ink-200 pt-2">
-          <div className="text-ink-600 text-[10px] font-semibold mb-1.5">Score breakdown</div>
+        <Section id="evolve-score" title="Score breakdown">
+        <div>
           {([
             ['Geometric clustering', currentScore.geometricClustering, '30%'],
             ['Spatial regularity', currentScore.spatialRegularity, '30%'],
@@ -131,6 +132,7 @@ export const EvolutionPanel: React.FC = () => {
             <span className="text-ink-800 text-[10px] font-semibold">{currentScore.total.toFixed(4)}</span>
           </div>
         </div>
+        </Section>
       )}
 
       {/* Error message */}
@@ -227,7 +229,7 @@ export const EvolutionPanel: React.FC = () => {
                   {candidate.pass1?.rhetorical_moves && candidate.pass1.rhetorical_moves.length > 0 && (
                     <div className="flex gap-1 flex-wrap mb-0.5">
                       {candidate.pass1.rhetorical_moves.map((move, i) => (
-                        <span key={i} className="px-1.5 py-px rounded bg-violet-950 text-violet-400 text-[9px]">
+                        <span key={i} className="px-1.5 py-px rounded bg-violet-50 text-violet-700 text-[9px]">
                           {move}
                         </span>
                       ))}
@@ -283,7 +285,7 @@ export const EvolutionPanel: React.FC = () => {
               disabled={generation === 0}
               className={`h-auto py-2.5 px-3 text-xs border-0 ${
                 generation > 0
-                  ? 'bg-destructive/10 hover:bg-destructive/20 text-white'
+                  ? 'bg-destructive/10 hover:bg-destructive/20 text-destructive'
                   : 'bg-ink-200 text-ink-500 cursor-default'
               }`}
             >
@@ -293,11 +295,13 @@ export const EvolutionPanel: React.FC = () => {
         </div>
       )}
 
-      <SectionCutControls />
+      <Section id="evolve-section-cut" title="Section cut">
+        <SectionCutControls showSeparator={false} />
+      </Section>
 
-      {/* Config section */}
-      <div className="pb-2">
-        <div className="text-ink-600 text-[10px] font-semibold mb-2">Settings</div>
+      {/* Config section — collapsed by default to keep the panel short */}
+      <Section id="evolve-settings" title="Settings">
+      <div className="pb-2 pt-1">
 
         {/* Target strategy */}
         <div className="mb-2">
@@ -359,6 +363,7 @@ export const EvolutionPanel: React.FC = () => {
           />
         </div>
       </div>
+      </Section>
     </div>
   );
 };

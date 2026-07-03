@@ -40,10 +40,34 @@ interface AppState {
   setActiveMode: (mode: AppMode) => void;
   floatingPanelOpen: boolean;
   toggleFloatingPanel: () => void;
+  /** Width of the docked sidebar (desktop), persisted across sessions. */
+  sidebarWidth: number;
+  setSidebarWidth: (width: number) => void;
   /** True orthographic projection in the main 3D viewport. */
   orthographic: boolean;
   setOrthographic: (value: boolean) => void;
   toggleOrthographic: () => void;
+}
+
+export const SIDEBAR_MIN_WIDTH = 240;
+export const SIDEBAR_MAX_WIDTH = 480;
+const SIDEBAR_WIDTH_KEY = 'cs-sidebar-width';
+const SIDEBAR_DEFAULT_WIDTH = 304;
+
+function clampSidebarWidth(width: number): number {
+  return Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, Math.round(width)));
+}
+
+function loadSidebarWidth(): number {
+  try {
+    const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
+    if (Number.isFinite(stored) && stored >= SIDEBAR_MIN_WIDTH && stored <= SIDEBAR_MAX_WIDTH) {
+      return stored;
+    }
+  } catch {
+    // localStorage unavailable (SSR, privacy mode) — fall through to default
+  }
+  return SIDEBAR_DEFAULT_WIDTH;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -51,6 +75,12 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveMode: (mode) => set({ activeMode: mode }),
   floatingPanelOpen: true,
   toggleFloatingPanel: () => set(s => ({ floatingPanelOpen: !s.floatingPanelOpen })),
+  sidebarWidth: loadSidebarWidth(),
+  setSidebarWidth: (width) => {
+    const clamped = clampSidebarWidth(width);
+    try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped)); } catch { /* ignore */ }
+    set({ sidebarWidth: clamped });
+  },
   orthographic: false,
   setOrthographic: (value) => set({ orthographic: value }),
   toggleOrthographic: () => set(s => ({ orthographic: !s.orthographic })),

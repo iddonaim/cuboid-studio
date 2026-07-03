@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SectionCutControls } from '../viewport/SectionCutControls';
+import { Section } from '@/components/ui/section';
 
 export const BuilderSidebar: React.FC = () => {
   const isMobile = useIsMobile();
@@ -52,14 +53,17 @@ export const BuilderSidebar: React.FC = () => {
           {isGenerating && <span className="text-amber-600"> {'\u2022'} Generating...</span>}
         </p>
 
-        <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
-        <StrictRulesToggle
-          enabled={strictRulesEnabled}
-          onChange={setStrictRulesEnabled}
-          disabled={!rulesEnabled}
-        />
+        <Section id="builder-rules" title="Connection rules">
+          <RulesToggle enabled={rulesEnabled} onChange={setRulesEnabled} />
+          <StrictRulesToggle
+            enabled={strictRulesEnabled}
+            onChange={setStrictRulesEnabled}
+            disabled={!rulesEnabled}
+          />
+        </Section>
 
         {/* Install PWA section */}
+        <Section id="builder-install" title="Install app">
         <div className={`mb-3 p-2.5 rounded-md border ${
           showInstallButton
             ? 'bg-gradient-to-br from-primary to-primary border-primary/40'
@@ -81,6 +85,7 @@ export const BuilderSidebar: React.FC = () => {
             </div>
           )}
         </div>
+        </Section>
       </div>
 
       {/* Pinned actions — always above the variation grid */}

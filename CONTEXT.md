@@ -47,6 +47,8 @@ The app has **four** primary nav modes, all mounted and live: **Map**, **Encode*
 | **Evolution** | Live | Two sub-modes toggled in-panel: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (meme → operator translation). |
 | **Decode** | Live | 2D notation canvas (Konva). Drag/place/rotate tile glyphs of variations, snap-to-grid, export as SVG or DXF. |
 
+**Desktop layout (since the 2026-07 design overhaul):** a **docked left sidebar** (`src/components/layout/Sidebar.tsx`) holds each mode's controls — width-resizable via its right edge (persisted), hidden/shown with the TopBar panel button or **Cmd/Ctrl+B**. Panel contents are organized into **collapsible sections** (`src/components/ui/section.tsx`) whose open/closed state persists per user in `localStorage`; secondary tools (Export & Grasshopper, Saved States, vocabulary editors, Evolve settings) are collapsed by default. Model outputs (encoding result, operator result, selected cube) dock as cards in a right-edge **Inspector rail** (`src/components/layout/Inspector.tsx`) instead of floating loose. The old draggable `FloatingPanel` is gone. Visual language: light "drafting instrument" theme — paper surfaces, warm-gray `ink` Tailwind ramp, single vermilion accent (`--primary`), Geist/Geist Mono, tokens in `src/index.css`.
+
 **Builder is not a top-level tab.** It surfaces inline:
 - Inside **Encode** when Merge mode opens the seed editor (`seedEditOpen` → BuilderSidebar replaces the EncodingPanel).
 - The built assembly is the substrate that **Pataphysical** re-cuts (you select a target cube from it).

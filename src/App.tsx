@@ -6,7 +6,8 @@ import { useEvolutionStore } from './store/useEvolutionStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
 import { getAllRotations, findRotationIndex, AxisRotation } from './lib/cube/connectionRules';
 import { TopBar } from './components/layout/TopBar';
-import { FloatingPanel } from './components/layout/FloatingPanel';
+import { Sidebar } from './components/layout/Sidebar';
+import { Inspector } from './components/layout/Inspector';
 import { BottomSheet } from './components/layout/BottomSheet';
 import { HelpBar } from './components/layout/HelpBar';
 import { useIsMobile } from './hooks/useIsMobile';
@@ -32,6 +33,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { SaveCompositionButton } from './components/projects/SaveCompositionButton';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { Section } from '@/components/ui/section';
 
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
@@ -49,7 +51,7 @@ const SeedEditBanner: React.FC = () => {
       }}
     >
       <div className="flex flex-col">
-        <span className="text-green-700 text-[10px] font-semibold uppercase tracking-wider">
+        <span className="text-primary text-[10px] font-semibold uppercase tracking-wider">
           Editing merge seed
         </span>
         <span className="text-ink-600 text-[10px]">
@@ -101,7 +103,9 @@ const PataphysicalSurface: React.FC = () => (
   <div className="flex flex-col gap-2.5">
     <MemeInputPanel />
     <CutterTweakPanel />
-    <OperatorHistoryList />
+    <Section id="pata-history" title="Operator history">
+      <OperatorHistoryList />
+    </Section>
   </div>
 );
 
@@ -238,6 +242,12 @@ const AppInner: React.FC = () => {
         store.rotateSelectedCube('x');
       }
 
+      // Cmd/Ctrl+B toggles the sidebar (desktop)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault();
+        useAppStore.getState().toggleFloatingPanel();
+      }
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         store.undo();
@@ -366,10 +376,13 @@ const AppInner: React.FC = () => {
         {!showMapCanvas && (
           <>
             <Viewport3D />
-            {activeMode === 'encoding' && (
-              showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
-            )}
-            {showPataphysicalSurface && <OperatorResultPanel />}
+            {/* Results dock into the right-side Inspector rail on desktop */}
+            <Inspector>
+              {activeMode === 'encoding' && (
+                showBuilderSurface ? <SelectedCubePanel docked /> : <EncodingResultPanel docked />
+              )}
+              {showPataphysicalSurface && <OperatorResultPanel docked />}
+            </Inspector>
             {activeMode === 'decode' && <DecodeTagsOverlay />}
             <CaptureButton />
             <HelpBar />
@@ -385,9 +398,9 @@ const AppInner: React.FC = () => {
         )}
       </div>
 
-      {/* FloatingPanel: glass overlay on the left side */}
+      {/* Docked sidebar on the left (Cmd/Ctrl+B or TopBar button to toggle) */}
       {!showMapCanvas && (
-        <FloatingPanel
+        <Sidebar
           mode={activeMode}
           isOpen={floatingPanelOpen}
           exportSlot={activeMode === 'decode' ? undefined : <ExportPanel />}
@@ -411,7 +424,7 @@ const AppInner: React.FC = () => {
             </>
           )}
           {activeMode === 'decode' && <DecodePanel />}
-        </FloatingPanel>
+        </Sidebar>
       )}
     </div>
   );
