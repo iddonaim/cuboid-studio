@@ -25,10 +25,12 @@ import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { ExportPanel } from './components/export/ExportPanel';
 import { DecodePanel } from './components/decode/DecodePanel';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
+import { SitesMapView } from './components/map/SitesMapView';
+import { MapViewToggle, MapView } from './components/map/MapViewToggle';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { SaveCompositionButton } from './components/projects/SaveCompositionButton';
 import { ToastContainer } from './components/layout/ToastContainer';
@@ -153,12 +155,21 @@ const AppInner: React.FC = () => {
   const seedEditOpen        = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode    = useEvolutionStore(s => s.subMode);
   const isMobile            = useIsMobile();
+  const { user }            = useAuthContext();
   const [showSiteToast, setShowSiteToast] = React.useState(false);
+  // Map tab sub-view: the analysis iframe or the signed-in "My sites" layer.
+  const [mapView, setMapView] = React.useState<MapView>('analyze');
 
   // Convenience predicates for what to mount.
   const showBuilderSurface     = activeMode === 'encoding' && seedEditOpen;
   const showPataphysicalSurface = activeMode === 'evolution' && evolutionSubMode === 'pataphysical';
   const showMapCanvas = activeMode === 'map';
+  const showSitesMap  = showMapCanvas && mapView === 'sites' && !!user;
+
+  // Signing out while on "My sites" falls back to the analysis view.
+  useEffect(() => {
+    if (!user) setMapView('analyze');
+  }, [user]);
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -274,7 +285,7 @@ const AppInner: React.FC = () => {
               mode — the embedded map-context app runs its own address search
               and analysis run inside this iframe, and destroying the iframe
               on every tab switch was wiping that in-progress state. */}
-          <div className={showMapCanvas ? undefined : 'hidden'}>
+          <div className={showMapCanvas && !showSitesMap ? undefined : 'hidden'}>
             <MapContextCanvas
               onAnalysisComplete={(context: SiteContextData) => {
                 setActiveSiteContext(context);
@@ -282,6 +293,8 @@ const AppInner: React.FC = () => {
               }}
             />
           </div>
+          {showSitesMap && <SitesMapView />}
+          {showMapCanvas && user && <MapViewToggle view={mapView} onChange={setMapView} />}
           {!showMapCanvas && (
             <>
               <Viewport3D />
@@ -354,7 +367,7 @@ const AppInner: React.FC = () => {
       <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
         {/* Kept mounted (just hidden) instead of unmounted when leaving Map
             mode — see matching comment in the mobile layout above. */}
-        <div className={showMapCanvas ? undefined : 'hidden'}>
+        <div className={showMapCanvas && !showSitesMap ? undefined : 'hidden'}>
           <MapContextCanvas
             onAnalysisComplete={(context: SiteContextData) => {
               setActiveSiteContext(context);
@@ -362,6 +375,8 @@ const AppInner: React.FC = () => {
             }}
           />
         </div>
+        {showSitesMap && <SitesMapView />}
+        {showMapCanvas && user && <MapViewToggle view={mapView} onChange={setMapView} />}
         {!showMapCanvas && (
           <>
             <Viewport3D />

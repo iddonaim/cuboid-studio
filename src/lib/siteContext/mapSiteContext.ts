@@ -22,22 +22,27 @@ function emptyQuantitative() {
   };
 }
 
-/** Base context merged when setting a pin from the Map tab. */
-export function buildSiteContextFromMap(
+/**
+ * Build a site context anchored at the given coordinates, merging over an
+ * explicit base context (or a fresh empty one when base is null). The base
+ * matters: assigning a location to a saved Site must merge over *that site's*
+ * stored context, never over whatever context happens to be active.
+ */
+export function buildSiteContextAt(
   lat: number,
   lng: number,
   address: string,
   radiusMeters: number,
+  baseContext: SiteContextData | null,
   nearbyPois?: NearbyPoisData
 ): SiteContextData {
-  const existing = getActiveSiteContext();
   const exposure = getPrimaryExposure(lat, lng);
   const sunAnalysis = getSeasonalSunAnalysis(lat, lng);
 
   const transitCount = nearbyPois?.transit.length ?? 0;
   const schoolCount = nearbyPois?.education.length ?? 0;
 
-  const base: SiteContextData = existing ?? {
+  const base: SiteContextData = baseContext ?? {
     site_name: address.split(',')[0]?.trim() || 'Map site',
     generated: new Date().toISOString(),
     quantitative: emptyQuantitative(),
@@ -50,7 +55,9 @@ export function buildSiteContextFromMap(
     site_name: address.split(',')[0]?.trim() || base.site_name,
     generated: new Date().toISOString(),
     sun_analysis: sunAnalysis,
-    nearby_pois: nearbyPois,
+    // Firestore rejects `undefined` field values, so only write the key when
+    // POIs were provided; otherwise whatever the base carried stays.
+    ...(nearbyPois ? { nearby_pois: nearbyPois } : {}),
     quantitative: {
       ...base.quantitative,
       location: {
@@ -77,6 +84,17 @@ export function buildSiteContextFromMap(
       },
     },
   };
+}
+
+/** Base context merged when setting a pin from the Map tab. */
+export function buildSiteContextFromMap(
+  lat: number,
+  lng: number,
+  address: string,
+  radiusMeters: number,
+  nearbyPois?: NearbyPoisData
+): SiteContextData {
+  return buildSiteContextAt(lat, lng, address, radiusMeters, getActiveSiteContext(), nearbyPois);
 }
 
 /** One-line site context block for the encoding vision request. */
