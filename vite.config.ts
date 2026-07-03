@@ -39,7 +39,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,jpg,jpeg,png,svg,glb,json}'],
+        // wasm: the self-hosted Draco decoder (public/draco/) must be
+        // precached or GLB loading fails offline from a cold cache.
+        globPatterns: ['**/*.{js,css,html,jpg,jpeg,png,svg,glb,json,wasm}'],
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB (for large GLB files)
