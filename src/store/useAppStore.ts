@@ -40,6 +40,10 @@ interface AppState {
   setActiveMode: (mode: AppMode) => void;
   floatingPanelOpen: boolean;
   toggleFloatingPanel: () => void;
+  /** Onboarding showcase modal — auto-opens on first ever visit. */
+  onboardingOpen: boolean;
+  openOnboarding: () => void;
+  closeOnboarding: () => void;
   /** Width of the docked sidebar (desktop), persisted across sessions. */
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
@@ -70,11 +74,23 @@ function loadSidebarWidth(): number {
   return SIDEBAR_DEFAULT_WIDTH;
 }
 
+const ONBOARDING_SEEN_KEY = 'cs-onboarding-seen';
+
+function onboardingSeen(): boolean {
+  try { return localStorage.getItem(ONBOARDING_SEEN_KEY) === '1'; } catch { return true; }
+}
+
 export const useAppStore = create<AppState>((set) => ({
   activeMode: 'encoding',
   setActiveMode: (mode) => set({ activeMode: mode }),
   floatingPanelOpen: true,
   toggleFloatingPanel: () => set(s => ({ floatingPanelOpen: !s.floatingPanelOpen })),
+  onboardingOpen: !onboardingSeen(),
+  openOnboarding: () => set({ onboardingOpen: true }),
+  closeOnboarding: () => {
+    try { localStorage.setItem(ONBOARDING_SEEN_KEY, '1'); } catch { /* ignore */ }
+    set({ onboardingOpen: false });
+  },
   sidebarWidth: loadSidebarWidth(),
   setSidebarWidth: (width) => {
     const clamped = clampSidebarWidth(width);

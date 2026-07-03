@@ -39,6 +39,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
   const setActiveMode     = useAppStore(s => s.setActiveMode);
   const floatingPanelOpen = useAppStore(s => s.floatingPanelOpen);
   const togglePanel       = useAppStore(s => s.toggleFloatingPanel);
+  const openOnboarding    = useAppStore(s => s.openOnboarding);
   const placedCubes       = useBuilderStore(s => s.placedCubes);
 
   return (
@@ -87,9 +88,18 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
           : null}
       </div>
 
-      {/* ── Right: account/projects + cube count + panel toggle ── */}
+      {/* ── Right: account/projects + cube count + help + panel toggle ── */}
       <div className="flex items-center justify-end gap-2 px-4">
         <AuthControls />
+
+        <button
+          onClick={openOnboarding}
+          title="Show introduction"
+          aria-label="Show introduction"
+          className="font-mono text-[11px] text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer px-1"
+        >
+          ?
+        </button>
 
         <span
           className="font-mono text-[11px] text-ink-600 bg-ink-100 border border-ink-200 px-2 py-0.5 rounded-full select-none"

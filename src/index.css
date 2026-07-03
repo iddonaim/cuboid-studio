@@ -72,6 +72,22 @@ body {
 
 canvas { display: block; }
 
+/* Onboarding modal frame transitions + pipeline animation */
+@keyframes onboarding-frame-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.onboarding-frame-in { animation: onboarding-frame-in 0.22s ease-out; }
+
+@keyframes pipeline-light {
+  0%, 100% { background: transparent; }
+  12%, 30% { background: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+}
+.onboarding-pipeline-node .pipeline-dot {
+  animation: pipeline-light 3.6s ease-in-out infinite;
+  animation-delay: inherit;
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(45 10% 78%); border-radius: 3px; }
