@@ -50,6 +50,8 @@ export const EncodingPanel: React.FC = () => {
   const setSeedFromBuilder = useEncodingStore(s => s.setSeedFromBuilder);
   const setSeedFromSavedState = useEncodingStore(s => s.setSeedFromSavedState);
   const seedCubes = useEncodingStore(s => s.seedCubes);
+  const showAdditions = useEncodingStore(s => s.showAdditions);
+  const setShowAdditions = useEncodingStore(s => s.setShowAdditions);
   const openSeedEdit = useEncodingStore(s => s.openSeedEdit);
   const setActiveMode = useAppStore(s => s.setActiveMode);
   const setEvolutionSubMode = useEvolutionStore(s => s.setSubMode);
@@ -60,6 +62,18 @@ export const EncodingPanel: React.FC = () => {
   const hasImages = multiPhotoEnabled
     ? uploadedImages.length > 0
     : Boolean(uploadedImage);
+
+  // In standalone mode, once the encoded result has been loaded into the
+  // builder and edited (Done), `seedCubes` holds the edited assembly. Cubes
+  // whose grid position isn't in the original encoded set were added by hand.
+  const encodedPositionKeys = React.useMemo(
+    () => new Set((encodedCubes ?? []).map(c => c.position.join(','))),
+    [encodedCubes]
+  );
+  const addedCount =
+    mode === 'standalone'
+      ? seedCubes.filter(c => !encodedPositionKeys.has(c.position.join(','))).length
+      : 0;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -413,6 +427,20 @@ export const EncodingPanel: React.FC = () => {
             {encodedCubes.length} cubes encoded
             {' '}({new Set(encodedCubes.map(c => c.variationId)).size} unique variations)
           </div>
+
+          {/* Before / after toggle — appears once the assembly has been edited
+              in the builder and there are hand-added cubes to show or hide. */}
+          {addedCount > 0 && (
+            <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-400">
+              <input
+                type="checkbox"
+                checked={showAdditions}
+                onChange={(e) => setShowAdditions(e.target.checked)}
+                className="rounded border-slate-600"
+              />
+              Show added cubes ({addedCount})
+            </label>
+          )}
 
           <div className="max-h-[100px] overflow-y-auto flex flex-wrap gap-1">
             {encodedCubes.map((cube, i) => (
