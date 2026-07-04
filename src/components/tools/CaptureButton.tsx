@@ -27,7 +27,7 @@ export const CaptureButton: React.FC = () => {
     <button
       onClick={handleCapture}
       disabled={busy}
-      title="Screenshot / Save to Gallery"
+      title="Capture hi-res diagram PNG (transparent background)"
       className={`absolute bottom-10 right-3 z-10 w-9 h-9 rounded-full border border-ink-200 flex items-center justify-center text-sm shadow-[0_2px_8px_rgba(35,33,24,0.18)] transition-colors duration-100 ${
         flash ? 'bg-ink-200' : 'bg-ink-100'
       } ${busy ? 'text-ink-400 cursor-default' : 'text-ink-600 cursor-pointer'}`}

@@ -220,9 +220,15 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     stage.batchDraw();
   }, []);
 
+  const pannedRef = useRef(false);
+
   const handleStageMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.evt.button === 1) {
-      e.evt.preventDefault();
+    // Middle button pans anywhere; left button pans when grabbing empty
+    // canvas (tiles handle their own dragging, so this never fights them).
+    const emptyLeftDrag = e.evt.button === 0 && e.target === e.target.getStage();
+    if (e.evt.button === 1 || emptyLeftDrag) {
+      if (e.evt.button === 1) e.evt.preventDefault();
+      pannedRef.current = false;
       panRef.current = { active: true, lastX: e.evt.clientX, lastY: e.evt.clientY };
     }
   }, []);
@@ -240,6 +246,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     const dy = e.evt.clientY - panRef.current.lastY;
     panRef.current.lastX = e.evt.clientX;
     panRef.current.lastY = e.evt.clientY;
+    if (Math.abs(dx) + Math.abs(dy) > 0) pannedRef.current = true;
 
     stage.position({ x: stage.x() + dx, y: stage.y() + dy });
     stage.batchDraw();
@@ -319,6 +326,8 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (e.target !== e.target.getStage()) return;
+      // A drag-pan that ended on the stage is not a click
+      if (pannedRef.current) { pannedRef.current = false; return; }
 
       if (isMobile && pendingPlacementVariationId && placePendingAt) {
         const stage = stageRef.current;
@@ -382,7 +391,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         onTouchEnd={handleTouchEnd}
         onClick={handleStageClick}
         onTap={handleStageClick}
-        style={{ cursor: panRef.current.active ? 'grabbing' : 'default', background: '#ffffff' }}
+        style={{ cursor: panRef.current.active ? 'grabbing' : 'grab', background: '#ffffff' }}
       >
         <Layer listening={false}>
           <Rect x={0} y={0} width={size.width} height={size.height} fill="#ffffff" />

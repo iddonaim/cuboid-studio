@@ -14,6 +14,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useClippingPlanes } from '../../hooks/useClippingPlanes';
 import { useAppStore } from '../../store/useAppStore';
 import { SpatialGrid } from './SpatialGrid';
+import { Grid } from '@react-three/drei';
 import { gridExtentFromPositions } from '../../lib/viewport/spatialGridExtent';
 import { CubeWithCuts } from './CubeWithCuts';
 import { FaceHoverInfo } from '../../lib/cube/types';
@@ -455,9 +456,25 @@ const EvolutionScene: React.FC = () => {
 const SceneCapture: React.FC = () => {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
-    registerCaptureFunction(() => {
-      gl.render(scene, camera);
-      return gl.domElement.toDataURL('image/png');
+    // Hi-res, background-free capture: the render buffer is transparent (the
+    // paper tone is CSS on the canvas element, never drawn by WebGL), so the
+    // exported PNG has no background — a diagrammatic cut-out. The buffer is
+    // temporarily upscaled for print-quality output, then restored.
+    registerCaptureFunction((options) => {
+      const requested = options?.scale ?? 3;
+      const prevRatio = gl.getPixelRatio();
+      const size = gl.getSize(new THREE.Vector2());
+      // Clamp so the long edge stays within common GPU buffer limits.
+      const maxRatio = 4096 / Math.max(size.x, size.y);
+      const ratio = Math.min(requested * prevRatio, maxRatio);
+      try {
+        gl.setPixelRatio(ratio);
+        gl.render(scene, camera);
+        return gl.domElement.toDataURL('image/png');
+      } finally {
+        gl.setPixelRatio(prevRatio);
+        gl.render(scene, camera);
+      }
     });
     return () => unregisterCaptureFunction();
   }, [gl, scene, camera]);
@@ -491,6 +508,22 @@ export const Viewport3D: React.FC = () => {
           showEvolutionScene={showEvolutionScene}
         />
         <SceneCapture />
+        {/* Endless drafting-table ground: an infinite faded grid so the scene
+            never ends at the assembly's edge. The denser SpatialGrid lattice
+            still marks the buildable cells on top of it. */}
+        <Grid
+          position={[0, -0.6, 0]}
+          infiniteGrid
+          cellSize={GRID_STRIDE}
+          sectionSize={GRID_STRIDE * 5}
+          cellThickness={0.6}
+          sectionThickness={1}
+          cellColor="#dcd8cd"
+          sectionColor="#c9c4b6"
+          fadeDistance={2600}
+          fadeStrength={1.6}
+          followCamera={false}
+        />
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 50, 50]} intensity={0.8} />
         <ViewportControls

@@ -100,9 +100,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   let fillColor = '#ffffff';
   let edgeColor = '#000000';
 
+  // Model-proposed cubes (post-encode, not yet accepted): azure so they read
+  // clearly as "pending" against the paper background and vermilion accents.
   if (provenance === 'added') {
-    fillColor = '#fdf0e9';
-    edgeColor = '#c96a45';
+    fillColor = '#e3edf8';
+    edgeColor = '#2e6fb2';
   }
 
   if (targeted) {

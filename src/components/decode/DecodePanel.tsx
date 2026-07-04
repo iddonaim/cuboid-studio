@@ -102,6 +102,54 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
   const isEmpty = canvasTiles.length === 0;
   const [exporting, setExporting] = useState(false);
 
+  // Auto-composition: grow the notation like the Builder's +N buttons grow
+  // the assembly — each new tile lands snapped edge-to-edge to a random
+  // existing tile, in a free grid cell, with a random 90-degree rotation.
+  const autoCompose = useCallback(
+    (count: number) => {
+      if (drawerVariations.length === 0) return;
+      const pick = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.length)];
+      const cellKey = (x: number, y: number) =>
+        `${Math.round(x / TILE_SIZE)}:${Math.round(y / TILE_SIZE)}`;
+      const occupied = new Set(canvasTiles.map(t => cellKey(t.x, t.y)));
+      const placed: { x: number; y: number }[] = canvasTiles.map(t => ({ x: t.x, y: t.y }));
+      const rotations = [0, 1, 2, 3] as const;
+      const dirs = [
+        [TILE_SIZE, 0], [-TILE_SIZE, 0], [0, TILE_SIZE], [0, -TILE_SIZE],
+      ] as const;
+
+      for (let i = 0; i < count; i++) {
+        let x: number; let y: number;
+        if (placed.length === 0) {
+          x = TILE_SIZE * 2;
+          y = TILE_SIZE * 2;
+        } else {
+          // Try random anchors/directions until a free neighbouring cell shows up
+          let found: { x: number; y: number } | null = null;
+          for (let attempt = 0; attempt < 40 && !found; attempt++) {
+            const anchor = pick(placed);
+            const [dx, dy] = pick(dirs);
+            const nx = anchor.x + dx;
+            const ny = anchor.y + dy;
+            if (!occupied.has(cellKey(nx, ny))) found = { x: nx, y: ny };
+          }
+          if (!found) break;
+          x = found.x;
+          y = found.y;
+        }
+        occupied.add(cellKey(x, y));
+        placed.push({ x, y });
+        addTile({
+          variationId: pick(drawerVariations),
+          x,
+          y,
+          rotation: pick(rotations),
+        });
+      }
+    },
+    [addTile, canvasTiles, drawerVariations],
+  );
+
   const placePendingAt = useCallback(
     (worldX: number, worldY: number) => {
       if (!pendingPlacementVariationId) return;
@@ -173,7 +221,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
     }
   };
 
-  const canvasHeightClass = expanded ? 'flex-1 min-h-[320px]' : 'h-[220px] sm:h-[260px]';
+  const canvasHeightClass = expanded ? 'flex-1 min-h-0' : 'h-[320px] sm:h-[400px]';
 
   return (
     <div className={`flex flex-col gap-2 ${expanded ? 'h-full' : ''}`}>
@@ -261,6 +309,21 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
         {!isMobile && drawerVariations.length > 0 && (
           <p className="mt-1 text-[10px] text-ink-400">Drag a part onto the canvas below.</p>
         )}
+        {drawerVariations.length > 0 && (
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <span className="text-[10px] text-ink-500">Auto-compose</span>
+            {[5, 10].map(n => (
+              <Button
+                key={n}
+                type="button"
+                onClick={() => autoCompose(n)}
+                className="h-auto py-1 px-2.5 text-[11px] bg-primary/10 hover:bg-primary/20 text-primary border-0"
+              >
+                +{n}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {isMobile && pendingPlacementVariationId && (
@@ -269,8 +332,9 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
         </p>
       )}
 
-      {/* Zone 3 — Canvas */}
-      <div>
+      {/* Zone 3 — Canvas. In expanded mode this zone claims all remaining
+          height so the stage stretches vertically, not just horizontally. */}
+      <div className={expanded ? 'flex-1 min-h-0 flex flex-col' : undefined}>
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
           Canvas
         </p>

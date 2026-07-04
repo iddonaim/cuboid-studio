@@ -88,6 +88,16 @@ canvas { display: block; }
   animation-delay: inherit;
 }
 
+/* API activity pill: document flying from meme bubble to cube */
+@keyframes api-doc-fly {
+  0%   { transform: translate(24px, 13px) scale(0.7); opacity: 0; }
+  12%  { transform: translate(30px, 12px) scale(1);   opacity: 1; }
+  50%  { transform: translate(46px, 10.5px) scale(1); opacity: 1; }
+  88%  { transform: translate(62px, 12px) scale(1);   opacity: 1; }
+  100% { transform: translate(68px, 13px) scale(0.7); opacity: 0; }
+}
+.api-flying-doc { animation: api-doc-fly 1.5s ease-in-out infinite; }
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(45 10% 78%); border-radius: 3px; }

@@ -35,6 +35,7 @@ import { SaveCompositionButton } from './components/projects/SaveCompositionButt
 import { ToastContainer } from './components/layout/ToastContainer';
 import { Section } from '@/components/ui/section';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { ApiActivityIndicator } from './components/layout/ApiActivityIndicator';
 
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
@@ -443,6 +444,7 @@ const App: React.FC = () => (
     <ProjectsPanel />
     <SaveCompositionButton />
     <ToastContainer />
+    <ApiActivityIndicator />
     <OnboardingModal />
   </AuthProvider>
 );
