@@ -52,12 +52,12 @@ interface EditorDraft {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-ink-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[10px] text-ink-500 uppercase tracking-wide">{label}</span>
       <input
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-800 outline-none focus:border-ink-400 w-full"
+        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400 w-full"
       />
     </div>
   );
@@ -68,11 +68,11 @@ function SelectField<T extends string>({
 }: { label: string; value: T; options: readonly T[]; onChange: (v: T) => void }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-ink-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[10px] text-ink-500 uppercase tracking-wide">{label}</span>
       <select
         value={value}
         onChange={e => onChange(e.target.value as T)}
-        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-800 outline-none focus:border-ink-400 w-full"
+        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400 w-full"
       >
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -86,7 +86,7 @@ function HintField({ value, onChange }: { value: string; onChange: (v: string) =
       value={value}
       onChange={e => onChange(e.target.value)}
       rows={3}
-      className="bg-ink-100 border border-ink-200 rounded px-1.5 py-1 text-[9px] text-ink-500 italic outline-none focus:border-ink-300 resize-y w-full"
+      className="bg-ink-100 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-500 italic outline-none focus:border-ink-300 resize-y w-full"
     />
   );
 }
@@ -100,10 +100,10 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
   };
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-ink-500 uppercase tracking-wide">Tags</span>
+      <span className="text-[10px] text-ink-500 uppercase tracking-wide">Tags</span>
       <div className="flex flex-wrap gap-1 mb-0.5">
         {tags.map(tag => (
-          <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-ink-200 rounded text-[9px] text-ink-700">
+          <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-ink-200 rounded text-[10px] text-ink-700">
             {tag}
             <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))}
               className="text-ink-500 hover:text-destructive bg-transparent border-0 cursor-pointer p-0 leading-none">×</button>
@@ -117,23 +117,23 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
           placeholder="type a tag, press Enter"
-          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-800 outline-none focus:border-ink-400"
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400"
         />
-        <button type="button" onClick={add} className="px-1.5 text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Add</button>
+        <button type="button" onClick={add} className="px-1.5 text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Add</button>
       </div>
     </div>
   );
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return <span className="text-[9px] text-ink-700 font-semibold uppercase tracking-wide">{title}</span>;
+  return <span className="text-[10px] text-ink-700 font-semibold uppercase tracking-wide">{title}</span>;
 }
 
 function RemoveRow({ index, label, onRemove }: { index: number; label: string; onRemove: () => void }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-[9px] text-ink-400">{label} {index + 1}</span>
-      <button type="button" onClick={onRemove} className="text-[9px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0">remove</button>
+      <span className="text-[10px] text-ink-400">{label} {index + 1}</span>
+      <button type="button" onClick={onRemove} className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0">remove</button>
     </div>
   );
 }
@@ -157,7 +157,7 @@ function MoveList({ moves, onChange }: { moves: RhetoricalMoveEntry[]; onChange:
       ))}
       <button type="button"
         onClick={() => onChange([...moves, { label: '', definition: '', operator: OPERATOR_IDS[0], mapping_note: '' }])}
-        className="self-start text-[9px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0">+ add move</button>
+        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0">+ add move</button>
     </div>
   );
 }
@@ -176,7 +176,7 @@ function EdgeList({ edges, onChange }: { edges: EdgeTypeEntry[]; onChange: (e: E
       ))}
       <button type="button"
         onClick={() => onChange([...edges, { id: EDGE_TYPE_IDS[0], definition: '' }])}
-        className="self-start text-[9px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0">+ add edge type</button>
+        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0">+ add edge type</button>
     </div>
   );
 }
@@ -196,7 +196,7 @@ function AffectList({ affects, onChange }: { affects: AffectGeometryEntry[]; onC
       ))}
       <button type="button"
         onClick={() => onChange([...affects, { trigger: '', examples: '', implication: '' }])}
-        className="self-start text-[9px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0">+ add rule</button>
+        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0">+ add rule</button>
     </div>
   );
 }
@@ -264,7 +264,7 @@ function EditorForm({
         <HintField value={hint('confidence_axes')} onChange={v => patchHint('confidence_axes', v)} />
         {draft.lexicon.confidence_axes.map((ax, i) => (
           <div key={ax.key} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
-            <span className="text-[9px] text-ink-400">{ax.key}</span>
+            <span className="text-[10px] text-ink-400">{ax.key}</span>
             <Field label="label" value={ax.label} onChange={v => patchLexicon({ confidence_axes: draft.lexicon.confidence_axes.map((a, j) => j === i ? { ...a, label: v } : a) })} />
             <Field label="abbr" value={ax.abbr} onChange={v => patchLexicon({ confidence_axes: draft.lexicon.confidence_axes.map((a, j) => j === i ? { ...a, abbr: v } : a) })} />
             <Field label="description" value={ax.description} onChange={v => patchLexicon({ confidence_axes: draft.lexicon.confidence_axes.map((a, j) => j === i ? { ...a, description: v } : a) })} />
@@ -275,26 +275,26 @@ function EditorForm({
       {/* Reset */}
       <button type="button"
         onClick={() => onChangeDraft({ ...draft, lexicon: deepClone(DEFAULT_TRANSLATION_LEXICON), descriptions: { ...DEFAULT_TRANSLATION_DESCRIPTIONS } })}
-        className="self-start text-[9px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0">
+        className="self-start text-[10px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0">
         Reset vocabulary to default values
       </button>
 
-      {error && <span className="text-[9px] text-destructive">{error}</span>}
+      {error && <span className="text-[10px] text-destructive">{error}</span>}
 
       {/* Save actions */}
       <div className="flex gap-1.5 flex-wrap items-center">
         {sourceId && (
           <button type="button" onClick={onUpdate} disabled={saving || !draft.name.trim()}
-            className="px-2 py-1 text-[10px] bg-ink-200 hover:bg-ink-300 text-ink-800 rounded border-0 cursor-pointer disabled:opacity-50">
+            className="px-2 py-1 text-[11px] bg-ink-200 hover:bg-ink-300 text-ink-800 rounded border-0 cursor-pointer disabled:opacity-50">
             {saving ? 'Saving…' : `Update "${draft.name || '…'}"`}
           </button>
         )}
         <button type="button" onClick={onSaveAsNew} disabled={saving || !draft.name.trim()}
-          className="px-2 py-1 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary rounded border-0 cursor-pointer disabled:opacity-50">
+          className="px-2 py-1 text-[11px] bg-primary/10 hover:bg-primary/20 text-primary rounded border-0 cursor-pointer disabled:opacity-50">
           {saving ? 'Saving…' : 'Save as new'}
         </button>
         <button type="button" onClick={onClose}
-          className="px-2 py-1 text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer p-0">
+          className="px-2 py-1 text-[11px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer p-0">
           Close editor
         </button>
       </div>
@@ -334,19 +334,19 @@ function LibraryPanel({
     <div className="flex flex-col gap-1.5 pt-1 border-t border-ink-200 mt-1">
       <div className="flex gap-1 items-center">
         <input type="text" value={tagFilter} onChange={e => onTagFilterChange(e.target.value)} placeholder="filter by tag…"
-          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-700 outline-none focus:border-ink-400" />
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-700 outline-none focus:border-ink-400" />
         {tagFilter && (
-          <button type="button" onClick={() => onTagFilterChange('')} className="text-[9px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0">clear</button>
+          <button type="button" onClick={() => onTagFilterChange('')} className="text-[10px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0">clear</button>
         )}
       </div>
 
       {/* Default row */}
       <div className={`flex items-center justify-between gap-1 px-1.5 py-1 rounded border ${activeLexiconId === null ? 'border-sky-700 bg-ink-50' : 'border-ink-200'}`}>
-        <span className="text-[10px] text-ink-800">Default (built-in)</span>
+        <span className="text-[11px] text-ink-800">Default (built-in)</span>
         {activeLexiconId === null ? (
-          <span className="text-[9px] text-sky-400 shrink-0">Active</span>
+          <span className="text-[10px] text-sky-400 shrink-0">Active</span>
         ) : (
-          <button type="button" onClick={() => onActivate(null)} className="text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Activate</button>
+          <button type="button" onClick={() => onActivate(null)} className="text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Activate</button>
         )}
       </div>
 
@@ -357,32 +357,32 @@ function LibraryPanel({
               <input autoFocus type="text" value={renameValue} onChange={e => setRenameValue(e.target.value)}
                 onBlur={() => commitRename(l.id)}
                 onKeyDown={e => { if (e.key === 'Enter') commitRename(l.id); if (e.key === 'Escape') setRenamingId(null); }}
-                className="flex-1 bg-ink-100 border border-ink-300 rounded px-1 py-0.5 text-[10px] text-ink-800 outline-none" />
+                className="flex-1 bg-ink-100 border border-ink-300 rounded px-1 py-0.5 text-[11px] text-ink-800 outline-none" />
             ) : (
-              <span className="text-[10px] text-ink-800 truncate flex-1">{l.name}</span>
+              <span className="text-[11px] text-ink-800 truncate flex-1">{l.name}</span>
             )}
-            {activeLexiconId === l.id && <span className="text-[9px] text-sky-400 shrink-0">Active</span>}
+            {activeLexiconId === l.id && <span className="text-[10px] text-sky-400 shrink-0">Active</span>}
           </div>
 
           {(l.tags ?? []).length > 0 && (
             <div className="flex flex-wrap gap-0.5">
-              {(l.tags ?? []).map(t => <span key={t} className="px-1 py-0.5 bg-ink-200 rounded text-[8px] text-ink-600">{t}</span>)}
+              {(l.tags ?? []).map(t => <span key={t} className="px-1 py-0.5 bg-ink-200 rounded text-[9px] text-ink-600">{t}</span>)}
             </div>
           )}
 
           <div className="flex gap-2 flex-wrap">
             {activeLexiconId !== l.id && (
-              <button type="button" onClick={() => onActivate(l.id)} className="text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Activate</button>
+              <button type="button" onClick={() => onActivate(l.id)} className="text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0">Activate</button>
             )}
-            <button type="button" onClick={() => onEdit(l)} className="text-[9px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Edit</button>
-            <button type="button" onClick={() => startRename(l)} className="text-[9px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Rename</button>
-            <button type="button" onClick={() => onDuplicate(l.id)} className="text-[9px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Duplicate</button>
-            <button type="button" onClick={() => onDelete(l.id, l.name)} className="text-[9px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0">Delete</button>
+            <button type="button" onClick={() => onEdit(l)} className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Edit</button>
+            <button type="button" onClick={() => startRename(l)} className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Rename</button>
+            <button type="button" onClick={() => onDuplicate(l.id)} className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0">Duplicate</button>
+            <button type="button" onClick={() => onDelete(l.id, l.name)} className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0">Delete</button>
           </div>
         </div>
       ))}
 
-      <button type="button" onClick={onNewFromDefault} className="self-start text-[9px] text-green-700 hover:text-green-600 bg-transparent border-0 cursor-pointer p-0 mt-0.5">
+      <button type="button" onClick={onNewFromDefault} className="self-start text-[10px] text-green-700 hover:text-green-600 bg-transparent border-0 cursor-pointer p-0 mt-0.5">
         + New translation lexicon from default
       </button>
     </div>
@@ -516,7 +516,7 @@ export const TranslationLexiconEditor: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="text-ink-400 text-[10px] italic px-1">
+      <div className="text-ink-400 text-[11px] italic px-1">
         Sign in to create and use custom translation lexicons.
       </div>
     );
@@ -529,19 +529,19 @@ export const TranslationLexiconEditor: React.FC = () => {
   return (
     <div className="flex flex-col gap-1.5 p-2 bg-ink-100 border border-ink-200 rounded">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-[10px] text-ink-600 font-medium">
+        <span className="text-[11px] text-ink-600 font-medium">
           Translation vocabulary:&nbsp;
           <span className="text-ink-800">{loading ? '…' : activeName}</span>
         </span>
         <div className="flex gap-2">
           <button type="button"
             onClick={() => { setLibraryOpen(v => !v); if (editorOpen) setEditorOpen(false); }}
-            className="text-[9px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
+            className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
             {libraryOpen ? 'Close library' : 'Library'}
           </button>
           <button type="button"
             onClick={() => { openEditorForActive(); setLibraryOpen(false); }}
-            className="text-[9px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
+            className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
             {editorOpen ? 'Close editor' : 'Edit'}
           </button>
         </div>

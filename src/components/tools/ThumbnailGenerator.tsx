@@ -235,7 +235,7 @@ const ThumbnailGenerator: React.FC = () => {
                 className="cursor-pointer border border-gray-200 rounded-lg p-2 text-center hover:border-gray-400"
               >
                 <img src={dataUrl} alt={id} className="w-20 h-20" />
-                <p className="mt-1 mb-0 text-[11px]">{id}</p>
+                <p className="mt-1 mb-0 text-[12px]">{id}</p>
               </div>
             ))}
           </div>

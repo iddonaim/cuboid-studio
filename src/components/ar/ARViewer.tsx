@@ -107,7 +107,7 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
       <div className="flex items-center justify-between px-3.5 py-2.5 bg-ink-100 border-b border-ink-200 flex-shrink-0">
         <div>
           <span className="text-ink-600 text-[13px] font-semibold">AR View</span>
-          <span className="text-ink-400 text-[10px] ml-2">
+          <span className="text-ink-400 text-[11px] ml-2">
             {placedCubes.length} cube{placedCubes.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -130,7 +130,7 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
         )}
 
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center text-destructive text-xs p-6 text-center">
+          <div className="absolute inset-0 flex items-center justify-center text-destructive text-[13px] p-6 text-center">
             <div>
               <AlertTriangle size={20} className="mb-2 mx-auto block" />
               {error}
@@ -159,7 +159,7 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
       <div className="px-3.5 py-2.5 bg-ink-100 border-t border-ink-200 flex-shrink-0">
         {/* Scale row */}
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-ink-600 text-[10px] whitespace-nowrap">Scale</span>
+          <span className="text-ink-600 text-[11px] whitespace-nowrap">Scale</span>
           <input
             type="range"
             min={SCALE_MIN}
@@ -169,13 +169,13 @@ export const ARViewer: React.FC<ARViewerProps> = ({ onClose }) => {
             onChange={e => setScale(Number(e.target.value))}
             className="flex-1 accent-blue-400"
           />
-          <span className="text-ink-500 text-[9px] whitespace-nowrap min-w-[64px] text-right">
+          <span className="text-ink-500 text-[10px] whitespace-nowrap min-w-[64px] text-right">
             {cubeSizeCm}cm / cube
           </span>
         </div>
 
         {/* Platform hint */}
-        <div className="text-ink-400 text-[9px] leading-relaxed">
+        <div className="text-ink-400 text-[10px] leading-relaxed">
           Android: tap AR icon → Scene Viewer
           {'  ·  '}
           iOS 15+: tap AR icon → Quick Look

@@ -53,16 +53,16 @@ const SeedEditBanner: React.FC = () => {
       }}
     >
       <div className="flex flex-col">
-        <span className="text-primary text-[10px] font-semibold uppercase tracking-wider">
+        <span className="text-primary text-[11px] font-semibold uppercase tracking-wider">
           Editing merge seed
         </span>
-        <span className="text-ink-600 text-[10px]">
+        <span className="text-ink-600 text-[11px]">
           Changes here become the seed for Encode.
         </span>
       </div>
       <Button
         onClick={closeSeedEdit}
-        className="h-auto py-1.5 px-2.5 text-[11px] bg-primary hover:bg-primary/85 text-white border-0"
+        className="h-auto py-1.5 px-2.5 text-[12px] bg-primary hover:bg-primary/85 text-white border-0"
       >
         Done
       </Button>
@@ -87,7 +87,7 @@ const EvolutionSubModeToggle: React.FC = () => {
         <button
           key={value}
           onClick={() => setSubMode(value)}
-          className={`flex-1 py-1.5 px-1 rounded-md text-[10px] border cursor-pointer ${
+          className={`flex-1 py-1.5 px-1 rounded-md text-[11px] border cursor-pointer ${
             subMode === value
               ? 'bg-primary/10 border-primary text-primary font-semibold'
               : 'bg-ink-100 border-ink-200 text-ink-500'
@@ -113,7 +113,7 @@ const PataphysicalSurface: React.FC = () => (
 
 const SiteAnalysisToast: React.FC<{ onGoToEncode: () => void }> = ({ onGoToEncode }) => (
   <div
-    className="absolute bottom-4 right-4 z-[70] max-w-sm rounded-md border px-3 py-2 text-[11px] text-ink-800 shadow-xl"
+    className="absolute bottom-4 right-4 z-[70] max-w-sm rounded-md border px-3 py-2 text-[12px] text-ink-800 shadow-xl"
     style={{
       background: 'hsl(var(--card) / 0.96)',
       borderColor: 'hsl(var(--border))',
@@ -123,7 +123,7 @@ const SiteAnalysisToast: React.FC<{ onGoToEncode: () => void }> = ({ onGoToEncod
     <div className="mb-2">Site analysis ready — continue to Encode whenever you'd like.</div>
     <Button
       onClick={onGoToEncode}
-      className="h-auto py-1.5 px-2.5 text-[10px] bg-primary hover:bg-primary/85 text-white border-0"
+      className="h-auto py-1.5 px-2.5 text-[11px] bg-primary hover:bg-primary/85 text-white border-0"
     >
       Go to Encode
     </Button>
@@ -135,14 +135,14 @@ const DecodeTagsOverlay: React.FC = () => {
   if (compositionTags.length === 0) return null;
   return (
     <div className="absolute bottom-8 left-4 z-20 max-w-[220px] rounded-lg border border-ink-200 p-3" style={{ background: 'hsl(var(--card) / 0.9)' }}>
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-ink-600 mb-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-600 mb-1.5">
         Composition tags
       </p>
       <div className="flex flex-wrap gap-1">
         {compositionTags.map((tag, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] bg-ink-100 border border-ink-300 text-ink-700"
+            className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] bg-ink-100 border border-ink-300 text-ink-700"
           >
             {tag.word}
             <span className="text-ink-500">· {tag.intensity}</span>

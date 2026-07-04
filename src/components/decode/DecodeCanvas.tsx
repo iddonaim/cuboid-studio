@@ -371,7 +371,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     >
       {canvasTiles.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 text-center">
-          <p className="text-[11px] text-ink-500">
+          <p className="text-[12px] text-ink-500">
             {isMobile
               ? 'Select a part above, then tap here to place it'
               : 'Drag a part from the strip above onto this canvas'}

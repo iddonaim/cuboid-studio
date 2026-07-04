@@ -28,7 +28,7 @@ const SignInForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       onSubmit={handleSubmit}
       className="flex flex-col gap-2 p-3 w-60"
     >
-      <span className="font-mono text-[10px] uppercase tracking-wider text-ink-600">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-ink-600">
         Sign in
       </span>
       <input
@@ -46,7 +46,7 @@ const SignInForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         onChange={e => setPassword(e.target.value)}
         className="bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-[12px] text-ink-800 outline-none focus:border-ink-400"
       />
-      {error && <span className="text-[11px] text-destructive">{error}</span>}
+      {error && <span className="text-[12px] text-destructive">{error}</span>}
       <button
         type="submit"
         disabled={submitting || !email || !password}
@@ -63,7 +63,7 @@ const AccountMenu: React.FC<{ email: string; onClose: () => void }> = ({ email, 
   const { signOut } = useAuthContext();
   return (
     <div className="flex flex-col p-2 w-56">
-      <span className="px-2 py-1 text-[11px] text-ink-600 truncate" title={email}>
+      <span className="px-2 py-1 text-[12px] text-ink-600 truncate" title={email}>
         {email}
       </span>
       <button
@@ -106,7 +106,7 @@ export const AuthControls: React.FC = () => {
       {user && (
         <button
           onClick={() => setPanelOpen(true)}
-          className="font-mono text-[11px] text-ink-700 hover:text-ink-900 bg-ink-100/60 hover:bg-ink-200/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
+          className="font-mono text-[12px] text-ink-700 hover:text-ink-900 bg-ink-100/60 hover:bg-ink-200/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
           title="Open Projects"
         >
           Projects
@@ -117,7 +117,7 @@ export const AuthControls: React.FC = () => {
         {user ? (
           <button
             onClick={() => setOpen(o => !o)}
-            className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-white text-[11px] font-semibold cursor-pointer border-0"
+            className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-white text-[12px] font-semibold cursor-pointer border-0"
             title={user.email ?? 'Account'}
           >
             {initial}
@@ -125,7 +125,7 @@ export const AuthControls: React.FC = () => {
         ) : (
           <button
             onClick={() => setOpen(o => !o)}
-            className="font-mono text-[11px] text-ink-700 hover:text-ink-900 bg-ink-100/60 hover:bg-ink-200/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
+            className="font-mono text-[12px] text-ink-700 hover:text-ink-900 bg-ink-100/60 hover:bg-ink-200/60 px-2 py-0.5 rounded-full cursor-pointer border-0"
           >
             Sign in
           </button>

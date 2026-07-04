@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 // Shared input class constants
 // ---------------------------------------------------------------------------
 
-const inputCls = "w-full box-border px-2 py-1.5 font-[inherit] text-[11px] text-[#e0e0e0] bg-ink-100 border border-ink-200 rounded outline-none focus:border-primary";
+const inputCls = "w-full box-border px-2 py-1.5 font-[inherit] text-[12px] text-[#e0e0e0] bg-ink-100 border border-ink-200 rounded outline-none focus:border-primary";
 const textareaCls = `${inputCls} min-h-[60px] resize-y leading-relaxed`;
 
 // ---------------------------------------------------------------------------
@@ -21,15 +21,15 @@ const textareaCls = `${inputCls} min-h-[60px] resize-y leading-relaxed`;
 // ---------------------------------------------------------------------------
 
 const Label: React.FC<{ text: string; sub?: string }> = ({ text, sub }) => (
-  <label className="block text-[10px] font-semibold text-ink-600 mb-1">
+  <label className="block text-[11px] font-semibold text-ink-600 mb-1">
     {text}
-    {sub && <span className="block font-normal text-[9px] text-ink-500 mt-px">{sub}</span>}
+    {sub && <span className="block font-normal text-[10px] text-ink-500 mt-px">{sub}</span>}
   </label>
 );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="mt-4">
-    <div className="text-[10px] font-semibold text-primary mb-2 pb-1 border-b border-ink-200 tracking-[0.05em] uppercase">
+    <div className="text-[11px] font-semibold text-primary mb-2 pb-1 border-b border-ink-200 tracking-[0.05em] uppercase">
       {title}
     </div>
     {children}
@@ -187,7 +187,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
         {/* Header */}
         <div className="flex justify-between items-center px-5 py-4 border-b border-ink-200">
           <div>
-            <div className="text-[10px] text-ink-500 tracking-[0.1em] uppercase">
+            <div className="text-[11px] text-ink-500 tracking-[0.1em] uppercase">
               Topological Translation
             </div>
             <h2 className="text-ink-900 text-base font-semibold mt-1">Site Context Curator</h2>
@@ -222,7 +222,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
               <TabsTrigger
                 key={t.id}
                 value={t.id}
-                className="flex-1 rounded-none h-auto py-2.5 px-2 text-[10px] tracking-[0.05em] uppercase font-normal data-[state=active]:font-semibold data-[state=active]:bg-ink-100 data-[state=active]:text-ink-800 data-[state=inactive]:text-ink-500 data-[state=active]:shadow-none border-b-2 border-b-transparent data-[state=active]:border-b-cyan-400"
+                className="flex-1 rounded-none h-auto py-2.5 px-2 text-[11px] tracking-[0.05em] uppercase font-normal data-[state=active]:font-semibold data-[state=active]:bg-ink-100 data-[state=active]:text-ink-800 data-[state=inactive]:text-ink-500 data-[state=active]:shadow-none border-b-2 border-b-transparent data-[state=active]:border-b-cyan-400"
               >
                 {t.label}
               </TabsTrigger>
@@ -247,7 +247,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
                     <button
                       onClick={geocode}
                       disabled={geocoding}
-                      className={`px-2.5 py-1.5 bg-ink-100 border border-ink-200 rounded text-[10px] whitespace-nowrap cursor-pointer ${geocoding ? 'text-ink-400 cursor-wait' : 'text-primary'}`}
+                      className={`px-2.5 py-1.5 bg-ink-100 border border-ink-200 rounded text-[11px] whitespace-nowrap cursor-pointer ${geocoding ? 'text-ink-400 cursor-wait' : 'text-primary'}`}
                     >
                       {geocoding ? '...' : 'GEOCODE'}
                     </button>
@@ -269,11 +269,11 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
                 <div className="flex justify-between items-center mb-2">
                   <button
                     onClick={() => setAutoSun(!autoSun)}
-                    className={`px-2 py-1 rounded text-[9px] cursor-pointer border ${autoSun ? 'bg-green-50 border-green-600/50/40 text-green-700' : 'bg-ink-100 border-ink-200 text-ink-500'}`}
+                    className={`px-2 py-1 rounded text-[10px] cursor-pointer border ${autoSun ? 'bg-green-50 border-green-600/50/40 text-green-700' : 'bg-ink-100 border-ink-200 text-ink-500'}`}
                   >
                     {autoSun ? 'Auto sun ON' : 'Auto sun OFF'}
                   </button>
-                  {sunOk && <span className="text-[9px] text-green-600">computed</span>}
+                  {sunOk && <span className="text-[10px] text-green-600">computed</span>}
                 </div>
                 <div className="mb-2">
                   <Label text="Primary sun exposure" />
@@ -364,10 +364,10 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
                       <input value={item.use} onChange={e => { const u = [...p.existing_uses]; u[i] = { ...u[i], use: e.target.value }; setP(prev => ({ ...prev, existing_uses: u })); }} placeholder="e.g. Street-level spice market" className={inputCls} />
                     </div>
                     <div className="flex gap-3 mb-1.5">
-                      <label className={`text-[10px] flex items-center gap-1 cursor-pointer ${item.formal ? 'text-green-600' : 'text-ink-500'}`}>
+                      <label className={`text-[11px] flex items-center gap-1 cursor-pointer ${item.formal ? 'text-green-600' : 'text-ink-500'}`}>
                         <input type="radio" name={`formal-${i}`} checked={item.formal} onChange={() => { const u = [...p.existing_uses]; u[i] = { ...u[i], formal: true }; setP(prev => ({ ...prev, existing_uses: u })); }} className="accent-green-500" />Formal
                       </label>
-                      <label className={`text-[10px] flex items-center gap-1 cursor-pointer ${!item.formal ? 'text-destructive' : 'text-ink-500'}`}>
+                      <label className={`text-[11px] flex items-center gap-1 cursor-pointer ${!item.formal ? 'text-destructive' : 'text-ink-500'}`}>
                         <input type="radio" name={`formal-${i}`} checked={!item.formal} onChange={() => { const u = [...p.existing_uses]; u[i] = { ...u[i], formal: false }; setP(prev => ({ ...prev, existing_uses: u })); }} className="accent-red-500" />Informal
                       </label>
                     </div>
@@ -379,7 +379,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
                 ))}
                 <button
                   onClick={() => setP(prev => ({ ...prev, existing_uses: [...prev.existing_uses, { use: '', formal: true, notes: '' }] }))}
-                  className="w-full py-2 bg-transparent border border-dashed border-ink-200 rounded text-ink-500 cursor-pointer text-[10px]"
+                  className="w-full py-2 bg-transparent border border-dashed border-ink-200 rounded text-ink-500 cursor-pointer text-[11px]"
                 >
                   + Add existing use
                 </button>
@@ -412,7 +412,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
                 ))}
                 <button
                   onClick={() => setP(prev => ({ ...prev, historical_uses: [...prev.historical_uses, { use: '', period: '', notes: '' }] }))}
-                  className="w-full py-2 bg-transparent border border-dashed border-ink-200 rounded text-ink-500 cursor-pointer text-[10px]"
+                  className="w-full py-2 bg-transparent border border-dashed border-ink-200 rounded text-ink-500 cursor-pointer text-[11px]"
                 >
                   + Add historical use
                 </button>
@@ -421,7 +421,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
 
             {/* ── ARCHITECT'S READING ── */}
             <TabsContent value="reading" className="mt-0">
-              <div className="bg-ink-100 border border-ink-200 rounded-md p-2.5 mb-4 text-[10px] text-amber-600 leading-relaxed">
+              <div className="bg-ink-100 border border-ink-200 rounded-md p-2.5 mb-4 text-[11px] text-amber-600 leading-relaxed">
                 This section is explicitly your subjective reading. It is labeled as such in the translation pipeline.
               </div>
               <div className="mb-3">
@@ -445,25 +445,25 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
             {/* ── SAVE ── */}
             <TabsContent value="export" className="mt-0">
               <div className="mb-4">
-                <pre className="bg-ink-100 border border-ink-200 rounded-md p-3 text-[10px] text-ink-600 leading-relaxed overflow-auto max-h-[300px] whitespace-pre-wrap break-words">
+                <pre className="bg-ink-100 border border-ink-200 rounded-md p-3 text-[11px] text-ink-600 leading-relaxed overflow-auto max-h-[300px] whitespace-pre-wrap break-words">
                   {JSON.stringify(buildExport(), null, 2)}
                 </pre>
               </div>
               <div className="flex gap-2">
                 <Button
                   onClick={handleSave}
-                  className={`flex-1 h-auto py-2.5 text-xs font-semibold border-0 ${saved ? 'bg-green-600 hover:bg-green-600 text-white' : 'bg-primary hover:bg-primary/85 text-white'}`}
+                  className={`flex-1 h-auto py-2.5 text-[13px] font-semibold border-0 ${saved ? 'bg-green-600 hover:bg-green-600 text-white' : 'bg-primary hover:bg-primary/85 text-white'}`}
                 >
                   {saved ? 'Saved!' : 'Save as Active Context'}
                 </Button>
                 <Button
                   onClick={handleClear}
-                  className="h-auto py-2.5 px-4 text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border-0"
+                  className="h-auto py-2.5 px-4 text-[13px] bg-destructive/10 hover:bg-destructive/20 text-destructive border-0"
                 >
                   Clear
                 </Button>
               </div>
-              <div className="mt-2 text-[9px] text-ink-400 leading-relaxed">
+              <div className="mt-2 text-[10px] text-ink-400 leading-relaxed">
                 Saved context is stored in localStorage and automatically injected into v2 translations.
               </div>
             </TabsContent>

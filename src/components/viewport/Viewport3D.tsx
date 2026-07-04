@@ -515,11 +515,11 @@ export const Viewport3D: React.FC = () => {
           position={[0, -0.6, 0]}
           infiniteGrid
           cellSize={GRID_STRIDE}
-          sectionSize={GRID_STRIDE * 5}
-          cellThickness={0.6}
+          sectionSize={GRID_STRIDE * 4}
+          cellThickness={0.85}
           sectionThickness={1}
-          cellColor="#dcd8cd"
-          sectionColor="#c9c4b6"
+          cellColor="#d2cec1"
+          sectionColor="#cbc6b8"
           fadeDistance={2600}
           fadeStrength={1.6}
           followCamera={false}

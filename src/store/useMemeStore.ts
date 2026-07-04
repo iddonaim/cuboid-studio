@@ -64,6 +64,11 @@ interface MemeState {
   // Operator history (standalone mode)
   operators: OperatorRecord[];
 
+  /** Latest full translation per assembly cube, so re-selecting a cube
+   *  restores the readable result and an editable cutter — the data always
+   *  existed, it just used to be thrown away on deselect. */
+  cubeTranslations: Record<string, CubeTranslation>;
+
   // Actions
   initWorkingCube: () => Promise<void>;
   translate: () => Promise<void>;
@@ -73,6 +78,15 @@ interface MemeState {
   // Assembly helpers
   getActiveOperators: () => OperatorRecord[];
   getActiveGeometryStack: () => THREE.BufferGeometry[];
+}
+
+export interface CubeTranslation {
+  result: LLMOperatorResult;
+  pass1: TranslationPass1 | null;
+  pass2: TranslationPass2 | null;
+  confidenceVector: ConfidenceVector | null;
+  model: string | null;
+  cutterGeometry: THREE.BufferGeometry | null;
 }
 
 /** Helper to load base geometry for a placed cube by its variation ID */
@@ -107,19 +121,25 @@ export const useMemeStore = create<MemeState>((set, get) => ({
 
   // Assembly targeting
   targetCubeId: null,
-  setTargetCubeId: (id) => set({
-    targetCubeId: id,
-    lastResult: null,
-    lastPass1: null,
-    lastPass2: null,
-    lastConfidenceVector: null,
-    lastModel: null,
-    lastCutterGeometry: null,
-    lastError: null,
-  }),
+  setTargetCubeId: (id) => {
+    // Re-selecting a cube that has been translated brings its latest
+    // result (and tweakable cutter) back instead of a blank panel.
+    const stored = id ? get().cubeTranslations[id] : undefined;
+    set({
+      targetCubeId: id,
+      lastResult: stored?.result ?? null,
+      lastPass1: stored?.pass1 ?? null,
+      lastPass2: stored?.pass2 ?? null,
+      lastConfidenceVector: stored?.confidenceVector ?? null,
+      lastModel: stored?.model ?? null,
+      lastCutterGeometry: stored?.cutterGeometry ?? null,
+      lastError: null,
+    });
+  },
   cubeGeometryOverrides: {},
   cubeGeometryStacks: {},
   cubeOperators: {},
+  cubeTranslations: {},
 
   // Cutter visualization
   lastCutterGeometry: null,
@@ -316,6 +336,17 @@ export const useMemeStore = create<MemeState>((set, get) => ({
             ...prevOps,
             [targetCubeId]: [...(prevOps[targetCubeId] || []), record],
           },
+          cubeTranslations: {
+            ...get().cubeTranslations,
+            [targetCubeId]: {
+              result,
+              pass1,
+              pass2,
+              confidenceVector,
+              model: modelUsed,
+              cutterGeometry: cutterGeo,
+            },
+          },
           lastResult: result,
           lastPass1: pass1,
           lastPass2: pass2,
@@ -372,6 +403,9 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         newOverrides[targetCubeId] = previousGeometry;
       }
 
+      const remainingTranslations = { ...get().cubeTranslations };
+      delete remainingTranslations[targetCubeId];
+
       set({
         cubeGeometryOverrides: newOverrides,
         cubeGeometryStacks: {
@@ -382,6 +416,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
           ...ops,
           [targetCubeId]: cubeOps.slice(0, -1),
         },
+        cubeTranslations: remainingTranslations,
         lastResult: null,
         lastPass1: null,
         lastPass2: null,
@@ -437,6 +472,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         };
       }
 
+      const prevSnapshot = get().cubeTranslations[targetCubeId];
       set({
         cubeGeometryOverrides: {
           ...get().cubeGeometryOverrides,
@@ -445,6 +481,17 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         cubeOperators: {
           ...get().cubeOperators,
           [targetCubeId]: cubeOps,
+        },
+        cubeTranslations: {
+          ...get().cubeTranslations,
+          [targetCubeId]: {
+            result: tweakedResult,
+            pass1: prevSnapshot?.pass1 ?? get().lastPass1,
+            pass2: prevSnapshot?.pass2 ?? get().lastPass2,
+            confidenceVector: prevSnapshot?.confidenceVector ?? get().lastConfidenceVector,
+            model: prevSnapshot?.model ?? get().lastModel,
+            cutterGeometry: cutterGeo,
+          },
         },
         lastResult: tweakedResult,
         lastCutterGeometry: cutterGeo,

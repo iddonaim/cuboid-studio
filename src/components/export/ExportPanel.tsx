@@ -71,7 +71,7 @@ export const ExportPanel: React.FC = () => {
       <div className="flex items-center justify-end mb-1 -mt-1">
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[10px] px-1 py-0.5"
+          className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1 py-0.5"
         >
           {showSettings ? 'hide settings' : 'settings'}
         </button>
@@ -81,7 +81,7 @@ export const ExportPanel: React.FC = () => {
       <Button
         onClick={downloadAssemblyJSON}
         disabled={!hasCubes}
-        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-ink-200 ${
+        className={`w-full h-auto py-2 mb-1.5 text-[12px] border border-ink-200 ${
           hasCubes
             ? 'bg-ink-100 text-ink-600 hover:bg-ink-200'
             : 'bg-ink-100 text-ink-400 cursor-default'
@@ -94,7 +94,7 @@ export const ExportPanel: React.FC = () => {
       <Button
         onClick={() => setShowAR(true)}
         disabled={!hasCubes}
-        className={`w-full h-auto py-2 mb-1.5 text-[11px] border border-ink-200 flex items-center justify-center gap-1.5 ${
+        className={`w-full h-auto py-2 mb-1.5 text-[12px] border border-ink-200 flex items-center justify-center gap-1.5 ${
           hasCubes
             ? 'bg-primary/10 text-primary hover:bg-primary/20'
             : 'bg-ink-100 text-ink-400 cursor-default'
@@ -109,12 +109,12 @@ export const ExportPanel: React.FC = () => {
       <div className="p-2 bg-ink-100 border border-ink-200 rounded-md">
         <div className="flex items-center gap-1.5 mb-1.5">
           <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass[linkStatus] ?? 'bg-ink-300'}`} />
-          <span className="text-ink-600 text-[10px] flex-1">
+          <span className="text-ink-600 text-[11px] flex-1">
             GH Live-Link: {linkStatus}
           </span>
           <Button
             onClick={handleConnect}
-            className={`h-auto py-0.5 px-2 text-[10px] border-0 ${
+            className={`h-auto py-0.5 px-2 text-[11px] border-0 ${
               linkStatus === 'connected'
                 ? 'bg-destructive/10 hover:bg-destructive/20 text-destructive'
                 : 'bg-primary hover:bg-primary/85 text-white'
@@ -129,7 +129,7 @@ export const ExportPanel: React.FC = () => {
             <Button
               onClick={handleManualPush}
               disabled={!hasCubes}
-              className={`flex-1 h-auto py-1 text-[10px] border border-ink-200 ${
+              className={`flex-1 h-auto py-1 text-[11px] border border-ink-200 ${
                 hasCubes
                   ? 'bg-ink-100 text-ink-600 hover:bg-ink-200'
                   : 'bg-transparent text-ink-400 cursor-default'
@@ -138,13 +138,13 @@ export const ExportPanel: React.FC = () => {
               Push Now
             </Button>
             {lastPush && (
-              <span className="text-ink-400 text-[9px]">{lastPush}</span>
+              <span className="text-ink-400 text-[10px]">{lastPush}</span>
             )}
           </div>
         )}
 
         {linkStatus === 'disconnected' && (
-          <div className="text-ink-400 text-[9px] leading-relaxed">
+          <div className="text-ink-400 text-[10px] leading-relaxed">
             Run <code className="text-primary">python cuboid_bridge_server.py</code> first
           </div>
         )}
@@ -153,13 +153,13 @@ export const ExportPanel: React.FC = () => {
       {/* Settings (port config) */}
       {showSettings && (
         <div className="mt-1.5 p-1.5 bg-ink-100 border border-ink-200 rounded">
-          <label className="flex items-center gap-1.5 text-[10px] text-ink-500">
+          <label className="flex items-center gap-1.5 text-[11px] text-ink-500">
             Port:
             <input
               type="number"
               value={port}
               onChange={(e) => setPort(Number(e.target.value))}
-              className="w-16 px-1 py-0.5 text-[10px] bg-ink-100 border border-ink-200 rounded text-ink-600"
+              className="w-16 px-1 py-0.5 text-[11px] bg-ink-100 border border-ink-200 rounded text-ink-600"
             />
           </label>
         </div>

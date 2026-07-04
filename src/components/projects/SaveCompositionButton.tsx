@@ -62,7 +62,7 @@ export const SaveCompositionButton: React.FC = () => {
     <div className="absolute top-[50px] right-3 z-30 flex flex-col items-end gap-1.5">
       <button
         onClick={handleOpen}
-        className="rounded-full bg-primary hover:bg-primary/85 text-white text-[11px] font-mono px-3 py-1.5 shadow-lg cursor-pointer border-0"
+        className="rounded-full bg-primary hover:bg-primary/85 text-white text-[12px] font-mono px-3 py-1.5 shadow-lg cursor-pointer border-0"
         title={`Save to ${activeProject.name} / ${activeSite.name}`}
       >
         Save to project
@@ -74,7 +74,7 @@ export const SaveCompositionButton: React.FC = () => {
           className="flex flex-col gap-2 p-3 w-64 rounded-lg border border-ink-200 shadow-xl"
           style={{ background: 'hsl(var(--card))', boxShadow: '0 12px 40px hsl(45 9% 13% / 0.14)' }}
         >
-          <span className="font-mono text-[10px] uppercase tracking-wider text-ink-600">
+          <span className="font-mono text-[11px] uppercase tracking-wider text-ink-600">
             Save composition to {activeSite.name}
           </span>
           <input

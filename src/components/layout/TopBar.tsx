@@ -70,7 +70,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
                   key={slot.key}
                   onClick={() => setActiveMode(slot.key as AppMode)}
                   className={[
-                    'h-full px-3 flex items-center font-mono text-[11px] uppercase tracking-wider transition-colors bg-transparent border-0 cursor-pointer',
+                    'h-full px-3 flex items-center font-mono text-[12px] uppercase tracking-wider transition-colors bg-transparent border-0 cursor-pointer',
                     active
                       ? 'text-ink-900 font-semibold'
                       : 'text-ink-500 hover:text-ink-800',
@@ -96,13 +96,13 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
           onClick={openOnboarding}
           title="Show introduction"
           aria-label="Show introduction"
-          className="font-mono text-[11px] text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer px-1"
+          className="font-mono text-[12px] text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer px-1"
         >
           ?
         </button>
 
         <span
-          className="font-mono text-[11px] text-ink-600 bg-ink-100 border border-ink-200 px-2 py-0.5 rounded-full select-none"
+          className="font-mono text-[12px] text-ink-600 bg-ink-100 border border-ink-200 px-2 py-0.5 rounded-full select-none"
           title="Cubes in assembly"
         >
           {placedCubes.length}

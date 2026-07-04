@@ -28,7 +28,7 @@ export const SelectedCubePanel: React.FC<{ docked?: boolean }> = ({ docked = fal
         {selectedCubeIds.length === 1 ? 'Selected Cube' : `${selectedCubeIds.length} Cubes`}
       </p>
       {singleCube && (
-        <p className="text-ink-500 text-[11px] mb-3">{singleCube.variationId}</p>
+        <p className="text-ink-500 text-[12px] mb-3">{singleCube.variationId}</p>
       )}
 
       {isMobile && singleCube && (
@@ -52,7 +52,7 @@ export const SelectedCubePanel: React.FC<{ docked?: boolean }> = ({ docked = fal
 
       <Button
         onClick={handleDelete}
-        className={`w-full h-auto ${isMobile ? 'py-3' : 'py-2'} text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border-0`}
+        className={`w-full h-auto ${isMobile ? 'py-3' : 'py-2'} text-[13px] bg-destructive/10 hover:bg-destructive/20 text-destructive border-0`}
       >
         {selectedCubeIds.length === 1 ? 'Delete' : `Delete ${selectedCubeIds.length}`}
       </Button>

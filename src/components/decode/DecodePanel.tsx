@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type Konva from 'konva';
+import type { CanvasTile, TileRotation } from '../../store/useDecodeStore';
 import { Expand, RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
 import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
-import { TILE_SIZE } from '../../lib/decode/snapUtils';
+import { TILE_SIZE, worldSnapPoints } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ const DrawerTile: React.FC<{
       draggable={!isMobile}
       onDragStart={onDragStart}
       onClick={onSelect}
-      className={`flex-shrink-0 w-[72px] rounded-md border p-1.5 transition-colors ${
+      className={`flex-shrink-0 w-[88px] rounded-md border p-1.5 transition-colors ${
         selected
           ? 'border-primary bg-ink-100 ring-2 ring-primary/40'
           : 'border-ink-300 bg-ink-100/80 hover:border-ink-400'
@@ -57,12 +58,12 @@ const DrawerTile: React.FC<{
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-ink-600">
+          <div className="flex h-full w-full items-center justify-center font-mono text-[10px] text-ink-600">
             {variationId}
           </div>
         )}
       </div>
-      <span className="mt-1 block text-center font-mono text-[9px] text-ink-600">
+      <span className="mt-1 block text-center font-mono text-[10px] text-ink-600">
         {variationId}
       </span>
     </button>
@@ -103,48 +104,53 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
   const [exporting, setExporting] = useState(false);
 
   // Auto-composition: grow the notation like the Builder's +N buttons grow
-  // the assembly — each new tile lands snapped edge-to-edge to a random
-  // existing tile, in a free grid cell, with a random 90-degree rotation.
+  // the assembly. The notation rule is that elements connect through their
+  // red snap dots, so each new tile is constructed onto the composition:
+  // a random snap dot of a placed tile and a random snap dot of the new
+  // tile are made to coincide exactly. Partial overlap between connected
+  // glyphs is legitimate notation; only near-identical stacking is rejected.
   const autoCompose = useCallback(
     (count: number) => {
       if (drawerVariations.length === 0) return;
       const pick = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.length)];
-      const cellKey = (x: number, y: number) =>
-        `${Math.round(x / TILE_SIZE)}:${Math.round(y / TILE_SIZE)}`;
-      const occupied = new Set(canvasTiles.map(t => cellKey(t.x, t.y)));
-      const placed: { x: number; y: number }[] = canvasTiles.map(t => ({ x: t.x, y: t.y }));
-      const rotations = [0, 1, 2, 3] as const;
-      const dirs = [
-        [TILE_SIZE, 0], [-TILE_SIZE, 0], [0, TILE_SIZE], [0, -TILE_SIZE],
-      ] as const;
+      const rotations: readonly TileRotation[] = [0, 1, 2, 3];
+      const stacked = (tiles: CanvasTile[], x: number, y: number) =>
+        tiles.some(t => Math.abs(t.x - x) < TILE_SIZE * 0.3 && Math.abs(t.y - y) < TILE_SIZE * 0.3);
+
+      const placed: CanvasTile[] = canvasTiles.map(t => ({ ...t }));
 
       for (let i = 0; i < count; i++) {
-        let x: number; let y: number;
-        if (placed.length === 0) {
-          x = TILE_SIZE * 2;
-          y = TILE_SIZE * 2;
-        } else {
-          // Try random anchors/directions until a free neighbouring cell shows up
-          let found: { x: number; y: number } | null = null;
-          for (let attempt = 0; attempt < 40 && !found; attempt++) {
-            const anchor = pick(placed);
-            const [dx, dy] = pick(dirs);
-            const nx = anchor.x + dx;
-            const ny = anchor.y + dy;
-            if (!occupied.has(cellKey(nx, ny))) found = { x: nx, y: ny };
+        let next: CanvasTile | null = null;
+
+        for (let attempt = 0; attempt < 30 && !next; attempt++) {
+          const variationId = pick(drawerVariations);
+          const rotation = pick(rotations);
+          const id = `auto-${Date.now()}-${i}`;
+
+          if (placed.length === 0) {
+            next = { id, variationId, x: TILE_SIZE * 0.6, y: TILE_SIZE * 0.8, rotation };
+            break;
           }
-          if (!found) break;
-          x = found.x;
-          y = found.y;
+
+          // Rotated snap-dot offsets of the new tile relative to its origin
+          const ownDots = worldSnapPoints({ id, variationId, x: 0, y: 0, rotation });
+          if (ownDots.length === 0) continue;
+
+          const anchor = pick(placed);
+          const anchorDots = worldSnapPoints(anchor);
+          if (anchorDots.length === 0) continue;
+
+          const target = pick(anchorDots);
+          const own = pick(ownDots);
+          const x = target.x - own.x;
+          const y = target.y - own.y;
+          if (stacked(placed, x, y)) continue;
+          next = { id, variationId, x, y, rotation };
         }
-        occupied.add(cellKey(x, y));
-        placed.push({ x, y });
-        addTile({
-          variationId: pick(drawerVariations),
-          x,
-          y,
-          rotation: pick(rotations),
-        });
+
+        if (!next) break;
+        placed.push(next);
+        addTile({ variationId: next.variationId, x: next.x, y: next.y, rotation: next.rotation });
       }
     },
     [addTile, canvasTiles, drawerVariations],
@@ -227,17 +233,18 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
     <div className={`flex flex-col gap-2 ${expanded ? 'h-full' : ''}`}>
       {/* Zone 1 — Toolbar */}
       <div className="flex items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-[11px] text-ink-600">
+        <label className="flex items-center gap-2 text-[12px] text-ink-600">
           <Switch checked={freestyle} onCheckedChange={setFreestyle} />
           <span>Freestyle</span>
         </label>
 
         <div className="flex items-center gap-1">
-          {isMobile && selectedTileId && (
+          {selectedTileId && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
+              title="Rotate tile (Space)"
               className="h-8 w-8 text-ink-600 hover:text-ink-800"
               onClick={() => rotateTile(selectedTileId)}
               aria-label="Rotate tile"
@@ -274,11 +281,11 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
 
       {/* Zone 2 — Parts drawer */}
       <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
           Parts
         </p>
         {drawerVariations.length === 0 ? (
-          <p className="text-[10px] text-ink-400">
+          <p className="text-[11px] text-ink-400">
             {freestyle
               ? 'No variations available.'
               : 'No cubes in the assembly yet — enable Freestyle to browse all 70 parts.'}
@@ -307,17 +314,17 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           </div>
         )}
         {!isMobile && drawerVariations.length > 0 && (
-          <p className="mt-1 text-[10px] text-ink-400">Drag a part onto the canvas below.</p>
+          <p className="mt-1 text-[11px] text-ink-400">Drag a part onto the canvas below.</p>
         )}
         {drawerVariations.length > 0 && (
           <div className="mt-1.5 flex items-center gap-1.5">
-            <span className="text-[10px] text-ink-500">Auto-compose</span>
+            <span className="text-[11px] text-ink-500">Auto-compose</span>
             {[5, 10].map(n => (
               <Button
                 key={n}
                 type="button"
                 onClick={() => autoCompose(n)}
-                className="h-auto py-1 px-2.5 text-[11px] bg-primary/10 hover:bg-primary/20 text-primary border-0"
+                className="h-auto py-1 px-2.5 text-[12px] bg-primary/10 hover:bg-primary/20 text-primary border-0"
               >
                 +{n}
               </Button>
@@ -327,7 +334,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
       </div>
 
       {isMobile && pendingPlacementVariationId && (
-        <p className="text-[10px] text-primary">
+        <p className="text-[11px] text-primary">
           Tap the canvas to place {pendingPlacementVariationId}
         </p>
       )}
@@ -335,7 +342,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
       {/* Zone 3 — Canvas. In expanded mode this zone claims all remaining
           height so the stage stretches vertically, not just horizontally. */}
       <div className={expanded ? 'flex-1 min-h-0 flex flex-col' : undefined}>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
           Canvas
         </p>
         <div
@@ -360,7 +367,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           type="button"
           disabled={isEmpty}
           onClick={clearCanvas}
-          className="flex-1 h-auto py-2 text-[11px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
         >
           Clear
         </Button>
@@ -368,7 +375,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           type="button"
           disabled={isEmpty || exporting}
           onClick={() => void handleExportDxf()}
-          className="flex-1 h-auto py-2 text-[11px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
         >
           {exporting ? 'Exporting…' : 'Export DXF'}
         </Button>

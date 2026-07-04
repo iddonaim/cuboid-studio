@@ -54,7 +54,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
                 <Button
                   key={a}
                   onClick={() => setAxis(a)}
-                  className={`flex-1 h-auto py-1 px-0 text-[11px] rounded-sm border-0 ${
+                  className={`flex-1 h-auto py-1 px-0 text-[12px] rounded-sm border-0 ${
                     axis === a
                       ? 'bg-accent text-accent-foreground hover:bg-accent/90'
                       : 'bg-card text-muted-foreground hover:bg-ink-200'
@@ -70,7 +70,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
               value={[position]}
               onValueChange={([v]) => setPosition(v)}
             />
-            <span className="text-ink-500 text-[10px] text-center">
+            <span className="text-ink-500 text-[11px] text-center">
               {axis.toUpperCase()} = {Math.round(position)}
             </span>
           </div>
@@ -84,7 +84,7 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
           />
           <label
             htmlFor="section-cut"
-            className={`text-xs cursor-pointer ${enabled ? 'text-accent' : 'text-ink-500'}`}
+            className={`text-[13px] cursor-pointer ${enabled ? 'text-accent' : 'text-ink-500'}`}
           >
             Section Cut
           </label>

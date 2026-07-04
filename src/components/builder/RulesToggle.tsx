@@ -20,13 +20,13 @@ export const RulesToggle: React.FC<RulesToggleProps> = ({ enabled, onChange }) =
         />
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className={`text-xs cursor-pointer underline decoration-dotted ${enabled ? 'text-green-600' : 'text-ink-600'}`}
+          className={`text-[13px] cursor-pointer underline decoration-dotted ${enabled ? 'text-green-600' : 'text-ink-600'}`}
         >
           Rules {showDetails ? '▼' : '▶'}
         </button>
       </div>
       {showDetails && (
-        <div className="mt-2 ml-6 p-2 bg-ink-100 rounded text-[11px] text-ink-600 leading-relaxed">
+        <div className="mt-2 ml-6 p-2 bg-ink-100 rounded text-[12px] text-ink-600 leading-relaxed">
           <div className="text-green-600">✓ Door ↔ Door (sphere↔sphere)</div>
           <div className="text-green-600">✓ Window ↔ Window (cylinder↔cylinder)</div>
           <div className="text-destructive">✗ Wall ↔ anything (blocks growth)</div>

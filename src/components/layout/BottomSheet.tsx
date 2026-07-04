@@ -102,7 +102,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
       {/* ── Mode label (not collapsed) ──────────────────────────────────── */}
       {!isCollapsed && (
         <div className="px-4 py-1 flex-shrink-0">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
+          <span className="font-mono text-[11px] uppercase tracking-wider text-ink-500">
             {contextLabel}
           </span>
         </div>

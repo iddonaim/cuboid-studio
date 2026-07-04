@@ -56,11 +56,11 @@ export const Section: React.FC<SectionProps> = ({ id, title, defaultOpen = false
           size={11}
           className={`text-ink-400 transition-transform flex-shrink-0 ${open ? 'rotate-90' : ''}`}
         />
-        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500 group-hover:text-ink-800 flex-1">
+        <span className="font-mono text-[11px] uppercase tracking-wider text-ink-500 group-hover:text-ink-800 flex-1">
           {title}
         </span>
         {badge != null && (
-          <span className="text-[10px] text-ink-400 font-mono">{badge}</span>
+          <span className="text-[11px] text-ink-400 font-mono">{badge}</span>
         )}
       </button>
       {open && <div className="pb-2.5">{children}</div>}

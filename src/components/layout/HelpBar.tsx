@@ -52,7 +52,7 @@ export const HelpBar: React.FC = () => {
 
   return (
     <div
-      className="absolute left-1/2 -translate-x-1/2 text-ink-500 text-[11px] pointer-events-none whitespace-nowrap"
+      className="absolute left-1/2 -translate-x-1/2 text-ink-500 text-[12px] pointer-events-none whitespace-nowrap"
       style={{
         bottom: isMobile ? 64 : 20,
         ...pillStyle,

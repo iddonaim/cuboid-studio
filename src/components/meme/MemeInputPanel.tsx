@@ -79,15 +79,15 @@ export const MemeInputPanel: React.FC = () => {
         }`}>
           {targetCubeId && targetCube ? (
             <div>
-              <div className="text-primary text-[10px] font-semibold mb-0.5">
+              <div className="text-primary text-[11px] font-semibold mb-0.5">
                 Target: {targetCube.variationId}
               </div>
-              <div className="text-ink-500 text-[9px]">
+              <div className="text-ink-500 text-[10px]">
                 pos ({targetCube.position.map(p => p.toFixed(0)).join(', ')})
               </div>
             </div>
           ) : (
-            <div className="text-ink-500 text-[11px]">
+            <div className="text-ink-500 text-[12px]">
               Click a cube in the assembly to target it
             </div>
           )}
@@ -100,7 +100,7 @@ export const MemeInputPanel: React.FC = () => {
       {/* Browse from archthesis */}
       <Button
         onClick={() => setShowBrowser(true)}
-        className="w-full h-auto py-2 px-3 bg-ink-100 border border-ink-200 text-ink-600 hover:bg-ink-200 text-[11px] font-medium justify-start"
+        className="w-full h-auto py-2 px-3 bg-ink-100 border border-ink-200 text-ink-600 hover:bg-ink-200 text-[12px] font-medium justify-start"
       >
         Browse from archthesis...
       </Button>
@@ -108,7 +108,7 @@ export const MemeInputPanel: React.FC = () => {
       {/* Site context curator */}
       <Button
         onClick={() => setShowSiteContext(true)}
-        className={`w-full h-auto py-2 px-3 text-[11px] font-medium justify-start border ${
+        className={`w-full h-auto py-2 px-3 text-[12px] font-medium justify-start border ${
           activeSiteContext
             ? 'bg-green-50 border-green-600/40 text-green-700 hover:bg-green-100'
             : 'bg-ink-100 border-ink-200 text-ink-600 hover:bg-ink-200'
@@ -126,8 +126,8 @@ export const MemeInputPanel: React.FC = () => {
             className="w-12 h-12 rounded object-contain bg-ink-50 flex-shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-ink-900 text-[10px] font-medium truncate">{selectedMemeTitle}</div>
-            <div className="text-ink-500 text-[9px]">from archthesis</div>
+            <div className="text-ink-900 text-[11px] font-medium truncate">{selectedMemeTitle}</div>
+            <div className="text-ink-500 text-[10px]">from archthesis</div>
           </div>
           <button
             onClick={() => setSelectedMeme(null, null)}
@@ -140,7 +140,7 @@ export const MemeInputPanel: React.FC = () => {
 
       {/* Meme description */}
       <div>
-        <label className="text-ink-600 text-[11px] block mb-1">
+        <label className="text-ink-600 text-[12px] block mb-1">
           Describe the meme or paste its content
         </label>
         <textarea
@@ -148,25 +148,25 @@ export const MemeInputPanel: React.FC = () => {
           onChange={(e) => setMemeDescription(e.target.value)}
           placeholder="A viral meme about gentrification in south Tel Aviv..."
           rows={4}
-          className="w-full px-2 py-2 bg-ink-100 border border-ink-200 rounded text-ink-900 text-xs resize-y font-[inherit] box-border"
+          className="w-full px-2 py-2 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[13px] resize-y font-[inherit] box-border"
         />
       </div>
 
       {/* Location tag */}
       <div>
-        <label className="text-ink-600 text-[11px] block mb-1">Location tag (optional)</label>
+        <label className="text-ink-600 text-[12px] block mb-1">Location tag (optional)</label>
         <input
           type="text"
           value={locationTag}
           onChange={(e) => setLocationTag(e.target.value)}
           placeholder="e.g., Dizengoff Center, Tel Aviv"
-          className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-xs box-border"
+          className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[13px] box-border"
         />
       </div>
 
       {/* Engagement level */}
       <div>
-        <label className="text-ink-600 text-[11px] block mb-1">
+        <label className="text-ink-600 text-[12px] block mb-1">
           Engagement level: {engagementLevel}
         </label>
         <Slider
@@ -175,7 +175,7 @@ export const MemeInputPanel: React.FC = () => {
           value={[engagementLevel]}
           onValueChange={([v]) => setEngagementLevel(v)}
         />
-        <div className="flex justify-between text-ink-400 text-[9px] mt-0.5">
+        <div className="flex justify-between text-ink-400 text-[10px] mt-0.5">
           <span>Low</span>
           <span>High</span>
         </div>
@@ -188,11 +188,11 @@ export const MemeInputPanel: React.FC = () => {
       <div className="flex flex-col gap-2.5">
       {!hasAssembly && (
         <div>
-          <label className="text-ink-600 text-[11px] block mb-1">Base Variation</label>
+          <label className="text-ink-600 text-[12px] block mb-1">Base Variation</label>
           <select
             value={baseVariationId}
             onChange={(e) => setBaseVariation(e.target.value)}
-            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[11px]"
+            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px]"
           >
             {CUBE_VARIATIONS.map(v => (
               <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
@@ -203,12 +203,12 @@ export const MemeInputPanel: React.FC = () => {
 
       {/* Pass mode: v1 single-pass vs v2 two-pass */}
       <div>
-        <label className="text-ink-600 text-[11px] block mb-1">Translation mode</label>
+        <label className="text-ink-600 text-[12px] block mb-1">Translation mode</label>
         <div className="flex border border-ink-200 rounded-md overflow-hidden">
           <button
             onClick={() => setPassMode('single')}
             disabled={isTranslating}
-            className={`flex-1 py-1.5 px-2 text-[11px] border-0 disabled:cursor-not-allowed ${
+            className={`flex-1 py-1.5 px-2 text-[12px] border-0 disabled:cursor-not-allowed ${
               passMode === 'single' ? 'bg-ink-300 text-ink-900 font-semibold' : 'bg-ink-50 text-ink-500'
             }`}
           >
@@ -217,7 +217,7 @@ export const MemeInputPanel: React.FC = () => {
           <button
             onClick={() => setPassMode('two_pass')}
             disabled={isTranslating}
-            className={`flex-1 py-1.5 px-2 text-[11px] border-0 border-l border-ink-200 disabled:cursor-not-allowed ${
+            className={`flex-1 py-1.5 px-2 text-[12px] border-0 border-l border-ink-200 disabled:cursor-not-allowed ${
               passMode === 'two_pass' ? 'bg-ink-300 text-ink-900 font-semibold' : 'bg-ink-50 text-ink-500'
             }`}
           >
@@ -236,7 +236,7 @@ export const MemeInputPanel: React.FC = () => {
       <Button
         onClick={translate}
         disabled={isTranslating || isDisabled}
-        className={`w-full h-auto py-2.5 text-xs font-semibold border-0 ${
+        className={`w-full h-auto py-2.5 text-[13px] font-semibold border-0 ${
           isTranslating ? 'bg-ink-200 text-ink-600 cursor-wait' : 'bg-primary hover:bg-primary/85 text-white'
         } ${isDisabled && !isTranslating ? 'opacity-50' : ''}`}
       >
@@ -245,7 +245,7 @@ export const MemeInputPanel: React.FC = () => {
 
       {/* Error display */}
       {lastError && (
-        <div className="p-2 bg-destructive/10 rounded text-destructive text-[11px] leading-relaxed">
+        <div className="p-2 bg-destructive/10 rounded text-destructive text-[12px] leading-relaxed">
           {lastError}
         </div>
       )}

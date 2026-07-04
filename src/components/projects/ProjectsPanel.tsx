@@ -67,13 +67,13 @@ const RowButton: React.FC<{
       className="flex-1 text-left cursor-pointer bg-transparent border-0 min-w-0"
     >
       <div className="text-[12px] text-ink-800 truncate">{title}</div>
-      {subtitle && <div className="text-[10px] text-ink-500 truncate">{subtitle}</div>}
+      {subtitle && <div className="text-[11px] text-ink-500 truncate">{subtitle}</div>}
     </button>
     {rightSlot}
     <button
       onClick={onDelete}
       title="Delete"
-      className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-destructive text-[11px] cursor-pointer bg-transparent border-0 px-1"
+      className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-destructive text-[12px] cursor-pointer bg-transparent border-0 px-1"
     >
       ✕
     </button>
@@ -239,7 +239,7 @@ export const ProjectsPanel: React.FC = () => {
                 ‹
               </button>
             )}
-            <span className="font-mono text-[11px] uppercase tracking-wider text-ink-700 truncate">
+            <span className="font-mono text-[12px] uppercase tracking-wider text-ink-700 truncate">
               {crumb}
             </span>
           </div>
@@ -254,7 +254,7 @@ export const ProjectsPanel: React.FC = () => {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           {loading && (
-            <div className="text-[11px] text-ink-500 mb-2">Loading…</div>
+            <div className="text-[12px] text-ink-500 mb-2">Loading…</div>
           )}
 
           {/* Level 1: projects */}
@@ -271,7 +271,7 @@ export const ProjectsPanel: React.FC = () => {
                   />
                 ))}
                 {!loading && projects.length === 0 && (
-                  <div className="text-[11px] text-ink-500">No projects yet.</div>
+                  <div className="text-[12px] text-ink-500">No projects yet.</div>
                 )}
               </div>
               <NewItemRow placeholder="New project name" onCreate={handleCreateProject} />
@@ -292,7 +292,7 @@ export const ProjectsPanel: React.FC = () => {
                   />
                 ))}
                 {!loading && sites.length === 0 && (
-                  <div className="text-[11px] text-ink-500">No sites yet.</div>
+                  <div className="text-[12px] text-ink-500">No sites yet.</div>
                 )}
               </div>
               <NewItemRow placeholder="New site name" onCreate={handleCreateSite} />
@@ -312,7 +312,7 @@ export const ProjectsPanel: React.FC = () => {
                     rightSlot={
                       <button
                         onClick={() => handleLoadComposition(c)}
-                        className="rounded bg-primary hover:bg-primary/85 text-white text-[11px] px-2 py-1 cursor-pointer border-0"
+                        className="rounded bg-primary hover:bg-primary/85 text-white text-[12px] px-2 py-1 cursor-pointer border-0"
                       >
                         Load
                       </button>
@@ -320,7 +320,7 @@ export const ProjectsPanel: React.FC = () => {
                   />
                 ))}
                 {!loading && compositions.length === 0 && (
-                  <div className="text-[11px] text-ink-500">No saved compositions yet.</div>
+                  <div className="text-[12px] text-ink-500">No saved compositions yet.</div>
                 )}
               </div>
               <NewItemRow placeholder="Save current as…" onCreate={handleSaveComposition} />

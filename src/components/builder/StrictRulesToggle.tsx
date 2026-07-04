@@ -23,7 +23,7 @@ export const StrictRulesToggle: React.FC<StrictRulesToggleProps> = ({ enabled, o
         <button
           onClick={() => !disabled && setShowDetails(!showDetails)}
           disabled={disabled}
-          className={`text-xs underline decoration-dotted ${
+          className={`text-[13px] underline decoration-dotted ${
             disabled
               ? 'cursor-not-allowed opacity-50 text-ink-400'
               : enabled
@@ -35,11 +35,11 @@ export const StrictRulesToggle: React.FC<StrictRulesToggleProps> = ({ enabled, o
         </button>
       </div>
       {showDetails && (
-        <div className="mt-2 ml-6 p-2 bg-ink-100 rounded text-[11px] text-ink-600 leading-relaxed">
+        <div className="mt-2 ml-6 p-2 bg-ink-100 rounded text-[12px] text-ink-600 leading-relaxed">
           <div className="text-amber-600 mb-1">Additional constraints:</div>
           <div>• Sphere ↔ Sphere: centers must align</div>
           <div>• Cylinder ↔ Cylinder: centers must align</div>
-          <div className="text-[10px] mt-1">(Tolerance: ~10% of cutter radius)</div>
+          <div className="text-[11px] mt-1">(Tolerance: ~10% of cutter radius)</div>
         </div>
       )}
     </div>

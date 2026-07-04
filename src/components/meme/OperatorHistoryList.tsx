@@ -10,7 +10,7 @@ export const OperatorHistoryList: React.FC = () => {
 
   if (operators.length === 0) {
     return (
-      <div className="mt-4 text-ink-400 text-[11px] italic">
+      <div className="mt-4 text-ink-400 text-[12px] italic">
         No operators applied yet. Translate a meme to begin.
       </div>
     );
@@ -18,7 +18,7 @@ export const OperatorHistoryList: React.FC = () => {
 
   return (
     <div className="mt-4 flex-1 overflow-y-auto">
-      <p className="text-ink-600 text-[11px] mb-2">Operator History ({operators.length})</p>
+      <p className="text-ink-600 text-[12px] mb-2">Operator History ({operators.length})</p>
       <div className="flex flex-col gap-1">
         {operators.map((op, idx) => (
           <div
@@ -28,8 +28,8 @@ export const OperatorHistoryList: React.FC = () => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="text-ink-800 text-[11px] font-semibold">#{idx + 1}</span>
-                <span className="px-1.5 py-px rounded bg-ink-200 text-ink-600 text-[10px]">
+                <span className="text-ink-800 text-[12px] font-semibold">#{idx + 1}</span>
+                <span className="px-1.5 py-px rounded bg-ink-200 text-ink-600 text-[11px]">
                   {op.operator}
                 </span>
               </div>
@@ -44,9 +44,9 @@ export const OperatorHistoryList: React.FC = () => {
 
             {expandedId === op.id && (
               <div className="mt-2 pt-2 border-t border-ink-200">
-                <p className="text-ink-500 text-[10px] mb-1">{op.memeDescription}</p>
-                <p className="text-ink-600 text-[10px] italic">{op.reasoning}</p>
-                <p className="text-ink-400 text-[9px] mt-1">
+                <p className="text-ink-500 text-[11px] mb-1">{op.memeDescription}</p>
+                <p className="text-ink-600 text-[11px] italic">{op.reasoning}</p>
+                <p className="text-ink-400 text-[10px] mt-1">
                   {new Date(op.createdAt).toLocaleTimeString()}
                 </p>
               </div>

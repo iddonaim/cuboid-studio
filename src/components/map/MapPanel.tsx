@@ -258,8 +258,8 @@ export const MapPanel: React.FC = () => {
     : 'No site selected';
 
   return (
-    <div className="flex flex-col gap-3 text-[11px] text-ink-700">
-      <p className="text-[10px] text-ink-500 leading-relaxed m-0">
+    <div className="flex flex-col gap-3 text-[12px] text-ink-700">
+      <p className="text-[11px] text-ink-500 leading-relaxed m-0">
         Pick a site on the map or search an address. Set radius, then commit to active site context
         (used by Encode and Pataphysical translation).
       </p>
@@ -271,18 +271,18 @@ export const MapPanel: React.FC = () => {
             value={addressQuery}
             onChange={(e) => setAddressQuery(e.target.value)}
             placeholder="Search address..."
-            className="flex-1 box-border px-2 py-1.5 font-[inherit] text-[11px] text-ink-800 bg-ink-100 border border-ink-200 rounded outline-none focus:border-primary"
+            className="flex-1 box-border px-2 py-1.5 font-[inherit] text-[12px] text-ink-800 bg-ink-100 border border-ink-200 rounded outline-none focus:border-primary"
           />
           <Button
             type="submit"
             disabled={geocoding || !addressQuery.trim()}
-            className="h-auto py-1.5 px-2.5 text-[10px] bg-ink-100 hover:bg-ink-200 text-primary border border-ink-200"
+            className="h-auto py-1.5 px-2.5 text-[11px] bg-ink-100 hover:bg-ink-200 text-primary border border-ink-200"
           >
             {geocoding ? 'Searching…' : 'Search'}
           </Button>
         </form>
         {geocodeError && (
-          <p className="text-destructive text-[10px] m-0" role="alert">
+          <p className="text-destructive text-[11px] m-0" role="alert">
             {geocodeError}
           </p>
         )}
@@ -312,7 +312,7 @@ export const MapPanel: React.FC = () => {
       </div>
 
       <div>
-        <label className="block text-[10px] text-ink-500 mb-1">
+        <label className="block text-[11px] text-ink-500 mb-1">
           Radius: {radius}m
         </label>
         <input
@@ -329,19 +329,19 @@ export const MapPanel: React.FC = () => {
       <Button
         onClick={handleSetActiveSite}
         disabled={!pin || committing}
-        className="w-full h-auto py-2 text-xs font-semibold bg-primary hover:bg-primary/85 text-white border-0 disabled:opacity-50"
+        className="w-full h-auto py-2 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0 disabled:opacity-50"
       >
         {committing ? 'Fetching site context…' : 'Set as active site'}
       </Button>
 
       {poiSummary && (
-        <p className="text-green-600 text-[10px] m-0">{poiSummary}</p>
+        <p className="text-green-600 text-[11px] m-0">{poiSummary}</p>
       )}
       {poiWarning && (
-        <p className="text-amber-600 text-[10px] m-0">{poiWarning}</p>
+        <p className="text-amber-600 text-[11px] m-0">{poiWarning}</p>
       )}
 
-      <div className="px-2 py-1.5 rounded bg-ink-50 border border-ink-200 text-[10px] text-ink-600">
+      <div className="px-2 py-1.5 rounded bg-ink-50 border border-ink-200 text-[11px] text-ink-600">
         {infoLine}
       </div>
     </div>

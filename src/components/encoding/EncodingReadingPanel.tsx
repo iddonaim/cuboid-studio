@@ -49,10 +49,10 @@ function ContinuousRow({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500">
+      <div className="text-[11px] uppercase tracking-wide text-ink-500">
         {AXIS_LABELS[axisKey]}
       </div>
-      <p className="text-ink-800 text-[11px] leading-relaxed m-0">{reading.phrase}</p>
+      <p className="text-ink-800 text-[12px] leading-relaxed m-0">{reading.phrase}</p>
       <div className="relative pt-5 pb-1">
         <div className="relative h-1 rounded-full bg-ink-300/80">
           <div
@@ -61,15 +61,15 @@ function ContinuousRow({
           />
         </div>
         <div className="flex justify-between items-start gap-1 mt-1.5">
-          <span className="text-[9px] text-ink-500 leading-tight max-w-[38%] text-left">
+          <span className="text-[10px] text-ink-500 leading-tight max-w-[38%] text-left">
             {poles.low}
           </span>
           {variant === 'three-pole' && poles.mid && (
-            <span className="text-[9px] text-ink-400 leading-tight max-w-[28%] text-center">
+            <span className="text-[10px] text-ink-400 leading-tight max-w-[28%] text-center">
               {poles.mid}
             </span>
           )}
-          <span className="text-[9px] text-ink-500 leading-tight max-w-[38%] text-right">
+          <span className="text-[10px] text-ink-500 leading-tight max-w-[38%] text-right">
             {poles.high}
           </span>
         </div>
@@ -89,17 +89,17 @@ function CategoricalRow({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500">
+      <div className="text-[11px] uppercase tracking-wide text-ink-500">
         {AXIS_LABELS[axisKey]}
       </div>
-      <p className="text-ink-800 text-[11px] leading-relaxed m-0">{reading.phrase}</p>
+      <p className="text-ink-800 text-[12px] leading-relaxed m-0">{reading.phrase}</p>
       <div className="flex flex-wrap gap-1">
         {options.map((opt) => {
           const active = opt.id === reading.option;
           return (
             <span
               key={opt.id}
-              className={`px-1.5 py-0.5 rounded text-[9px] leading-snug ${
+              className={`px-1.5 py-0.5 rounded text-[10px] leading-snug ${
                 active
                   ? 'bg-ink-300 text-ink-900 border border-ink-400'
                   : 'bg-transparent text-ink-400 border border-transparent'
@@ -112,7 +112,7 @@ function CategoricalRow({
         {/* If the model returned an option id not in the lexicon (open vocabulary),
             show it as an active chip so the reading isn't silent about it. */}
         {reading.option && !options.some(o => o.id === reading.option) && (
-          <span className="px-1.5 py-0.5 rounded text-[9px] leading-snug bg-ink-300 text-ink-900 border border-ink-400">
+          <span className="px-1.5 py-0.5 rounded text-[10px] leading-snug bg-ink-300 text-ink-900 border border-ink-400">
             {reading.option}
           </span>
         )}
@@ -162,14 +162,14 @@ export const EncodingReadingPanel: React.FC<EncodingReadingPanelProps> = ({
   return (
     <div className="p-2 bg-ink-100 border border-ink-200 rounded flex flex-col gap-3">
       <div className="min-w-0">
-        <h3 className="text-ink-700 text-[11px] font-medium m-0 leading-snug">
+        <h3 className="text-ink-700 text-[12px] font-medium m-0 leading-snug">
           How the engine read this space
         </h3>
-        <p className="text-ink-500 text-[10px] m-0 mt-0.5 leading-snug">
+        <p className="text-ink-500 text-[11px] m-0 mt-0.5 leading-snug">
           An associative reading, not a measurement.
         </p>
         {readingEdited && (
-          <p className="text-amber-600/90 text-[10px] m-0 mt-1 leading-snug">
+          <p className="text-amber-600/90 text-[11px] m-0 mt-1 leading-snug">
             Revised by you — geometry unchanged.
           </p>
         )}

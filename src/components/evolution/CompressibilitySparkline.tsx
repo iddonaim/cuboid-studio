@@ -23,7 +23,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
   if (log.length < 2) {
     return (
       <div
-        className="flex items-center justify-center text-ink-400 text-[10px] border border-ink-200 rounded bg-ink-100"
+        className="flex items-center justify-center text-ink-400 text-[11px] border border-ink-200 rounded bg-ink-100"
         style={{ width, height }}
       >
         {log.length === 0 ? 'No data yet' : 'Need 2+ generations'}
@@ -82,7 +82,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
         {segments}
         {dots}
       </svg>
-      <div className="flex justify-between px-1.5 pb-1 pt-0.5 text-[9px] text-ink-500">
+      <div className="flex justify-between px-1.5 pb-1 pt-0.5 text-[10px] text-ink-500">
         <span>Gen 1</span>
         <span className="text-ink-600">{scores[scores.length - 1].toFixed(3)}</span>
         <span>Gen {log.length}</span>

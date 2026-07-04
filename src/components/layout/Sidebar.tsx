@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mode, isOpen, children, export
           className="rounded-full flex-shrink-0"
           style={{ width: 5, height: 5, background: 'hsl(var(--primary))' }}
         />
-        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
+        <span className="font-mono text-[11px] uppercase tracking-wider text-ink-500">
           {contextLabel}
         </span>
       </div>

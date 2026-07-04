@@ -142,7 +142,7 @@ export const EncodingPanel: React.FC = () => {
       <div className="flex flex-col gap-2.5">
 
       {/* Multi-photo toggle */}
-      <label className="flex items-center gap-2 cursor-pointer text-[11px] text-ink-600">
+      <label className="flex items-center gap-2 cursor-pointer text-[12px] text-ink-600">
         <input
           type="checkbox"
           checked={multiPhotoEnabled}
@@ -158,7 +158,7 @@ export const EncodingPanel: React.FC = () => {
           <button
             key={value}
             onClick={() => handleModeSelect(value)}
-            className={`flex-1 py-1.5 px-1 rounded-md text-[10px] border cursor-pointer ${
+            className={`flex-1 py-1.5 px-1 rounded-md text-[11px] border cursor-pointer ${
               mode === value
                 ? 'bg-primary/10 border-primary text-primary font-semibold'
                 : 'bg-ink-100 border-ink-200 text-ink-500'
@@ -173,14 +173,14 @@ export const EncodingPanel: React.FC = () => {
       {mode === 'merge' && (
         <div className="p-2 bg-ink-100 border border-ink-200 rounded flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2">
-            <span className={`text-[11px] ${seedCubes.length > 0 ? 'text-ink-600' : 'text-amber-600'}`}>
+            <span className={`text-[12px] ${seedCubes.length > 0 ? 'text-ink-600' : 'text-amber-600'}`}>
               {seedCubes.length > 0
                 ? `Seed: ${seedCubes.length} cube${seedCubes.length !== 1 ? 's' : ''}`
                 : 'Seed is empty'}
             </span>
             <Button
               onClick={() => { setSeedFromBuilder(); openSeedEdit(); }}
-              className="h-auto py-1 px-2 text-[10px] bg-ink-200 hover:bg-ink-300 text-ink-900 border-0"
+              className="h-auto py-1 px-2 text-[11px] bg-ink-200 hover:bg-ink-300 text-ink-900 border-0"
             >
               {seedCubes.length > 0 ? 'Edit seed' : 'Build seed'}
             </Button>
@@ -191,9 +191,9 @@ export const EncodingPanel: React.FC = () => {
       {/* Remix seed picker */}
       {mode === 'remix' && !hasImages && (
         <div className="flex flex-col gap-1">
-          <div className="text-ink-500 text-[10px]">Select a seed assembly:</div>
+          <div className="text-ink-500 text-[11px]">Select a seed assembly:</div>
           {savedStates.length === 0 ? (
-            <div className="p-2 bg-ink-100 border border-ink-200 rounded text-ink-500 text-[11px] italic">
+            <div className="p-2 bg-ink-100 border border-ink-200 rounded text-ink-500 text-[12px] italic">
               No saved states — save an assembly first.
             </div>
           ) : (
@@ -202,14 +202,14 @@ export const EncodingPanel: React.FC = () => {
                 <button
                   key={s.id}
                   onClick={() => handleSeedSelect(s)}
-                  className={`py-1.5 px-2 rounded border text-[10px] text-left flex justify-between items-center cursor-pointer ${
+                  className={`py-1.5 px-2 rounded border text-[11px] text-left flex justify-between items-center cursor-pointer ${
                     selectedSeedId === s.id
                       ? 'bg-primary/10 border-primary text-primary'
                       : 'bg-ink-100 border-ink-200 text-ink-600'
                   }`}
                 >
                   <span className="font-medium">{s.name}</span>
-                  <span className="text-ink-400 text-[9px]">
+                  <span className="text-ink-400 text-[10px]">
                     {s.cubeCount}c · {new Date(s.savedAt).toLocaleDateString()}
                   </span>
                 </button>
@@ -220,7 +220,7 @@ export const EncodingPanel: React.FC = () => {
       )}
 
       {imagesRestoredOnly && (
-        <div className="p-2 bg-amber-50 border border-amber-300 rounded text-amber-700 text-[10px] leading-relaxed">
+        <div className="p-2 bg-amber-50 border border-amber-300 rounded text-amber-700 text-[11px] leading-relaxed">
           Loaded from a saved composition — these are small preview thumbnails only.
           Re-upload the photo(s) to encode or re-encode.
         </div>
@@ -234,8 +234,8 @@ export const EncodingPanel: React.FC = () => {
               onClick={() => fileInputRef.current?.click()}
               className="py-6 border-2 border-dashed border-ink-200 rounded-lg cursor-pointer text-center bg-ink-100"
             >
-              <div className="text-ink-600 text-xs mb-1">Upload photos (up to 7)</div>
-              <div className="text-ink-400 text-[10px]">
+              <div className="text-ink-600 text-[13px] mb-1">Upload photos (up to 7)</div>
+              <div className="text-ink-400 text-[11px]">
                 Mark one as primary — it anchors the assembly
               </div>
             </div>
@@ -245,7 +245,7 @@ export const EncodingPanel: React.FC = () => {
                 {uploadedImages.map((img) => (
                   <div
                     key={img.id}
-                    className={`relative shrink-0 w-20 rounded-md border-2 overflow-hidden ${
+                    className={`relative shrink-0 w-28 rounded-md border-2 overflow-hidden ${
                       img.id === primaryImageId
                         ? 'border-primary'
                         : 'border-ink-200'
@@ -254,7 +254,7 @@ export const EncodingPanel: React.FC = () => {
                     <img
                       src={img.dataUrl}
                       alt=""
-                      className="w-20 h-16 object-cover bg-ink-100"
+                      className="w-28 h-20 object-cover bg-ink-100"
                     />
                     <label className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-0.5 bg-ink-100/80 py-0.5 cursor-pointer">
                       <input
@@ -264,12 +264,12 @@ export const EncodingPanel: React.FC = () => {
                         onChange={() => setPrimaryImage(img.id)}
                         className="w-2.5 h-2.5"
                       />
-                      <span className="text-[8px] text-ink-600">Primary</span>
+                      <span className="text-[9px] text-ink-600">Primary</span>
                     </label>
                     <button
                       type="button"
                       onClick={() => removeImage(img.id)}
-                      className="absolute top-0.5 right-0.5 bg-ink-100/90 border-0 text-ink-600 rounded px-1 text-xs leading-none cursor-pointer"
+                      className="absolute top-0.5 right-0.5 bg-ink-100/90 border-0 text-ink-600 rounded px-1 text-[13px] leading-none cursor-pointer"
                     >
                       &times;
                     </button>
@@ -280,7 +280,7 @@ export const EncodingPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="py-1.5 bg-ink-100 border border-ink-200 rounded-md text-ink-500 cursor-pointer text-[10px]"
+                  className="py-1.5 bg-ink-100 border border-ink-200 rounded-md text-ink-500 cursor-pointer text-[11px]"
                 >
                   Add more ({uploadedImages.length}/7)
                 </button>
@@ -288,7 +288,7 @@ export const EncodingPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={clearAllImages}
-                className="py-1 bg-transparent border-0 text-ink-400 cursor-pointer text-[10px] self-start"
+                className="py-1 bg-transparent border-0 text-ink-400 cursor-pointer text-[11px] self-start"
               >
                 Clear all
               </button>
@@ -300,8 +300,8 @@ export const EncodingPanel: React.FC = () => {
           onClick={() => fileInputRef.current?.click()}
           className="py-6 border-2 border-dashed border-ink-200 rounded-lg cursor-pointer text-center bg-ink-100"
         >
-          <div className="text-ink-600 text-xs mb-1">Upload or capture a photo</div>
-          <div className="text-ink-400 text-[10px]">
+          <div className="text-ink-600 text-[13px] mb-1">Upload or capture a photo</div>
+          <div className="text-ink-400 text-[11px]">
             A street corner, a shop, an office, a room...
           </div>
         </div>
@@ -310,7 +310,7 @@ export const EncodingPanel: React.FC = () => {
           <img
             src={uploadedImage}
             alt="Uploaded space"
-            className="w-full rounded-md object-contain max-h-[160px] bg-ink-100"
+            className="w-full rounded-md object-contain max-h-[260px] bg-ink-100"
           />
           <button
             onClick={clearImage}
@@ -342,7 +342,7 @@ export const EncodingPanel: React.FC = () => {
                 fileInputRef.current.click();
               }
             }}
-            className="flex-1 py-2 bg-ink-100 border border-ink-200 rounded-md text-ink-600 cursor-pointer text-[10px]"
+            className="flex-1 py-2 bg-ink-100 border border-ink-200 rounded-md text-ink-600 cursor-pointer text-[11px]"
           >
             Gallery
           </button>
@@ -353,7 +353,7 @@ export const EncodingPanel: React.FC = () => {
                 fileInputRef.current.click();
               }
             }}
-            className="flex-1 py-2 bg-ink-100 border border-ink-200 rounded-md text-ink-600 cursor-pointer text-[10px]"
+            className="flex-1 py-2 bg-ink-100 border border-ink-200 rounded-md text-ink-600 cursor-pointer text-[11px]"
           >
             Camera
           </button>
@@ -382,7 +382,7 @@ export const EncodingPanel: React.FC = () => {
               ? 'Select a seed assembly above'
               : undefined
           }
-          className={`w-full h-auto py-2.5 text-xs font-semibold border-0 ${
+          className={`w-full h-auto py-2.5 text-[13px] font-semibold border-0 ${
             encodeDisabled
               ? 'bg-ink-200 text-ink-500 cursor-not-allowed'
               : isEncoding
@@ -396,7 +396,7 @@ export const EncodingPanel: React.FC = () => {
 
       {/* Error display */}
       {lastError && (
-        <div className="p-2 bg-destructive/10 rounded text-destructive text-[11px] leading-relaxed">
+        <div className="p-2 bg-destructive/10 rounded text-destructive text-[12px] leading-relaxed">
           {lastError}
         </div>
       )}
@@ -408,7 +408,7 @@ export const EncodingPanel: React.FC = () => {
         >
           {isEncoding && (
             <div className="absolute inset-0 z-10 flex items-start justify-center pt-1 pointer-events-none">
-              <span className="text-[10px] text-primary bg-ink-50/90 border border-ink-300 rounded px-2 py-0.5">
+              <span className="text-[11px] text-primary bg-ink-50/90 border border-ink-300 rounded px-2 py-0.5">
                 Updating…
               </span>
             </div>
@@ -421,14 +421,14 @@ export const EncodingPanel: React.FC = () => {
             />
           )}
 
-          <div className="text-ink-600 text-[11px]">
+          <div className="text-ink-600 text-[12px]">
             {encodedCubes.length} cubes encoded
             {' '}({new Set(encodedCubes.map(c => c.variationId)).size} unique variations)
           </div>
 
           <div className="max-h-[100px] overflow-y-auto flex flex-wrap gap-1">
             {encodedCubes.map((cube, i) => (
-              <span key={i} className="px-1.5 py-0.5 bg-ink-200 rounded text-ink-600 text-[9px]">
+              <span key={i} className="px-1.5 py-0.5 bg-ink-200 rounded text-ink-600 text-[10px]">
                 {cube.variationId}
               </span>
             ))}
@@ -436,13 +436,13 @@ export const EncodingPanel: React.FC = () => {
 
           <Button
             onClick={() => handleLoadAndSwitch('edit')}
-            className="w-full h-auto py-2.5 text-xs font-semibold bg-primary hover:bg-primary/85 text-white border-0"
+            className="w-full h-auto py-2.5 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
           >
             Load &amp; edit
           </Button>
           <Button
             onClick={() => handleLoadAndSwitch('memes')}
-            className="w-full h-auto py-2.5 text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border-0"
+            className="w-full h-auto py-2.5 text-[13px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border-0"
           >
             Load &amp; apply memes
           </Button>
@@ -452,7 +452,7 @@ export const EncodingPanel: React.FC = () => {
             onClick={handleEncode}
             disabled={isEncoding || imagesRestoredOnly}
             title={imagesRestoredOnly ? 'Re-upload the photo(s) first' : undefined}
-            className="py-1.5 bg-transparent border border-ink-200 rounded-md text-ink-500 cursor-pointer text-[10px] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="py-1.5 bg-transparent border border-ink-200 rounded-md text-ink-500 cursor-pointer text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isEncoding ? 'Re-encoding…' : 'Re-encode'}
           </button>
