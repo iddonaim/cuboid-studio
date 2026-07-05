@@ -76,6 +76,10 @@ test('offline gate: save-and-restore works with all external network dead', asyn
 
   // Seed the fixture BEFORE any app script runs.
   await page.addInitScript(state => {
+    // The onboarding showcase auto-opens on a first-ever visit and its
+    // full-screen overlay swallows every click; mark it seen (same as
+    // nav.spec.ts) so the test drives the actual workflow.
+    window.localStorage.setItem('cs-onboarding-seen', '1');
     // Runs on every navigation (including reload) — only seed the very
     // first load, otherwise we'd wipe the state saved during the test.
     if (!window.localStorage.getItem('cuboid-saved-states')) {
