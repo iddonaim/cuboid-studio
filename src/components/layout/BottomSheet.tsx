@@ -23,9 +23,11 @@ const NEXT_STATE: Record<SheetHeight, SheetHeight> = {
 };
 
 const glassStyle: React.CSSProperties = {
-  background: 'rgba(15, 23, 42, 0.2)',
-  borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-  boxShadow: '0 -8px 48px rgba(0,0,0,0.4)',
+  background: 'hsl(var(--card) / 0.94)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  borderTop: '1px solid hsl(var(--border))',
+  boxShadow: '0 -6px 32px hsl(45 9% 13% / 0.10)',
 };
 
 interface BottomSheetProps {
@@ -92,7 +94,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
           : { position: 'relative', paddingTop: 6, paddingBottom: 4 }}
       >
         <div
-          className="rounded-full bg-slate-600"
+          className="rounded-full bg-ink-300"
           style={{ width: 36, height: 4 }}
         />
       </button>
@@ -100,7 +102,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
       {/* ── Mode label (not collapsed) ──────────────────────────────────── */}
       {!isCollapsed && (
         <div className="px-4 py-1 flex-shrink-0">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+          <span className="font-mono text-[11px] uppercase tracking-wider text-ink-500">
             {contextLabel}
           </span>
         </div>

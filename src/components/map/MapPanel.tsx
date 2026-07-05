@@ -46,7 +46,7 @@ export const MapPanel: React.FC = () => {
 
   const pinIcon = L.divIcon({
     className: '',
-    html: '<div style="width:12px;height:12px;background:#22d3ee;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>',
+    html: '<div style="width:12px;height:12px;background:#bc4a1f;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>',
     iconSize: [12, 12],
     iconAnchor: [6, 6],
   });
@@ -74,8 +74,8 @@ export const MapPanel: React.FC = () => {
     } else {
       circleRef.current = L.circle([lat, lng], {
         radius: r,
-        color: '#22d3ee',
-        fillColor: '#22d3ee',
+        color: '#bc4a1f',
+        fillColor: '#bc4a1f',
         fillOpacity: 0.08,
         weight: 1,
       }).addTo(map);
@@ -153,8 +153,8 @@ export const MapPanel: React.FC = () => {
       } else {
         circleRef.current = L.circle([lat, lng], {
           radius: radiusRef.current,
-          color: '#22d3ee',
-          fillColor: '#22d3ee',
+          color: '#bc4a1f',
+          fillColor: '#bc4a1f',
           fillOpacity: 0.08,
           weight: 1,
         }).addTo(map);
@@ -167,8 +167,8 @@ export const MapPanel: React.FC = () => {
       markerRef.current = L.marker([initial.lat, initial.lng], { icon: pinIcon }).addTo(map);
       circleRef.current = L.circle([initial.lat, initial.lng], {
         radius: initial.radius,
-        color: '#22d3ee',
-        fillColor: '#22d3ee',
+        color: '#bc4a1f',
+        fillColor: '#bc4a1f',
         fillOpacity: 0.08,
         weight: 1,
       }).addTo(map);
@@ -258,8 +258,8 @@ export const MapPanel: React.FC = () => {
     : 'No site selected';
 
   return (
-    <div className="flex flex-col gap-3 text-[11px] text-slate-300">
-      <p className="text-[10px] text-slate-500 leading-relaxed m-0">
+    <div className="flex flex-col gap-3 text-[12px] text-ink-700">
+      <p className="text-[11px] text-ink-500 leading-relaxed m-0">
         Pick a site on the map or search an address. Set radius, then commit to active site context
         (used by Encode and Pataphysical translation).
       </p>
@@ -271,18 +271,18 @@ export const MapPanel: React.FC = () => {
             value={addressQuery}
             onChange={(e) => setAddressQuery(e.target.value)}
             placeholder="Search address..."
-            className="flex-1 box-border px-2 py-1.5 font-[inherit] text-[11px] text-slate-200 bg-slate-800 border border-slate-700 rounded outline-none focus:border-cyan-700"
+            className="flex-1 box-border px-2 py-1.5 font-[inherit] text-[12px] text-ink-800 bg-ink-100 border border-ink-200 rounded outline-none focus:border-primary"
           />
           <Button
             type="submit"
             disabled={geocoding || !addressQuery.trim()}
-            className="h-auto py-1.5 px-2.5 text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700"
+            className="h-auto py-1.5 px-2.5 text-[11px] bg-ink-100 hover:bg-ink-200 text-primary border border-ink-200"
           >
             {geocoding ? 'Searching…' : 'Search'}
           </Button>
         </form>
         {geocodeError && (
-          <p className="text-red-400 text-[10px] m-0" role="alert">
+          <p className="text-destructive text-[11px] m-0" role="alert">
             {geocodeError}
           </p>
         )}
@@ -291,7 +291,7 @@ export const MapPanel: React.FC = () => {
       {/* Bounds wrapper: pointer-events none so Leaflet cannot steal hits above the map.
           Inner div re-enables interaction only within the map box. */}
       <div
-        className="relative w-full rounded-md border border-slate-700 overflow-hidden"
+        className="relative w-full rounded-md border border-ink-200 overflow-hidden"
         style={{
           height: 220,
           minHeight: 180,
@@ -312,7 +312,7 @@ export const MapPanel: React.FC = () => {
       </div>
 
       <div>
-        <label className="block text-[10px] text-slate-500 mb-1">
+        <label className="block text-[11px] text-ink-500 mb-1">
           Radius: {radius}m
         </label>
         <input
@@ -329,19 +329,19 @@ export const MapPanel: React.FC = () => {
       <Button
         onClick={handleSetActiveSite}
         disabled={!pin || committing}
-        className="w-full h-auto py-2 text-xs font-semibold bg-emerald-900 hover:bg-emerald-800 text-white border-0 disabled:opacity-50"
+        className="w-full h-auto py-2 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0 disabled:opacity-50"
       >
         {committing ? 'Fetching site context…' : 'Set as active site'}
       </Button>
 
       {poiSummary && (
-        <p className="text-green-500 text-[10px] m-0">{poiSummary}</p>
+        <p className="text-green-600 text-[11px] m-0">{poiSummary}</p>
       )}
       {poiWarning && (
-        <p className="text-amber-400 text-[10px] m-0">{poiWarning}</p>
+        <p className="text-amber-600 text-[11px] m-0">{poiWarning}</p>
       )}
 
-      <div className="px-2 py-1.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-400">
+      <div className="px-2 py-1.5 rounded bg-ink-50 border border-ink-200 text-[11px] text-ink-600">
         {infoLine}
       </div>
     </div>

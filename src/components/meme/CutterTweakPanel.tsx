@@ -14,7 +14,7 @@ const TweakSlider: React.FC<{
   onChange: (v: number) => void;
 }> = ({ label, value, min, max, step, onChange }) => (
   <div className="flex items-center gap-1.5">
-    <span className="text-slate-400 text-[9px] w-6 flex-shrink-0">{label}</span>
+    <span className="text-ink-600 text-[10px] w-6 flex-shrink-0">{label}</span>
     <Slider
       min={min}
       max={max}
@@ -23,7 +23,7 @@ const TweakSlider: React.FC<{
       onValueChange={([v]) => onChange(v)}
       className="flex-1"
     />
-    <span className="text-slate-500 text-[9px] w-8 text-right">
+    <span className="text-ink-500 text-[10px] w-8 text-right">
       {value.toFixed(step < 0.1 ? 2 : 1)}
     </span>
   </div>
@@ -104,15 +104,15 @@ export const CutterTweakPanel: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-1.5 p-2 bg-slate-800 border border-slate-700 rounded-md">
+    <div className="flex flex-col gap-1.5 p-2 bg-ink-100 border border-ink-200 rounded-md">
       <div className="flex items-center gap-1.5">
         <Switch
           checked={cutterVisible}
           onCheckedChange={setCutterVisible}
           id="cutter-visible"
-          className="data-[state=checked]:bg-red-500"
+          className="data-[state=checked]:bg-destructive"
         />
-        <label htmlFor="cutter-visible" className="text-slate-400 text-[10px] font-semibold cursor-pointer">
+        <label htmlFor="cutter-visible" className="text-ink-600 text-[11px] font-semibold cursor-pointer">
           Show cutter — {lastResult.cutter.type}
         </label>
       </div>
@@ -122,7 +122,7 @@ export const CutterTweakPanel: React.FC = () => {
           <TweakSlider label="Mag" value={magnitude} min={0.05} max={1} step={0.01}
             onChange={makeHandler(setMagnitude, 'mag')} />
 
-          <div className="text-slate-500 text-[9px] mt-0.5">Position</div>
+          <div className="text-ink-500 text-[10px] mt-0.5">Position</div>
           <TweakSlider label="X" value={posX} min={-1} max={1} step={0.05}
             onChange={makeHandler(setPosX, 'px')} />
           <TweakSlider label="Y" value={posY} min={-1} max={1} step={0.05}
@@ -130,7 +130,7 @@ export const CutterTweakPanel: React.FC = () => {
           <TweakSlider label="Z" value={posZ} min={-1} max={1} step={0.05}
             onChange={makeHandler(setPosZ, 'pz')} />
 
-          <div className="text-slate-500 text-[9px] mt-0.5">Proportions</div>
+          <div className="text-ink-500 text-[10px] mt-0.5">Proportions</div>
           <TweakSlider label="X" value={propX} min={0.05} max={2} step={0.05}
             onChange={makeHandler(setPropX, 'sx')} />
           <TweakSlider label="Y" value={propY} min={0.05} max={2} step={0.05}
@@ -138,7 +138,7 @@ export const CutterTweakPanel: React.FC = () => {
           <TweakSlider label="Z" value={propZ} min={0.05} max={2} step={0.05}
             onChange={makeHandler(setPropZ, 'sz')} />
 
-          <div className="text-slate-500 text-[9px] mt-0.5">Rotation</div>
+          <div className="text-ink-500 text-[10px] mt-0.5">Rotation</div>
           <TweakSlider label="X" value={rotX} min={0} max={360} step={5}
             onChange={makeHandler(setRotX, 'rx')} />
           <TweakSlider label="Y" value={rotY} min={0} max={360} step={5}

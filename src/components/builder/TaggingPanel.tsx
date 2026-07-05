@@ -58,8 +58,8 @@ export const TaggingPanel: React.FC = () => {
   );
 
   return (
-    <div className="mt-2 pt-2 border-t border-slate-700/60">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+    <div className="mt-2 pt-2 border-t border-ink-200/60">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-600 mb-2">
         Tags — {contextLabel}
       </p>
 
@@ -69,10 +69,10 @@ export const TaggingPanel: React.FC = () => {
           {displayTags.map((tag, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] bg-slate-800 border border-slate-600 text-slate-300"
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] bg-ink-100 border border-ink-300 text-ink-700"
             >
               <span>{tag.word}</span>
-              <span className="text-slate-500">· {tag.intensity}</span>
+              <span className="text-ink-500">· {tag.intensity}</span>
               <button
                 type="button"
                 onClick={() =>
@@ -80,7 +80,7 @@ export const TaggingPanel: React.FC = () => {
                     ? removeCuboidTag(selectedCubeIds[0], i)
                     : removeCompositionTag(i)
                 }
-                className="ml-0.5 text-slate-500 hover:text-slate-300 leading-none"
+                className="ml-0.5 text-ink-500 hover:text-ink-700 leading-none"
                 aria-label={`Remove tag ${tag.word}`}
               >
                 <X className="h-2.5 w-2.5" />
@@ -92,7 +92,7 @@ export const TaggingPanel: React.FC = () => {
 
       {/* Multi-select info */}
       {selectedCubeIds.length > 1 && (
-        <p className="text-[10px] text-slate-500 mb-2">
+        <p className="text-[11px] text-ink-500 mb-2">
           Tag will be added to all {selectedCubeIds.length} selected cuboids.
         </p>
       )}
@@ -105,7 +105,7 @@ export const TaggingPanel: React.FC = () => {
               key={hint}
               type="button"
               onClick={() => setWord(hint)}
-              className="rounded px-1.5 py-0.5 text-[10px] bg-slate-700/60 border border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors"
+              className="rounded px-1.5 py-0.5 text-[11px] bg-ink-200/60 border border-ink-300 text-ink-600 hover:text-ink-800 hover:border-ink-400 transition-colors"
             >
               {hint}
             </button>
@@ -121,13 +121,13 @@ export const TaggingPanel: React.FC = () => {
           onChange={(e) => setWord(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
           placeholder="What does this feel like?"
-          className="flex-1 min-w-0 rounded px-2 py-1.5 text-[11px] bg-slate-800 border border-slate-600 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-slate-400"
+          className="flex-1 min-w-0 rounded px-2 py-1.5 text-[12px] bg-ink-100 border border-ink-300 text-ink-800 placeholder:text-ink-500 focus:outline-none focus:border-ink-400"
         />
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="rounded px-2.5 py-1.5 text-[12px] font-semibold bg-slate-700 border border-slate-600 text-slate-300 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="rounded px-2.5 py-1.5 text-[12px] font-semibold bg-ink-200 border border-ink-300 text-ink-700 hover:bg-ink-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           aria-label="Add tag"
         >
           +
@@ -141,10 +141,10 @@ export const TaggingPanel: React.FC = () => {
             key={level}
             type="button"
             onClick={() => setIntensity(intensity === level ? null : level)}
-            className={`flex-1 rounded px-1 py-1.5 text-[9px] border transition-colors ${
+            className={`flex-1 rounded px-1 py-1.5 text-[10px] border transition-colors ${
               intensity === level
-                ? 'bg-blue-900 border-blue-500 text-blue-200 font-semibold'
-                : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-400'
+                ? 'bg-primary border-primary text-primary font-semibold'
+                : 'bg-ink-100 border-ink-300 text-ink-600 hover:border-ink-400'
             }`}
           >
             {level}

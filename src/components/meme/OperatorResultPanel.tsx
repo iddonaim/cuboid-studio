@@ -3,18 +3,20 @@ import { useMemeStore } from '../../store/useMemeStore';
 import type { ConfidenceVector } from '../../lib/operators/types';
 import { Button } from '@/components/ui/button';
 
-const panelCls =
-  'absolute top-4 right-4 bg-slate-950 border border-slate-700 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto';
+const floatingCls =
+  'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto';
+const dockedCls =
+  'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]';
 
 const Chip: React.FC<{ children: React.ReactNode; variant?: 'rhetoric' | 'affect' }> = ({
   children,
   variant = 'rhetoric',
 }) => (
   <span
-    className={`inline-block px-1.5 py-0.5 mr-1 mb-1 rounded text-[10px] border ${
+    className={`inline-block px-1.5 py-0.5 mr-1 mb-1 rounded text-[11px] border ${
       variant === 'affect'
-        ? 'bg-violet-950 text-violet-200 border-violet-800'
-        : 'bg-slate-800 text-slate-300 border-slate-700'
+        ? 'bg-violet-50 text-violet-700 border-violet-200'
+        : 'bg-ink-100 text-ink-700 border-ink-200'
     }`}
   >
     {children}
@@ -22,7 +24,7 @@ const Chip: React.FC<{ children: React.ReactNode; variant?: 'rhetoric' | 'affect
 );
 
 const FrictionLabel: React.FC<{ type: string }> = ({ type }) => (
-  <span className="inline-block ml-1 px-1 py-px rounded bg-slate-800 text-slate-500 text-[8px] uppercase tracking-wide border border-slate-700 align-middle">
+  <span className="inline-block ml-1 px-1 py-px rounded bg-ink-100 text-ink-500 text-[9px] uppercase tracking-wide border border-ink-200 align-middle">
     {type}
   </span>
 );
@@ -42,23 +44,23 @@ const ConfidenceVectorDisplay: React.FC<{
   vector: ConfidenceVector;
   note?: string;
 }> = ({ vector, note }) => (
-  <div className="mb-3 pt-3 border-t border-slate-700">
-    <p className="text-slate-400 text-[11px] font-semibold mb-2">Translation confidence</p>
+  <div className="mb-3 pt-3 border-t border-ink-200">
+    <p className="text-ink-600 text-[12px] font-semibold mb-2">Translation confidence</p>
     <div className="flex flex-col gap-2">
       {CONFIDENCE_AXES.map(({ key, short, label }) => {
         const value = Math.min(1, Math.max(0, vector[key] ?? 0));
         return (
           <div key={key}>
             <div className="flex justify-between items-baseline mb-0.5">
-              <span className="text-slate-400 text-[10px]">
-                <span className="text-slate-300 font-medium">{short}</span>
-                <span className="text-slate-600"> — {label}</span>
+              <span className="text-ink-600 text-[11px]">
+                <span className="text-ink-700 font-medium">{short}</span>
+                <span className="text-ink-400"> — {label}</span>
               </span>
-              <span className="text-slate-500 text-[10px] tabular-nums">{value.toFixed(2)}</span>
+              <span className="text-ink-500 text-[11px] tabular-nums">{value.toFixed(2)}</span>
             </div>
-            <div className="h-1.5 bg-slate-800 rounded overflow-hidden">
+            <div className="h-1.5 bg-ink-100 rounded overflow-hidden">
               <div
-                className="h-full bg-cyan-600 rounded transition-[width] duration-300"
+                className="h-full bg-primary rounded transition-[width] duration-300"
                 style={{ width: `${value * 100}%` }}
               />
             </div>
@@ -67,38 +69,26 @@ const ConfidenceVectorDisplay: React.FC<{
       })}
     </div>
     {note && (
-      <p className="text-slate-400 text-[10px] leading-relaxed mt-2 m-0">{note}</p>
+      <p className="text-ink-600 text-[11px] leading-relaxed mt-2 m-0">{note}</p>
     )}
   </div>
 );
 
-const TranslationLoadingPanel: React.FC<{ phase: 'reading' | 'geometry' }> = ({ phase }) => (
-  <div className={panelCls}>
-    <p className="text-slate-400 text-[11px] font-semibold mb-1">Translating meme</p>
-    <p className="text-white text-xs m-0">
-      {phase === 'reading' ? 'Reading the meme...' : 'Translating to geometry...'}
-    </p>
-  </div>
-);
-
-export const OperatorResultPanel: React.FC = () => {
+export const OperatorResultPanel: React.FC<{ docked?: boolean }> = ({ docked = false }) => {
   const lastResult = useMemeStore(s => s.lastResult);
   const lastPass1 = useMemeStore(s => s.lastPass1);
   const lastPass2 = useMemeStore(s => s.lastPass2);
   const lastConfidenceVector = useMemeStore(s => s.lastConfidenceVector);
   const isTranslating = useMemeStore(s => s.isTranslating);
-  const translationPhase = useMemeStore(s => s.translationPhase);
-  const passMode = useMemeStore(s => s.passMode);
   const revertLastOperator = useMemeStore(s => s.revertLastOperator);
   const targetCubeId = useMemeStore(s => s.targetCubeId);
   const cubeOperators = useMemeStore(s => s.cubeOperators);
   const standaloneOperators = useMemeStore(s => s.operators);
   const operators = targetCubeId ? (cubeOperators[targetCubeId] || []) : standaloneOperators;
 
-  if (isTranslating && passMode === 'two_pass') {
-    const phase = translationPhase === 'geometry' ? 'geometry' : 'reading';
-    return <TranslationLoadingPanel phase={phase} />;
-  }
+  // While a translation is in flight the ApiActivityIndicator card covers
+  // this rail slot, so this panel stays hidden instead of doubling up.
+  if (isTranslating) return null;
 
   if (!lastResult) return null;
 
@@ -106,19 +96,19 @@ export const OperatorResultPanel: React.FC = () => {
   const confidenceNote = lastPass2?.confidence_note;
 
   return (
-    <div className={panelCls}>
+    <div className={docked ? dockedCls : floatingCls}>
       {lastPass1 && (
-        <div className="mb-4 pb-3 border-b border-slate-700">
-          <p className="text-slate-400 text-[11px] font-semibold mb-1.5">
+        <div className="mb-4 pb-3 border-b border-ink-200">
+          <p className="text-ink-600 text-[12px] font-semibold mb-1.5">
             Pass 1 · Cultural extraction
           </p>
-          <p className="text-white text-sm font-medium mb-2.5 leading-snug">
+          <p className="text-ink-900 text-sm font-medium mb-2.5 leading-snug">
             {lastPass1.meme_summary}
           </p>
 
           {lastPass1.rhetorical_moves.length > 0 && (
             <div className="mb-2">
-              <div className="text-slate-500 text-[10px] mb-0.5">Rhetorical moves</div>
+              <div className="text-ink-500 text-[11px] mb-0.5">Rhetorical moves</div>
               <div>
                 {lastPass1.rhetorical_moves.map((m, i) => (
                   <Chip key={i}>{m}</Chip>
@@ -129,7 +119,7 @@ export const OperatorResultPanel: React.FC = () => {
 
           {lastPass1.functional_affects.length > 0 && (
             <div className="mb-2">
-              <div className="text-slate-500 text-[10px] mb-0.5">Functional affects</div>
+              <div className="text-ink-500 text-[11px] mb-0.5">Functional affects</div>
               <div>
                 {lastPass1.functional_affects.map((a, i) => (
                   <Chip key={i} variant="affect">
@@ -142,8 +132,8 @@ export const OperatorResultPanel: React.FC = () => {
 
           {lastPass1.cultural_tensions.length > 0 && (
             <div className="mb-2">
-              <div className="text-slate-500 text-[10px] mb-0.5">Cultural tensions</div>
-              <ul className="m-0 p-0 list-none text-slate-300 text-[10px] leading-relaxed flex flex-col gap-1.5">
+              <div className="text-ink-500 text-[11px] mb-0.5">Cultural tensions</div>
+              <ul className="m-0 p-0 list-none text-ink-700 text-[11px] leading-relaxed flex flex-col gap-1.5">
                 {lastPass1.cultural_tensions.map((t, i) => (
                   <li key={i}>
                     {t.description}
@@ -155,51 +145,51 @@ export const OperatorResultPanel: React.FC = () => {
           )}
 
           <div>
-            <div className="text-slate-500 text-[10px] mb-0.5">Site resonance</div>
-            <p className="text-slate-300 text-[10px] leading-relaxed m-0">
+            <div className="text-ink-500 text-[11px] mb-0.5">Site resonance</div>
+            <p className="text-ink-700 text-[11px] leading-relaxed m-0">
               {lastPass1.site_resonance || '—'}
             </p>
           </div>
         </div>
       )}
 
-      <p className="text-white text-sm mb-2">
+      <p className="text-ink-900 text-sm mb-2">
         {lastPass2 ? 'Pass 2 · Geometric translation' : 'Operator Applied'}
       </p>
 
       <div className="mb-2">
-        <span className="inline-block px-2 py-0.5 rounded bg-slate-700 text-slate-200 text-[11px] font-semibold">
+        <span className="inline-block px-2 py-0.5 rounded bg-ink-200 text-ink-800 text-[12px] font-semibold">
           {lastResult.operator}
         </span>
-        <span className="text-slate-400 text-[11px] ml-2">
+        <span className="text-ink-600 text-[12px] ml-2">
           mag: {lastResult.magnitude.toFixed(2)}
         </span>
       </div>
 
       <div className="mb-2">
-        <span className="text-slate-500 text-[10px]">Targets: </span>
-        <span className="text-slate-400 text-[10px]">{lastResult.targets.join(', ')}</span>
+        <span className="text-ink-500 text-[11px]">Targets: </span>
+        <span className="text-ink-600 text-[11px]">{lastResult.targets.join(', ')}</span>
       </div>
 
       {lastPass2?.target_reasoning && (
-        <p className="text-slate-500 text-[9px] leading-relaxed mb-2 m-0">
+        <p className="text-ink-500 text-[10px] leading-relaxed mb-2 m-0">
           {lastPass2.target_reasoning}
         </p>
       )}
 
       <div className="mb-2">
-        <span className="text-slate-500 text-[10px]">Cutter: </span>
-        <span className="text-slate-400 text-[10px]">{lastResult.cutter.type}</span>
+        <span className="text-ink-500 text-[11px]">Cutter: </span>
+        <span className="text-ink-600 text-[11px]">{lastResult.cutter.type}</span>
       </div>
 
       {lastPass2?.cutter.geometry_reasoning && (
-        <p className="text-slate-500 text-[9px] leading-relaxed mb-2 m-0">
+        <p className="text-ink-500 text-[10px] leading-relaxed mb-2 m-0">
           {lastPass2.cutter.geometry_reasoning}
         </p>
       )}
 
       {lastResult.reasoning && (
-        <p className="text-slate-500 text-[9px] leading-relaxed mb-3 m-0 border-t border-slate-800 pt-2">
+        <p className="text-ink-500 text-[10px] leading-relaxed mb-3 m-0 border-t border-ink-200 pt-2">
           {lastResult.reasoning}
         </p>
       )}
@@ -211,7 +201,7 @@ export const OperatorResultPanel: React.FC = () => {
       {operators.length > 0 && (
         <Button
           onClick={revertLastOperator}
-          className="w-full h-auto py-2 text-xs bg-red-900 hover:bg-red-800 text-white border-0"
+          className="w-full h-auto py-2 text-[13px] bg-destructive/10 hover:bg-destructive/20 text-destructive border-0"
         >
           Revert Last
         </Button>

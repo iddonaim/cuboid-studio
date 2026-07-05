@@ -14,6 +14,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useClippingPlanes } from '../../hooks/useClippingPlanes';
 import { useAppStore } from '../../store/useAppStore';
 import { SpatialGrid } from './SpatialGrid';
+import { Grid } from '@react-three/drei';
 import { gridExtentFromPositions } from '../../lib/viewport/spatialGridExtent';
 import { CubeWithCuts } from './CubeWithCuts';
 import { FaceHoverInfo } from '../../lib/cube/types';
@@ -199,10 +200,10 @@ const CutterOverlay: React.FC<{ offset: [number, number, number] }> = ({ offset 
   return (
     <>
       <mesh geometry={lastCutterGeometry} position={offset}>
-        <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#b03a2e" transparent opacity={0.08} side={THREE.DoubleSide} />
       </mesh>
       <lineSegments geometry={cutterEdgesGeometry} position={offset}>
-        <lineBasicMaterial color="#ef4444" linewidth={1} transparent opacity={0.6} />
+        <lineBasicMaterial color="#b03a2e" linewidth={1} transparent opacity={0.6} />
       </lineSegments>
     </>
   );
@@ -440,10 +441,10 @@ const EvolutionScene: React.FC = () => {
           ]}
         >
           <mesh geometry={cutterPreview} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-            <meshBasicMaterial color="#f59e0b" transparent opacity={0.1} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#bc4a1f" transparent opacity={0.1} side={THREE.DoubleSide} />
           </mesh>
           <lineSegments geometry={cutterEdges} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-            <lineBasicMaterial color="#f59e0b" linewidth={1} transparent opacity={0.7} />
+            <lineBasicMaterial color="#bc4a1f" linewidth={1} transparent opacity={0.7} />
           </lineSegments>
         </group>
       )}
@@ -455,9 +456,25 @@ const EvolutionScene: React.FC = () => {
 const SceneCapture: React.FC = () => {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
-    registerCaptureFunction(() => {
-      gl.render(scene, camera);
-      return gl.domElement.toDataURL('image/png');
+    // Hi-res, background-free capture: the render buffer is transparent (the
+    // paper tone is CSS on the canvas element, never drawn by WebGL), so the
+    // exported PNG has no background — a diagrammatic cut-out. The buffer is
+    // temporarily upscaled for print-quality output, then restored.
+    registerCaptureFunction((options) => {
+      const requested = options?.scale ?? 3;
+      const prevRatio = gl.getPixelRatio();
+      const size = gl.getSize(new THREE.Vector2());
+      // Clamp so the long edge stays within common GPU buffer limits.
+      const maxRatio = 4096 / Math.max(size.x, size.y);
+      const ratio = Math.min(requested * prevRatio, maxRatio);
+      try {
+        gl.setPixelRatio(ratio);
+        gl.render(scene, camera);
+        return gl.domElement.toDataURL('image/png');
+      } finally {
+        gl.setPixelRatio(prevRatio);
+        gl.render(scene, camera);
+      }
     });
     return () => unregisterCaptureFunction();
   }, [gl, scene, camera]);
@@ -481,7 +498,7 @@ export const Viewport3D: React.FC = () => {
   return (
     <>
       <Canvas
-        style={{ background: '#f1f5f9' }}
+        style={{ background: '#f7f5f0' }}
         gl={{ localClippingEnabled: true, preserveDrawingBuffer: true }}
       >
         <CameraController
@@ -491,6 +508,22 @@ export const Viewport3D: React.FC = () => {
           showEvolutionScene={showEvolutionScene}
         />
         <SceneCapture />
+        {/* Endless drafting-table ground: an infinite faded grid so the scene
+            never ends at the assembly's edge. The denser SpatialGrid lattice
+            still marks the buildable cells on top of it. */}
+        <Grid
+          position={[0, -0.6, 0]}
+          infiniteGrid
+          cellSize={GRID_STRIDE}
+          sectionSize={GRID_STRIDE * 4}
+          cellThickness={0.85}
+          sectionThickness={1}
+          cellColor="#d2cec1"
+          sectionColor="#cbc6b8"
+          fadeDistance={2600}
+          fadeStrength={1.6}
+          followCamera={false}
+        />
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 50, 50]} intensity={0.8} />
         <ViewportControls

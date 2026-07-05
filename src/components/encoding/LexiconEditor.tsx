@@ -46,12 +46,12 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[10px] text-ink-500 uppercase tracking-wide">{label}</span>
       <input
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-slate-500 w-full"
+        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400 w-full"
       />
     </div>
   );
@@ -69,7 +69,7 @@ function HintField({
       value={value}
       onChange={e => onChange(e.target.value)}
       rows={3}
-      className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[9px] text-slate-500 italic outline-none focus:border-slate-600 resize-y w-full"
+      className="bg-ink-100 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-500 italic outline-none focus:border-ink-300 resize-y w-full"
     />
   );
 }
@@ -94,18 +94,18 @@ function TagInput({
 
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-slate-500 uppercase tracking-wide">Tags</span>
+      <span className="text-[10px] text-ink-500 uppercase tracking-wide">Tags</span>
       <div className="flex flex-wrap gap-1 mb-0.5">
         {tags.map(tag => (
           <span
             key={tag}
-            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-700 rounded text-[9px] text-slate-300"
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-ink-200 rounded text-[10px] text-ink-700"
           >
             {tag}
             <button
               type="button"
               onClick={() => onChange(tags.filter(t => t !== tag))}
-              className="text-slate-500 hover:text-red-400 bg-transparent border-0 cursor-pointer p-0 leading-none"
+              className="text-ink-500 hover:text-destructive bg-transparent border-0 cursor-pointer p-0 leading-none"
             >
               ×
             </button>
@@ -119,12 +119,12 @@ function TagInput({
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
           placeholder="type a tag, press Enter"
-          className="flex-1 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-slate-500"
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400"
         />
         <button
           type="button"
           onClick={add}
-          className="px-1.5 text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
+          className="px-1.5 text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
         >
           Add
         </button>
@@ -146,13 +146,13 @@ function RhythmOptionList({
   return (
     <div className="flex flex-col gap-1">
       {options.map((opt, i) => (
-        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700">
+        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
           <div className="flex justify-between items-center">
-            <span className="text-[9px] text-slate-600">Option {i + 1}</span>
+            <span className="text-[10px] text-ink-400">Option {i + 1}</span>
             <button
               type="button"
               onClick={() => onChange(options.filter((_, j) => j !== i))}
-              className="text-[9px] text-red-700 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0"
             >
               remove
             </button>
@@ -184,7 +184,7 @@ function RhythmOptionList({
       <button
         type="button"
         onClick={() => onChange([...options, { id: '', trigger: '', label: '' }])}
-        className="self-start text-[9px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0"
+        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0"
       >
         + add option
       </button>
@@ -205,13 +205,13 @@ function PlacementOptionList({
   return (
     <div className="flex flex-col gap-1">
       {options.map((opt, i) => (
-        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700">
+        <div key={i} className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200">
           <div className="flex justify-between items-center">
-            <span className="text-[9px] text-slate-600">Option {i + 1}</span>
+            <span className="text-[10px] text-ink-400">Option {i + 1}</span>
             <button
               type="button"
               onClick={() => onChange(options.filter((_, j) => j !== i))}
-              className="text-[9px] text-red-700 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0"
             >
               remove
             </button>
@@ -236,7 +236,7 @@ function PlacementOptionList({
       <button
         type="button"
         onClick={() => onChange([...options, { id: '', trigger: '', label: '' }])}
-        className="self-start text-[9px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0"
+        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0"
       >
         + add option
       </button>
@@ -282,7 +282,7 @@ function EditorForm({
     patch({ descriptions: { ...draft.descriptions, [axis]: value } });
 
   return (
-    <div className="flex flex-col gap-3 pt-1 border-t border-slate-700 mt-1">
+    <div className="flex flex-col gap-3 pt-1 border-t border-ink-200 mt-1">
 
       {/* Name */}
       <Field label="Name" value={draft.name} onChange={v => patch({ name: v })} />
@@ -292,7 +292,7 @@ function EditorForm({
 
       {/* ─── Atmosphere ───────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1">
-        <span className="text-[9px] text-slate-300 font-semibold uppercase tracking-wide">Atmosphere</span>
+        <span className="text-[10px] text-ink-700 font-semibold uppercase tracking-wide">Atmosphere</span>
         <HintField
           value={draft.descriptions['atmosphere'] ?? DEFAULT_DESCRIPTIONS['atmosphere']}
           onChange={v => patchHint('atmosphere', v)}
@@ -316,7 +316,7 @@ function EditorForm({
 
       {/* ─── Light ────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1">
-        <span className="text-[9px] text-slate-300 font-semibold uppercase tracking-wide">Light</span>
+        <span className="text-[10px] text-ink-700 font-semibold uppercase tracking-wide">Light</span>
         <HintField
           value={draft.descriptions['light'] ?? DEFAULT_DESCRIPTIONS['light']}
           onChange={v => patchHint('light', v)}
@@ -331,8 +331,8 @@ function EditorForm({
           value={draft.lexicon.light.pole_high}
           onChange={v => patchLexicon({ light: { ...draft.lexicon.light, pole_high: v } })}
         />
-        <div className="flex flex-col gap-0.5 p-1.5 bg-slate-900 rounded border border-slate-700 mt-0.5">
-          <span className="text-[9px] text-slate-500 mb-0.5">Trigger labels (grammar mixing rules)</span>
+        <div className="flex flex-col gap-0.5 p-1.5 bg-ink-50 rounded border border-ink-200 mt-0.5">
+          <span className="text-[10px] text-ink-500 mb-0.5">Trigger labels (grammar mixing rules)</span>
           <Field
             label="uniform"
             value={draft.lexicon.light.triggers.uniform}
@@ -358,7 +358,7 @@ function EditorForm({
 
       {/* ─── Emotion ──────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1">
-        <span className="text-[9px] text-slate-300 font-semibold uppercase tracking-wide">Emotion</span>
+        <span className="text-[10px] text-ink-700 font-semibold uppercase tracking-wide">Emotion</span>
         <HintField
           value={draft.descriptions['emotion'] ?? DEFAULT_DESCRIPTIONS['emotion']}
           onChange={v => patchHint('emotion', v)}
@@ -382,7 +382,7 @@ function EditorForm({
 
       {/* ─── Rhythm ───────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1">
-        <span className="text-[9px] text-slate-300 font-semibold uppercase tracking-wide">Rhythm</span>
+        <span className="text-[10px] text-ink-700 font-semibold uppercase tracking-wide">Rhythm</span>
         <HintField
           value={draft.descriptions['rhythm'] ?? DEFAULT_DESCRIPTIONS['rhythm']}
           onChange={v => patchHint('rhythm', v)}
@@ -395,7 +395,7 @@ function EditorForm({
 
       {/* ─── Placement ────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1">
-        <span className="text-[9px] text-slate-300 font-semibold uppercase tracking-wide">Placement</span>
+        <span className="text-[10px] text-ink-700 font-semibold uppercase tracking-wide">Placement</span>
         <HintField
           value={draft.descriptions['placement'] ?? DEFAULT_DESCRIPTIONS['placement']}
           onChange={v => patchHint('placement', v)}
@@ -416,12 +416,12 @@ function EditorForm({
             descriptions: { ...DEFAULT_DESCRIPTIONS },
           })
         }
-        className="self-start text-[9px] text-slate-600 hover:text-slate-400 bg-transparent border-0 cursor-pointer p-0"
+        className="self-start text-[10px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0"
       >
         Reset vocabulary to default values
       </button>
 
-      {error && <span className="text-[9px] text-red-400">{error}</span>}
+      {error && <span className="text-[10px] text-destructive">{error}</span>}
 
       {/* Save actions */}
       <div className="flex gap-1.5 flex-wrap items-center">
@@ -430,7 +430,7 @@ function EditorForm({
             type="button"
             onClick={onUpdate}
             disabled={saving || !draft.name.trim()}
-            className="px-2 py-1 text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border-0 cursor-pointer disabled:opacity-50"
+            className="px-2 py-1 text-[11px] bg-ink-200 hover:bg-ink-300 text-ink-800 rounded border-0 cursor-pointer disabled:opacity-50"
           >
             {saving ? 'Saving…' : `Update "${draft.name || '…'}"`}
           </button>
@@ -439,14 +439,14 @@ function EditorForm({
           type="button"
           onClick={onSaveAsNew}
           disabled={saving || !draft.name.trim()}
-          className="px-2 py-1 text-[10px] bg-emerald-900 hover:bg-emerald-800 text-emerald-200 rounded border-0 cursor-pointer disabled:opacity-50"
+          className="px-2 py-1 text-[11px] bg-primary/10 hover:bg-primary/20 text-primary rounded border-0 cursor-pointer disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save as new'}
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="px-2 py-1 text-[10px] text-slate-500 hover:text-slate-300 bg-transparent border-0 cursor-pointer p-0"
+          className="px-2 py-1 text-[11px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer p-0"
         >
           Close editor
         </button>
@@ -503,7 +503,7 @@ function LibraryPanel({
   };
 
   return (
-    <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-700 mt-1">
+    <div className="flex flex-col gap-1.5 pt-1 border-t border-ink-200 mt-1">
       {/* Tag filter */}
       <div className="flex gap-1 items-center">
         <input
@@ -511,13 +511,13 @@ function LibraryPanel({
           value={tagFilter}
           onChange={e => onTagFilterChange(e.target.value)}
           placeholder="filter by tag…"
-          className="flex-1 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-300 outline-none focus:border-slate-500"
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-700 outline-none focus:border-ink-400"
         />
         {tagFilter && (
           <button
             type="button"
             onClick={() => onTagFilterChange('')}
-            className="text-[9px] text-slate-600 hover:text-slate-400 bg-transparent border-0 cursor-pointer p-0"
+            className="text-[10px] text-ink-400 hover:text-ink-600 bg-transparent border-0 cursor-pointer p-0"
           >
             clear
           </button>
@@ -529,27 +529,27 @@ function LibraryPanel({
         className={`flex items-center justify-between gap-1 px-1.5 py-1 rounded border ${
           activeLexiconId === null
             ? 'border-sky-600 bg-sky-950'
-            : 'border-slate-700'
+            : 'border-ink-200'
         }`}
       >
-        <span className="text-[10px] text-slate-300">Default (built-in)</span>
+        <span className="text-[11px] text-ink-700">Default (built-in)</span>
         {activeLexiconId !== null && (
           <button
             type="button"
             onClick={() => onActivate(null)}
-            className="text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
+            className="text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
           >
             Activate
           </button>
         )}
         {activeLexiconId === null && (
-          <span className="text-[9px] text-sky-400">Active</span>
+          <span className="text-[10px] text-sky-400">Active</span>
         )}
       </div>
 
       {/* Saved lexicons */}
       {filtered.length === 0 && (
-        <span className="text-[9px] text-slate-600 italic px-1">
+        <span className="text-[10px] text-ink-400 italic px-1">
           {lexicons.length === 0 ? 'No saved lexicons yet.' : 'No lexicons match that tag.'}
         </span>
       )}
@@ -559,7 +559,7 @@ function LibraryPanel({
           className={`flex flex-col gap-1 px-1.5 py-1 rounded border ${
             activeLexiconId === l.id
               ? 'border-sky-600 bg-sky-950'
-              : 'border-slate-700'
+              : 'border-ink-200'
           }`}
         >
           <div className="flex items-center justify-between gap-1">
@@ -574,13 +574,13 @@ function LibraryPanel({
                   if (e.key === 'Enter') commitRename(l.id);
                   if (e.key === 'Escape') setRenamingId(null);
                 }}
-                className="flex-1 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-[10px] text-slate-200 outline-none"
+                className="flex-1 bg-ink-100 border border-ink-300 rounded px-1 py-0.5 text-[11px] text-ink-800 outline-none"
               />
             ) : (
-              <span className="text-[10px] text-slate-200 truncate flex-1">{l.name}</span>
+              <span className="text-[11px] text-ink-800 truncate flex-1">{l.name}</span>
             )}
             {activeLexiconId === l.id && (
-              <span className="text-[9px] text-sky-400 shrink-0">Active</span>
+              <span className="text-[10px] text-sky-400 shrink-0">Active</span>
             )}
           </div>
 
@@ -590,7 +590,7 @@ function LibraryPanel({
               {(l.tags ?? []).map(t => (
                 <span
                   key={t}
-                  className="px-1 py-0.5 bg-slate-700 rounded text-[8px] text-slate-400"
+                  className="px-1 py-0.5 bg-ink-200 rounded text-[9px] text-ink-600"
                 >
                   {t}
                 </span>
@@ -604,7 +604,7 @@ function LibraryPanel({
               <button
                 type="button"
                 onClick={() => onActivate(l.id)}
-                className="text-[9px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
+                className="text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
               >
                 Activate
               </button>
@@ -612,28 +612,28 @@ function LibraryPanel({
             <button
               type="button"
               onClick={() => onEdit(l)}
-              className="text-[9px] text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => startRename(l)}
-              className="text-[9px] text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0"
             >
               Rename
             </button>
             <button
               type="button"
               onClick={() => onDuplicate(l.id)}
-              className="text-[9px] text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0"
             >
               Duplicate
             </button>
             <button
               type="button"
               onClick={() => onDelete(l.id, l.name)}
-              className="text-[9px] text-red-700 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0"
             >
               Delete
             </button>
@@ -644,7 +644,7 @@ function LibraryPanel({
       <button
         type="button"
         onClick={onNewFromDefault}
-        className="self-start text-[9px] text-emerald-600 hover:text-emerald-400 bg-transparent border-0 cursor-pointer p-0 mt-0.5"
+        className="self-start text-[10px] text-green-700 hover:text-green-600 bg-transparent border-0 cursor-pointer p-0 mt-0.5"
       >
         + New lexicon from default
       </button>
@@ -813,7 +813,7 @@ export const LexiconEditor: React.FC = () => {
   // ── Unauthenticated state ──────────────────────────────────────────────────
   if (!user) {
     return (
-      <div className="text-slate-600 text-[10px] italic px-1">
+      <div className="text-ink-400 text-[11px] italic px-1">
         Sign in to create and use custom lexicons.
       </div>
     );
@@ -825,25 +825,25 @@ export const LexiconEditor: React.FC = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-1.5 p-2 bg-slate-800 border border-slate-700 rounded">
+    <div className="flex flex-col gap-1.5 p-2 bg-ink-100 border border-ink-200 rounded">
       {/* Header row */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-[10px] text-slate-400 font-medium">
+        <span className="text-[11px] text-ink-600 font-medium">
           Lexicon:&nbsp;
-          <span className="text-slate-200">{loading ? '…' : activeName}</span>
+          <span className="text-ink-800">{loading ? '…' : activeName}</span>
         </span>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => { setLibraryOpen(v => !v); if (editorOpen) setEditorOpen(false); }}
-            className="text-[9px] text-slate-500 hover:text-slate-300 bg-transparent border-0 cursor-pointer underline p-0"
+            className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0"
           >
             {libraryOpen ? 'Close library' : 'Library'}
           </button>
           <button
             type="button"
             onClick={() => { openEditorForActive(); setLibraryOpen(false); }}
-            className="text-[9px] text-slate-500 hover:text-slate-300 bg-transparent border-0 cursor-pointer underline p-0"
+            className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0"
           >
             {editorOpen ? 'Close editor' : 'Edit'}
           </button>

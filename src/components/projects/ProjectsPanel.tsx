@@ -41,12 +41,12 @@ const NewItemRow: React.FC<{ placeholder: string; onCreate: (name: string) => Pr
         value={name}
         onChange={e => setName(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-[12px] text-slate-200 outline-none focus:border-slate-500"
+        className="flex-1 bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-[12px] text-ink-800 outline-none focus:border-ink-400"
       />
       <button
         type="submit"
         disabled={busy || !name.trim()}
-        className="rounded bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-[12px] px-2.5 cursor-pointer border-0"
+        className="rounded bg-primary hover:bg-primary/85 disabled:opacity-50 text-white text-[12px] px-2.5 cursor-pointer border-0"
       >
         Add
       </button>
@@ -61,19 +61,19 @@ const RowButton: React.FC<{
   onDelete: () => void;
   rightSlot?: React.ReactNode;
 }> = ({ title, subtitle, onClick, onDelete, rightSlot }) => (
-  <div className="group flex items-center gap-2 rounded-md border border-slate-700/70 hover:border-slate-600 px-2.5 py-2 bg-slate-800/40">
+  <div className="group flex items-center gap-2 rounded-md border border-ink-200/70 hover:border-ink-300 px-2.5 py-2 bg-ink-100/40">
     <button
       onClick={onClick}
       className="flex-1 text-left cursor-pointer bg-transparent border-0 min-w-0"
     >
-      <div className="text-[12px] text-slate-200 truncate">{title}</div>
-      {subtitle && <div className="text-[10px] text-slate-500 truncate">{subtitle}</div>}
+      <div className="text-[12px] text-ink-800 truncate">{title}</div>
+      {subtitle && <div className="text-[11px] text-ink-500 truncate">{subtitle}</div>}
     </button>
     {rightSlot}
     <button
       onClick={onDelete}
       title="Delete"
-      className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 text-[11px] cursor-pointer bg-transparent border-0 px-1"
+      className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-destructive text-[12px] cursor-pointer bg-transparent border-0 px-1"
     >
       ✕
     </button>
@@ -224,28 +224,28 @@ export const ProjectsPanel: React.FC = () => {
       />
       {/* Slide-over */}
       <div
-        className="fixed top-0 right-0 bottom-0 z-[81] w-[340px] max-w-[90vw] flex flex-col border-l border-slate-700 shadow-2xl"
-        style={{ background: '#0f172a' }}
+        className="fixed top-0 right-0 bottom-0 z-[81] w-[340px] max-w-[90vw] flex flex-col border-l border-ink-200 shadow-2xl"
+        style={{ background: 'hsl(var(--card))', boxShadow: '0 12px 40px hsl(45 9% 13% / 0.14)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-slate-800">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-ink-200">
           <div className="flex items-center gap-1.5 min-w-0">
             {(activeProject || activeSite) && (
               <button
                 onClick={() => (activeSite ? setActiveSite(null) : setActiveProject(null))}
-                className="text-slate-400 hover:text-slate-200 text-[13px] cursor-pointer bg-transparent border-0"
+                className="text-ink-600 hover:text-ink-800 text-[13px] cursor-pointer bg-transparent border-0"
                 title="Back"
               >
                 ‹
               </button>
             )}
-            <span className="font-mono text-[11px] uppercase tracking-wider text-slate-300 truncate">
+            <span className="font-mono text-[12px] uppercase tracking-wider text-ink-700 truncate">
               {crumb}
             </span>
           </div>
           <button
             onClick={() => setPanelOpen(false)}
-            className="text-slate-400 hover:text-slate-200 text-[14px] cursor-pointer bg-transparent border-0"
+            className="text-ink-600 hover:text-ink-800 text-[14px] cursor-pointer bg-transparent border-0"
           >
             ✕
           </button>
@@ -254,7 +254,7 @@ export const ProjectsPanel: React.FC = () => {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           {loading && (
-            <div className="text-[11px] text-slate-500 mb-2">Loading…</div>
+            <div className="text-[12px] text-ink-500 mb-2">Loading…</div>
           )}
 
           {/* Level 1: projects */}
@@ -271,7 +271,7 @@ export const ProjectsPanel: React.FC = () => {
                   />
                 ))}
                 {!loading && projects.length === 0 && (
-                  <div className="text-[11px] text-slate-500">No projects yet.</div>
+                  <div className="text-[12px] text-ink-500">No projects yet.</div>
                 )}
               </div>
               <NewItemRow placeholder="New project name" onCreate={handleCreateProject} />
@@ -292,7 +292,7 @@ export const ProjectsPanel: React.FC = () => {
                   />
                 ))}
                 {!loading && sites.length === 0 && (
-                  <div className="text-[11px] text-slate-500">No sites yet.</div>
+                  <div className="text-[12px] text-ink-500">No sites yet.</div>
                 )}
               </div>
               <NewItemRow placeholder="New site name" onCreate={handleCreateSite} />
@@ -312,7 +312,7 @@ export const ProjectsPanel: React.FC = () => {
                     rightSlot={
                       <button
                         onClick={() => handleLoadComposition(c)}
-                        className="rounded bg-blue-700 hover:bg-blue-600 text-white text-[11px] px-2 py-1 cursor-pointer border-0"
+                        className="rounded bg-primary hover:bg-primary/85 text-white text-[12px] px-2 py-1 cursor-pointer border-0"
                       >
                         Load
                       </button>
@@ -320,7 +320,7 @@ export const ProjectsPanel: React.FC = () => {
                   />
                 ))}
                 {!loading && compositions.length === 0 && (
-                  <div className="text-[11px] text-slate-500">No saved compositions yet.</div>
+                  <div className="text-[12px] text-ink-500">No saved compositions yet.</div>
                 )}
               </div>
               <NewItemRow placeholder="Save current as…" onCreate={handleSaveComposition} />

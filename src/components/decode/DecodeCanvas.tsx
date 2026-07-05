@@ -116,7 +116,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
         <Rect
           width={TILE_SIZE}
           height={TILE_SIZE}
-          stroke="#2563eb"
+          stroke="#bc4a1f"
           strokeWidth={2}
           listening={false}
         />
@@ -127,7 +127,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
           x={sp.x * TILE_SIZE}
           y={sp.y * TILE_SIZE}
           radius={SNAP_POINT_RADIUS}
-          fill="#dc2626"
+          fill="#bc4a1f"
           stroke="#ffffff"
           strokeWidth={1}
           opacity={isSnapPointActive(activeSnap, tile.id, index) ? 1 : 0.75}
@@ -220,9 +220,15 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     stage.batchDraw();
   }, []);
 
+  const pannedRef = useRef(false);
+
   const handleStageMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.evt.button === 1) {
-      e.evt.preventDefault();
+    // Middle button pans anywhere; left button pans when grabbing empty
+    // canvas (tiles handle their own dragging, so this never fights them).
+    const emptyLeftDrag = e.evt.button === 0 && e.target === e.target.getStage();
+    if (e.evt.button === 1 || emptyLeftDrag) {
+      if (e.evt.button === 1) e.evt.preventDefault();
+      pannedRef.current = false;
       panRef.current = { active: true, lastX: e.evt.clientX, lastY: e.evt.clientY };
     }
   }, []);
@@ -240,6 +246,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     const dy = e.evt.clientY - panRef.current.lastY;
     panRef.current.lastX = e.evt.clientX;
     panRef.current.lastY = e.evt.clientY;
+    if (Math.abs(dx) + Math.abs(dy) > 0) pannedRef.current = true;
 
     stage.position({ x: stage.x() + dx, y: stage.y() + dy });
     stage.batchDraw();
@@ -319,6 +326,8 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (e.target !== e.target.getStage()) return;
+      // A drag-pan that ended on the stage is not a click
+      if (pannedRef.current) { pannedRef.current = false; return; }
 
       if (isMobile && pendingPlacementVariationId && placePendingAt) {
         const stage = stageRef.current;
@@ -358,11 +367,11 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full min-h-[180px] overflow-hidden rounded-md border border-slate-300 bg-white shadow-inner"
+      className="relative h-full w-full min-h-[180px] overflow-hidden rounded-md border border-ink-400 bg-white shadow-inner"
     >
       {canvasTiles.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 text-center">
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[12px] text-ink-500">
             {isMobile
               ? 'Select a part above, then tap here to place it'
               : 'Drag a part from the strip above onto this canvas'}
@@ -382,7 +391,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         onTouchEnd={handleTouchEnd}
         onClick={handleStageClick}
         onTap={handleStageClick}
-        style={{ cursor: panRef.current.active ? 'grabbing' : 'default', background: '#ffffff' }}
+        style={{ cursor: panRef.current.active ? 'grabbing' : 'grab', background: '#ffffff' }}
       >
         <Layer listening={false}>
           <Rect x={0} y={0} width={size.width} height={size.height} fill="#ffffff" />
@@ -390,7 +399,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
             <Line
               key={`v-${i}`}
               points={[i * 24, 0, i * 24, size.height]}
-              stroke="#e2e8f0"
+              stroke="#e6e3d9"
               strokeWidth={1}
             />
           ))}
@@ -398,7 +407,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
             <Line
               key={`h-${i}`}
               points={[0, i * 24, size.width, i * 24]}
-              stroke="#e2e8f0"
+              stroke="#e6e3d9"
               strokeWidth={1}
             />
           ))}

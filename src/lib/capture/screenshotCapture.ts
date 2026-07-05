@@ -9,7 +9,12 @@
  *   - CaptureButton (outside Canvas) calls captureAndShare()
  */
 
-type CaptureFunction = () => string;
+export interface CaptureOptions {
+  /** Multiplier over the on-screen buffer; clamped so GPUs stay happy. */
+  scale?: number;
+}
+
+type CaptureFunction = (options?: CaptureOptions) => string;
 
 let captureFunction: CaptureFunction | null = null;
 
@@ -25,23 +30,23 @@ export function unregisterCaptureFunction(): void {
  * Captures the current viewport as a PNG data URL.
  * Returns null if no canvas has registered a capture function yet.
  */
-export function captureViewport(): string | null {
+export function captureViewport(options?: CaptureOptions): string | null {
   if (!captureFunction) return null;
-  return captureFunction();
+  return captureFunction(options);
 }
 
 /**
  * Captures the viewport and triggers a file download (desktop) or
  * opens the native share sheet with the image file (mobile).
  */
-export async function captureAndShare(): Promise<void> {
-  const dataURL = captureViewport();
+export async function captureAndShare(options?: CaptureOptions): Promise<void> {
+  const dataURL = captureViewport(options);
   if (!dataURL) return;
 
   // Convert data URL → Blob
   const res = await fetch(dataURL);
   const blob = await res.blob();
-  const filename = `cuboid-${Date.now()}.png`;
+  const filename = `cuboid-diagram-${Date.now()}.png`;
   const file = new File([blob], filename, { type: 'image/png' });
 
   // Mobile: Web Share API with file attachment → triggers native share sheet

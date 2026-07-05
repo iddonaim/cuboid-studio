@@ -37,21 +37,21 @@ export function buildDecodeGridSvg(
     const label = escapeXml(cube.variationId);
     const evolvedMarker =
       opCount > 0
-        ? `<text x="${x + CELL_W - 6}" y="${y + 14}" text-anchor="end" font-family="system-ui,sans-serif" font-size="9" fill="#a78bfa">evolved ×${opCount}</text>`
+        ? `<text x="${x + CELL_W - 6}" y="${y + 14}" text-anchor="end" font-family="system-ui,sans-serif" font-size="9" fill="#BC4A1F">evolved ×${opCount}</text>`
         : '';
 
     return `
   <g transform="translate(${x},${y})">
-    <rect width="${CELL_W}" height="${CELL_H}" fill="#1e293b" stroke="#334155" stroke-width="1" rx="4"/>
+    <rect width="${CELL_W}" height="${CELL_H}" fill="#ffffff" stroke="#d9d5ca" stroke-width="1" rx="4"/>
     <image href="${escapeXml(href)}" x="8" y="8" width="${CELL_W - 16}" height="${IMG_H}" preserveAspectRatio="xMidYMid meet"/>
-    <text x="${CELL_W / 2}" y="${CELL_H - 12}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#94a3b8">${label}</text>
+    <text x="${CELL_W / 2}" y="${CELL_H - 12}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#5d5a50">${label}</text>
     ${evolvedMarker}
   </g>`;
   });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <rect width="100%" height="100%" fill="#0f172a"/>
+  <rect width="100%" height="100%" fill="#f7f5f0"/>
 ${cells.join('')}
 </svg>`;
 }

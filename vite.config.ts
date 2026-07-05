@@ -13,8 +13,8 @@ export default defineConfig({
         name: 'Cuboid Studio',
         short_name: 'Cuboid Studio',
         description: '3D modular logic builder for architectural exploration',
-        theme_color: '#f5f5f5',
-        background_color: '#f5f5f5',
+        theme_color: '#f7f5f0',
+        background_color: '#f7f5f0',
         display: 'standalone',
         scope: '/',
         start_url: '/',
@@ -39,7 +39,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,jpg,jpeg,png,svg,glb,json}'],
+        // wasm: the self-hosted Draco decoder (public/draco/) must be
+        // precached or GLB loading fails offline from a cold cache.
+        globPatterns: ['**/*.{js,css,html,jpg,jpeg,png,svg,glb,json,wasm}'],
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB (for large GLB files)

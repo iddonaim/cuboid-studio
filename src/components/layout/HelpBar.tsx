@@ -28,9 +28,11 @@ const HELP_TOUCH: Record<HelpKey, string> = {
 };
 
 const pillStyle: React.CSSProperties = {
-  background: 'rgba(15, 23, 42, 0.2)',
-  border: '1px solid rgba(255, 255, 255, 0.12)',
-  boxShadow: '0 8px 48px rgba(0,0,0,0.4)',
+  background: 'hsl(var(--card) / 0.88)',
+  backdropFilter: 'blur(6px)',
+  WebkitBackdropFilter: 'blur(6px)',
+  border: '1px solid hsl(var(--border))',
+  boxShadow: '0 2px 16px hsl(45 9% 13% / 0.08)',
   borderRadius: 20,
   padding: '4px 13px',
 };
@@ -50,7 +52,7 @@ export const HelpBar: React.FC = () => {
 
   return (
     <div
-      className="absolute left-1/2 -translate-x-1/2 text-slate-500 text-[11px] pointer-events-none whitespace-nowrap"
+      className="absolute left-1/2 -translate-x-1/2 text-ink-500 text-[12px] pointer-events-none whitespace-nowrap"
       style={{
         bottom: isMobile ? 64 : 20,
         ...pillStyle,

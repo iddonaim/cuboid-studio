@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { SectionCutControls } from '../viewport/SectionCutControls';
+import { Section } from '@/components/ui/section';
 
 /**
  * Evolution Mode sidebar panel.
@@ -74,12 +75,12 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Header + generation counter */}
       <div>
-        <div className="text-slate-400 text-[11px] mb-1">Evolution Mode</div>
+        <div className="text-ink-600 text-[12px] mb-1">Evolution Mode</div>
         <div className="flex items-center gap-2">
-          <span className="inline-block px-2 py-0.5 rounded bg-slate-700 text-slate-200 text-[11px] font-semibold">
+          <span className="inline-block px-2 py-0.5 rounded bg-ink-200 text-ink-800 text-[12px] font-semibold">
             Gen {generation}
           </span>
-          <span className="text-slate-500 text-[10px]">
+          <span className="text-ink-500 text-[11px]">
             {placedCubes.length} cubes &middot; {operatedCount} modified
           </span>
         </div>
@@ -87,15 +88,15 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Compressibility sparkline */}
       <div>
-        <div className="text-slate-400 text-[10px] font-semibold mb-1">
+        <div className="text-ink-600 text-[11px] font-semibold mb-1">
           Compressibility over time
         </div>
         <CompressibilitySparkline log={compressibilityLog} />
         {compressibilityLog.length > 0 && (
-          <div className={`mt-1 text-[9px] ${
+          <div className={`mt-1 text-[10px] ${
             compressibilityLog[compressibilityLog.length - 1].delta > 0
-              ? 'text-green-500'
-              : 'text-red-500'
+              ? 'text-green-600'
+              : 'text-destructive'
           }`}>
             Last delta: {compressibilityLog[compressibilityLog.length - 1].delta > 0 ? '+' : ''}
             {compressibilityLog[compressibilityLog.length - 1].delta.toFixed(4)}
@@ -106,8 +107,8 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Score breakdown */}
       {currentScore.total > 0 && (
-        <div className="border-t border-slate-700 pt-2">
-          <div className="text-slate-400 text-[10px] font-semibold mb-1.5">Score breakdown</div>
+        <Section id="evolve-score" title="Score breakdown">
+        <div>
           {([
             ['Geometric clustering', currentScore.geometricClustering, '30%'],
             ['Spatial regularity', currentScore.spatialRegularity, '30%'],
@@ -115,40 +116,41 @@ export const EvolutionPanel: React.FC = () => {
             ['Meme coherence', currentScore.memeCoherence, '20%'],
           ] as const).map(([label, value, weight]) => (
             <div key={label} className="flex items-center gap-1.5 mb-0.5">
-              <span className="text-slate-500 text-[9px] w-[90px] flex-shrink-0">{label}</span>
-              <div className="flex-1 h-1 bg-slate-700 rounded overflow-hidden">
+              <span className="text-ink-500 text-[10px] w-[90px] flex-shrink-0">{label}</span>
+              <div className="flex-1 h-1 bg-ink-200 rounded overflow-hidden">
                 <div
-                  className="h-full bg-blue-400 rounded"
+                  className="h-full bg-primary/70 rounded"
                   style={{ width: `${Math.max(1, value * 100)}%` }}
                 />
               </div>
-              <span className="text-slate-400 text-[9px] w-7 text-right">{value.toFixed(2)}</span>
-              <span className="text-slate-600 text-[8px] w-5">{weight}</span>
+              <span className="text-ink-600 text-[10px] w-7 text-right">{value.toFixed(2)}</span>
+              <span className="text-ink-400 text-[9px] w-5">{weight}</span>
             </div>
           ))}
           <div className="flex justify-between mt-1">
-            <span className="text-slate-400 text-[10px] font-semibold">Total</span>
-            <span className="text-slate-200 text-[10px] font-semibold">{currentScore.total.toFixed(4)}</span>
+            <span className="text-ink-600 text-[11px] font-semibold">Total</span>
+            <span className="text-ink-800 text-[11px] font-semibold">{currentScore.total.toFixed(4)}</span>
           </div>
         </div>
+        </Section>
       )}
 
       {/* Error message */}
       {lastError && (
-        <div className="p-2 bg-red-900 rounded text-red-300 text-[11px] leading-relaxed">
+        <div className="p-2 bg-destructive/10 rounded text-destructive text-[12px] leading-relaxed">
           {lastError}
         </div>
       )}
 
       {/* Meme pool status */}
-      <div className="border-t border-slate-700 pt-2">
-        <div className="text-slate-400 text-[10px] mb-1">
+      <div className="border-t border-ink-200 pt-2">
+        <div className="text-ink-600 text-[11px] mb-1">
           Meme pool: {isFetchingMemes ? 'loading...' : `${memePool.length} memes`}
         </div>
         {memePool.length === 0 && !isFetchingMemes && (
           <button
             onClick={fetchMemePool}
-            className="w-full py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 cursor-pointer text-[10px]"
+            className="w-full py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-600 cursor-pointer text-[11px]"
           >
             Fetch memes
           </button>
@@ -159,10 +161,10 @@ export const EvolutionPanel: React.FC = () => {
       <Button
         onClick={generateCandidates}
         disabled={generateDisabled}
-        className={`w-full h-auto py-2.5 text-xs font-semibold border-0 ${
+        className={`w-full h-auto py-2.5 text-[13px] font-semibold border-0 ${
           generateDisabled
-            ? 'bg-slate-700 text-slate-500 cursor-default'
-            : 'bg-emerald-900 hover:bg-emerald-800 text-white'
+            ? 'bg-ink-200 text-ink-500 cursor-default'
+            : 'bg-primary hover:bg-primary/85 text-white'
         }`}
       >
         {isGenerating
@@ -172,8 +174,8 @@ export const EvolutionPanel: React.FC = () => {
 
       {/* Candidate list */}
       {candidates.length > 0 && (
-        <div className="border-t border-slate-700 pt-2">
-          <div className="text-slate-400 text-[10px] font-semibold mb-1.5">
+        <div className="border-t border-ink-200 pt-2">
+          <div className="text-ink-600 text-[11px] font-semibold mb-1.5">
             Candidates (ranked by interestingness)
           </div>
           <div className="flex flex-col gap-1">
@@ -189,29 +191,29 @@ export const EvolutionPanel: React.FC = () => {
                   }}
                   className={`p-2 rounded-md border cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-950 border-green-600'
+                      ? 'bg-green-50 border-green-600/50'
                       : isPreviewing
-                      ? 'bg-slate-800 border-amber-500'
-                      : 'bg-slate-950 border-slate-700'
+                      ? 'bg-ink-100 border-amber-500'
+                      : 'bg-ink-100 border-ink-200'
                   }`}
                 >
                   {/* Rank + score */}
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-400 text-[10px] font-semibold">#{idx + 1}</span>
+                    <span className="text-ink-600 text-[11px] font-semibold">#{idx + 1}</span>
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-semibold ${
+                      <span className={`text-[11px] font-semibold ${
                         candidate.compressionProgress > 0
-                          ? 'text-green-500'
+                          ? 'text-green-600'
                           : candidate.compressionProgress < 0
-                          ? 'text-red-500'
-                          : 'text-slate-500'
+                          ? 'text-destructive'
+                          : 'text-ink-500'
                       }`}>
                         {candidate.compressionProgress > 0 ? '+' : ''}
                         {candidate.compressionProgress.toFixed(4)}
                       </span>
-                      <div className="w-10 h-1 bg-slate-700 rounded overflow-hidden">
+                      <div className="w-10 h-1 bg-ink-200 rounded overflow-hidden">
                         <div
-                          className={`h-full rounded ${candidate.compressionProgress > 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                          className={`h-full rounded ${candidate.compressionProgress > 0 ? 'bg-green-500' : 'bg-destructive'}`}
                           style={{ width: `${Math.min(100, Math.max(0, (candidate.compressionProgress + 0.5) * 100))}%` }}
                         />
                       </div>
@@ -219,7 +221,7 @@ export const EvolutionPanel: React.FC = () => {
                   </div>
 
                   {/* Meme summary (pass1) or fallback to raw description */}
-                  <div className="text-slate-300 text-[10px] truncate mb-0.5">
+                  <div className="text-ink-700 text-[11px] truncate mb-0.5">
                     {candidate.pass1?.meme_summary || candidate.memeDescription.split('\n')[0]}
                   </div>
 
@@ -227,7 +229,7 @@ export const EvolutionPanel: React.FC = () => {
                   {candidate.pass1?.rhetorical_moves && candidate.pass1.rhetorical_moves.length > 0 && (
                     <div className="flex gap-1 flex-wrap mb-0.5">
                       {candidate.pass1.rhetorical_moves.map((move, i) => (
-                        <span key={i} className="px-1.5 py-px rounded bg-violet-950 text-violet-400 text-[9px]">
+                        <span key={i} className="px-1.5 py-px rounded bg-violet-50 text-violet-700 text-[10px]">
                           {move}
                         </span>
                       ))}
@@ -238,7 +240,7 @@ export const EvolutionPanel: React.FC = () => {
                   {candidate.pass1?.functional_affects && candidate.pass1.functional_affects.length > 0 && (
                     <div className="flex gap-1 flex-wrap mb-0.5">
                       {candidate.pass1.functional_affects.map((affect, i) => (
-                        <span key={i} className="px-1.5 py-px rounded bg-amber-950 text-amber-400 text-[9px]">
+                        <span key={i} className="px-1.5 py-px rounded bg-amber-50 text-amber-600 text-[10px]">
                           {affect}
                         </span>
                       ))}
@@ -247,13 +249,13 @@ export const EvolutionPanel: React.FC = () => {
 
                   {/* Target cube + operator (pass2) */}
                   <div className="flex gap-1 flex-wrap">
-                    <span className="px-1.5 py-px rounded bg-slate-700 text-slate-400 text-[9px]">
+                    <span className="px-1.5 py-px rounded bg-ink-200 text-ink-600 text-[10px]">
                       {candidate.cutterConfig.operator}
                     </span>
-                    <span className="px-1.5 py-px rounded bg-slate-700 text-slate-400 text-[9px]">
+                    <span className="px-1.5 py-px rounded bg-ink-200 text-ink-600 text-[10px]">
                       {candidate.cutterConfig.cutter.type}
                     </span>
-                    <span className="px-1.5 py-px rounded bg-slate-700 text-slate-500 text-[9px]">
+                    <span className="px-1.5 py-px rounded bg-ink-200 text-ink-500 text-[10px]">
                       cube {candidate.targetCubeId.slice(-4)}
                     </span>
                   </div>
@@ -267,10 +269,10 @@ export const EvolutionPanel: React.FC = () => {
             <Button
               onClick={applySelected}
               disabled={!selectedCandidateId}
-              className={`flex-1 h-auto py-2.5 text-xs font-semibold border-0 ${
+              className={`flex-1 h-auto py-2.5 text-[13px] font-semibold border-0 ${
                 selectedCandidateId
-                  ? 'bg-emerald-900 hover:bg-emerald-800 text-white'
-                  : 'bg-slate-700 text-slate-500 cursor-default'
+                  ? 'bg-primary hover:bg-primary/85 text-white'
+                  : 'bg-ink-200 text-ink-500 cursor-default'
               }`}
             >
               Apply
@@ -281,10 +283,10 @@ export const EvolutionPanel: React.FC = () => {
                 undoLastGeneration();
               }}
               disabled={generation === 0}
-              className={`h-auto py-2.5 px-3 text-xs border-0 ${
+              className={`h-auto py-2.5 px-3 text-[13px] border-0 ${
                 generation > 0
-                  ? 'bg-red-900 hover:bg-red-800 text-white'
-                  : 'bg-slate-700 text-slate-500 cursor-default'
+                  ? 'bg-destructive/10 hover:bg-destructive/20 text-destructive'
+                  : 'bg-ink-200 text-ink-500 cursor-default'
               }`}
             >
               Undo
@@ -293,19 +295,21 @@ export const EvolutionPanel: React.FC = () => {
         </div>
       )}
 
-      <SectionCutControls />
+      <Section id="evolve-section-cut" title="Section cut">
+        <SectionCutControls showSeparator={false} />
+      </Section>
 
-      {/* Config section */}
-      <div className="pb-2">
-        <div className="text-slate-400 text-[10px] font-semibold mb-2">Settings</div>
+      {/* Config section — collapsed by default to keep the panel short */}
+      <Section id="evolve-settings" title="Settings">
+      <div className="pb-2 pt-1">
 
         {/* Target strategy */}
         <div className="mb-2">
-          <label className="text-slate-400 text-[10px] block mb-1">Target strategy</label>
+          <label className="text-ink-600 text-[11px] block mb-1">Target strategy</label>
           <select
             value={config.targetCubeStrategy}
             onChange={(e) => setConfig({ targetCubeStrategy: e.target.value as 'random' | 'least-compressed' | 'adaptive' })}
-            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-[11px] box-border"
+            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] box-border"
           >
             <option value="least-compressed">Least compressed (focus on untouched cubes)</option>
             <option value="adaptive">Adaptive (mix of focused + random)</option>
@@ -316,8 +320,8 @@ export const EvolutionPanel: React.FC = () => {
         {/* Population size */}
         <div className="mb-2">
           <div className="flex justify-between mb-1">
-            <label className="text-slate-400 text-[10px]">Candidates per generation</label>
-            <span className="text-slate-200 text-[10px]">{config.populationSize}</span>
+            <label className="text-ink-600 text-[11px]">Candidates per generation</label>
+            <span className="text-ink-800 text-[11px]">{config.populationSize}</span>
           </div>
           <Slider
             min={2}
@@ -331,8 +335,8 @@ export const EvolutionPanel: React.FC = () => {
         {/* Selection pressure */}
         <div className="mb-2">
           <div className="flex justify-between mb-1">
-            <label className="text-slate-400 text-[10px]">Algorithm vs. intuition</label>
-            <span className="text-slate-200 text-[10px]">{Math.round(config.selectionPressure * 100)}%</span>
+            <label className="text-ink-600 text-[11px]">Algorithm vs. intuition</label>
+            <span className="text-ink-800 text-[11px]">{Math.round(config.selectionPressure * 100)}%</span>
           </div>
           <Slider
             min={0}
@@ -341,7 +345,7 @@ export const EvolutionPanel: React.FC = () => {
             value={[config.selectionPressure * 100]}
             onValueChange={([v]) => setConfig({ selectionPressure: v / 100 })}
           />
-          <div className="flex justify-between text-[9px] text-slate-600 mt-0.5">
+          <div className="flex justify-between text-[10px] text-ink-400 mt-0.5">
             <span>Your choice matters more</span>
             <span>Algorithm decides</span>
           </div>
@@ -349,16 +353,17 @@ export const EvolutionPanel: React.FC = () => {
 
         {/* Meme filter */}
         <div>
-          <label className="text-slate-400 text-[10px] block mb-1">Meme tag filter (optional)</label>
+          <label className="text-ink-600 text-[11px] block mb-1">Meme tag filter (optional)</label>
           <input
             type="text"
             value={config.memePoolFilter || ''}
             onChange={(e) => setConfig({ memePoolFilter: e.target.value || null })}
             placeholder="e.g. architecture"
-            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-[11px] box-border"
+            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] box-border"
           />
         </div>
       </div>
+      </Section>
     </div>
   );
 };

@@ -167,7 +167,7 @@ const ThumbnailGenerator: React.FC = () => {
         {!isGenerating ? (
           <button
             onClick={startGeneration}
-            className="px-6 py-3 text-base bg-indigo-600 text-white border-0 rounded-lg cursor-pointer hover:bg-indigo-500"
+            className="px-6 py-3 text-base bg-primary text-white border-0 rounded-lg cursor-pointer hover:bg-primary/85"
           >
             Generate All Thumbnails
           </button>
@@ -178,7 +178,7 @@ const ThumbnailGenerator: React.FC = () => {
             </p>
             <div className="w-[300px] h-5 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-600 transition-[width] duration-200"
+                className="h-full bg-primary transition-[width] duration-200"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -197,7 +197,7 @@ const ThumbnailGenerator: React.FC = () => {
               near: 0.1,
               far: 1000
             }}
-            style={{ background: '#f1f5f9' }}
+            style={{ background: '#f7f5f0' }}
             gl={{ preserveDrawingBuffer: true }}
           >
             <IsometricCamera />
@@ -222,7 +222,7 @@ const ThumbnailGenerator: React.FC = () => {
             <h2 className="text-xl font-semibold">Generated Thumbnails ({thumbnails.length})</h2>
             <button
               onClick={downloadAll}
-              className="px-4 py-2 bg-emerald-600 text-white border-0 rounded-md cursor-pointer hover:bg-emerald-500"
+              className="px-4 py-2 bg-primary text-white border-0 rounded-md cursor-pointer hover:bg-primary/85"
             >
               Download All
             </button>
@@ -235,7 +235,7 @@ const ThumbnailGenerator: React.FC = () => {
                 className="cursor-pointer border border-gray-200 rounded-lg p-2 text-center hover:border-gray-400"
               >
                 <img src={dataUrl} alt={id} className="w-20 h-20" />
-                <p className="mt-1 mb-0 text-[11px]">{id}</p>
+                <p className="mt-1 mb-0 text-[12px]">{id}</p>
               </div>
             ))}
           </div>

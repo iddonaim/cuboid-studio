@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import {
@@ -59,13 +60,13 @@ export const SavedStatesPanel: React.FC = () => {
   };
 
   return (
-    <div className="border-t border-slate-700 pt-2.5 mt-1">
+    <div className="border-t border-ink-200 pt-2.5 mt-1">
       <button
         onClick={() => { setExpanded(e => !e); setConfirmDeleteId(null); }}
-        className="w-full flex items-center justify-between bg-transparent border-0 text-slate-400 text-[11px] font-semibold cursor-pointer pb-1.5"
+        className="w-full flex items-center justify-between bg-transparent border-0 text-ink-600 text-[12px] font-semibold cursor-pointer pb-1.5"
       >
         <span>Saved States</span>
-        <i className={`fas fa-chevron-${expanded ? 'up' : 'down'} text-[9px] text-slate-600`} />
+        {expanded ? <ChevronUp size={11} className="text-ink-400" /> : <ChevronDown size={11} className="text-ink-400" />}
       </button>
 
       {expanded && (
@@ -79,16 +80,16 @@ export const SavedStatesPanel: React.FC = () => {
               onChange={e => setSaveName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && hasCubes && handleSave()}
               placeholder={`Assembly ${states.length + 1}`}
-              className="flex-1 px-1.5 py-1 text-[10px] bg-slate-800 border border-slate-700 rounded text-slate-400 outline-none"
+              className="flex-1 px-1.5 py-1 text-[11px] bg-ink-100 border border-ink-200 rounded text-ink-600 outline-none"
             />
             <Button
               onClick={handleSave}
               disabled={!hasCubes}
               title={hasCubes ? 'Save current assembly' : 'No cubes to save'}
-              className={`h-auto py-1 px-2 text-[10px] border-0 whitespace-nowrap ${
+              className={`h-auto py-1 px-2 text-[11px] border-0 whitespace-nowrap ${
                 hasCubes
-                  ? 'bg-emerald-900 hover:bg-emerald-800 text-emerald-300'
-                  : 'bg-slate-950 text-slate-600 cursor-default'
+                  ? 'bg-primary/10 hover:bg-primary/20 text-primary'
+                  : 'bg-ink-100 text-ink-400 cursor-default'
               }`}
             >
               Save
@@ -97,16 +98,16 @@ export const SavedStatesPanel: React.FC = () => {
 
           {/* State list */}
           {states.length === 0 ? (
-            <div className="text-slate-600 text-[9px] italic pl-0.5">No saved states yet</div>
+            <div className="text-ink-400 text-[10px] italic pl-0.5">No saved states yet</div>
           ) : (
             states.map(state => (
               <div
                 key={state.id}
-                className="flex items-center gap-1 py-1.5 px-1.5 bg-slate-950 border border-slate-800 rounded"
+                className="flex items-center gap-1 py-1.5 px-1.5 bg-ink-100 border border-ink-200 rounded"
               >
                 <div className="flex-1 overflow-hidden">
-                  <div className="text-slate-400 text-[10px] truncate">{state.name}</div>
-                  <div className="text-slate-600 text-[9px]">
+                  <div className="text-ink-600 text-[11px] truncate">{state.name}</div>
+                  <div className="text-ink-400 text-[10px]">
                     {state.cubeCount} cube{state.cubeCount !== 1 ? 's' : ''} · {fmtDate(state.savedAt)}
                   </div>
                 </div>
@@ -114,7 +115,7 @@ export const SavedStatesPanel: React.FC = () => {
                 <Button
                   onClick={() => handleLoad(state)}
                   title="Load this state into builder"
-                  className="h-auto py-px px-1.5 text-[9px] border border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700 whitespace-nowrap"
+                  className="h-auto py-px px-1.5 text-[10px] border border-ink-200 bg-ink-100 text-ink-600 hover:bg-ink-200 whitespace-nowrap"
                 >
                   Load
                 </Button>
@@ -122,13 +123,13 @@ export const SavedStatesPanel: React.FC = () => {
                 <button
                   onClick={() => handleDelete(state.id)}
                   title={confirmDeleteId === state.id ? 'Click again to confirm delete' : 'Delete'}
-                  className={`py-px px-1.5 rounded border-0 cursor-pointer text-[9px] ${
+                  className={`py-px px-1.5 rounded border-0 cursor-pointer text-[10px] ${
                     confirmDeleteId === state.id
-                      ? 'bg-red-900 text-red-300'
-                      : 'bg-transparent text-slate-600 hover:text-red-400'
+                      ? 'bg-destructive/10 text-destructive'
+                      : 'bg-transparent text-ink-400 hover:text-destructive'
                   }`}
                 >
-                  <i className="fas fa-trash text-[8px]" />
+                  <Trash2 size={10} />
                 </button>
               </div>
             ))

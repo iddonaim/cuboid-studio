@@ -6,7 +6,8 @@ import { useEvolutionStore } from './store/useEvolutionStore';
 import { USE_PRECOMPUTED_MODELS, preGenerateAllGeometries } from './lib/cube/csgUtils';
 import { getAllRotations, findRotationIndex, AxisRotation } from './lib/cube/connectionRules';
 import { TopBar } from './components/layout/TopBar';
-import { FloatingPanel } from './components/layout/FloatingPanel';
+import { Sidebar } from './components/layout/Sidebar';
+import { Inspector } from './components/layout/Inspector';
 import { BottomSheet } from './components/layout/BottomSheet';
 import { HelpBar } from './components/layout/HelpBar';
 import { useIsMobile } from './hooks/useIsMobile';
@@ -32,6 +33,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { SaveCompositionButton } from './components/projects/SaveCompositionButton';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { Section } from '@/components/ui/section';
+import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { ApiActivityIndicator } from './components/layout/ApiActivityIndicator';
 
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
@@ -44,21 +48,21 @@ const SeedEditBanner: React.FC = () => {
     <div
       className="mb-2 p-2 rounded-md flex items-center justify-between gap-2"
       style={{
-        background: 'rgba(16, 185, 129, 0.08)',
-        border: '1px solid rgba(16, 185, 129, 0.35)',
+        background: 'hsl(var(--primary) / 0.07)',
+        border: '1px solid hsl(var(--primary) / 0.35)',
       }}
     >
       <div className="flex flex-col">
-        <span className="text-emerald-400 text-[10px] font-semibold uppercase tracking-wider">
+        <span className="text-primary text-[11px] font-semibold uppercase tracking-wider">
           Editing merge seed
         </span>
-        <span className="text-slate-400 text-[10px]">
+        <span className="text-ink-600 text-[11px]">
           Changes here become the seed for Encode.
         </span>
       </div>
       <Button
         onClick={closeSeedEdit}
-        className="h-auto py-1.5 px-2.5 text-[11px] bg-emerald-700 hover:bg-emerald-600 text-white border-0"
+        className="h-auto py-1.5 px-2.5 text-[12px] bg-primary hover:bg-primary/85 text-white border-0"
       >
         Done
       </Button>
@@ -83,10 +87,10 @@ const EvolutionSubModeToggle: React.FC = () => {
         <button
           key={value}
           onClick={() => setSubMode(value)}
-          className={`flex-1 py-1.5 px-1 rounded-md text-[10px] border cursor-pointer ${
+          className={`flex-1 py-1.5 px-1 rounded-md text-[11px] border cursor-pointer ${
             subMode === value
-              ? 'bg-blue-950 border-blue-500 text-blue-300 font-semibold'
-              : 'bg-slate-800 border-slate-700 text-slate-500'
+              ? 'bg-primary/10 border-primary text-primary font-semibold'
+              : 'bg-ink-100 border-ink-200 text-ink-500'
           }`}
         >
           {label}
@@ -101,22 +105,25 @@ const PataphysicalSurface: React.FC = () => (
   <div className="flex flex-col gap-2.5">
     <MemeInputPanel />
     <CutterTweakPanel />
-    <OperatorHistoryList />
+    <Section id="pata-history" title="Operator history">
+      <OperatorHistoryList />
+    </Section>
   </div>
 );
 
 const SiteAnalysisToast: React.FC<{ onGoToEncode: () => void }> = ({ onGoToEncode }) => (
   <div
-    className="absolute bottom-4 right-4 z-[70] max-w-sm rounded-md border px-3 py-2 text-[11px] text-slate-200 shadow-xl"
+    className="absolute bottom-4 right-4 z-[70] max-w-sm rounded-md border px-3 py-2 text-[12px] text-ink-800 shadow-xl"
     style={{
-      background: 'rgba(15, 23, 42, 0.94)',
-      borderColor: 'rgba(148, 163, 184, 0.35)',
+      background: 'hsl(var(--card) / 0.96)',
+      borderColor: 'hsl(var(--border))',
+      boxShadow: '0 6px 24px hsl(45 9% 13% / 0.12)',
     }}
   >
     <div className="mb-2">Site analysis ready — continue to Encode whenever you'd like.</div>
     <Button
       onClick={onGoToEncode}
-      className="h-auto py-1.5 px-2.5 text-[10px] bg-blue-900 hover:bg-blue-800 text-white border-0"
+      className="h-auto py-1.5 px-2.5 text-[11px] bg-primary hover:bg-primary/85 text-white border-0"
     >
       Go to Encode
     </Button>
@@ -127,18 +134,18 @@ const DecodeTagsOverlay: React.FC = () => {
   const compositionTags = useTagStore(s => s.compositionTags);
   if (compositionTags.length === 0) return null;
   return (
-    <div className="absolute bottom-8 left-4 z-20 max-w-[220px] rounded-lg border border-slate-700 p-3" style={{ background: 'rgba(15,23,42,0.85)' }}>
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+    <div className="absolute bottom-8 left-4 z-20 max-w-[220px] rounded-lg border border-ink-200 p-3" style={{ background: 'hsl(var(--card) / 0.9)' }}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-600 mb-1.5">
         Composition tags
       </p>
       <div className="flex flex-wrap gap-1">
         {compositionTags.map((tag, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] bg-slate-800 border border-slate-600 text-slate-300"
+            className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] bg-ink-100 border border-ink-300 text-ink-700"
           >
             {tag.word}
-            <span className="text-slate-500">· {tag.intensity}</span>
+            <span className="text-ink-500">· {tag.intensity}</span>
           </span>
         ))}
       </div>
@@ -235,6 +242,12 @@ const AppInner: React.FC = () => {
       if (e.key === 'r' && store.selectedCubeIds.length > 0 && !store.pickerActive) {
         e.preventDefault();
         store.rotateSelectedCube('x');
+      }
+
+      // Cmd/Ctrl+B toggles the sidebar (desktop)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault();
+        useAppStore.getState().toggleFloatingPanel();
       }
 
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
@@ -365,10 +378,13 @@ const AppInner: React.FC = () => {
         {!showMapCanvas && (
           <>
             <Viewport3D />
-            {activeMode === 'encoding' && (
-              showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
-            )}
-            {showPataphysicalSurface && <OperatorResultPanel />}
+            {/* Results dock into the right-side Inspector rail on desktop */}
+            <Inspector>
+              {activeMode === 'encoding' && (
+                showBuilderSurface ? <SelectedCubePanel docked /> : <EncodingResultPanel docked />
+              )}
+              {showPataphysicalSurface && <OperatorResultPanel docked />}
+            </Inspector>
             {activeMode === 'decode' && <DecodeTagsOverlay />}
             <CaptureButton />
             <HelpBar />
@@ -384,9 +400,9 @@ const AppInner: React.FC = () => {
         )}
       </div>
 
-      {/* FloatingPanel: glass overlay on the left side */}
+      {/* Docked sidebar on the left (Cmd/Ctrl+B or TopBar button to toggle) */}
       {!showMapCanvas && (
-        <FloatingPanel
+        <Sidebar
           mode={activeMode}
           isOpen={floatingPanelOpen}
           exportSlot={activeMode === 'decode' ? undefined : <ExportPanel />}
@@ -410,7 +426,7 @@ const AppInner: React.FC = () => {
             </>
           )}
           {activeMode === 'decode' && <DecodePanel />}
-        </FloatingPanel>
+        </Sidebar>
       )}
     </div>
   );
@@ -428,6 +444,8 @@ const App: React.FC = () => (
     <ProjectsPanel />
     <SaveCompositionButton />
     <ToastContainer />
+    <ApiActivityIndicator />
+    <OnboardingModal />
   </AuthProvider>
 );
 
