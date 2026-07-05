@@ -31,9 +31,10 @@ export const ExportPanel: React.FC = () => {
     return liveLinkClient.onStatusChange(setLinkStatus);
   }, []);
 
-  // Auto-push when assembly changes and live-link is connected
+  // Auto-push when assembly changes and live-link is connected.
+  // Empty assemblies push too, so deleting the last cube reaches GH.
   useEffect(() => {
-    if (linkStatus !== 'connected' || placedCubes.length === 0) return;
+    if (linkStatus !== 'connected') return;
     const data = buildAssemblyExport(placedCubes, cubeOperators);
     const sent = liveLinkClient.push(data);
     if (sent) {
@@ -42,7 +43,7 @@ export const ExportPanel: React.FC = () => {
   }, [placedCubes, cubeOperators, linkStatus]);
 
   const handleConnect = useCallback(() => {
-    if (liveLinkClient.isConnected) {
+    if (liveLinkClient.isActive) {
       liveLinkClient.disconnect();
     } else {
       liveLinkClient.connect(port);
@@ -115,12 +116,12 @@ export const ExportPanel: React.FC = () => {
           <Button
             onClick={handleConnect}
             className={`h-auto py-0.5 px-2 text-[11px] border-0 ${
-              linkStatus === 'connected'
+              linkStatus !== 'disconnected'
                 ? 'bg-destructive/10 hover:bg-destructive/20 text-destructive'
                 : 'bg-primary hover:bg-primary/85 text-white'
             }`}
           >
-            {linkStatus === 'connected' ? 'Stop' : 'Connect'}
+            {linkStatus !== 'disconnected' ? 'Stop' : 'Connect'}
           </Button>
         </div>
 
@@ -143,9 +144,10 @@ export const ExportPanel: React.FC = () => {
           </div>
         )}
 
-        {linkStatus === 'disconnected' && (
+        {(linkStatus === 'disconnected' || linkStatus === 'error') && (
           <div className="text-ink-400 text-[10px] leading-relaxed">
             Run <code className="text-primary">python cuboid_bridge_server.py</code> first
+            (no install needed — it&apos;s in the repo&apos;s <code>grasshopper/</code> folder)
           </div>
         )}
       </div>

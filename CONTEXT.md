@@ -173,7 +173,7 @@ There is also a **local-only** save layer independent of Firebase: `src/lib/save
 - **JSON:** `src/lib/export/assemblyExport.ts` — positions, variation/cutter indices, rotations, per-cube operator history, grid metadata.
 - **GLB:** `src/lib/export/glbExport.ts` — merged mesh of the assembly (used by the AR viewer and downloadable).
 - **AR:** `src/components/ar/ARViewer.tsx` — Google `<model-viewer>` web component. Android → Scene Viewer (ARCore), iOS 15+ → Quick Look (ARKit), desktop → 3D orbit. Scale slider for real-world sizing.
-- **Live-link:** `src/lib/export/liveLinkClient.ts` — WebSocket client (default port 9876) to a local Python bridge in `grasshopper/` for round-tripping into a running Grasshopper definition.
+- **Live-link:** `src/lib/export/liveLinkClient.ts` — HTTP client (default port 9876) that POSTs assembly state to the local Python bridge in `grasshopper/` (stdlib-only, no pip installs) for round-tripping into a running Grasshopper definition. Covered end-to-end by `e2e/grasshopper-livelink.spec.ts` (spawns the real bridge; skips if `python3` is unavailable).
 - **Screenshot:** `src/components/tools/CaptureButton.tsx` (uses `preserveDrawingBuffer` on the canvas; shares via Web Share API on mobile, downloads on desktop).
 - **Decode** has its own SVG/DXF export (above).
 

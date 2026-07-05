@@ -13,7 +13,7 @@ Setup:
     4. Copy this script into it
     5. Set inputs:
        - poll (bool toggle) — True to fetch, False to pause
-       - port (int slider) — default 9877 (HTTP port = bridge WS port + 1)
+       - port (int slider) — default 9876 (same port as the bridge server)
     6. Connect a Timer component (e.g. 1000ms) to trigger polling
 
 Outputs:
@@ -31,10 +31,10 @@ Outputs:
 How it works:
     This component makes an HTTP GET request to the bridge server's
     /state endpoint. The bridge server holds the latest assembly state
-    pushed from the Cuboid Studio browser tab via WebSocket.
+    pushed from the Cuboid Studio browser tab.
 
     The data flow is:
-        Browser → (WebSocket) → Bridge Server → (HTTP) → This component
+        Browser → (HTTP POST) → Bridge Server → (HTTP GET) → This component
 
     Alternatively, if you don't want to run the bridge server, you can
     read from a JSON file exported via the "Download JSON" button in
@@ -46,9 +46,9 @@ import Rhino.Geometry as rg
 import Grasshopper as gh
 from Grasshopper.Kernel.Data import GH_Path
 
-# Default HTTP port (bridge server WS port + 1)
+# Default port (same as the bridge server)
 if port is None:
-    port = 9877
+    port = 9876
 
 # ─── Fetch from bridge server ─────────────────────────────────────────
 
@@ -136,6 +136,8 @@ if raw_json:
         print("JSON parse error: {}".format(e))
 else:
     if poll:
-        print("No data from bridge (is the server running?)")
+        print("No assembly yet — is the bridge server running and "
+              "Cuboid Studio connected? (bridge answers but holds no "
+              "data until the browser pushes)")
     else:
         print("Polling paused")
