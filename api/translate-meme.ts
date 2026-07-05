@@ -410,7 +410,9 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
 
 const VALID_OPERATORS_V1 = new Set(['inversion', 'amplification', 'drift', 'reassignment', 'preservation', 'shuffle']);
 const VALID_OPERATORS_V2 = new Set([...VALID_OPERATORS_V1, 'consolidation', 'erosion', 'reinforcement']);
-const VALID_CUTTER_TYPES = new Set(['box', 'sphere', 'cylinder', 'plane']);
+// 'plane' stays valid so old saved operator records keep loading, but the
+// prompts no longer offer it — thin flat slabs were over-chosen by the model.
+const VALID_CUTTER_TYPES = new Set(['box', 'sphere', 'cylinder', 'plane', 'taper']);
 const VALID_EDGE_TYPES = new Set(['adjacency', 'access', 'visibility', 'conflict', 'overlap', 'threshold']);
 
 /**

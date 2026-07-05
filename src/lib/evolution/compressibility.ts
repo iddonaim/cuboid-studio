@@ -36,17 +36,20 @@
  *
  * ## 1. Geometric Clustering (30% of total score)
  *
- * "Do the boolean cuts on different cubes look alike?"
+ * "Do the cuts on different cubes look alike?"
  *
- * For each cube that has been cut, we describe all its cuts as a list of
- * numbers (what shape was used, how big, where it was placed, how it was
- * rotated — 13 numbers per cut, averaged across the cube's history).
+ * Every cube is described as a list of numbers covering ALL of its cuts —
+ * the four master cutters baked into its base variation plus any meme cuts
+ * applied later (what shape, how big, where, how rotated — 14 numbers per
+ * cut, averaged into one fingerprint per cube).
  *
  * Then we compare every pair of cubes: the more similar their cut-profiles
- * are, the more compressible.  If you applied the same meme to 5 cubes and
- * they all got similar sphere cuts, this score goes up.
+ * are, the more compressible.  Because the base variations already share
+ * master cutters, a fresh assembly starts with a real (non-zero) score,
+ * and every single meme cut shifts it — so the very first candidate in an
+ * Evolve session gets a meaningful delta instead of a structural zero.
  *
- * Technically: cosine similarity on 13-dimensional feature vectors averaged
+ * Technically: cosine similarity on 14-dimensional feature vectors averaged
  * over all pairwise comparisons.
  *
  *
@@ -123,7 +126,8 @@
 
 import type { PlacedCube } from '../cube/types';
 import type { OperatorRecord, CutterType, OperatorClass, OperatorClassV2 } from '../operators/types';
-import { GRID_STRIDE } from '../cube/constants';
+import { GRID_STRIDE, CUBE_SIZE } from '../cube/constants';
+import { CUBE_VARIATIONS, type CutterSpec } from '../cube/specifications';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -161,13 +165,7 @@ export function computeCompressibility(
   placedCubes: PlacedCube[],
   cubeOperators: Record<string, OperatorRecord[]>,
 ): CompressibilityScore {
-  // Only score cubes that have at least one operator applied
-  const operatedCubeIds = placedCubes
-    .map(c => c.id)
-    .filter(id => (cubeOperators[id]?.length ?? 0) > 0);
-
-  // If fewer than 2 operated cubes, there's nothing meaningful to compress
-  if (operatedCubeIds.length < 2) {
+  if (placedCubes.length === 0) {
     return {
       total: 0,
       geometricClustering: 0,
@@ -177,7 +175,15 @@ export function computeCompressibility(
     };
   }
 
-  const gc = scoreGeometricClustering(operatedCubeIds, cubeOperators);
+  const operatedCubeIds = placedCubes
+    .map(c => c.id)
+    .filter(id => (cubeOperators[id]?.length ?? 0) > 0);
+
+  // Geometric clustering reads EVERY cube's geometry — the base variation's
+  // cutters plus any LLM cuts — so a single new cut on a fresh assembly
+  // already moves the score. The other three sub-scores only exist once
+  // operators are in play and each degrades gracefully to 0 on its own.
+  const gc = scoreGeometricClustering(placedCubes, cubeOperators);
   const sr = scoreSpatialRegularity(placedCubes, operatedCubeIds, cubeOperators);
   const os = scoreOperatorSequence(operatedCubeIds, cubeOperators);
   const mc = scoreMemeCoherence(operatedCubeIds, cubeOperators);
@@ -229,25 +235,30 @@ export function createSnapshot(
 // ---------------------------------------------------------------------------
 //
 // Plain english:
-//   Each boolean cut is described by 13 numbers (shape type, size, position,
-//   rotation).  For each cube, we average all its cuts into a single 13-number
-//   "fingerprint".  Then we compare every pair of cubes' fingerprints — the
-//   more similar they are on average, the higher this score.
+//   Each boolean cut — base-variation master cutter or applied meme cut — is
+//   described by 14 numbers (shape type, size, position, rotation).  For each
+//   cube, we average all its cuts into a single 14-number "fingerprint".
+//   Then we compare every pair of cubes' fingerprints — the more similar they
+//   are on average, the higher this score.
 //
 // Technical:
-//   Per operator: cutterType (one-hot 4D) + proportions (3D) + position (3D) +
-//   rotation (3D) = 13D.  Average across history → fixed-length feature.
-//   Score = mean pairwise cosine similarity.
+//   Per cut: cutterType (one-hot 5D) + proportions (3D) + position (3D) +
+//   rotation (3D) = 14D.  Average across base cutters + history →
+//   fixed-length feature.  Score = mean pairwise cosine similarity.
 
 const CUTTER_TYPE_INDEX: Record<CutterType, number> = {
   box: 0,
   sphere: 1,
   cylinder: 2,
   plane: 3,
+  taper: 4,
 };
 
+// one-hot cutter type (5) + proportions (3) + position (3) + rotation (3)
+const FEATURE_DIM = 14;
+
 function operatorToVector(op: OperatorRecord): number[] {
-  const oneHot = [0, 0, 0, 0];
+  const oneHot = new Array(Object.keys(CUTTER_TYPE_INDEX).length).fill(0);
   oneHot[CUTTER_TYPE_INDEX[op.cutter.type]] = 1;
   return [
     ...oneHot,
@@ -257,8 +268,51 @@ function operatorToVector(op: OperatorRecord): number[] {
   ];
 }
 
+/**
+ * Describe one of a base variation's master cutters in the same 14-D space
+ * as an LLM cut, so base geometry and applied operators are comparable:
+ * proportions as fractions of the cube edge, position normalised to [-1, 1].
+ */
+function baseCutterToVector(cutter: CutterSpec): number[] {
+  const oneHot = new Array(Object.keys(CUTTER_TYPE_INDEX).length).fill(0);
+  oneHot[CUTTER_TYPE_INDEX[cutter.type]] = 1;
+
+  const toNormalized = (world: number) => (world / CUBE_SIZE) * 2 - 1;
+
+  if (cutter.type === 'sphere') {
+    const d = (cutter.radius * 2) / CUBE_SIZE;
+    return [
+      ...oneHot,
+      d, d, d,
+      ...cutter.center.map(toNormalized),
+      0, 0, 0,
+    ];
+  }
+
+  // Cylinder: diameter across, length along its axis; centre reconstructed
+  // from the perpendicular-plane axis position + the extrusion midpoint.
+  const d = (cutter.radius * 2) / CUBE_SIZE;
+  const axisIdx = cutter.axis === 'X' ? 0 : cutter.axis === 'Y' ? 1 : 2;
+  const center: [number, number, number] = [0, 0, 0];
+  const perpendicular = [0, 1, 2].filter(i => i !== axisIdx);
+  center[perpendicular[0]] = cutter.axisPosition[0];
+  center[perpendicular[1]] = cutter.axisPosition[1];
+  center[axisIdx] = cutter.planeOrigin[axisIdx] + cutter.extrusionVector[axisIdx] / 2;
+
+  return [
+    ...oneHot,
+    d, cutter.length / CUBE_SIZE, d,
+    ...center.map(toNormalized),
+    0, 0, 0,
+  ];
+}
+
+const VARIATION_VECTORS = new Map<string, number[][]>(
+  CUBE_VARIATIONS.map(v => [v.id, v.cutters.map(baseCutterToVector)]),
+);
+
 function averageVectors(vectors: number[][]): number[] {
-  if (vectors.length === 0) return new Array(13).fill(0);
+  if (vectors.length === 0) return new Array(FEATURE_DIM).fill(0);
   const sum = new Array(vectors[0].length).fill(0);
   for (const v of vectors) {
     for (let i = 0; i < v.length; i++) sum[i] += v[i];
@@ -278,13 +332,16 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 function scoreGeometricClustering(
-  cubeIds: string[],
+  placedCubes: PlacedCube[],
   cubeOperators: Record<string, OperatorRecord[]>,
 ): number {
-  // Build per-cube feature vector (average of all operators)
-  const features = cubeIds.map(id => {
-    const ops = cubeOperators[id] || [];
-    return averageVectors(ops.map(operatorToVector));
+  // Per-cube fingerprint: average of the base variation's cutter vectors
+  // plus any LLM cut vectors. Every cube participates, so the score reflects
+  // the assembly's whole geometric vocabulary, not just operated cubes.
+  const features = placedCubes.map(cube => {
+    const ops = cubeOperators[cube.id] || [];
+    const baseVectors = VARIATION_VECTORS.get(cube.variationId) ?? [];
+    return averageVectors([...baseVectors, ...ops.map(operatorToVector)]);
   });
 
   // Average pairwise cosine similarity

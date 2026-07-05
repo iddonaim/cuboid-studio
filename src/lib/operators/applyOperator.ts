@@ -39,6 +39,8 @@ function describeCutterDimensions(
       };
     case 'plane':
       return { size: [p[0] * CUBE_SIZE, 0.5, p[2] * CUBE_SIZE] };
+    case 'taper':
+      return { size: [p[0] * CUBE_SIZE, p[1] * CUBE_SIZE, p[2] * CUBE_SIZE] };
     case 'box':
     default:
       return { size: [p[0] * CUBE_SIZE, p[1] * CUBE_SIZE, p[2] * CUBE_SIZE] };
@@ -80,6 +82,21 @@ export function createCutterFromLLMOutput(
     case 'plane':
       geometry = new THREE.BoxGeometry(p[0] * CUBE_SIZE, 0.5, p[2] * CUBE_SIZE);
       break;
+    case 'taper': {
+      // Tapered box: a 4-sided frustum, wide at the base and narrowing to
+      // half-width at the top. CylinderGeometry's radius is the circumradius
+      // of the square cross-section (side × √2 / 2); rotate 45° so the faces
+      // align with the cube axes.
+      const baseRadius = p[0] * CUBE_SIZE * (Math.SQRT2 / 2);
+      geometry = new THREE.CylinderGeometry(
+        baseRadius * 0.5,
+        baseRadius,
+        p[1] * CUBE_SIZE,
+        4
+      );
+      geometry.rotateY(Math.PI / 4);
+      break;
+    }
     default:
       geometry = new THREE.BoxGeometry(
         CUBE_SIZE * 0.3,

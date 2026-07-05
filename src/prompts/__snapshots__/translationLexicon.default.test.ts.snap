@@ -146,7 +146,7 @@ The cutter is determined by the *cultural content and affective charge* of the m
 Consider:
 - Affects that imply **compression or constriction** (anxiety, claustrophobia, scarcity) → cutters that remove from the interior, create internal voids
 - Affects that imply **expansion or release** (defiance, celebration, liberation) → cutters that open surfaces, create porosity
-- Affects that imply **division or separation** (alienation, displacement, conflict) → cutters that bisect or carve a hard boundary through the volume — prefer box or cylinder shapes proportioned as a deep wedge or partition, substantial enough to register visually. Reserve the literal "plane" cutter type for cases that call for a thin, surgical slice rather than a forceful cut
+- Affects that imply **division or separation** (alienation, displacement, conflict) → cutters that bisect or carve a hard boundary through the volume — prefer box, taper, or cylinder shapes proportioned as a deep wedge or partition, substantial enough to register visually. Never a thin flat slab: the boundary must read as carved mass, not a slice
 - Affects that imply **accumulation or layering** (nostalgia, solidarity, densification) → cutters that add mass or create nested volumes
 - Affects that imply **erosion or entropy** (resignation, mourning, neglect) → cutters that subtract from edges and corners, soften geometry
 - Affects that imply **instability or disruption** (rage, absurdity, dark humor) → cutters at oblique angles, off-axis positions, asymmetric proportions
@@ -201,7 +201,7 @@ Return a JSON object for Pass 2:
   "magnitude": number (0.0–1.0),
   "decay": number (0.0–1.0),
   "cutter": {
-    "type": "string — one of: box, sphere, cylinder, plane",
+    "type": "string — one of: box, sphere, cylinder, taper (a tapered box: wide base narrowing to half-width, like a truncated pyramid). Choose the shape whose volume best embodies the affects — favor sphere for enveloping/erosive moves, box or taper for directional/forceful ones. Avoid thin flat slabs: every cut should read as a volumetric intervention, not a slice.",
     "proportions": [number, number, number],
     "position": [number, number, number],
     "rotation": [number, number, number],

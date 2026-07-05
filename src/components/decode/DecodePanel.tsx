@@ -403,12 +403,15 @@ export const DecodePanel: React.FC = () => {
       {!canvasExpanded && <DecodeComposer />}
 
       {canvasExpanded && (
+        // z-40 keeps the expanded canvas under the TopBar (z-50) so "Save to
+        // project" and the mode tabs stay reachable while working fullscreen;
+        // the backdrop starts below the bar for the same reason.
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70"
+          className="fixed inset-x-0 top-[42px] bottom-0 z-40 flex items-center justify-center bg-black/70"
           onClick={() => setCanvasExpanded(false)}
         >
           <div
-            className="flex w-[90vw] h-[85vh] flex-col overflow-hidden rounded-xl border border-ink-200 bg-ink-50 p-3 shadow-2xl"
+            className="flex w-[90vw] h-[82vh] flex-col overflow-hidden rounded-xl border border-ink-200 bg-ink-50 p-3 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <DecodeComposer

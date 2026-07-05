@@ -49,9 +49,14 @@ export async function captureAndShare(options?: CaptureOptions): Promise<void> {
   const filename = `cuboid-diagram-${Date.now()}.png`;
   const file = new File([blob], filename, { type: 'image/png' });
 
-  // Mobile: Web Share API with file attachment → triggers native share sheet
-  // (user can "Save to Photos" / "Save to Gallery" from there)
-  if (navigator.canShare?.({ files: [file] })) {
+  // Mobile only: Web Share API with file attachment → native share sheet
+  // (user can "Save to Photos" / "Save to Gallery" from there).
+  // Desktop Safari also implements canShare, but its share sheet has no
+  // save-to-disk option (only Copy/AirDrop), so gate on a coarse pointer
+  // to keep desktops on the plain download path.
+  const isTouchDevice = typeof window.matchMedia === 'function'
+    && window.matchMedia('(pointer: coarse)').matches;
+  if (isTouchDevice && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: 'Cuboid Assembly' });
       return;

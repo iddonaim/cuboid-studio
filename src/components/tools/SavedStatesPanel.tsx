@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
+import { useDecodeStore } from '../../store/useDecodeStore';
 import {
   listSavedStates,
   saveState,
@@ -29,7 +30,11 @@ export const SavedStatesPanel: React.FC = () => {
 
   const handleSave = () => {
     if (placedCubes.length === 0) return;
-    saveState(saveName, placedCubes, cubeOperators);
+    const decode = useDecodeStore.getState();
+    saveState(saveName, placedCubes, cubeOperators, {
+      canvasTiles: decode.canvasTiles,
+      freestyle: decode.freestyle,
+    });
     setSaveName('');
     refresh();
   };
@@ -37,6 +42,16 @@ export const SavedStatesPanel: React.FC = () => {
   const handleLoad = (state: SavedState) => {
     const cubes = savedStateToPlacedCubes(state);
     setPlacedCubes(cubes);
+    // Restore the decode canvas layer when the save carries one; older saves
+    // don't, and for those the current canvas is left untouched.
+    if (state.decode) {
+      useDecodeStore.setState({
+        canvasTiles: state.decode.canvasTiles,
+        freestyle: state.decode.freestyle,
+        selectedTileId: null,
+        pendingPlacementVariationId: null,
+      });
+    }
   };
 
   const handleDelete = (id: string) => {

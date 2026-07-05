@@ -26,8 +26,10 @@ export function fitOrthoFrustum(
     camera.bottom = -maxDim / aspect / 2;
   }
 
+  // Keep far beyond the ground grid's fadeDistance so the floor never
+  // gets frustum-clipped in ortho views.
   camera.near = 0.1;
-  camera.far = Math.max(2000, maxDim * 12);
+  camera.far = Math.max(20000, maxDim * 12);
   camera.updateProjectionMatrix();
 }
 

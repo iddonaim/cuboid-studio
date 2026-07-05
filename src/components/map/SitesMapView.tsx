@@ -360,9 +360,12 @@ export const SitesMapView: React.FC = () => {
     }
   };
 
+  // `isolate` traps Leaflet's high-z internal panes (and our z-[1000] cards)
+  // inside this element's own stacking context, so they can never paint over
+  // sibling overlays like the Analysis/My-sites toggle.
   const rootClass = isMobile
-    ? 'absolute inset-0 bg-slate-950'
-    : 'absolute top-[42px] left-0 right-0 bottom-0 bg-slate-950';
+    ? 'absolute inset-0 bg-slate-950 isolate'
+    : 'absolute top-[42px] left-0 right-0 bottom-0 bg-slate-950 isolate';
 
   return (
     <div className={rootClass}>
