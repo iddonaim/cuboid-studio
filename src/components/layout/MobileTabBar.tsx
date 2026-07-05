@@ -72,6 +72,7 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpan
   return (
     <div
       className="flex w-full flex-shrink-0"
+      data-tour="mobile-tabs"
       style={{
         height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',

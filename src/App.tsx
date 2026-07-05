@@ -36,6 +36,7 @@ import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { Section } from '@/components/ui/section';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { GuidedTour } from './components/onboarding/GuidedTour';
 import { ApiActivityIndicator } from './components/layout/ApiActivityIndicator';
 
 /**
@@ -83,7 +84,7 @@ const EvolutionSubModeToggle: React.FC = () => {
     { value: 'pataphysical', label: 'Pataphysical' },
   ];
   return (
-    <div className="flex gap-1 mb-2.5">
+    <div className="flex gap-1 mb-2.5" data-tour="evolution-submode">
       {tabs.map(({ value, label }) => (
         <button
           key={value}
@@ -292,7 +293,7 @@ const AppInner: React.FC = () => {
 
         {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
-        <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]">
+        <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]" data-tour="canvas-stage">
           {/* Kept mounted (just hidden) instead of unmounted when leaving Map
               mode — the embedded map-context app runs its own address search
               and analysis run inside this iframe, and destroying the iframe
@@ -376,7 +377,7 @@ const AppInner: React.FC = () => {
 
       {/* Viewport: full bleed behind all overlays.
           transform:translateZ(0) keeps the WebGL layer below React overlays. */}
-      <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]">
+      <div className="absolute inset-0 overflow-hidden [transform:translateZ(0)]" data-tour="canvas-stage">
         {/* Kept mounted (just hidden) instead of unmounted when leaving Map
             mode — see matching comment in the mobile layout above. */}
         <div className={showMapCanvas && !showSitesMap ? undefined : 'hidden'}>
@@ -459,6 +460,7 @@ const App: React.FC = () => (
     <ToastContainer />
     <ApiActivityIndicator />
     <OnboardingModal />
+    <GuidedTour />
   </AuthProvider>
 );
 

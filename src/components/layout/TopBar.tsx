@@ -66,7 +66,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
           Renders from VISIBLE_NAV_SLOTS so positional order stays stable;
           Map/Decode reserve their slots in NAV_SLOTS but aren't rendered
           until they have a mounted component. */}
-      <div className="flex h-full">
+      <div className="flex h-full" data-tour="mode-tabs">
         {showModeTabs
           ? VISIBLE_NAV_SLOTS.map(slot => {
               const active = slot.key === activeMode;
@@ -102,6 +102,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
           onClick={openOnboarding}
           title="Show introduction"
           aria-label="Show introduction"
+          data-tour="help-button"
           className="font-mono text-[12px] text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer px-1"
         >
           ?
@@ -119,6 +120,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
             onClick={togglePanel}
             className="text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer p-1 flex items-center"
             title={floatingPanelOpen ? 'Hide panel' : 'Show panel'}
+            data-tour="panel-toggle"
           >
             <PanelIcon open={floatingPanelOpen} />
           </button>

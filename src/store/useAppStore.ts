@@ -44,6 +44,10 @@ interface AppState {
   onboardingOpen: boolean;
   openOnboarding: () => void;
   closeOnboarding: () => void;
+  /** Interactive guided tour — spotlights live UI elements step by step. */
+  tourActive: boolean;
+  startTour: () => void;
+  endTour: () => void;
   /** Width of the docked sidebar (desktop), persisted across sessions. */
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
@@ -91,6 +95,13 @@ export const useAppStore = create<AppState>((set) => ({
     try { localStorage.setItem(ONBOARDING_SEEN_KEY, '1'); } catch { /* ignore */ }
     set({ onboardingOpen: false });
   },
+  tourActive: false,
+  startTour: () => {
+    // Launching the tour counts as having seen the intro.
+    try { localStorage.setItem(ONBOARDING_SEEN_KEY, '1'); } catch { /* ignore */ }
+    set({ onboardingOpen: false, tourActive: true });
+  },
+  endTour: () => set({ tourActive: false }),
   sidebarWidth: loadSidebarWidth(),
   setSidebarWidth: (width) => {
     const clamped = clampSidebarWidth(width);

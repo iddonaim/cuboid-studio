@@ -239,6 +239,7 @@ const FRAMES: Frame[] = [
 export const OnboardingModal: React.FC = () => {
   const open = useAppStore(s => s.onboardingOpen);
   const close = useAppStore(s => s.closeOnboarding);
+  const startTour = useAppStore(s => s.startTour);
   const [index, setIndex] = useState(0);
 
   // Keyboard navigation while open
@@ -320,11 +321,28 @@ export const OnboardingModal: React.FC = () => {
           </div>
           <div className="flex-1" />
           {!isLast && (
+            <>
+              <button
+                onClick={startTour}
+                title="Interactive walkthrough of the live interface"
+                className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1"
+              >
+                Guided tour
+              </button>
+              <button
+                onClick={close}
+                className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1"
+              >
+                Skip
+              </button>
+            </>
+          )}
+          {isLast && (
             <button
               onClick={close}
               className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1"
             >
-              Skip
+              Start building
             </button>
           )}
           {index > 0 && (
@@ -337,10 +355,10 @@ export const OnboardingModal: React.FC = () => {
             </Button>
           )}
           <Button
-            onClick={() => (isLast ? close() : setIndex(i => i + 1))}
+            onClick={() => (isLast ? startTour() : setIndex(i => i + 1))}
             className="h-auto py-1.5 px-3 text-[11px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
           >
-            {isLast ? 'Start building' : 'Next'}
+            {isLast ? 'Launch guided tour' : 'Next'}
             {!isLast && <ChevronRight size={13} />}
           </Button>
         </div>

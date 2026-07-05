@@ -88,6 +88,39 @@ canvas { display: block; }
   animation-delay: inherit;
 }
 
+/* Guided tour — traveling spotlight + tooltip card */
+.tour-spotlight {
+  /* The dimming layer is this element's shadow, so the "hole" glides with it. */
+  box-shadow: 0 0 0 200vmax hsl(45 9% 13% / 0.45);
+  border: 1.5px solid hsl(var(--primary));
+  pointer-events: none;
+  transition:
+    top    0.55s cubic-bezier(0.32, 0.72, 0, 1),
+    left   0.55s cubic-bezier(0.32, 0.72, 0, 1),
+    width  0.55s cubic-bezier(0.32, 0.72, 0, 1),
+    height 0.55s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.tour-spotlight::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 14px;
+  border: 1.5px solid hsl(var(--primary) / 0.55);
+  animation: tour-pulse 1.8s ease-out infinite;
+}
+@keyframes tour-pulse {
+  0%        { opacity: 0.85; transform: scale(1); }
+  70%, 100% { opacity: 0;    transform: scale(1.035); }
+}
+.tour-card {
+  animation: onboarding-frame-in 0.25s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight { transition: none; }
+  .tour-spotlight::after { animation: none; opacity: 0.6; }
+  .tour-card { animation: none; }
+}
+
 /* API activity pill: document flying from meme bubble to cube */
 @keyframes api-doc-fly {
   0%   { transform: translate(24px, 13px) scale(0.7); opacity: 0; }

@@ -75,6 +75,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
   return (
     <div
       className="relative w-full flex flex-col flex-shrink-0 z-50 [transform:translateZ(0)]"
+      data-tour="bottom-sheet"
       style={{
         height: HEIGHT_MAP[effectiveHeightState],
         transition: 'height 0.38s cubic-bezier(0.32, 0.72, 0, 1)',
