@@ -2,7 +2,7 @@
 
 > This file is the always-on context for the Cuboid Studio Claude Project.
 > Read it in full before responding to any message in this project.
-> Last updated: 2026-06-08
+> Last updated: 2026-07-03
 >
 > This is a factual map of what is **actually in the repo and usable today**,
 > reconciled against the live code (not aspirational spec). Where a feature is
@@ -59,8 +59,9 @@ The app has **four** primary nav modes, all mounted and live: **Map**, **Encode*
 
 ## Map Mode
 
-- **Leaflet** map (`src/components/map/MapPanel.tsx`): click-to-pin, address search, radius slider (50–2000 m), ESRI→OSM tile fallback.
 - **Embedded "map-context" app** (`src/components/map/MapContextCanvas.tsx`): an iframe to an external service at `VITE_MAP_CONTEXT_URL` (defaults to the Railway deployment). When Map is active, this canvas replaces the 3D viewport. On analysis-complete it writes the site context and surfaces a toast offering to jump to Encode.
+- **"My sites" layer** (`src/components/map/SitesMapView.tsx` + `MapViewToggle.tsx`, signed-in only): an Analysis / My sites toggle (top-right) swaps the iframe for a full-bleed Leaflet map plotting every saved Site across all Projects at the coordinates in its stored site context (`src/lib/projects/sitePins.ts`). Marker click → card with the site's compositions (loadable, inline confirm — loading replaces current work) + "Set as active site context". Sites without coordinates surface in a "sites without location" panel from which a location can be assigned (map click or address search; written via `updateSite`, merged over the site's own stored context via `buildSiteContextAt`).
+- **`src/components/map/MapPanel.tsx`** (Leaflet site picker: click-to-pin, address search, radius slider, POI fetch) is currently **not mounted anywhere** — orphaned since the map-context iframe took over the Map canvas. Kept in-tree; its `buildSiteContextFromMap` path is still the model for manual pinning.
 - **Geocoding:** `api/geocode.ts` — Nominatim proxy (browser can't hit Nominatim directly due to CORS / User-Agent).
 - **POIs:** `api/fetch-context-pois.ts` — Overpass query, categorizes ~22 element types (transit, education, healthcare, civic, green space, markets, major roads).
 - **Persistence:** `src/lib/storage/siteContext.ts` (`getActiveSiteContext()` / `setActiveSiteContext()`), built via `src/lib/siteContext/mapSiteContext.ts`. The site context (location + quantitative + programmatic + architect's reading) is injected into both Encode and Pataphysical requests.
