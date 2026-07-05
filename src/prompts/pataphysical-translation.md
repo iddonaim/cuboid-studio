@@ -68,7 +68,7 @@ Return ONLY a JSON object matching this schema. No markdown, no backticks, no ex
   "magnitude": number (0.0–1.0),
   "decay": number (0.0–1.0),
   "cutter": {
-    "type": "string — one of: box, sphere, cylinder, plane",
+    "type": "string — one of: box, sphere, cylinder, taper (a tapered box, wide base narrowing toward the top). Favor volumetric shapes; avoid thin flat slabs.",
     "proportions": [number, number, number] (relative x, y, z scale),
     "position": [number, number, number] (normalized -1 to 1 on each axis),
     "rotation": [number, number, number] (degrees on each axis)

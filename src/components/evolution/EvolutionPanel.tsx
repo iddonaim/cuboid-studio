@@ -214,7 +214,9 @@ export const EvolutionPanel: React.FC = () => {
                       <div className="w-10 h-1 bg-ink-200 rounded overflow-hidden">
                         <div
                           className={`h-full rounded ${candidate.compressionProgress > 0 ? 'bg-green-500' : 'bg-destructive'}`}
-                          style={{ width: `${Math.min(100, Math.max(0, (candidate.compressionProgress + 0.5) * 100))}%` }}
+                          // Deltas are small (one cut vs a whole-assembly score),
+                          // so amplify around the 50% midpoint to keep the bar legible.
+                          style={{ width: `${Math.min(100, Math.max(2, 50 + candidate.compressionProgress * 2000))}%` }}
                         />
                       </div>
                     </div>
@@ -295,9 +297,7 @@ export const EvolutionPanel: React.FC = () => {
         </div>
       )}
 
-      <Section id="evolve-section-cut" title="Section cut">
-        <SectionCutControls showSeparator={false} />
-      </Section>
+      <SectionCutControls showSeparator={false} />
 
       {/* Config section — collapsed by default to keep the panel short */}
       <Section id="evolve-settings" title="Settings">

@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppStore, AppMode, VISIBLE_NAV_SLOTS } from '../../store/useAppStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { AuthControls } from '../auth/AuthControls';
+import { SaveCompositionButton } from '../projects/SaveCompositionButton';
 
 const glassStyle: React.CSSProperties = {
   background: 'hsl(var(--card) / 0.94)',
@@ -9,6 +10,10 @@ const glassStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'blur(8px)',
   borderBottom: '1px solid hsl(var(--border))',
   boxShadow: '0 1px 12px hsl(45 9% 13% / 0.05)',
+  // Promote to its own compositing layer. The sibling viewport wrapper is
+  // GPU-promoted (translateZ(0) in App.tsx); without matching promotion here
+  // the map iframe repaints over the bar on click/scroll.
+  transform: 'translateZ(0)',
 };
 
 // Inline SVG panel-toggle icon — two vertical regions suggesting a sidebar
@@ -88,8 +93,9 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
           : null}
       </div>
 
-      {/* ── Right: account/projects + cube count + help + panel toggle ── */}
+      {/* ── Right: save + account/projects + cube count + help + panel toggle ── */}
       <div className="flex items-center justify-end gap-2 px-4">
+        <SaveCompositionButton />
         <AuthControls />
 
         <button

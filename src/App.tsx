@@ -33,7 +33,6 @@ import { Button } from '@/components/ui/button';
 import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
-import { SaveCompositionButton } from './components/projects/SaveCompositionButton';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { Section } from '@/components/ui/section';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
@@ -449,15 +448,14 @@ const AppInner: React.FC = () => {
 
 /**
  * App shell — wraps the existing UI in the AuthProvider and mounts the
- * cross-cutting overlays (Projects slide-over, Save button, toasts). These all
- * render nothing for logged-out / unconfigured users, so the base experience
- * is unchanged.
+ * cross-cutting overlays (Projects slide-over, toasts). These all render
+ * nothing for logged-out / unconfigured users, so the base experience is
+ * unchanged. "Save to project" lives inside the TopBar.
  */
 const App: React.FC = () => (
   <AuthProvider>
     <AppInner />
     <ProjectsPanel />
-    <SaveCompositionButton />
     <ToastContainer />
     <ApiActivityIndicator />
     <OnboardingModal />

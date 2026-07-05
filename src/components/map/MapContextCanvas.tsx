@@ -1,18 +1,52 @@
 import React, { useEffect, useMemo } from 'react';
 import { SiteContextData } from '../../lib/storage/siteContext';
+import { buildSiteContextAt } from '../../lib/siteContext/mapSiteContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const DEFAULT_MAP_CONTEXT_URL = 'https://map-context-production.up.railway.app';
 
+/**
+ * The shape the map-context iframe actually posts: its own analysis payload
+ * (site_center/site_radius/address + raw layer data), NOT a SiteContextData.
+ * It must be adapted before storage, otherwise the coordinates live under
+ * keys nothing in this app reads and saved Sites end up "without location".
+ */
+interface MapAnalysisPayload {
+  site_center?: { lat?: number; lon?: number };
+  site_radius?: number;
+  address?: string;
+  quantitative?: SiteContextData['quantitative'];
+}
+
 interface AnalysisCompleteMessage {
   type: 'analysis-complete';
-  data: SiteContextData;
+  data: MapAnalysisPayload;
 }
 
 function isAnalysisCompleteMessage(value: unknown): value is AnalysisCompleteMessage {
   if (typeof value !== 'object' || value === null) return false;
   const message = value as Partial<AnalysisCompleteMessage>;
   return message.type === 'analysis-complete' && typeof message.data === 'object' && message.data !== null;
+}
+
+/**
+ * Convert the iframe payload into a proper SiteContextData anchored at the
+ * analysis coordinates. Passes through unchanged if the payload already is
+ * one (future-proofing for a converged map-context).
+ */
+function adaptAnalysisPayload(raw: MapAnalysisPayload): SiteContextData | null {
+  if (raw.quantitative?.location?.lat && raw.quantitative?.location?.lng) {
+    return raw as SiteContextData;
+  }
+  const lat = Number(raw.site_center?.lat);
+  const lng = Number(raw.site_center?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const address = typeof raw.address === 'string' ? raw.address : '';
+  const radius = Number(raw.site_radius) || 400;
+  // Fresh base: a new analysis describes a new site, so don't merge over
+  // whatever context happened to be active before.
+  return buildSiteContextAt(lat, lng, address, radius, null);
 }
 
 interface MapContextCanvasProps {
@@ -31,34 +65,24 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
     const handleMessage = (event: MessageEvent<unknown>) => {
       if (event.origin !== expectedOrigin) return;
       if (!isAnalysisCompleteMessage(event.data)) return;
-      onAnalysisComplete(event.data.data);
+      const context = adaptAnalysisPayload(event.data.data);
+      if (!context) return;
+      onAnalysisComplete(context);
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [mapContextUrl, onAnalysisComplete]);
 
   return (
-    <>
-      <iframe
-        src={mapContextUrl}
-        title="Map context analysis"
-        className={
-          isMobile
-            ? 'absolute inset-0 w-full h-full border-0 bg-white'
-            : 'absolute top-[42px] left-0 right-0 bottom-0 w-full h-full border-0 bg-white'
-        }
-        allow="clipboard-read; clipboard-write"
-      />
-      <a
-        href={`${mapContextUrl}/atlas`}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Open the explorable 3D Tel Aviv atlas in a new tab"
-        className="absolute bottom-5 right-4 z-10 flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900/90 px-4 py-2 text-xs font-semibold text-neutral-100 shadow-lg backdrop-blur hover:border-amber-400/70 hover:text-amber-300"
-      >
-        <span aria-hidden>🏙</span>
-        <span>3D Atlas — Tel Aviv</span>
-      </a>
-    </>
+    <iframe
+      src={mapContextUrl}
+      title="Map context analysis"
+      className={
+        isMobile
+          ? 'absolute inset-0 w-full h-full border-0 bg-white'
+          : 'absolute top-[42px] left-0 right-0 bottom-0 w-full h-full border-0 bg-white'
+      }
+      allow="clipboard-read; clipboard-write"
+    />
   );
 };

@@ -165,7 +165,7 @@ Return a JSON object for Pass 2:
   "magnitude": number (0.0–1.0),
   "decay": number (0.0–1.0),
   "cutter": {
-    "type": "string — one of: box, sphere, cylinder, plane",
+    "type": "string — one of: box, sphere, cylinder, taper (a tapered box: wide base narrowing to half-width, like a truncated pyramid). Choose the shape whose volume best embodies the affects — favor sphere for enveloping/erosive moves, box or taper for directional/forceful ones. Avoid thin flat slabs: every cut should read as a volumetric intervention, not a slice.",
     "proportions": [number, number, number],
     "position": [number, number, number],
     "rotation": [number, number, number],

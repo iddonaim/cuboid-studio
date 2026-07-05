@@ -92,6 +92,7 @@ export const ProjectsPanel: React.FC = () => {
   const activeSite = useProjectsStore(s => s.activeSite);
   const setActiveProject = useProjectsStore(s => s.setActiveProject);
   const setActiveSite = useProjectsStore(s => s.setActiveSite);
+  const setActiveComposition = useProjectsStore(s => s.setActiveComposition);
   const setActiveMode = useAppStore(s => s.setActiveMode);
   const showToast = useToastStore(s => s.showToast);
 
@@ -182,6 +183,7 @@ export const ProjectsPanel: React.FC = () => {
     const data = captureComposition();
     const c = await createComposition(activeProject.id, activeSite.id, name, data);
     setCompositions(prev => [c, ...prev]);
+    setActiveComposition(c);
     // Keep the Site's own site context in sync — it's only seeded once at
     // creation otherwise, so context set/changed afterwards (Map tab) would
     // never reach the Site document.
@@ -199,6 +201,7 @@ export const ProjectsPanel: React.FC = () => {
   const handleLoadComposition = async (c: CompositionDoc) => {
     try {
       const { landingMode } = await restoreComposition(c.data);
+      setActiveComposition(c);
       setActiveMode(landingMode);
       setPanelOpen(false);
       showToast('Composition loaded', 'success');

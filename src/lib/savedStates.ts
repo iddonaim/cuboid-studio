@@ -12,6 +12,7 @@
 import { buildAssemblyExport, AssemblyExport } from './export/assemblyExport';
 import { PlacedCube } from './cube/types';
 import { OperatorRecord } from './operators/types';
+import type { DecodeData } from './projects/types';
 
 const STORAGE_KEY = 'cuboid-saved-states';
 const MAX_STATES = 20;
@@ -22,6 +23,12 @@ export interface SavedState {
   savedAt: string;
   cubeCount: number;
   data: AssemblyExport;
+  /**
+   * Decode canvas snapshot. Kept OUTSIDE `data` so AssemblyExport stays a
+   * clean JSON/Grasshopper download format. Optional: pre-existing saves
+   * (and assembly-only saves) simply have no decode layer to restore.
+   */
+  decode?: DecodeData;
 }
 
 export function listSavedStates(): SavedState[] {
@@ -38,6 +45,7 @@ export function saveState(
   name: string,
   placedCubes: PlacedCube[],
   cubeOperators: Record<string, OperatorRecord[]>,
+  decode?: DecodeData,
 ): SavedState {
   const states = listSavedStates();
   const data = buildAssemblyExport(placedCubes, cubeOperators);
@@ -48,6 +56,7 @@ export function saveState(
     savedAt: new Date().toISOString(),
     cubeCount: placedCubes.length,
     data,
+    ...(decode && decode.canvasTiles.length > 0 ? { decode } : {}),
   };
 
   const updated = [newState, ...states].slice(0, MAX_STATES);

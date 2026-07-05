@@ -40,8 +40,19 @@ function makeCube(id: string, position: [number, number, number]): PlacedCube {
   return { id, variationId: 'v-00', position, rotation: DEFAULT_ROTATION };
 }
 
-describe('computeCompressibility — fewer than 2 operated cubes', () => {
-  it('returns an all-zero score with zero operated cubes', () => {
+describe('computeCompressibility — degenerate assemblies', () => {
+  it('returns an all-zero score with no cubes at all', () => {
+    const score = computeCompressibility([], {});
+    expect(score).toEqual({
+      total: 0,
+      geometricClustering: 0,
+      spatialRegularity: 0,
+      operatorSequence: 0,
+      memeCoherence: 0,
+    });
+  });
+
+  it('returns an all-zero score for a single cube (no pairs to compare)', () => {
     const score = computeCompressibility([makeCube('a', [0, 0, 0])], {});
     expect(score).toEqual({
       total: 0,
@@ -52,17 +63,27 @@ describe('computeCompressibility — fewer than 2 operated cubes', () => {
     });
   });
 
-  it('returns an all-zero score with exactly 1 operated cube', () => {
+  it('scores geometric clustering from base geometry even before any operators', () => {
+    // Two cubes of the same variation share all four master cutters, so the
+    // assembly is already (perfectly) describable geometrically.
     const cubeA = makeCube('a', [0, 0, 0]);
     const cubeB = makeCube('b', [GRID_STRIDE, 0, 0]);
-    const score = computeCompressibility([cubeA, cubeB], { a: [makeOperatorRecord()] });
-    expect(score).toEqual({
-      total: 0,
-      geometricClustering: 0,
-      spatialRegularity: 0,
-      operatorSequence: 0,
-      memeCoherence: 0,
-    });
+    const score = computeCompressibility([cubeA, cubeB], {});
+    expect(score.geometricClustering).toBeCloseTo(1);
+    expect(score.spatialRegularity).toBe(0);
+    expect(score.operatorSequence).toBe(0);
+    expect(score.memeCoherence).toBe(0);
+    expect(score.total).toBeCloseTo(0.3);
+  });
+
+  it('moves the score when the FIRST operator lands (the Evolve "always 0.0000" bug)', () => {
+    // A candidate's very first cut must produce a non-zero compression-progress
+    // delta — this is what the Evolution panel ranks candidates by.
+    const cubeA = makeCube('a', [0, 0, 0]);
+    const cubeB = makeCube('b', [GRID_STRIDE, 0, 0]);
+    const before = computeCompressibility([cubeA, cubeB], {});
+    const after = computeCompressibility([cubeA, cubeB], { a: [makeOperatorRecord()] });
+    expect(compressionProgress(before, after)).not.toBe(0);
   });
 });
 
@@ -100,8 +121,8 @@ describe('computeCompressibility — a fully-specified known assembly', () => {
   });
 });
 
-describe('computeCompressibility — unrelated cubes', () => {
-  it('scores zero on every axis when nothing about the two cubes lines up', () => {
+describe('computeCompressibility — divergent cuts on a shared base', () => {
+  it('scores high-but-imperfect clustering and zero on the operator-driven axes', () => {
     const cubeC = makeCube('c', [0, 0, 0]);
     const cubeD = makeCube('d', [200, 300, 400]); // shares no rounded grid axis with cubeC
     const cubeOperators = {
@@ -118,11 +139,14 @@ describe('computeCompressibility — unrelated cubes', () => {
     };
 
     const score = computeCompressibility([cubeC, cubeD], cubeOperators);
-    expect(score.geometricClustering).toBeCloseTo(0); // orthogonal one-hot cutter-type vectors
+    // Same base variation → strong shared fingerprint; the two divergent cuts
+    // (orthogonal one-hot cutter types) pull it below perfect.
+    expect(score.geometricClustering).toBeGreaterThan(0.5);
+    expect(score.geometricClustering).toBeLessThan(1);
     expect(score.spatialRegularity).toBeCloseTo(0); // no shared row, no mirror match
     expect(score.operatorSequence).toBeCloseTo(0); // 'drift','erosion' share no n-gram
     expect(score.memeCoherence).toBe(0); // each meme group has only 1 member
-    expect(score.total).toBeCloseTo(0);
+    expect(score.total).toBeCloseTo(0.3 * score.geometricClustering);
   });
 });
 

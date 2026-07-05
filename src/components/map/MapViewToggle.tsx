@@ -19,9 +19,11 @@ export const MapViewToggle: React.FC<{
   onChange: (view: MapView) => void;
 }> = ({ view, onChange }) => {
   const isMobile = useIsMobile();
+  // z must beat Leaflet's internal panes (tile 200 … popup 700, controls
+  // 1000) — they share this stacking context when the sites map is shown.
   return (
     <div
-      className={`absolute ${isMobile ? 'top-2 right-2' : 'top-[50px] right-3'} z-[60] flex rounded-md overflow-hidden border border-slate-600 shadow-lg`}
+      className={`absolute ${isMobile ? 'top-2 right-2' : 'top-[50px] right-3'} z-[1100] flex rounded-md overflow-hidden border border-slate-600 shadow-lg`}
       style={{ background: 'rgba(15, 23, 42, 0.92)' }}
     >
       {OPTIONS.map(({ value, label }) => (

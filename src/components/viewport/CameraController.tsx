@@ -90,17 +90,19 @@ export const CameraController: React.FC<SceneFlags> = (flags) => {
 
   return (
     <>
+      {/* far planes must exceed the ground Grid's fadeDistance (Viewport3D)
+          so the floor grid fades out instead of being clipped mid-view. */}
       <PerspectiveCamera
         ref={perspRef}
         fov={50}
         near={0.1}
-        far={2000}
+        far={20000}
         position={INITIAL_POSITION}
       />
       <OrthographicCamera
         ref={orthoRef}
         near={0.1}
-        far={2000}
+        far={20000}
         position={INITIAL_POSITION}
       />
     </>

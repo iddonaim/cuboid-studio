@@ -552,18 +552,21 @@ export const Viewport3D: React.FC = () => {
         <SceneCapture />
         {/* Endless drafting-table ground: an infinite faded grid so the scene
             never ends at the assembly's edge. The denser SpatialGrid lattice
-            still marks the buildable cells on top of it. */}
+            still marks the buildable cells on top of it. fadeDistance must stay
+            well inside the cameras' far planes (CameraController / cameraUtils),
+            or the grid gets frustum-clipped before the shader fade completes
+            and reads as "the grid disappeared". */}
         <Grid
           position={[0, -0.6, 0]}
           infiniteGrid
           cellSize={GRID_STRIDE}
           sectionSize={GRID_STRIDE * 4}
-          cellThickness={0.85}
-          sectionThickness={1}
-          cellColor="#d2cec1"
-          sectionColor="#cbc6b8"
-          fadeDistance={2600}
-          fadeStrength={1.6}
+          cellThickness={0.9}
+          sectionThickness={1.2}
+          cellColor="#c5c0b1"
+          sectionColor="#aaa494"
+          fadeDistance={16000}
+          fadeStrength={1}
           followCamera={false}
         />
         <ambientLight intensity={0.6} />

@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 export type OperatorClass = 'inversion' | 'amplification' | 'drift' | 'reassignment' | 'preservation' | 'shuffle';
-export type CutterType = 'box' | 'sphere' | 'cylinder' | 'plane';
+export type CutterType = 'box' | 'sphere' | 'cylinder' | 'plane' | 'taper';
 export type EdgeType = 'adjacency' | 'access' | 'visibility' | 'conflict' | 'overlap' | 'threshold';
 
 export interface LLMCutterResult {
