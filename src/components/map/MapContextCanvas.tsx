@@ -38,15 +38,27 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
   }, [mapContextUrl, onAnalysisComplete]);
 
   return (
-    <iframe
-      src={mapContextUrl}
-      title="Map context analysis"
-      className={
-        isMobile
-          ? 'absolute inset-0 w-full h-full border-0 bg-white'
-          : 'absolute top-[42px] left-0 right-0 bottom-0 w-full h-full border-0 bg-white'
-      }
-      allow="clipboard-read; clipboard-write"
-    />
+    <>
+      <iframe
+        src={mapContextUrl}
+        title="Map context analysis"
+        className={
+          isMobile
+            ? 'absolute inset-0 w-full h-full border-0 bg-white'
+            : 'absolute top-[42px] left-0 right-0 bottom-0 w-full h-full border-0 bg-white'
+        }
+        allow="clipboard-read; clipboard-write"
+      />
+      <a
+        href={`${mapContextUrl}/atlas`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open the explorable 3D Tel Aviv atlas in a new tab"
+        className="absolute bottom-5 right-4 z-10 flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900/90 px-4 py-2 text-xs font-semibold text-neutral-100 shadow-lg backdrop-blur hover:border-amber-400/70 hover:text-amber-300"
+      >
+        <span aria-hidden>🏙</span>
+        <span>3D Atlas — Tel Aviv</span>
+      </a>
+    </>
   );
 };
