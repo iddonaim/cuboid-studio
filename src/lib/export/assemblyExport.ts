@@ -142,9 +142,13 @@ export function buildAssemblyExport(
     };
   });
 
-  // Compute bounding box
+  // Compute bounding box (degenerate zero box for an empty assembly —
+  // Math.min/max over an empty list would yield Infinity → null in JSON)
   const positions = placedCubes.map(c => c.position);
-  const bounds = {
+  const bounds = positions.length === 0 ? {
+    min: [0, 0, 0] as [number, number, number],
+    max: [0, 0, 0] as [number, number, number],
+  } : {
     min: [
       Math.min(...positions.map(p => p[0])) - CUBE_SIZE / 2,
       Math.min(...positions.map(p => p[1])) - CUBE_SIZE / 2,

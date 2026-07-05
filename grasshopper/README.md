@@ -8,24 +8,21 @@ Connect Cuboid Studio (browser) to Rhino/Grasshopper for parametric reconstructi
  Browser (Cuboid Studio)          Local machine            Grasshopper
 ┌─────────────────────┐     ┌──────────────────────┐     ┌──────────────────┐
 │                     │     │                      │     │                  │
-│  Assembly state  ───┼─WS──▶  Bridge Server    ◀──┼─HTTP─┤  GH Python comp  │
+│  Assembly state  ───┼POST─▶  Bridge Server    ◀──┼─GET──┤  GH Python comp  │
 │  (positions,        │     │  (cuboid_bridge_     │     │  (cuboid_gh_     │
 │   variations,       │     │   server.py)         │     │   receiver.py)   │
 │   rotations,        │     │                      │     │                  │
-│   operators)        │     │  Port 9876 (WS)      │     │  Polls /state    │
-│                     │     │  Port 9877 (HTTP)    │     │  every N seconds │
+│   operators)        │     │  Port 9876 (HTTP)    │     │  Polls /state    │
+│                     │     │  stdlib only         │     │  every N seconds │
 └─────────────────────┘     └──────────────────────┘     └──────────────────┘
 ```
 
 ## Quick Start
 
-### 1. Install the bridge server dependency
+### 1. Start the bridge server
 
-```bash
-pip install websockets
-```
-
-### 2. Start the bridge server
+No installation needed — the server uses only the Python standard library
+(Python 3.7+):
 
 ```bash
 cd grasshopper
@@ -34,11 +31,10 @@ python cuboid_bridge_server.py
 
 You should see:
 ```
-[Bridge] WebSocket listening on ws://localhost:9876
-[Bridge] HTTP listening on http://localhost:9877
+[Bridge] Listening on http://localhost:9876
 ```
 
-### 3. Connect from Cuboid Studio
+### 2. Connect from Cuboid Studio
 
 In the browser sidebar, find the **Export** section at the bottom.
 Click **Connect** next to "GH Live-Link". The dot turns green when connected.
@@ -46,13 +42,18 @@ Click **Connect** next to "GH Live-Link". The dot turns green when connected.
 Every time you place, move, or modify a cube, the assembly state is pushed
 to the bridge server automatically.
 
-### 4. Set up Grasshopper
+> Note: if you use the deployed (HTTPS) Cuboid Studio, connecting to the
+> local bridge works in Chrome, Edge and Firefox — they treat `localhost`
+> as trusted. Safari blocks HTTPS→localhost requests; use Chrome for the
+> live-link, or run Cuboid Studio locally.
+
+### 3. Set up Grasshopper
 
 1. Add a **GHPython** component to your canvas
 2. Copy the contents of `cuboid_gh_receiver.py` into it
 3. Set inputs:
    - `poll` (boolean toggle) — True to fetch, False to pause
-   - `port` (integer slider) — 9877 (default HTTP port)
+   - `port` (integer slider) — 9876 (same port as the bridge server)
 4. Connect a **Timer** component (e.g. 1000ms interval) to trigger polling
 
 ### Outputs from the GH component

@@ -1,23 +1,28 @@
 /**
- * Live-Link Client — WebSocket bridge to Grasshopper
- * ===================================================
+ * Live-Link Client — HTTP bridge to Grasshopper
+ * =============================================
  *
- * Connects the browser to a local Python bridge server via WebSocket.
- * When connected, every assembly change is pushed in real-time so that
- * a running Grasshopper definition can pick it up instantly.
+ * Talks to a local Python bridge server over plain HTTP. When active,
+ * every assembly change is POSTed so a running Grasshopper definition
+ * can pick it up on its next poll.
  *
  * Architecture:
- *   Browser (this module)  ──WebSocket──▶  Bridge Server (Python)
- *                                                ▲
- *                                          HTTP polling
- *                                                │
- *                                         GH Python component
+ *   Browser (this module)  ──POST /state──▶  Bridge Server (Python)
+ *                                                  ▲
+ *                                            GET /state polling
+ *                                                  │
+ *                                           GH Python component
+ *
+ * Connection status is heartbeat-based: while active, the client pings
+ * GET /status every few seconds. 'connected' means the last ping
+ * succeeded; a failed ping drops to 'error' and pinging continues until
+ * disconnect() is called.
  *
  * Usage:
  *   import { liveLinkClient } from './liveLinkClient';
- *   liveLinkClient.connect();     // connect to ws://localhost:9876
- *   liveLinkClient.push(data);    // send assembly state
- *   liveLinkClient.disconnect();  // close connection
+ *   liveLinkClient.connect();     // start pinging http://localhost:9876
+ *   liveLinkClient.push(data);    // POST assembly state
+ *   liveLinkClient.disconnect();  // stop
  */
 
 import { AssemblyExport } from './assemblyExport';
@@ -26,14 +31,14 @@ type LiveLinkStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 type StatusListener = (status: LiveLinkStatus) => void;
 
 const DEFAULT_PORT = 9876;
-const RECONNECT_DELAY_MS = 3000;
+const HEARTBEAT_MS = 3000;
+const FETCH_TIMEOUT_MS = 2000;
 
 class LiveLinkClient {
-  private ws: WebSocket | null = null;
   private _status: LiveLinkStatus = 'disconnected';
+  private _active = false;
   private listeners: Set<StatusListener> = new Set();
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private autoReconnect = false;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private port = DEFAULT_PORT;
 
   get status(): LiveLinkStatus {
@@ -44,6 +49,11 @@ class LiveLinkClient {
     return this._status === 'connected';
   }
 
+  /** True between connect() and disconnect(), regardless of server reachability. */
+  get isActive(): boolean {
+    return this._active;
+  }
+
   /** Subscribe to status changes. Returns unsubscribe function. */
   onStatusChange(listener: StatusListener): () => void {
     this.listeners.add(listener);
@@ -51,100 +61,73 @@ class LiveLinkClient {
   }
 
   private setStatus(status: LiveLinkStatus) {
+    if (this._status === status) return;
     this._status = status;
     this.listeners.forEach(fn => fn(status));
   }
 
-  /** Connect to the local bridge server. */
-  connect(port: number = DEFAULT_PORT): void {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-      return; // already connected or connecting
-    }
-
-    this.port = port;
-    this.autoReconnect = true;
-    this.setStatus('connecting');
-
-    try {
-      this.ws = new WebSocket(`ws://localhost:${port}`);
-
-      this.ws.onopen = () => {
-        this.setStatus('connected');
-        console.log(`[LiveLink] Connected to bridge on port ${port}`);
-      };
-
-      this.ws.onclose = () => {
-        this.setStatus('disconnected');
-        this.ws = null;
-        if (this.autoReconnect) {
-          this.scheduleReconnect();
-        }
-      };
-
-      this.ws.onerror = () => {
-        this.setStatus('error');
-      };
-
-      this.ws.onmessage = (event) => {
-        // Bridge may send back acknowledgements or requests
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'request_state') {
-            // GH is asking for current state — caller should handle this
-            console.log('[LiveLink] Bridge requested current state');
-          }
-        } catch {
-          // ignore non-JSON messages
-        }
-      };
-    } catch {
-      this.setStatus('error');
-      if (this.autoReconnect) {
-        this.scheduleReconnect();
-      }
-    }
+  private baseUrl(): string {
+    return `http://localhost:${this.port}`;
   }
 
-  /** Disconnect from the bridge server. */
+  /** Start the link: ping the bridge now and keep pinging until disconnect(). */
+  connect(port: number = DEFAULT_PORT): void {
+    this.port = port;
+    if (this._active) return;
+    this._active = true;
+    this.setStatus('connecting');
+    void this.heartbeat();
+  }
+
+  /** Stop the link. */
   disconnect(): void {
-    this.autoReconnect = false;
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    this._active = false;
+    if (this.heartbeatTimer) {
+      clearTimeout(this.heartbeatTimer);
+      this.heartbeatTimer = null;
     }
     this.setStatus('disconnected');
   }
 
-  /** Push assembly state to the bridge. */
+  /**
+   * Push assembly state to the bridge (fire-and-forget).
+   * Returns false when the link isn't up; delivery failures surface
+   * through the status turning 'error' on the next heartbeat.
+   */
   push(data: AssemblyExport): boolean {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return false;
-    }
-    try {
-      this.ws.send(JSON.stringify({
-        type: 'assembly_update',
-        payload: data,
-      }));
-      return true;
-    } catch (err) {
+    if (!this.isConnected) return false;
+    fetch(`${this.baseUrl()}/state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    }).catch(err => {
       console.error('[LiveLink] Failed to push:', err);
-      return false;
-    }
+      if (this._active) this.setStatus('error');
+    });
+    return true;
   }
 
-  private scheduleReconnect(): void {
-    if (this.reconnectTimer) return;
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      if (this.autoReconnect) {
-        console.log('[LiveLink] Attempting reconnection...');
-        this.connect(this.port);
+  private async heartbeat(): Promise<void> {
+    if (!this._active) return;
+    try {
+      const res = await fetch(`${this.baseUrl()}/status`, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!this._active) return; // disconnected while awaiting
+      if (res.ok) {
+        if (this._status !== 'connected') {
+          console.log(`[LiveLink] Connected to bridge on port ${this.port}`);
+        }
+        this.setStatus('connected');
+      } else {
+        this.setStatus('error');
       }
-    }, RECONNECT_DELAY_MS);
+    } catch {
+      if (!this._active) return;
+      this.setStatus('error');
+    }
+    this.heartbeatTimer = setTimeout(() => void this.heartbeat(), HEARTBEAT_MS);
   }
 }
 
