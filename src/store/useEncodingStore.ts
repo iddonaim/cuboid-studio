@@ -82,6 +82,15 @@ interface EncodingState {
   mode: EncodingMode;
   seedCubes: PlacedCube[];
   seedCubeIds: Set<string>;
+  /**
+   * Standalone edited-assembly preview toggle. After the user loads an encoded
+   * result into the builder, edits it, and presses Done, the Encoding preview
+   * shows the edited assembly (original cubes + additions). When false, the
+   * cubes added in the builder are hidden so only the original encoded result
+   * is shown (a simple "before / after" view). Defaults to true.
+   */
+  showAdditions: boolean;
+  setShowAdditions: (show: boolean) => void;
   setMode: (mode: EncodingMode) => void;
   setSeedFromBuilder: () => void;
   setSeedFromSavedState: (savedState: SavedState) => void;
@@ -239,11 +248,14 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   mode: 'standalone',
   seedCubes: [],
   seedCubeIds: new Set<string>(),
+  showAdditions: true,
+  setShowAdditions: (showAdditions) => set({ showAdditions }),
 
   setMode: (mode) => set({
     mode,
     seedCubes: [],
     seedCubeIds: new Set<string>(),
+    showAdditions: true,
     encodedCubes: null,
     encodingReasoning: null,
     ...clearReadingFields(),
@@ -307,7 +319,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const capturedLexicon = useLexiconStore.getState().getActiveLexicon();
 
     // Keep prior cubes / reasoning / reading visible until a new encode succeeds (L2 safety floor).
-    set({ isEncoding: true, lastError: null });
+    // In standalone, drop any prior edited-assembly snapshot (`seedCubes`) so the
+    // fresh encode isn't previewed against stale builder additions.
+    const clearStandaloneSeed =
+      get().mode === 'standalone'
+        ? { seedCubes: [] as PlacedCube[], seedCubeIds: new Set<string>() }
+        : {};
+    set({ isEncoding: true, lastError: null, showAdditions: true, ...clearStandaloneSeed });
 
     const activeSite = getActiveSiteContext();
     const hasSiteCoords =

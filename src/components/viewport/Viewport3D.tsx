@@ -316,24 +316,66 @@ const EncodingScene: React.FC = () => {
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const seedCubes = useEncodingStore(s => s.seedCubes);
   const mode = useEncodingStore(s => s.mode);
+  const showAdditions = useEncodingStore(s => s.showAdditions);
 
-  const hasSeed = mode !== 'standalone' && seedCubes.length > 0;
-  const hasEncoded = encodedCubes && encodedCubes.length > 0;
+  // After a standalone load → edit → Done round-trip, `seedCubes` holds the
+  // edited assembly (original encoded cubes + anything added in the builder).
+  // Prefer it over the frozen `encodedCubes` snapshot so the preview matches
+  // what the builder and evolution show. (In standalone, `seedCubes` is only
+  // ever populated by closing the seed-edit overlay, so its presence means an
+  // edit happened.)
+  const editedStandalone = mode === 'standalone' && seedCubes.length > 0;
+
+  // Original encoded cubes keyed by grid position. A cube in the edited
+  // assembly that isn't at one of these positions was added in the builder.
+  const encodedPositionKeys = useMemo(
+    () => new Set((encodedCubes ?? []).map(c => c.position.join(','))),
+    [encodedCubes]
+  );
+
+  const editedVisibleCubes = useMemo(() => {
+    if (!editedStandalone) return [];
+    return seedCubes.filter(
+      c => showAdditions || encodedPositionKeys.has(c.position.join(','))
+    );
+  }, [editedStandalone, seedCubes, showAdditions, encodedPositionKeys]);
+
+  const hasSeed = !editedStandalone && mode !== 'standalone' && seedCubes.length > 0;
+  const hasEncoded = !editedStandalone && !!encodedCubes && encodedCubes.length > 0;
 
   const allPositions = useMemo(() => {
     const positions: [number, number, number][] = [];
+    if (editedStandalone) for (const c of editedVisibleCubes) positions.push(c.position);
     if (hasSeed) for (const c of seedCubes) positions.push(c.position);
-    if (hasEncoded) for (const c of encodedCubes) positions.push(c.position);
+    if (hasEncoded && encodedCubes) for (const c of encodedCubes) positions.push(c.position);
     return positions;
-  }, [hasSeed, seedCubes, hasEncoded, encodedCubes]);
+  }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, hasEncoded, encodedCubes]);
 
-  if (!hasSeed && !hasEncoded) {
+  if (!editedStandalone && !hasSeed && !hasEncoded) {
     return <SpatialGrid extent={{ minCellX: -1, maxCellX: 1, minCellZ: -1, maxCellZ: 1, levels: 2 }} />;
   }
 
   return (
     <>
       <SpatialGrid extent={gridExtentFromPositions(allPositions)} />
+
+      {/* Edited standalone assembly — original cubes plus builder additions.
+          Additions are drawn with "added" provenance (blue) and can be hidden
+          via the show-additions toggle. */}
+      {editedStandalone && editedVisibleCubes.map((cube, i) => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        const isAdded = !encodedPositionKeys.has(cube.position.join(','));
+        return (
+          <CubeWithCuts
+            key={`edited-${cube.id ?? i}`}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            provenance={isAdded ? 'added' : 'preserved'}
+          />
+        );
+      })}
 
       {/* Seed cubes — only in merge/remix mode */}
       {hasSeed && seedCubes.map((cube, i) => {
@@ -351,7 +393,7 @@ const EncodingScene: React.FC = () => {
       })}
 
       {/* Encoded (added) cubes */}
-      {hasEncoded && encodedCubes.map((cube, i) => {
+      {hasEncoded && encodedCubes && encodedCubes.map((cube, i) => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         return (
