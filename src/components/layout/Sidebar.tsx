@@ -70,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mode, isOpen, children, export
   return (
     <aside
       className="absolute left-0 z-40 flex flex-col"
+      data-tour="sidebar"
       style={{
         top: TOP_BAR,
         bottom: 0,

@@ -60,3 +60,25 @@ test('onboarding shows on first visit, steps through, and stays dismissed', asyn
   await page.getByRole('button', { name: 'Show introduction' }).click();
   await expect(dialog).toBeVisible();
 });
+
+test('guided tour launches from onboarding, drives the tabs, and can be exited', async ({ page }) => {
+  await page.goto('/');
+
+  const intro = page.getByRole('dialog', { name: 'Cuboid Studio introduction' });
+  await expect(intro).toBeVisible();
+  await intro.getByRole('button', { name: 'Guided tour', exact: true }).click();
+  await expect(intro).not.toBeVisible();
+
+  const tour = page.getByRole('dialog', { name: 'Guided tour' });
+  await expect(tour).toBeVisible();
+  await expect(tour.getByText('Four stages, one pipeline')).toBeVisible();
+
+  // Advancing to step 2 switches the app itself to the Map tab
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour.getByText('Map — meet the real site')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Map' })).toHaveCSS('color', 'rgb(36, 34, 28)');
+
+  // Escape ends the tour and returns control to the app
+  await page.keyboard.press('Escape');
+  await expect(tour).not.toBeVisible();
+});

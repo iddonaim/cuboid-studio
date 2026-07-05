@@ -53,6 +53,7 @@ export const HelpBar: React.FC = () => {
   return (
     <div
       className="absolute left-1/2 -translate-x-1/2 text-ink-500 text-[12px] pointer-events-none whitespace-nowrap"
+      data-tour="help-bar"
       style={{
         bottom: isMobile ? 64 : 20,
         ...pillStyle,
