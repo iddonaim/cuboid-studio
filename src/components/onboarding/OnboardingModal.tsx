@@ -272,7 +272,7 @@ export const OnboardingModal: React.FC = () => {
       onClick={e => { if (e.target === e.currentTarget) close(); }}
     >
       <div
-        className="w-full max-w-[620px] max-h-[88vh] flex flex-col rounded-xl overflow-hidden"
+        className="w-full max-w-[680px] max-h-[88vh] flex flex-col rounded-xl overflow-hidden"
         style={{
           background: 'hsl(var(--card))',
           border: '1px solid hsl(var(--border))',
@@ -288,16 +288,16 @@ export const OnboardingModal: React.FC = () => {
 
         {/* Text area */}
         <div key={`text-${index}`} className="px-6 pt-4 pb-2 overflow-y-auto onboarding-frame-in">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-ink-400 mb-1">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-ink-400 mb-1">
             {String(index + 1).padStart(2, '0')} · {String(FRAMES.length).padStart(2, '0')}
           </div>
-          <h2 className="text-[17px] font-semibold text-ink-900 m-0 mb-1">{frame.title}</h2>
+          <h2 className="text-[21px] font-semibold text-ink-900 m-0 mb-1.5">{frame.title}</h2>
           {frame.lead && (
-            <p className="text-[12.5px] text-ink-600 m-0 mb-2 leading-snug">{frame.lead}</p>
+            <p className="text-[14.5px] text-ink-600 m-0 mb-2.5 leading-snug">{frame.lead}</p>
           )}
-          <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
+          <ul className="m-0 p-0 list-none flex flex-col gap-2">
             {frame.bullets.map((b, i) => (
-              <li key={i} className="flex gap-2 text-[12px] text-ink-700 leading-relaxed">
+              <li key={i} className="flex gap-2 text-[14px] text-ink-700 leading-relaxed">
                 <span className="text-primary flex-shrink-0 select-none">—</span>
                 <span>{b}</span>
               </li>
@@ -325,13 +325,13 @@ export const OnboardingModal: React.FC = () => {
               <button
                 onClick={startTour}
                 title="Interactive walkthrough of the live interface"
-                className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1"
+                className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[13px] px-1"
               >
                 Guided tour
               </button>
               <button
                 onClick={close}
-                className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1"
+                className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[13px] px-1"
               >
                 Skip
               </button>
@@ -340,7 +340,7 @@ export const OnboardingModal: React.FC = () => {
           {isLast && (
             <button
               onClick={close}
-              className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[11px] px-1"
+              className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[13px] px-1"
             >
               Start building
             </button>
@@ -348,18 +348,18 @@ export const OnboardingModal: React.FC = () => {
           {index > 0 && (
             <Button
               onClick={() => setIndex(i => i - 1)}
-              className="h-auto py-1.5 px-2.5 text-[11px] bg-ink-100 hover:bg-ink-200 text-ink-700 border border-ink-200"
+              className="h-auto py-2 px-3 text-[13px] bg-ink-100 hover:bg-ink-200 text-ink-700 border border-ink-200"
             >
-              <ChevronLeft size={13} />
+              <ChevronLeft size={15} />
               Back
             </Button>
           )}
           <Button
             onClick={() => (isLast ? startTour() : setIndex(i => i + 1))}
-            className="h-auto py-1.5 px-3 text-[11px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
+            className="h-auto py-2 px-3.5 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
           >
             {isLast ? 'Launch guided tour' : 'Next'}
-            {!isLast && <ChevronRight size={13} />}
+            {!isLast && <ChevronRight size={15} />}
           </Button>
         </div>
       </div>

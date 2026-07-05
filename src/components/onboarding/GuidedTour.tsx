@@ -139,8 +139,8 @@ const TARGET_GRACE_MS = 500;
 /** Pick a position for the tooltip card around (or, if huge, inside) the spot. */
 function cardStyle(spot: SpotRect, vw: number, vh: number): React.CSSProperties {
   const GAP = 14;
-  const W = Math.min(300, vw - 24);
-  const EST_H = 200; // rough card height used only for choosing a side
+  const W = Math.min(348, vw - 24);
+  const EST_H = 230; // rough card height used only for choosing a side
   const centeredLeft = Math.min(
     Math.max(spot.left + spot.width / 2 - W / 2, 12),
     Math.max(12, vw - W - 12),
@@ -314,8 +314,8 @@ export const GuidedTour: React.FC = () => {
             boxShadow: '0 12px 40px hsl(45 9% 13% / 0.25)',
           }}
         >
-          <div className="flex items-center mb-1">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-ink-400 select-none">
+          <div className="flex items-center mb-1.5">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-ink-400 select-none">
               {String(index + 1).padStart(2, '0')} · {String(steps.length).padStart(2, '0')}
             </span>
             <div className="flex-1" />
@@ -324,12 +324,12 @@ export const GuidedTour: React.FC = () => {
               aria-label="End tour"
               className="bg-transparent border-0 p-0.5 text-ink-400 hover:text-ink-700 cursor-pointer flex items-center"
             >
-              <X size={13} />
+              <X size={16} />
             </button>
           </div>
 
-          <h3 className="text-[14px] font-semibold text-ink-900 m-0 mb-1">{step.title}</h3>
-          <p className="text-[12px] text-ink-700 leading-relaxed m-0 mb-3">{body}</p>
+          <h3 className="text-[17px] font-semibold text-ink-900 m-0 mb-1.5">{step.title}</h3>
+          <p className="text-[14px] text-ink-700 leading-relaxed m-0 mb-3.5">{body}</p>
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
@@ -346,18 +346,18 @@ export const GuidedTour: React.FC = () => {
             {index > 0 && (
               <Button
                 onClick={() => goto(index - 1, -1)}
-                className="h-auto py-1.5 px-2.5 text-[11px] bg-ink-100 hover:bg-ink-200 text-ink-700 border border-ink-200"
+                className="h-auto py-2 px-3 text-[13px] bg-ink-100 hover:bg-ink-200 text-ink-700 border border-ink-200"
               >
-                <ChevronLeft size={13} />
+                <ChevronLeft size={15} />
                 Back
               </Button>
             )}
             <Button
               onClick={() => goto(index + 1, 1)}
-              className="h-auto py-1.5 px-3 text-[11px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
+              className="h-auto py-2 px-3.5 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
             >
               {isLast ? 'Finish' : 'Next'}
-              {!isLast && <ChevronRight size={13} />}
+              {!isLast && <ChevronRight size={15} />}
             </Button>
           </div>
         </div>
