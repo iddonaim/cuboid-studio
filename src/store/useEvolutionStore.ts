@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LLMOperatorResult, TranslationPass1 } from '../lib/operators/types';
+import type { LLMOperatorResult, TranslationPass1, TranslationPass2 } from '../lib/operators/types';
 import type { ArchthesisMeme } from '../types/archthesis';
 import type { FetchMemesResponse } from '../types/archthesis';
 import { mapMemeToCuboidInput } from '../lib/meme-mapper';
@@ -20,10 +20,14 @@ export interface EvolutionCandidate {
   id: string;
   memeId: string;
   memeDescription: string;
+  memeTitle?: string;
   memeImageUrl: string | null;
   targetCubeId: string;
   cutterConfig: LLMOperatorResult;
   pass1?: TranslationPass1;
+  /** Full pass-2 output (geometry reasoning + confidence vector), kept so an
+   *  applied candidate stays fully explainable when its cube is re-inspected. */
+  pass2?: TranslationPass2;
 
   // Fitness
   compressionProgress: number;
@@ -210,6 +214,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
         });
         const cutterConfig: LLMOperatorResult = twoPassResult.pass2;
         const pass1 = twoPassResult.pass1;
+        const pass2 = twoPassResult.pass2;
 
         // Simulate applying this candidate and measure compression progress
         const simulatedOperators = {
@@ -238,10 +243,12 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           id: `evo-${Date.now()}-${idx}`,
           memeId: meme.id,
           memeDescription: input.memeDescription,
+          memeTitle: meme.topText || meme.description?.slice(0, 50) || meme.id,
           memeImageUrl: meme.imageUrl,
           targetCubeId: cubeId,
           cutterConfig,
           pass1,
+          pass2,
           compressionProgress: progress,
           userScore: null,
           combinedFitness: progress, // user score will blend in later
@@ -331,6 +338,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     // Set up the meme store to target the right cube and apply
     memeStore.setTargetCubeId(candidate.targetCubeId);
     memeStore.setMemeDescription(candidate.memeDescription);
+    memeStore.setSelectedMeme(candidate.memeImageUrl, candidate.memeTitle ?? null);
 
     // Build the operator record and apply geometry directly
     // (reuse the translate result we already have — no extra API call)
@@ -363,6 +371,11 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       ? createCutterFromLLMOutput(candidate.cutterConfig, currentGeometry.boundingBox)
       : null;
 
+    // Provenance rides along on the record (meme identity + full two-pass
+    // reasoning) so the change stays explainable when the cube is clicked
+    // later — including after a save/load round-trip. Conditional spreads
+    // keep undefined out of the record (Firestore rejects undefined fields).
+    const confidenceVector = candidate.pass2?.confidence_vector ?? null;
     const record = {
       id: crypto.randomUUID(),
       source: 'meme' as const,
@@ -374,9 +387,17 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       memeDescription: candidate.memeDescription,
       reasoning: candidate.cutterConfig.reasoning,
       cutter: candidate.cutterConfig.cutter,
+      origin: 'evolution' as const,
+      ...(candidate.memeTitle ? { memeTitle: candidate.memeTitle } : {}),
+      ...(candidate.memeImageUrl ? { memeImageUrl: candidate.memeImageUrl } : {}),
+      ...(candidate.pass1 ? { pass1: candidate.pass1 } : {}),
+      ...(candidate.pass2 ? { pass2: candidate.pass2 } : {}),
+      ...(confidenceVector ? { confidenceVector } : {}),
     };
 
-    // Update meme store state directly
+    // Update meme store state directly. cubeTranslations gets the same
+    // snapshot pataphysical translations write, so re-selecting this cube
+    // (in either sub-mode) restores the full explanation card + cutter.
     const prevOverrides = memeStore.cubeGeometryOverrides;
     const prevStacks = memeStore.cubeGeometryStacks;
     const prevOps = memeStore.cubeOperators;
@@ -391,7 +412,24 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
         ...prevOps,
         [cubeId]: [...(prevOps[cubeId] || []), record],
       },
+      cubeTranslations: {
+        ...memeStore.cubeTranslations,
+        [cubeId]: {
+          result: candidate.cutterConfig,
+          pass1: candidate.pass1 ?? null,
+          pass2: candidate.pass2 ?? null,
+          confidenceVector,
+          model: null,
+          cutterGeometry: cutterGeo,
+          memeDescription: candidate.memeDescription,
+          memeTitle: candidate.memeTitle ?? null,
+          memeImageUrl: candidate.memeImageUrl,
+        },
+      },
       lastResult: candidate.cutterConfig,
+      lastPass1: candidate.pass1 ?? null,
+      lastPass2: candidate.pass2 ?? null,
+      lastConfidenceVector: confidenceVector,
       lastCutterGeometry: cutterGeo,
     });
 
@@ -432,6 +470,11 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           newOverrides[lastAppliedCubeId] = previousGeometry;
         }
 
+        // Drop the stored explanation snapshot along with the geometry
+        // (mirrors revertLastOperator in the meme store).
+        const remainingTranslations = { ...memeState.cubeTranslations };
+        delete remainingTranslations[lastAppliedCubeId];
+
         useMemeStore.setState({
           cubeGeometryOverrides: newOverrides,
           cubeGeometryStacks: {
@@ -442,7 +485,11 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
             ...memeState.cubeOperators,
             [lastAppliedCubeId]: ops.slice(0, -1),
           },
+          cubeTranslations: remainingTranslations,
           lastResult: null,
+          lastPass1: null,
+          lastPass2: null,
+          lastConfidenceVector: null,
           lastCutterGeometry: null,
         });
       }

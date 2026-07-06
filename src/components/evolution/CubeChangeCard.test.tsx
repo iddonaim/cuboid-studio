@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import React from 'react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { CubeChangeCard } from './CubeChangeCard';
+import { useMemeStore } from '../../store/useMemeStore';
+import { useBuilderStore } from '../../store/useBuilderStore';
+import type { OperatorRecord } from '../../lib/operators/types';
+
+const CUBE_ID = 'cube-under-test';
+
+function makeRecord(overrides: Partial<OperatorRecord> = {}): OperatorRecord {
+  return {
+    id: 'op-1',
+    source: 'meme',
+    operator: 'erosion',
+    targets: ['adjacency'],
+    magnitude: 0.6,
+    decay: 0.3,
+    createdAt: '2026-07-01T12:00:00.000Z',
+    memeDescription: 'A meme about waiting for a bus that never comes',
+    reasoning: 'Erode the corner to express indefinite waiting',
+    cutter: { type: 'sphere', proportions: [0.5, 0.5, 0.5], position: [0, 0, 0], rotation: [0, 0, 0] },
+    origin: 'evolution',
+    memeTitle: 'Bus stop meme',
+    memeImageUrl: 'https://example.com/meme.jpg',
+    ...overrides,
+  };
+}
+
+function seedStores(records: OperatorRecord[], targetCubeId: string | null = CUBE_ID) {
+  useBuilderStore.setState({
+    placedCubes: [{ id: CUBE_ID, variationId: 'v-07', position: [0, 21, 0], rotation: { x: 0, y: 0 } }],
+  });
+  useMemeStore.setState({
+    targetCubeId,
+    cubeOperators: records.length > 0 ? { [CUBE_ID]: records } : {},
+  });
+}
+
+beforeEach(() => {
+  seedStores([]);
+});
+
+afterEach(() => {
+  cleanup();
+  useMemeStore.setState({ targetCubeId: null, cubeOperators: {} });
+  useBuilderStore.setState({ placedCubes: [] });
+});
+
+describe('CubeChangeCard', () => {
+  it('renders nothing when no cube is selected', () => {
+    seedStores([makeRecord()], null);
+    const { container } = render(<CubeChangeCard docked />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('tells the user when the selected cube has not been changed', () => {
+    seedStores([]);
+    render(<CubeChangeCard docked />);
+    expect(screen.getByText(/hasn't been changed yet/)).toBeTruthy();
+    expect(screen.getByText(/v-07 · unchanged/)).toBeTruthy();
+  });
+
+  it('shows the change record with meme, cutter and reasoning, newest expanded', () => {
+    seedStores([makeRecord()]);
+    render(<CubeChangeCard docked />);
+
+    expect(screen.getByText(/v-07 · 1 change/)).toBeTruthy();
+    expect(screen.getByText('erosion')).toBeTruthy();
+    // Latest record auto-expands: meme title, cutter and reasoning visible
+    expect(screen.getByText('Bus stop meme')).toBeTruthy();
+    expect(screen.getByText('sphere')).toBeTruthy();
+    expect(screen.getByText('Erode the corner to express indefinite waiting')).toBeTruthy();
+    expect(screen.getByText('Evolve')).toBeTruthy();
+  });
+
+  it('collapses and re-expands an entry on click', () => {
+    seedStores([makeRecord()]);
+    render(<CubeChangeCard docked />);
+
+    const header = screen.getByRole('button', { name: /#1/ });
+    fireEvent.click(header);
+    expect(screen.queryByText('Erode the corner to express indefinite waiting')).toBeNull();
+
+    fireEvent.click(header);
+    expect(screen.getByText('Erode the corner to express indefinite waiting')).toBeTruthy();
+  });
+
+  it('lists multiple changes newest-first and labels their origin', () => {
+    seedStores([
+      makeRecord({ id: 'op-1', operator: 'drift', origin: 'pataphysical', reasoning: 'first change' }),
+      makeRecord({ id: 'op-2', operator: 'erosion', origin: 'evolution', reasoning: 'second change' }),
+    ]);
+    render(<CubeChangeCard docked />);
+
+    expect(screen.getByText(/v-07 · 2 changes/)).toBeTruthy();
+    // Newest (op-2, #2) is expanded; older one is collapsed
+    expect(screen.getByText('second change')).toBeTruthy();
+    expect(screen.queryByText('first change')).toBeNull();
+    expect(screen.getByText('Evolve')).toBeTruthy();
+    expect(screen.getByText('Pataphysical')).toBeTruthy();
+
+    // Expanding the older entry works too
+    fireEvent.click(screen.getByRole('button', { name: /#1/ }));
+    expect(screen.getByText('first change')).toBeTruthy();
+  });
+});

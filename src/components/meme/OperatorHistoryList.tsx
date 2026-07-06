@@ -27,11 +27,23 @@ export const OperatorHistoryList: React.FC = () => {
             className="p-2 bg-ink-100 rounded border border-ink-200 cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {op.memeImageUrl && (
+                  <img
+                    src={op.memeImageUrl}
+                    alt=""
+                    className="w-6 h-6 object-cover rounded border border-ink-200 flex-shrink-0"
+                  />
+                )}
                 <span className="text-ink-800 text-[12px] font-semibold">#{idx + 1}</span>
                 <span className="px-1.5 py-px rounded bg-ink-200 text-ink-600 text-[11px]">
                   {op.operator}
                 </span>
+                {op.origin === 'evolution' && (
+                  <span className="px-1 py-px rounded bg-ink-100 border border-ink-200 text-ink-500 text-[9px] uppercase tracking-wide">
+                    evolve
+                  </span>
+                )}
               </div>
               {/* Magnitude bar */}
               <div className="w-10 h-1 bg-ink-200 rounded overflow-hidden">
@@ -44,6 +56,13 @@ export const OperatorHistoryList: React.FC = () => {
 
             {expandedId === op.id && (
               <div className="mt-2 pt-2 border-t border-ink-200">
+                {op.memeImageUrl && (
+                  <img
+                    src={op.memeImageUrl}
+                    alt={op.memeTitle || 'source meme'}
+                    className="w-full max-h-40 object-contain rounded border border-ink-200 bg-white mb-1.5"
+                  />
+                )}
                 <p className="text-ink-500 text-[11px] mb-1">{op.memeDescription}</p>
                 <p className="text-ink-600 text-[11px] italic">{op.reasoning}</p>
                 <p className="text-ink-400 text-[10px] mt-1">

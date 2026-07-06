@@ -19,7 +19,8 @@ import { useDecodeStore } from '../../store/useDecodeStore';
 import { getActiveSiteContext, setActiveSiteContext } from '../storage/siteContext';
 import { CUBE_VARIATIONS } from '../cube/specifications';
 import { getVariationGeometryAsync } from '../cube/csgUtils';
-import { applyLLMOperator } from '../operators/applyOperator';
+import { applyLLMOperator, createCutterFromLLMOutput } from '../operators/applyOperator';
+import type { CubeTranslation } from '../../store/useMemeStore';
 import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
 import type { OperatorRecord, LLMOperatorResult } from '../operators/types';
 import type { CompositionData } from './types';
@@ -157,9 +158,11 @@ async function rebuildAssemblyGeometry(
 ): Promise<{
   cubeGeometryOverrides: Record<string, THREE.BufferGeometry>;
   cubeGeometryStacks: Record<string, THREE.BufferGeometry[]>;
+  cubeTranslations: Record<string, CubeTranslation>;
 }> {
   const overrides: Record<string, THREE.BufferGeometry> = {};
   const stacks: Record<string, THREE.BufferGeometry[]> = {};
+  const translations: Record<string, CubeTranslation> = {};
 
   for (const [cubeId, records] of Object.entries(cubeOperators)) {
     if (!records || records.length === 0) continue;
@@ -177,9 +180,32 @@ async function rebuildAssemblyGeometry(
     }
     overrides[cubeId] = current;
     stacks[cubeId] = stack;
+
+    // Rebuild the "explanation card" snapshot from the last record so
+    // clicking this cube after a load restores the readable result +
+    // cutter wireframe. Records saved before provenance fields existed
+    // degrade gracefully (no pass1/pass2/meme image, but cutter + reasoning
+    // always survive).
+    const last = records[records.length - 1];
+    const preCut = stack[stack.length - 1];
+    preCut.computeBoundingBox();
+    const lastResult = recordToResult(last);
+    translations[cubeId] = {
+      result: lastResult,
+      pass1: last.pass1 ?? null,
+      pass2: last.pass2 ?? null,
+      confidenceVector: last.confidenceVector ?? null,
+      model: last.model ?? null,
+      cutterGeometry: preCut.boundingBox
+        ? createCutterFromLLMOutput(lastResult, preCut.boundingBox)
+        : null,
+      memeDescription: last.memeDescription,
+      memeTitle: last.memeTitle ?? null,
+      memeImageUrl: last.memeImageUrl ?? null,
+    };
   }
 
-  return { cubeGeometryOverrides: overrides, cubeGeometryStacks: stacks };
+  return { cubeGeometryOverrides: overrides, cubeGeometryStacks: stacks, cubeTranslations: translations };
 }
 
 /**
@@ -275,6 +301,7 @@ export async function restoreComposition(
     geometryStack: standalone.geometryStack,
     cubeGeometryOverrides: assembly.cubeGeometryOverrides,
     cubeGeometryStacks: assembly.cubeGeometryStacks,
+    cubeTranslations: assembly.cubeTranslations,
     lastPass1: p.lastPass1,
     lastPass2: p.lastPass2,
     lastConfidenceVector: p.lastConfidenceVector,
