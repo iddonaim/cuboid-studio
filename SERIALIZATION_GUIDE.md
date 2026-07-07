@@ -170,7 +170,7 @@ This means you don't need to worry about Rhino's export unit settings.
 
 ## Connection Rules (Independent of Mesh)
 
-The web app calculates connection rules from `CUTTER_SPECIFICATIONS.ts`, NOT from the mesh geometry.
+The web app calculates connection rules from `src/lib/cube/specifications.ts`, NOT from the mesh geometry.
 
 ### Face Cut Types
 For each face of a variation:
@@ -190,7 +190,7 @@ For each face of a variation:
 
 ### How Rules Are Computed
 ```typescript
-// From connectionRules.ts
+// From src/lib/cube/connectionRules.ts
 function computeFaceCutTypes(variation: CubeVariation) {
   for (const cutter of variation.cutters) {
     if (cutter.type === 'sphere') {
@@ -249,7 +249,7 @@ When exporting from Grasshopper, verify:
 
 ## Loading Pre-computed Models (Web App)
 
-The web app is already configured to load GLB files. Key settings in `csgUtils.ts`:
+The web app is already configured to load GLB files. Key settings in `src/lib/cube/csgUtils.ts`:
 
 ```typescript
 // Enable GLB loading (already set to true)
