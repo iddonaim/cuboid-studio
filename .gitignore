@@ -11,7 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
-.env.local
+
+# Env files — real keys must never be committed (.env.example is the template)
+.env
+.env.*
+!.env.example
 
 # Playwright (Phase 6 e2e)
 /test-results/

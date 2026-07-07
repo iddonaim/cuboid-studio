@@ -27,7 +27,7 @@ I'm Iddo, an architecture student working on my B.Arch thesis at Tel Aviv Univer
 - **Evolution / Pataphysical** (live): v1 single-pass and v2 two-pass both wired to UI; default `passMode = 'single'`, user-toggleable. Operators: inversion/amplification/drift/reassignment/preservation/shuffle (v1) + consolidation/erosion/reinforcement (v2). 4-axis confidence vector. OpenRouter default (`anthropic/claude-sonnet-4`), Anthropic fallback.
 - **Decode** (live, **implemented**): Konva 2D notation canvas — drag/place/rotate glyph tiles, snap grid, SVG + DXF export, history.
 - **Projects / Auth (NEW, not in older docs):** Firebase email/password auth + Firestore Projects→Sites→Compositions cloud persistence. Opt-in via `VITE_FIREBASE_*` (same Firebase project as archthesis); invisible when unconfigured.
-- **Export/AR:** JSON, GLB, DXF, SVG; AR via `<model-viewer>`; WebSocket live-link to the `grasshopper/` bridge; local saved-states layer.
+- **Export/AR:** JSON, GLB, DXF, SVG; AR via `<model-viewer>`; plain-HTTP live-link to the `grasshopper/` bridge (port 9876 — the earlier WebSocket design was replaced); local saved-states layer.
 - **Stack additions since the log below:** Leaflet, Konva/react-konva, `dxf-writer`, Firebase, jszip, shadcn/Radix, Zustand 5.
 
 ---
@@ -87,7 +87,7 @@ Cuboid Studio is a web-based 3D editor that lets me:
 
 ---
 
-## Current Working Structure (2026-01-23)
+## Working Structure as of 2026-01-23 (historical — see CONTEXT.md for today's layout)
 
 ```
 cuboid-studio-updated/
@@ -240,7 +240,7 @@ PHI = 1.618034           // Golden ratio (φ)
 
 ### Master Cutters (8 total) - EXACT SPECIFICATIONS
 
-See `CUTTER_SPECIFICATIONS.ts` for full details. Summary:
+See `src/lib/cube/specifications.ts` for full details. Summary:
 
 | ID | Type     | Position/Axis              | Radius    | Face/Direction |
 |----|----------|----------------------------|-----------|----------------|

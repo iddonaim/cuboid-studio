@@ -120,7 +120,7 @@ grasshopper/               Optional live-link bridge to Rhino/Grasshopper
 public/models/             Pre-computed GLB files for the 70 cube variations
 public/thumbnails/         Pre-rendered thumbnails for the variation catalog
 
-EVOLUTION_SPEC.md          Evolution mode design spec (unimplemented)
+EVOLUTION_SPEC.md          Evolution mode design spec (core engine shipped; see note inside)
 PATAPHYSICAL_V2_SPEC.md    Translation pipeline spec — read this first
 SERIALIZATION_GUIDE.md     Assembly JSON format
 docs/internal/HANDOFF.md   Working notes from the build process
