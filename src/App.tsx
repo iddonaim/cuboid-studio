@@ -23,6 +23,7 @@ import { CutterTweakPanel } from './components/meme/CutterTweakPanel';
 import { EncodingPanel } from './components/encoding/EncodingPanel';
 import { EncodingResultPanel } from './components/encoding/EncodingResultPanel';
 import { EvolutionPanel } from './components/evolution/EvolutionPanel';
+import { CubeChangeCard } from './components/evolution/CubeChangeCard';
 import { ExportPanel } from './components/export/ExportPanel';
 import { DecodePanel } from './components/decode/DecodePanel';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
@@ -316,8 +317,10 @@ const AppInner: React.FC = () => {
               {activeMode === 'encoding' && (
                 showBuilderSurface ? <SelectedCubePanel /> : <EncodingResultPanel />
               )}
-              {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel */}
+              {/* Evolution: Pataphysical sub-mode swaps in OperatorResultPanel;
+                  Evolve sub-mode shows the clicked cube's change record */}
               {showPataphysicalSurface && <OperatorResultPanel />}
+              {activeMode === 'evolution' && evolutionSubMode === 'evolve' && <CubeChangeCard />}
               {/* Decode: read-only composition tags overlay on the 3D background */}
               {activeMode === 'decode' && <DecodeTagsOverlay />}
               <CaptureButton />
@@ -399,6 +402,9 @@ const AppInner: React.FC = () => {
                 showBuilderSurface ? <SelectedCubePanel docked /> : <EncodingResultPanel docked />
               )}
               {showPataphysicalSurface && <OperatorResultPanel docked />}
+              {activeMode === 'evolution' && evolutionSubMode === 'evolve' && (
+                <CubeChangeCard docked />
+              )}
             </Inspector>
             {activeMode === 'decode' && <DecodeTagsOverlay />}
             <CaptureButton />

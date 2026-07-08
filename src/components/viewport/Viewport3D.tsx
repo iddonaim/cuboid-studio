@@ -426,6 +426,17 @@ const EvolutionScene: React.FC = () => {
   const candidates = useEvolutionStore(s => s.candidates);
   const clippingPlanes = useClippingPlanes();
 
+  // Click-to-inspect: selecting a cube surfaces its change record card and
+  // restores its stored cutter wireframe (via setTargetCubeId). This scene is
+  // shared with Decode mode as a backdrop, so clicks only arm in Evolution.
+  const activeMode = useAppStore(s => s.activeMode);
+  const inspectable = activeMode === 'evolution';
+  const targetCubeId = useMemeStore(s => s.targetCubeId);
+  const setTargetCubeId = useMemeStore(s => s.setTargetCubeId);
+  const inspectedCube = inspectable
+    ? placedCubes.find(c => c.id === targetCubeId)
+    : undefined;
+
   // Find which cube the previewed candidate targets
   const previewedCandidate = candidates.find(c => c.id === previewCandidateId);
   const highlightCubeId = previewedCandidate?.targetCubeId ?? null;
@@ -467,10 +478,42 @@ const EvolutionScene: React.FC = () => {
             rotation={cube.rotation}
             overrideGeometry={override}
             targeted={cube.id === highlightCubeId}
+            selected={inspectable && cube.id === targetCubeId}
             clippingPlanes={clippingPlanes}
+            onClick={inspectable
+              ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)
+              : undefined}
           />
         );
       })}
+
+      {/* Stored cutter wireframe of the inspected cube's last change */}
+      {inspectedCube && (
+        <group
+          position={inspectedCube.position}
+          rotation={[
+            (inspectedCube.rotation.x * Math.PI) / 2,
+            (inspectedCube.rotation.y * Math.PI) / 2,
+            0,
+          ]}
+        >
+          <CutterOverlay offset={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]} />
+        </group>
+      )}
+
+      {/* Click-away plane to clear the inspected cube (Evolution mode only) */}
+      {inspectable && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          onClick={(e) => {
+            e.stopPropagation();
+            setTargetCubeId(null);
+          }}
+        >
+          <planeGeometry args={[500, 500]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+      )}
 
       {/* Cutter wireframe preview for selected candidate */}
       {previewTargetCube && cutterPreview && cutterEdges && (

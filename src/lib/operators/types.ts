@@ -34,6 +34,21 @@ export interface OperatorRecord {
   memeDescription: string;
   reasoning: string;
   cutter: LLMCutterResult;
+
+  // Optional provenance (added 2026-07) — all backwards-compatible additions.
+  // Older records simply lack them; never write `undefined` values into a
+  // record (Firestore rejects undefined fields), use conditional spreads.
+  /** Which surface applied the change. Absent on pre-2026-07 records. */
+  origin?: 'pataphysical' | 'evolution';
+  /** Display title of the source meme (topText / description excerpt). */
+  memeTitle?: string;
+  /** Image URL of the source meme, for showing it alongside the change. */
+  memeImageUrl?: string;
+  /** Full two-pass reasoning, when the change came from a v2 translation. */
+  pass1?: TranslationPass1;
+  pass2?: TranslationPass2;
+  confidenceVector?: ConfidenceVector;
+  model?: string;
 }
 
 // ---------------------------------------------------------------------------

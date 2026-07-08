@@ -40,7 +40,7 @@ const CONFIDENCE_AXES: Array<{
   { key: 'operational_specificity', short: 'OS', label: 'Operational specificity' },
 ];
 
-const ConfidenceVectorDisplay: React.FC<{
+export const ConfidenceVectorDisplay: React.FC<{
   vector: ConfidenceVector;
   note?: string;
 }> = ({ vector, note }) => (
@@ -84,7 +84,18 @@ export const OperatorResultPanel: React.FC<{ docked?: boolean }> = ({ docked = f
   const targetCubeId = useMemeStore(s => s.targetCubeId);
   const cubeOperators = useMemeStore(s => s.cubeOperators);
   const standaloneOperators = useMemeStore(s => s.operators);
+  const cubeTranslations = useMemeStore(s => s.cubeTranslations);
+  const selectedMemeImageUrl = useMemeStore(s => s.selectedMemeImageUrl);
+  const selectedMemeTitle = useMemeStore(s => s.selectedMemeTitle);
   const operators = targetCubeId ? (cubeOperators[targetCubeId] || []) : standaloneOperators;
+
+  // The meme behind the shown result. When a cube is selected we trust its
+  // stored translation snapshot (never the panel's current meme picker, which
+  // may point at a different meme); standalone mode uses the live selection.
+  const translation = targetCubeId ? cubeTranslations[targetCubeId] : undefined;
+  const memeImageUrl = targetCubeId ? translation?.memeImageUrl : selectedMemeImageUrl;
+  const memeTitle = targetCubeId ? translation?.memeTitle : selectedMemeTitle;
+  const memeDescription = targetCubeId ? translation?.memeDescription : undefined;
 
   // While a translation is in flight the ApiActivityIndicator card covers
   // this rail slot, so this panel stays hidden instead of doubling up.
@@ -97,6 +108,23 @@ export const OperatorResultPanel: React.FC<{ docked?: boolean }> = ({ docked = f
 
   return (
     <div className={docked ? dockedCls : floatingCls}>
+      {/* Source meme — the cultural input this change translated */}
+      {memeImageUrl && (
+        <div className="mb-3 pb-3 border-b border-ink-200">
+          <p className="text-ink-600 text-[12px] font-semibold mb-1.5">Source meme</p>
+          <img
+            src={memeImageUrl}
+            alt={memeTitle || 'source meme'}
+            className="w-full max-h-44 object-contain rounded border border-ink-200 bg-ink-50"
+          />
+          {(memeTitle || memeDescription) && (
+            <p className="text-ink-700 text-[11px] leading-snug mt-1.5 m-0">
+              {memeTitle || memeDescription?.split('\n')[0]}
+            </p>
+          )}
+        </div>
+      )}
+
       {lastPass1 && (
         <div className="mb-4 pb-3 border-b border-ink-200">
           <p className="text-ink-600 text-[12px] font-semibold mb-1.5">

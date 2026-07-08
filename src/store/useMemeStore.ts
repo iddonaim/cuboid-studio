@@ -87,6 +87,11 @@ export interface CubeTranslation {
   confidenceVector: ConfidenceVector | null;
   model: string | null;
   cutterGeometry: THREE.BufferGeometry | null;
+  /** The meme that drove this translation, so re-selecting the cube shows
+   *  the source alongside the geometric result. */
+  memeDescription?: string;
+  memeTitle?: string | null;
+  memeImageUrl?: string | null;
 }
 
 /** Helper to load base geometry for a placed cube by its variation ID */
@@ -303,7 +308,12 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         ? createCutterFromLLMOutput(result, currentGeometry!.boundingBox)
         : null;
 
-      // Create operator record
+      // Create operator record. Provenance fields (meme identity + full
+      // two-pass reasoning) ride along so the change stays explainable when
+      // revisited later — including after a save/load round-trip. Conditional
+      // spreads keep undefined out of the record (Firestore rejects it).
+      const selectedTitle = get().selectedMemeTitle;
+      const selectedImage = get().selectedMemeImageUrl;
       const record: OperatorRecord = {
         id: crypto.randomUUID(),
         source: 'meme',
@@ -315,6 +325,13 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         memeDescription,
         reasoning: result.reasoning,
         cutter: result.cutter,
+        origin: 'pataphysical',
+        ...(selectedTitle ? { memeTitle: selectedTitle } : {}),
+        ...(selectedImage ? { memeImageUrl: selectedImage } : {}),
+        ...(pass1 ? { pass1 } : {}),
+        ...(pass2 ? { pass2 } : {}),
+        ...(confidenceVector ? { confidenceVector } : {}),
+        ...(modelUsed ? { model: modelUsed } : {}),
       };
 
       if (targetCubeId) {
@@ -345,6 +362,9 @@ export const useMemeStore = create<MemeState>((set, get) => ({
               confidenceVector,
               model: modelUsed,
               cutterGeometry: cutterGeo,
+              memeDescription,
+              memeTitle: selectedTitle,
+              memeImageUrl: selectedImage,
             },
           },
           lastResult: result,
