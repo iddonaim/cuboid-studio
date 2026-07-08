@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: without it iOS reports env(safe-area-inset-*) as 0,
+         so the tab bar's home-indicator padding never applies on real iPhones.
+         interactive-widget=resizes-content: Android Chrome resizes the layout
+         when the keyboard opens so inputs in the bottom sheet stay visible. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Cuboid Studio</title>
     <meta name="description" content="3D modular logic builder for architectural exploration" />
     <meta name="theme-color" content="#f7f5f0" />

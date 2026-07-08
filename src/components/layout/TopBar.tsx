@@ -49,9 +49,17 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
 
   return (
     <div
-      className="fixed top-0 inset-x-0 z-50 grid h-[42px]"
+      className="fixed top-0 inset-x-0 z-50 grid"
       style={{
         gridTemplateColumns: '1fr auto 1fr',
+        // Safe-area padding: keeps the bar clear of the iOS status bar /
+        // notch (top) and the display cutout in landscape (left/right).
+        // All zero on regular desktop displays. Must pair with the App.tsx
+        // mobile spacer, which uses the same calc.
+        height: 'calc(42px + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
         ...glassStyle,
       }}
     >
