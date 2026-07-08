@@ -9,9 +9,15 @@ import type { ArchthesisMeme, FetchMemesResponse } from '../src/types/archthesis
  *
  * Query params:
  *   limit   — number of memes to return (default 20, max 50)
+ *   offset  — number of (visible, post-filter) memes to skip, for pagination
  *   sort    — "recent" (default), "popular", "oldest"
  *   search  — text search across memeText, topText, bottomText, description
  *   tag     — filter by tag (exact match)
+ *
+ * Pagination is count-based rather than cursor-based: hidden-meme and search
+ * filtering happen here after the Firestore query, so a Firestore cursor
+ * wouldn't line up with what the client actually displayed. The collection is
+ * small (thesis-scale), so re-reading offset+limit docs per page is fine.
  */
 
 const PROJECT_ID = 'adaptivememeticarchitect-2776f';
@@ -70,6 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const offset = Math.max(0, Math.min(Number(req.query.offset) || 0, 500));
     const sort = (req.query.sort as string) || 'recent';
     const search = (req.query.search as string)?.toLowerCase().trim();
     const tag = (req.query.tag as string)?.trim();
@@ -81,7 +88,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const structuredQuery: any = {
       from: [{ collectionId: 'memes' }],
       orderBy: [{ field: { fieldPath: orderField }, direction: orderDirection }],
-      limit: limit + 10, // fetch extra to account for hidden memes + "has more" check
+      // Fetch everything up to the requested page, plus extra to absorb
+      // hidden memes and to answer "has more".
+      limit: offset + limit + 10,
     };
 
     if (tag) {
@@ -127,8 +136,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const hasMore = memes.length > limit;
-    if (hasMore) memes = memes.slice(0, limit);
+    const hasMore = memes.length > offset + limit;
+    memes = memes.slice(offset, offset + limit);
 
     const payload: FetchMemesResponse = { memes, hasMore };
     return res.status(200).json(payload);

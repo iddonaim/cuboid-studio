@@ -35,9 +35,16 @@ export const NAV_SLOTS: readonly NavSlot[] = [
 /** Slots actually rendered as tabs right now (mounted=true). */
 export const VISIBLE_NAV_SLOTS: readonly NavSlot[] = NAV_SLOTS.filter(s => s.mounted);
 
+/** Map tab sub-view: the site-analysis iframe or the signed-in "My sites" layer. */
+export type MapView = 'analyze' | 'sites';
+
 interface AppState {
   activeMode: AppMode;
   setActiveMode: (mode: AppMode) => void;
+  /** Which layer the Map tab shows. Lives here so the TopBar can render the
+   *  switch without floating anything over the map-context iframe. */
+  mapView: MapView;
+  setMapView: (view: MapView) => void;
   floatingPanelOpen: boolean;
   toggleFloatingPanel: () => void;
   /** Onboarding showcase modal — auto-opens on first ever visit. */
@@ -87,6 +94,8 @@ function onboardingSeen(): boolean {
 export const useAppStore = create<AppState>((set) => ({
   activeMode: 'encoding',
   setActiveMode: (mode) => set({ activeMode: mode }),
+  mapView: 'analyze',
+  setMapView: (view) => set({ mapView: view }),
   floatingPanelOpen: true,
   toggleFloatingPanel: () => set(s => ({ floatingPanelOpen: !s.floatingPanelOpen })),
   onboardingOpen: !onboardingSeen(),
