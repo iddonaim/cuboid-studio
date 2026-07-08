@@ -35,6 +35,7 @@ import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { RecordViewerDrawer } from './components/meme/TranslationRecord';
 import { Section } from '@/components/ui/section';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { GuidedTour } from './components/onboarding/GuidedTour';
@@ -466,6 +467,8 @@ const AppInner: React.FC = () => {
 const App: React.FC = () => (
   <AuthProvider>
     <AppInner />
+    {/* Full-reading drawer for translation records — one instance app-wide */}
+    <RecordViewerDrawer />
     <ProjectsPanel />
     <ToastContainer />
     <ApiActivityIndicator />
