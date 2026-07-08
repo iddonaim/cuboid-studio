@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
@@ -10,10 +10,20 @@ const MODE_LABELS: Record<string, string> = {
   decode:    'Decode',
 };
 
-const HEIGHT_MAP: Record<SheetHeight, string> = {
-  collapsed: '56px',
-  half:      '50vh',
-  full:      '88vh',
+// Snap heights live in index.css (.sheet-h-*) so half/full can use dvh with a
+// vh fallback — inline styles can't express that fallback pair.
+const HEIGHT_CLASS: Record<SheetHeight, string> = {
+  collapsed: 'sheet-h-collapsed',
+  half:      'sheet-h-half',
+  full:      'sheet-h-full',
+};
+
+const COLLAPSED_PX = 56;
+
+/** Current px value of each snap state, from the live visual viewport. */
+const snapHeightsPx = (): Record<SheetHeight, number> => {
+  const vh = window.visualViewport?.height ?? window.innerHeight;
+  return { collapsed: COLLAPSED_PX, half: vh * 0.5, full: vh * 0.88 };
 };
 
 const NEXT_STATE: Record<SheetHeight, SheetHeight> = {
@@ -45,14 +55,22 @@ interface BottomSheetProps {
  * The drag-handle pill is absolutely positioned at the top of the sheet so it
  * doesn't consume flex height and stays tappable over the tab icons.
  *
- * In half / full states the sheet grows, the handle sits in normal flow at the
- * top, and scrollable content fills the middle.
+ * The handle supports both interactions: tap cycles collapsed → half → full,
+ * and dragging follows the finger live, then snaps to the nearest state on
+ * release (pointer events + setPointerCapture, so the drag keeps tracking
+ * even when the finger leaves the handle).
  *
  * [transform:translateZ(0)] promotes the element to its own GPU compositing
  * layer so it always renders above the WebGL canvas on iOS Safari.
  */
 export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollapsed = false }) => {
   const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
+  // Live px height while a drag is in progress; null when settled on a snap.
+  const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startHeight: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+
   const activeMode       = useAppStore(s => s.activeMode);
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
@@ -68,17 +86,66 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
         ? 'Evolution → Pataphysical'
         : MODE_LABELS[activeMode] ?? activeMode;
 
-  const cycleHeight    = () => { if (!forceCollapsed) setHeightState(s => NEXT_STATE[s]); };
-  const expandToHalf   = () => { if (!forceCollapsed && heightState === 'collapsed') setHeightState('half'); };
-  const isCollapsed    = effectiveHeightState === 'collapsed';
+  const cycleHeight = () => {
+    // A drag that just ended also fires click on the handle — swallow it so
+    // releasing a drag doesn't immediately jump to the next snap state.
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    if (!forceCollapsed) setHeightState(s => NEXT_STATE[s]);
+  };
+  const expandToHalf = () => { if (!forceCollapsed && heightState === 'collapsed') setHeightState('half'); };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (forceCollapsed) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      startY: e.clientY,
+      startHeight: containerRef.current?.getBoundingClientRect().height ?? snapHeightsPx()[heightState],
+      moved: false,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dy = drag.startY - e.clientY; // finger up = positive = taller sheet
+    if (!drag.moved && Math.abs(dy) < 6) return; // still a tap until it isn't
+    drag.moved = true;
+    const { full } = snapHeightsPx();
+    setDragHeight(Math.min(Math.max(drag.startHeight + dy, COLLAPSED_PX), full));
+  };
+
+  const handlePointerEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (!drag.moved) return; // plain tap — let the click handler cycle
+    suppressClickRef.current = true;
+    const releasedAt = drag.startHeight + (drag.startY - e.clientY);
+    const snaps = snapHeightsPx();
+    const nearest = (Object.keys(snaps) as SheetHeight[]).reduce((best, s) =>
+      Math.abs(snaps[s] - releasedAt) < Math.abs(snaps[best] - releasedAt) ? s : best
+    );
+    setHeightState(nearest);
+    setDragHeight(null);
+  };
+
+  const isDragging  = dragHeight !== null && !forceCollapsed;
+  const isCollapsed = effectiveHeightState === 'collapsed' && !isDragging;
 
   return (
     <div
-      className="relative w-full flex flex-col flex-shrink-0 z-50 [transform:translateZ(0)]"
+      ref={containerRef}
+      className={`relative w-full flex flex-col flex-shrink-0 z-50 [transform:translateZ(0)] ${
+        isDragging ? '' : HEIGHT_CLASS[effectiveHeightState]
+      }`}
       data-tour="bottom-sheet"
       style={{
-        height: HEIGHT_MAP[effectiveHeightState],
-        transition: 'height 0.38s cubic-bezier(0.32, 0.72, 0, 1)',
+        ...(isDragging ? { height: dragHeight } : null),
+        transition: isDragging ? 'none' : 'height 0.38s cubic-bezier(0.32, 0.72, 0, 1)',
         ...glassStyle,
       }}
     >
@@ -88,11 +155,18 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
           normal flow at the top of the sheet.                              */}
       <button
         onClick={cycleHeight}
-        aria-label="Cycle sheet height"
-        className="flex justify-center items-start w-full bg-transparent border-none cursor-pointer flex-shrink-0"
-        style={isCollapsed
-          ? { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 6, paddingBottom: 4, zIndex: 1 }
-          : { position: 'relative', paddingTop: 6, paddingBottom: 4 }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        aria-label="Drag or tap to resize sheet"
+        className="flex justify-center items-start w-full bg-transparent border-none cursor-grab flex-shrink-0"
+        style={{
+          touchAction: 'none', // the drag *is* the gesture — no browser panning
+          ...(isCollapsed
+            ? { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 6, paddingBottom: 4, zIndex: 1 }
+            : { position: 'relative', paddingTop: 6, paddingBottom: 4 }),
+        }}
       >
         <div
           className="rounded-full bg-ink-300"
@@ -111,7 +185,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
 
       {/* ── Scrollable content (not collapsed) ─────────────────────────── */}
       {!isCollapsed && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-4 pb-3">
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-contain px-4 pb-3">
           {children}
         </div>
       )}

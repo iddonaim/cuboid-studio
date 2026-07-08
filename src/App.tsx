@@ -289,8 +289,9 @@ const AppInner: React.FC = () => {
         {/* TopBar: fixed at top, mobile variant shows logo + cube count only */}
         <TopBar showModeTabs={false} />
 
-        {/* 42 px spacer because TopBar is position:fixed and doesn't occupy flow */}
-        <div style={{ height: 42, flexShrink: 0 }} aria-hidden />
+        {/* Spacer because TopBar is position:fixed and doesn't occupy flow —
+            must match the TopBar's own height calc (42px + top safe area). */}
+        <div style={{ height: 'calc(42px + env(safe-area-inset-top, 0px))', flexShrink: 0 }} aria-hidden />
 
         {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}

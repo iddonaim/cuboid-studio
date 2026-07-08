@@ -52,10 +52,15 @@ export const HelpBar: React.FC = () => {
 
   return (
     <div
-      className="absolute left-1/2 -translate-x-1/2 text-ink-500 text-[12px] pointer-events-none whitespace-nowrap"
+      // Nowrap on desktop only — on phone widths the longer hints overflow
+      // past both screen edges, so let them wrap inside a capped pill instead.
+      className={`absolute left-1/2 -translate-x-1/2 text-ink-500 text-[12px] pointer-events-none ${
+        isMobile ? 'text-center' : 'whitespace-nowrap'
+      }`}
       data-tour="help-bar"
       style={{
         bottom: isMobile ? 64 : 20,
+        maxWidth: isMobile ? 'calc(100vw - 32px)' : undefined,
         ...pillStyle,
       }}
     >

@@ -38,6 +38,38 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── Touch / installed-app polish ──────────────────────────────────────────
+ * Kill the browser-isms that make the installed PWA feel like a web page:
+ * gray tap flashes, double-tap zoom on controls, long-press image callouts,
+ * and iOS zooming the whole page when a small-font input gains focus. */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* touch-action:manipulation keeps pan/pinch but disables double-tap zoom on
+ * interactive elements (also removes the legacy 300ms tap delay). */
+button, a, label, input, select, textarea, [role='button'] {
+  touch-action: manipulation;
+}
+
+/* All canvases (Three.js viewport, Konva notation) own their gestures —
+ * never let the browser interpret touches on them as page pan/zoom. */
+canvas { touch-action: none; }
+
+/* No long-press "Save Image" callout or drag-ghost on UI imagery
+ * (thumbnails, onboarding screens, map tiles). */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* iOS Safari zooms the page when a focused input's font-size is < 16px and
+ * never zooms back — the loudest "this is a website" tell. Force 16px on
+ * form fields at phone widths (matches the useIsMobile 640px breakpoint). */
+@media (max-width: 639px) {
+  input, select, textarea { font-size: 16px; }
+}
+
 /* html is the actual scrolling element on iOS/iPadOS Safari in standards mode —
  * overflow:hidden on body alone does not stop the page from rubber-band
  * scrolling there, which can drag position:fixed bars out of view. Lock both,
@@ -69,6 +101,13 @@ body {
   height: 100vh;
   height: 100dvh;
 }
+
+/* Bottom-sheet snap heights. dvh (with vh fallback for older iOS) so the
+ * half/full states track the *visible* viewport as Safari's chrome
+ * collapses, instead of the taller layout viewport. */
+.sheet-h-collapsed { height: 56px; }
+.sheet-h-half { height: 50vh; height: 50dvh; }
+.sheet-h-full { height: 88vh; height: 88dvh; }
 
 canvas { display: block; }
 
