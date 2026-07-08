@@ -31,6 +31,7 @@ import {
 } from '../../prompts/translationLexicon.default';
 import type { OperatorClassV2, EdgeType } from '../../lib/operators/types';
 import type { TranslationLexiconDoc } from '../../lib/projects/translationLexiconFirestore';
+import { EditorModal } from '@/components/ui/editor-modal';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -224,7 +225,7 @@ function EditorForm({
   const hint = (k: string) => draft.descriptions[k] ?? DEFAULT_TRANSLATION_DESCRIPTIONS[k] ?? '';
 
   return (
-    <div className="flex flex-col gap-2 pt-1 border-t border-ink-200 mt-1">
+    <div className="flex flex-col gap-2">
       <Field label="name" value={draft.name} onChange={v => onChangeDraft({ ...draft, name: v })} />
       <TagInput tags={draft.tags} onChange={t => onChangeDraft({ ...draft, tags: t })} />
 
@@ -542,7 +543,7 @@ export const TranslationLexiconEditor: React.FC = () => {
           <button type="button"
             onClick={() => { openEditorForActive(); setLibraryOpen(false); }}
             className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0">
-            {editorOpen ? 'Close editor' : 'Edit'}
+            Edit
           </button>
         </div>
       </div>
@@ -562,18 +563,27 @@ export const TranslationLexiconEditor: React.FC = () => {
         />
       )}
 
-      {editorOpen && draft && (
-        <EditorForm
-          draft={draft}
-          sourceId={editingSourceId}
-          onChangeDraft={setDraft}
-          onSaveAsNew={handleSaveAsNew}
-          onUpdate={handleUpdate}
-          onClose={() => setEditorOpen(false)}
-          saving={saving}
-          error={error}
-        />
-      )}
+      {/* Editor popup — the form is long, so it opens in its own scrollable
+          modal instead of stretching the sidebar. */}
+      <EditorModal
+        open={editorOpen && draft !== null}
+        title={editingSourceId ? (draft?.name || 'Edit vocabulary') : 'New translation lexicon'}
+        subtitle="Translation vocabulary"
+        onClose={() => setEditorOpen(false)}
+      >
+        {draft && (
+          <EditorForm
+            draft={draft}
+            sourceId={editingSourceId}
+            onChangeDraft={setDraft}
+            onSaveAsNew={handleSaveAsNew}
+            onUpdate={handleUpdate}
+            onClose={() => setEditorOpen(false)}
+            saving={saving}
+            error={error}
+          />
+        )}
+      </EditorModal>
     </div>
   );
 };

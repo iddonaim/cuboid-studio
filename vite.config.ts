@@ -44,6 +44,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,jpg,jpeg,png,svg,glb,json,wasm}'],
         skipWaiting: true,
         clientsClaim: true,
+        // Drop precaches left behind by older service worker versions —
+        // without this, stale copies of the app pile up in Cache Storage
+        // and Chrome can keep serving an old build until site data is cleared.
+        cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB (for large GLB files)
       }
     })
