@@ -24,6 +24,7 @@ import {
   type PlacementOption,
 } from '../../prompts/lexicon.default';
 import type { LexiconDoc } from '../../lib/projects/lexiconFirestore';
+import { EditorModal } from '@/components/ui/editor-modal';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -282,7 +283,7 @@ function EditorForm({
     patch({ descriptions: { ...draft.descriptions, [axis]: value } });
 
   return (
-    <div className="flex flex-col gap-3 pt-1 border-t border-ink-200 mt-1">
+    <div className="flex flex-col gap-3">
 
       {/* Name */}
       <Field label="Name" value={draft.name} onChange={v => patch({ name: v })} />
@@ -845,7 +846,7 @@ export const LexiconEditor: React.FC = () => {
             onClick={() => { openEditorForActive(); setLibraryOpen(false); }}
             className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0"
           >
-            {editorOpen ? 'Close editor' : 'Edit'}
+            Edit
           </button>
         </div>
       </div>
@@ -866,19 +867,27 @@ export const LexiconEditor: React.FC = () => {
         />
       )}
 
-      {/* Editor panel */}
-      {editorOpen && draft && (
-        <EditorForm
-          draft={draft}
-          sourceId={editingSourceId}
-          onChangeDraft={setDraft}
-          onSaveAsNew={handleSaveAsNew}
-          onUpdate={handleUpdate}
-          onClose={() => setEditorOpen(false)}
-          saving={saving}
-          error={error}
-        />
-      )}
+      {/* Editor popup — the form is long, so it opens in its own scrollable
+          modal instead of stretching the sidebar. */}
+      <EditorModal
+        open={editorOpen && draft !== null}
+        title={editingSourceId ? (draft?.name || 'Edit lexicon') : 'New lexicon'}
+        subtitle="Encoding vocabulary"
+        onClose={() => setEditorOpen(false)}
+      >
+        {draft && (
+          <EditorForm
+            draft={draft}
+            sourceId={editingSourceId}
+            onChangeDraft={setDraft}
+            onSaveAsNew={handleSaveAsNew}
+            onUpdate={handleUpdate}
+            onClose={() => setEditorOpen(false)}
+            saving={saving}
+            error={error}
+          />
+        )}
+      </EditorModal>
     </div>
   );
 };
