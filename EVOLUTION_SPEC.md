@@ -2,6 +2,12 @@
 
 ## For Claude Code: Cuboid Studio Feature Implementation
 
+> **Status note (2026-07):** the core of this spec has been **built and shipped** —
+> the compressibility engine runs with four sub-scores (geometric clustering,
+> spatial regularity, operator sequence, meme coherence). Two axes described in
+> earlier drafts (CSG tree edit distance, topological genus) were never implemented
+> and remain aspirational. See [`CONTEXT.md`](CONTEXT.md) for what's live today.
+
 ---
 
 ## Theoretical Foundation

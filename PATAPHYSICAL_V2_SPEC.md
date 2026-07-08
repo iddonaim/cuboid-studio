@@ -6,6 +6,13 @@
 # Audience: Claude Code, collaborators, thesis reviewers, future Iddo.
 # Date: 2026-04-06
 
+> **Status note (2026-07):** this spec is a snapshot from April 2026. The app has
+> moved on in a few places it describes — most notably, **Evolution mode is now
+> implemented** (the "Stubbed / not yet implemented" entries below are out of date),
+> and Builder/Pataphysical are no longer top-level tabs. The translation pipeline
+> itself (§3 onward) is still accurate. For the current, reconciled state of the
+> app, see [`CONTEXT.md`](CONTEXT.md).
+
 ---
 
 ## 1. WHAT THIS IS
