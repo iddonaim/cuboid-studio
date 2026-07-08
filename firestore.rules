@@ -10,10 +10,14 @@ rules_version = '2';
 // Only the authenticated owner (ownerId == request.auth.uid) may read or write
 // a project and everything beneath it. Unauthenticated users get nothing.
 //
-// NOTE: This repo shares the `archthesis` Firebase project. Deploy these rules
-// ADDITIVELY alongside the existing archthesis rules (e.g. memes/...) — do not
-// replace them. Merge the `projects/**`, `lexicons/**`, and
-// `translationLexicons/**` match blocks into the live ruleset.
+// NOTE: This repo shares the `archthesis` Firebase project, and archthesis's
+// deploy workflow ships archthesis/firestore.rules on every merge to its main
+// branch, REPLACING the live ruleset. The deployed source of truth is
+// therefore archthesis/firestore.rules, which carries a copy of the match
+// blocks below alongside archthesis's own rules. This file is the reference
+// copy — when editing rules here, mirror the change into
+// archthesis/firestore.rules or it will never reach production (and the next
+// archthesis deploy would wipe it, locking users out of projects/lexicons).
 
 service cloud.firestore {
   match /databases/{database}/documents {
