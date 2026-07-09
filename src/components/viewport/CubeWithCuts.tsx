@@ -21,6 +21,8 @@ interface CubeWithCutsProps {
   clippingPlanes?: THREE.Plane[];
   overrideGeometry?: THREE.BufferGeometry | null;
   provenance?: 'preserved' | 'added';
+  /** "Highlight changed cubes" view: warm tint for cubes with applied ops. */
+  changed?: boolean;
 }
 
 export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
@@ -37,6 +39,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   clippingPlanes,
   overrideGeometry,
   provenance,
+  changed,
 }) => {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
@@ -107,6 +110,13 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     edgeColor = '#2e6fb2';
   }
 
+  // "Highlight changed cubes": warm amber, distinct from the vermilion
+  // target and slate selection tints, both of which still win below.
+  if (changed) {
+    fillColor = '#f0dfae';
+    edgeColor = '#8a621c';
+  }
+
   if (targeted) {
     fillColor = '#f9e2d8';
     edgeColor = '#bc4a1f';
@@ -135,7 +145,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       onPointerOut={isPreview ? undefined : () => onFaceHover?.(null)}
     >
       <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>
+        {/* key remounts the material when crossing the opaque/translucent
+            boundary — toggling `transparent` on a live material doesn't
+            reliably take effect (three.js caches the compiled program). */}
         <meshBasicMaterial
+          key={opacity < 1 ? 'fill-translucent' : 'fill-opaque'}
           color={fillColor}
           transparent={opacity < 1}
           opacity={opacity}
@@ -154,6 +168,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       )}
       <lineSegments geometry={edgesGeometry} position={geometryOffset} raycast={noRaycast}>
         <lineBasicMaterial
+          key={opacity < 1 ? 'edge-translucent' : 'edge-opaque'}
           color={edgeColor}
           linewidth={2}
           transparent={opacity < 1}

@@ -13,6 +13,7 @@ import { useRecordViewerStore } from '../../store/useRecordViewerStore';
 import { viewFromCandidate } from '../../lib/operators/recordView';
 import { createCutterFromLLMOutput } from '../../lib/operators/applyOperator';
 import type { EvolutionCandidate } from '../../store/useEvolutionStore';
+import { ConfidenceMiniBars } from '../meme/TranslationRecord';
 
 /**
  * Evolution Mode sidebar panel.
@@ -57,6 +58,8 @@ export const EvolutionPanel: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const cubeOperators = useMemeStore(s => s.cubeOperators);
   const openViewer = useRecordViewerStore(s => s.open);
+  const highlightChanged = useEvolutionStore(s => s.highlightChanged);
+  const toggleHighlightChanged = useEvolutionStore(s => s.toggleHighlightChanged);
 
   // Full two-pass prose lives in the shared full-reading drawer.
   const openCandidateReading = (candidate: EvolutionCandidate) => {
@@ -97,13 +100,24 @@ export const EvolutionPanel: React.FC = () => {
       {/* Header + generation counter */}
       <div>
         <div className="text-ink-600 text-[12px] mb-1">Evolution Mode</div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-block px-2 py-0.5 rounded bg-ink-200 text-ink-800 text-[12px] font-semibold">
             Gen {generation}
           </span>
           <span className="text-ink-500 text-[11px]">
             {placedCubes.length} cubes &middot; {operatedCount} modified
           </span>
+          <button
+            onClick={toggleHighlightChanged}
+            title="Tint modified cubes amber and fade untouched ones"
+            className={`px-2 py-0.5 rounded-full text-[10px] border cursor-pointer transition-colors ${
+              highlightChanged
+                ? 'bg-amber-100 border-amber-500/60 text-amber-800 font-semibold'
+                : 'bg-ink-100 border-ink-200 text-ink-500 hover:text-ink-700'
+            }`}
+          >
+            {highlightChanged ? 'Showing changed cubes' : 'Show changed cubes'}
+          </button>
         </div>
       </div>
 
@@ -300,6 +314,12 @@ export const EvolutionPanel: React.FC = () => {
                       Full reading →
                     </button>
                   </div>
+
+                  {candidate.pass2?.confidence_vector && (
+                    <div className="mt-1.5">
+                      <ConfidenceMiniBars vector={candidate.pass2.confidence_vector} />
+                    </div>
+                  )}
                 </div>
               );
             })}

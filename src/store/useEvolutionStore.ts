@@ -58,6 +58,11 @@ interface EvolutionState {
   subMode: EvolutionSubMode;
   setSubMode: (m: EvolutionSubMode) => void;
 
+  /** View-only: tint cubes that carry applied changes and fade the rest.
+   *  Not persisted with compositions. */
+  highlightChanged: boolean;
+  toggleHighlightChanged: () => void;
+
   // Core state
   generation: number;
   candidates: EvolutionCandidate[];
@@ -111,6 +116,9 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   // Sub-mode
   subMode: 'evolve' as EvolutionSubMode,
   setSubMode: (m) => set({ subMode: m }),
+
+  highlightChanged: false,
+  toggleHighlightChanged: () => set(s => ({ highlightChanged: !s.highlightChanged })),
 
   // Core state
   generation: 0,

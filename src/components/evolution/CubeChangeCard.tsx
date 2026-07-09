@@ -1,17 +1,13 @@
 import React from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
-import { useRecordViewerStore } from '../../store/useRecordViewerStore';
 import { viewFromOperatorRecord } from '../../lib/operators/recordView';
-import type { OperatorRecord } from '../../lib/operators/types';
+import { TranslationRecordSummary } from '../meme/TranslationRecord';
 
 const floatingCls =
   'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto';
 const dockedCls =
   'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]';
-
-const originLabel = (record: OperatorRecord): string =>
-  record.origin === 'evolution' ? 'Evolve' : record.origin === 'pataphysical' ? 'Pataphysical' : 'Meme';
 
 /**
  * Inspector card for the cube currently selected in the Evolution (Evolve)
@@ -27,7 +23,6 @@ export const CubeChangeCard: React.FC<{ docked?: boolean }> = ({ docked = false 
   const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
   const cubeTranslations = useMemeStore(s => s.cubeTranslations);
   const placedCubes = useBuilderStore(s => s.placedCubes);
-  const openViewer = useRecordViewerStore(s => s.open);
 
   if (!targetCubeId) return null;
   const cube = placedCubes.find(c => c.id === targetCubeId);
@@ -36,22 +31,6 @@ export const CubeChangeCard: React.FC<{ docked?: boolean }> = ({ docked = false 
   const records = cubeOperators[targetCubeId] || [];
   // Newest change first.
   const ordered = [...records].reverse();
-
-  const openRecord = (record: OperatorRecord, isLatest: boolean) => {
-    // Only the latest change matches the cube's current geometry, so only it
-    // gets the cut-result thumbnail; older records show their meme instead.
-    openViewer(
-      viewFromOperatorRecord(
-        record,
-        isLatest
-          ? {
-              snapshotGeometry: cubeGeometryOverrides[targetCubeId] ?? null,
-              snapshotCutter: cubeTranslations[targetCubeId]?.cutterGeometry ?? null,
-            }
-          : {},
-      ),
-    );
-  };
 
   return (
     <div className={docked ? dockedCls : floatingCls}>
@@ -82,32 +61,33 @@ export const CubeChangeCard: React.FC<{ docked?: boolean }> = ({ docked = false 
       ) : (
         <div className="flex flex-col gap-1.5 mt-2">
           {ordered.map((record, i) => (
-            <button
+            <div
               key={record.id}
-              onClick={() => openRecord(record, i === 0)}
-              title="Open full reading"
-              className="w-full p-2 flex items-center justify-between gap-1.5 cursor-pointer text-left rounded border border-ink-200 bg-ink-50 hover:bg-ink-100 transition-colors"
+              className="p-2 rounded border border-ink-200 bg-ink-50"
             >
-              <div className="flex items-center gap-1.5 min-w-0">
-                {record.memeImageUrl && (
-                  <img
-                    src={record.memeImageUrl}
-                    alt=""
-                    className="w-7 h-7 object-cover rounded border border-ink-200 flex-shrink-0"
-                  />
-                )}
-                <span className="text-ink-800 text-[12px] font-semibold flex-shrink-0">
+              <div className="flex items-baseline justify-between gap-1.5 mb-1.5">
+                <span className="text-ink-800 text-[12px] font-semibold">
                   #{records.length - i}
                 </span>
-                <span className="px-1.5 py-px rounded bg-ink-200 text-ink-700 text-[11px] flex-shrink-0">
-                  {record.operator}
-                </span>
-                <span className="px-1.5 py-px rounded bg-ink-100 border border-ink-200 text-ink-500 text-[10px] uppercase tracking-wide flex-shrink-0">
-                  {originLabel(record)}
+                <span className="text-ink-400 text-[10px]">
+                  {new Date(record.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <span className="text-ink-400 text-[12px] flex-shrink-0">›</span>
-            </button>
+              <TranslationRecordSummary
+                view={viewFromOperatorRecord(
+                  record,
+                  // Only the latest change matches the cube's current
+                  // geometry, so only it gets the cut-result thumbnail;
+                  // older records show their meme instead.
+                  i === 0
+                    ? {
+                        snapshotGeometry: cubeGeometryOverrides[targetCubeId] ?? null,
+                        snapshotCutter: cubeTranslations[targetCubeId]?.cutterGeometry ?? null,
+                      }
+                    : {},
+                )}
+              />
+            </div>
           ))}
         </div>
       )}

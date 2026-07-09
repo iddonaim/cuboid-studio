@@ -80,10 +80,12 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
       className={
         isMobile
           ? 'absolute inset-0 w-full h-full border-0 bg-white'
-          : // No h-full here: with top offset + h-full the iframe's bottom
-            // 42px would render below the viewport (clipping the embedded
-            // app's own bottom UI). The inset offsets size it exactly.
-            'absolute top-[42px] left-0 right-0 bottom-0 border-0 bg-white'
+          : // Iframes are replaced elements: they do NOT stretch to inset
+            // offsets like a div (left-0/right-0/bottom-0 alone collapses one
+            // to its intrinsic 300×150). Size must be explicit — and h-full
+            // would overshoot by the 42px top offset, clipping the embedded
+            // app's bottom UI, so subtract it.
+            'absolute top-[42px] left-0 w-full h-[calc(100%-42px)] border-0 bg-white'
       }
       allow="clipboard-read; clipboard-write"
     />

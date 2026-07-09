@@ -76,26 +76,26 @@ describe('CubeChangeCard', () => {
     expect(screen.getByText(/v-07 · unchanged/)).toBeTruthy();
   });
 
-  it('lists a change row with its operator and origin', () => {
+  it('shows a change summary with its title, operator and origin', () => {
     seedStores([makeRecord()]);
     renderCard();
 
     expect(screen.getByText(/v-07 · 1 change/)).toBeTruthy();
+    expect(screen.getByText('Bus stop meme')).toBeTruthy();
     expect(screen.getByText('erosion')).toBeTruthy();
     expect(screen.getByText('Evolve')).toBeTruthy();
     // Full prose stays out of the card — it lives in the drawer.
     expect(screen.queryByText('Erode the corner to express indefinite waiting')).toBeNull();
   });
 
-  it('opens the full-reading drawer when a row is clicked', () => {
+  it('opens the full-reading drawer from a change entry', () => {
     seedStores([makeRecord()]);
     renderCard();
 
-    fireEvent.click(screen.getByRole('button', { name: /#1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Full reading/ }));
 
-    expect(screen.getByText('Bus stop meme')).toBeTruthy();
+    expect(screen.getByText('Source meme')).toBeTruthy();
     expect(screen.getByText('Erode the corner to express indefinite waiting')).toBeTruthy();
-    expect(screen.getByText('sphere')).toBeTruthy();
 
     // Escape closes the drawer again.
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -113,15 +113,16 @@ describe('CubeChangeCard', () => {
     expect(screen.getByText('Evolve')).toBeTruthy();
     expect(screen.getByText('Pataphysical')).toBeTruthy();
 
-    const rows = screen.getAllByRole('button', { name: /#\d/ });
-    // Newest (#2) renders first.
-    expect(rows[0].textContent).toContain('#2');
-    expect(rows[0].textContent).toContain('erosion');
-    expect(rows[1].textContent).toContain('#1');
-    expect(rows[1].textContent).toContain('drift');
+    // Newest (#2, erosion) renders above the older (#1, drift) entry.
+    expect(screen.getByText('#2')).toBeTruthy();
+    expect(screen.getByText('#1')).toBeTruthy();
+    const chips = screen.getAllByText(/^(erosion|drift)$/);
+    expect(chips[0].textContent).toBe('erosion');
+    expect(chips[1].textContent).toBe('drift');
 
-    // Opening the older entry shows its reasoning in the drawer.
-    fireEvent.click(rows[1]);
+    // Opening the older entry's reading shows its reasoning in the drawer.
+    const buttons = screen.getAllByRole('button', { name: /Full reading/ });
+    fireEvent.click(buttons[1]);
     expect(screen.getByText('first change')).toBeTruthy();
     expect(screen.queryByText('second change')).toBeNull();
   });

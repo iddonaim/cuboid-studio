@@ -104,8 +104,8 @@ export const ConfidenceVectorDisplay: React.FC<{
 );
 
 /** One-row compact confidence display, used in summary cards. */
-const ConfidenceMiniBars: React.FC<{ vector: ConfidenceVector }> = ({ vector }) => (
-  <div className="flex items-center gap-2">
+export const ConfidenceMiniBars: React.FC<{ vector: ConfidenceVector }> = ({ vector }) => (
+  <div className="flex items-center gap-2 flex-wrap">
     {CONFIDENCE_AXES.map(({ key, short, label }) => {
       const value = Math.min(1, Math.max(0, vector[key] ?? 0));
       return (
@@ -115,7 +115,7 @@ const ConfidenceMiniBars: React.FC<{ vector: ConfidenceVector }> = ({ vector }) 
           title={`${label}: ${value.toFixed(2)}`}
         >
           <span className="text-ink-400 text-[9px] font-medium">{short}</span>
-          <div className="w-6 h-1 bg-ink-200 rounded overflow-hidden">
+          <div className="w-8 h-1 bg-ink-200 rounded overflow-hidden">
             <div className="h-full bg-primary rounded" style={{ width: `${value * 100}%` }} />
           </div>
         </div>
@@ -123,6 +123,32 @@ const ConfidenceMiniBars: React.FC<{ vector: ConfidenceVector }> = ({ vector }) 
     })}
   </div>
 );
+
+/**
+ * Compact Pass-1 pills: a few rhetorical moves + functional affects with a
+ * "+n" overflow chip. The full list lives in the drawer.
+ */
+const Pass1Pills: React.FC<{ pass1: TranslationRecordView['pass1'] }> = ({ pass1 }) => {
+  if (!pass1) return null;
+  const MAX_EACH = 3;
+  const moves = pass1.rhetorical_moves.slice(0, MAX_EACH);
+  const affects = pass1.functional_affects.slice(0, MAX_EACH);
+  if (moves.length === 0 && affects.length === 0) return null;
+  const hidden =
+    pass1.rhetorical_moves.length + pass1.functional_affects.length
+    - moves.length - affects.length;
+  return (
+    <div className="-mb-1">
+      {moves.map((m, i) => (
+        <Chip key={`m-${i}`}>{m}</Chip>
+      ))}
+      {affects.map((a, i) => (
+        <Chip key={`a-${i}`} variant="affect">{a}</Chip>
+      ))}
+      {hidden > 0 && <Chip>+{hidden}</Chip>}
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Thumbnail hooks
@@ -213,6 +239,12 @@ export const TranslationRecordSummary: React.FC<{
           </div>
         </div>
       </div>
+
+      {view.pass1 && (
+        <div className="mt-2">
+          <Pass1Pills pass1={view.pass1} />
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 mt-2">
         {view.confidenceVector ? <ConfidenceMiniBars vector={view.confidenceVector} /> : <span />}

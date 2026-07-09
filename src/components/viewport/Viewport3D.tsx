@@ -423,8 +423,10 @@ const EncodingScene: React.FC = () => {
 const EvolutionScene: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
+  const cubeOperators = useMemeStore(s => s.cubeOperators);
   const previewCandidateId = useEvolutionStore(s => s.previewCandidateId);
   const candidates = useEvolutionStore(s => s.candidates);
+  const highlightChanged = useEvolutionStore(s => s.highlightChanged);
   const clippingPlanes = useClippingPlanes();
 
   // Click-to-inspect: selecting a cube surfaces its change record card and
@@ -437,6 +439,10 @@ const EvolutionScene: React.FC = () => {
   const inspectedCube = inspectable
     ? placedCubes.find(c => c.id === targetCubeId)
     : undefined;
+
+  // "Highlight changed cubes" view — Evolution only (Decode backdrop stays
+  // neutral): changed cubes tint amber, unchanged ones fade back.
+  const highlightActive = highlightChanged && inspectable;
 
   // Find which cube the previewed candidate targets
   const previewedCandidate = candidates.find(c => c.id === previewCandidateId);
@@ -471,6 +477,7 @@ const EvolutionScene: React.FC = () => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
+        const isChanged = (cubeOperators[cube.id]?.length ?? 0) > 0;
         return (
           <CubeWithCuts
             key={cube.id}
@@ -480,6 +487,8 @@ const EvolutionScene: React.FC = () => {
             overrideGeometry={override}
             targeted={cube.id === highlightCubeId}
             selected={inspectable && cube.id === targetCubeId}
+            changed={highlightActive && isChanged}
+            opacity={highlightActive && !isChanged ? 0.35 : 1}
             clippingPlanes={clippingPlanes}
             onClick={inspectable
               ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)
