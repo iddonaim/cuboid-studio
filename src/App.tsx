@@ -28,13 +28,14 @@ import { ExportPanel } from './components/export/ExportPanel';
 import { DecodePanel } from './components/decode/DecodePanel';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { SitesMapView } from './components/map/SitesMapView';
-import { MapViewToggle, MapView } from './components/map/MapViewToggle';
+import { MapViewToggle } from './components/map/MapViewToggle';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { RecordViewerDrawer } from './components/meme/TranslationRecord';
 import { Section } from '@/components/ui/section';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { GuidedTour } from './components/onboarding/GuidedTour';
@@ -166,7 +167,9 @@ const AppInner: React.FC = () => {
   const { user }            = useAuthContext();
   const [showSiteToast, setShowSiteToast] = React.useState(false);
   // Map tab sub-view: the analysis iframe or the signed-in "My sites" layer.
-  const [mapView, setMapView] = React.useState<MapView>('analyze');
+  // Lives in the app store so the TopBar can render the switch.
+  const mapView    = useAppStore(s => s.mapView);
+  const setMapView = useAppStore(s => s.setMapView);
 
   // Convenience predicates for what to mount.
   const showBuilderSurface     = activeMode === 'encoding' && seedEditOpen;
@@ -309,7 +312,7 @@ const AppInner: React.FC = () => {
             />
           </div>
           {showSitesMap && <SitesMapView />}
-          {showMapCanvas && user && <MapViewToggle view={mapView} onChange={setMapView} />}
+          {showMapCanvas && user && <MapViewToggle />}
           {!showMapCanvas && (
             <>
               <Viewport3D />
@@ -393,7 +396,8 @@ const AppInner: React.FC = () => {
           />
         </div>
         {showSitesMap && <SitesMapView />}
-        {showMapCanvas && user && <MapViewToggle view={mapView} onChange={setMapView} />}
+        {/* Desktop: the Analysis / My sites switch lives in the TopBar, so
+            nothing floats over the map-context iframe's own toolbar. */}
         {!showMapCanvas && (
           <>
             <Viewport3D />
@@ -463,6 +467,8 @@ const AppInner: React.FC = () => {
 const App: React.FC = () => (
   <AuthProvider>
     <AppInner />
+    {/* Full-reading drawer for translation records — one instance app-wide */}
+    <RecordViewerDrawer />
     <ProjectsPanel />
     <ToastContainer />
     <ApiActivityIndicator />

@@ -335,10 +335,13 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     const memeStore = useMemeStore.getState();
     const placedCubes = useBuilderStore.getState().placedCubes;
 
-    // Set up the meme store to target the right cube and apply
+    // Target the applied cube so the viewport highlights it and its change
+    // card opens. Deliberately do NOT copy the candidate's meme into the meme
+    // store's input fields — those belong to the Pataphysical creation form,
+    // and pre-filling them there made an applied Evolve candidate look like a
+    // pending Pataphysical translation. Provenance already rides on the
+    // operator record and cubeTranslations below.
     memeStore.setTargetCubeId(candidate.targetCubeId);
-    memeStore.setMemeDescription(candidate.memeDescription);
-    memeStore.setSelectedMeme(candidate.memeImageUrl, candidate.memeTitle ?? null);
 
     // Build the operator record and apply geometry directly
     // (reuse the translate result we already have — no extra API call)

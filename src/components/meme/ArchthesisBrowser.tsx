@@ -32,22 +32,45 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
     params.set('sort', sort);
     if (search.trim()) params.set('search', search.trim());
     if (tag.trim()) params.set('tag', tag.trim());
+    // Count-based pagination: skip however many memes are already shown.
     if (append && memes.length > 0) {
-      params.set('offset', memes[memes.length - 1].timestamp);
+      params.set('offset', String(memes.length));
     }
 
+    // Abort a hung request rather than showing "Loading..." forever — a
+    // dropped connection can otherwise leave the fetch pending indefinitely.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
     try {
-      const res = await fetch(`/api/fetch-memes?${params}`);
+      const res = await fetch(`/api/fetch-memes?${params}`, { signal: controller.signal });
       if (!res.ok) {
         const body = await res.text();
         throw new Error(`Error ${res.status}: ${body}`);
       }
       const data: FetchMemesResponse = await res.json();
-      setMemes(prev => append ? [...prev, ...data.memes] : data.memes);
-      setHasMore(data.hasMore);
+      if (append) {
+        // Drop anything already shown (a meme added/removed upstream shifts
+        // the pages) so duplicate ids never collide as React keys.
+        const seen = new Set(memes.map(m => m.id));
+        const fresh = data.memes.filter(m => !seen.has(m.id));
+        setMemes(prev => [...prev, ...fresh]);
+        // An append that brings nothing new means the pages have dried up,
+        // whatever the server claims — otherwise "Load more" loops forever.
+        setHasMore(data.hasMore && fresh.length > 0);
+      } else {
+        setMemes(data.memes);
+        setHasMore(data.hasMore);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load memes');
+      const aborted = err instanceof DOMException && err.name === 'AbortError';
+      setError(
+        aborted
+          ? 'The meme library took too long to respond — try again.'
+          : err instanceof Error ? err.message : 'Failed to load memes'
+      );
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }, [sort, search, tag, memes]);

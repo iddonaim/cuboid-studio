@@ -3,6 +3,8 @@ import { useAppStore, AppMode, VISIBLE_NAV_SLOTS } from '../../store/useAppStore
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { AuthControls } from '../auth/AuthControls';
 import { SaveCompositionButton } from '../projects/SaveCompositionButton';
+import { MapViewSegment } from '../map/MapViewToggle';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 const glassStyle: React.CSSProperties = {
   background: 'hsl(var(--card) / 0.94)',
@@ -46,6 +48,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
   const togglePanel       = useAppStore(s => s.toggleFloatingPanel);
   const openOnboarding    = useAppStore(s => s.openOnboarding);
   const placedCubes       = useBuilderStore(s => s.placedCubes);
+  const { user }          = useAuthContext();
 
   return (
     <div
@@ -103,6 +106,9 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
 
       {/* ── Right: save + account/projects + cube count + help + panel toggle ── */}
       <div className="flex items-center justify-end gap-2 px-4">
+        {/* Map view switch lives in the bar (desktop) so it never floats over
+            the embedded map-context app's own toolbar. */}
+        {showModeTabs && activeMode === 'map' && user && <MapViewSegment />}
         <SaveCompositionButton />
         <AuthControls />
 

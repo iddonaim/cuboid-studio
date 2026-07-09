@@ -1,39 +1,36 @@
 /**
- * MapViewToggle — small floating pill switching the Map tab between the
- * site-analysis iframe ("Analysis") and the saved-sites layer ("My sites").
- * Only rendered for signed-in users (the sites layer reads Firestore).
- * Sits top-right so it clears the embedded app's back button (top-left).
+ * Map tab view switch — Analysis (site-analysis iframe) vs My sites (saved
+ * sites layer). Only rendered for signed-in users (the sites layer reads
+ * Firestore).
+ *
+ * Desktop: `MapViewSegment` is embedded in the TopBar so nothing floats over
+ * the embedded map-context app's own toolbar. Mobile: `MapViewToggle` floats
+ * top-right (the mobile TopBar has no room for it).
  */
 import React from 'react';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useAppStore, MapView } from '../../store/useAppStore';
 
-export type MapView = 'analyze' | 'sites';
+export type { MapView };
 
 const OPTIONS: Array<{ value: MapView; label: string }> = [
   { value: 'analyze', label: 'Analysis' },
   { value: 'sites', label: 'My sites' },
 ];
 
-export const MapViewToggle: React.FC<{
-  view: MapView;
-  onChange: (view: MapView) => void;
-}> = ({ view, onChange }) => {
-  const isMobile = useIsMobile();
-  // z must beat Leaflet's internal panes (tile 200 … popup 700, controls
-  // 1000) — they share this stacking context when the sites map is shown.
+/** Bare segmented control, styled for the light TopBar / app chrome. */
+export const MapViewSegment: React.FC = () => {
+  const view = useAppStore(s => s.mapView);
+  const setView = useAppStore(s => s.setMapView);
   return (
-    <div
-      className={`absolute ${isMobile ? 'top-2 right-2' : 'top-[50px] right-3'} z-[1100] flex rounded-md overflow-hidden border border-slate-600 shadow-lg`}
-      style={{ background: 'rgba(15, 23, 42, 0.92)' }}
-    >
+    <div className="flex rounded-md overflow-hidden border border-ink-200 bg-ink-100">
       {OPTIONS.map(({ value, label }) => (
         <button
           key={value}
-          onClick={() => onChange(value)}
-          className={`px-3 py-1.5 text-[11px] cursor-pointer border-0 ${
+          onClick={() => setView(value)}
+          className={`px-2.5 py-1 text-[11px] font-mono cursor-pointer border-0 transition-colors ${
             view === value
-              ? 'bg-violet-900 text-violet-200 font-semibold'
-              : 'bg-transparent text-slate-400 hover:text-slate-200'
+              ? 'bg-primary/10 text-primary font-semibold'
+              : 'bg-transparent text-ink-500 hover:text-ink-800'
           }`}
         >
           {label}
@@ -42,3 +39,12 @@ export const MapViewToggle: React.FC<{
     </div>
   );
 };
+
+/** Mobile-only floating wrapper. z must beat Leaflet's internal panes (tile
+ *  200 … popup 700, controls 1000) — they share this stacking context when
+ *  the sites map is shown. */
+export const MapViewToggle: React.FC = () => (
+  <div className="absolute top-2 right-2 z-[1100] shadow-lg rounded-md">
+    <MapViewSegment />
+  </div>
+);

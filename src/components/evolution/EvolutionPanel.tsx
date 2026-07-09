@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
@@ -9,7 +9,10 @@ import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { SectionCutControls } from '../viewport/SectionCutControls';
 import { Section } from '@/components/ui/section';
-import { ConfidenceVectorDisplay } from '../meme/OperatorResultPanel';
+import { useRecordViewerStore } from '../../store/useRecordViewerStore';
+import { viewFromCandidate } from '../../lib/operators/recordView';
+import { createCutterFromLLMOutput } from '../../lib/operators/applyOperator';
+import type { EvolutionCandidate } from '../../store/useEvolutionStore';
 
 /**
  * Evolution Mode sidebar panel.
@@ -53,10 +56,23 @@ export const EvolutionPanel: React.FC = () => {
 
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const cubeOperators = useMemeStore(s => s.cubeOperators);
+  const openViewer = useRecordViewerStore(s => s.open);
 
-  // Which candidate card is expanded to show its full meme + reasoning.
-  // Clicking a card selects it AND opens it; clicking again folds it closed.
-  const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
+  // Full two-pass prose lives in the shared full-reading drawer.
+  const openCandidateReading = (candidate: EvolutionCandidate) => {
+    let cutter: ReturnType<typeof createCutterFromLLMOutput> | null = null;
+    try {
+      cutter = createCutterFromLLMOutput(candidate.cutterConfig);
+    } catch {
+      // Malformed cutter config — drawer just shows no thumbnail ghost.
+    }
+    openViewer(
+      viewFromCandidate(candidate, {
+        snapshotCubeId: candidate.targetCubeId,
+        snapshotCutter: cutter,
+      }),
+    );
+  };
 
   // Live score breakdown
   const currentScore = useMemo(
@@ -187,14 +203,12 @@ export const EvolutionPanel: React.FC = () => {
             {candidates.map((candidate, idx) => {
               const isSelected = selectedCandidateId === candidate.id;
               const isPreviewing = previewCandidateId === candidate.id;
-              const isExpanded = expandedCandidateId === candidate.id;
               return (
                 <div
                   key={candidate.id}
                   onClick={() => {
                     previewCandidate(candidate.id);
                     selectCandidate(candidate.id);
-                    setExpandedCandidateId(isExpanded ? null : candidate.id);
                   }}
                   className={`p-2 rounded-md border cursor-pointer ${
                     isSelected
@@ -204,7 +218,7 @@ export const EvolutionPanel: React.FC = () => {
                       : 'bg-ink-100 border-ink-200'
                   }`}
                 >
-                  {/* Rank + score + expand indicator */}
+                  {/* Rank + score */}
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-ink-600 text-[11px] font-semibold">#{idx + 1}</span>
                     <div className="flex items-center gap-1.5">
@@ -226,34 +240,22 @@ export const EvolutionPanel: React.FC = () => {
                           style={{ width: `${Math.min(100, Math.max(2, 50 + candidate.compressionProgress * 2000))}%` }}
                         />
                       </div>
-                      <span className="text-ink-400 text-[11px] w-3 text-center">
-                        {isExpanded ? '−' : '+'}
-                      </span>
                     </div>
                   </div>
 
                   {/* Meme thumbnail + summary */}
                   <div className="flex gap-1.5 items-start mb-0.5">
-                    {candidate.memeImageUrl && !isExpanded && (
+                    {candidate.memeImageUrl && (
                       <img
                         src={candidate.memeImageUrl}
                         alt=""
                         className="w-9 h-9 object-cover rounded border border-ink-200 flex-shrink-0"
                       />
                     )}
-                    <div className={`text-ink-700 text-[11px] min-w-0 ${isExpanded ? '' : 'line-clamp-2'}`}>
+                    <div className="text-ink-700 text-[11px] min-w-0 line-clamp-2">
                       {candidate.pass1?.meme_summary || candidate.memeDescription.split('\n')[0]}
                     </div>
                   </div>
-
-                  {/* Full meme image when expanded */}
-                  {isExpanded && candidate.memeImageUrl && (
-                    <img
-                      src={candidate.memeImageUrl}
-                      alt={candidate.memeTitle || 'candidate meme'}
-                      className="w-full max-h-48 object-contain rounded border border-ink-200 bg-white my-1.5"
-                    />
-                  )}
 
                   {/* Rhetorical moves (pass1) */}
                   {candidate.pass1?.rhetorical_moves && candidate.pass1.rhetorical_moves.length > 0 && (
@@ -277,8 +279,8 @@ export const EvolutionPanel: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Target cube + operator (pass2) */}
-                  <div className="flex gap-1 flex-wrap">
+                  {/* Target cube + operator (pass2) + full reading */}
+                  <div className="flex gap-1 flex-wrap items-center">
                     <span className="px-1.5 py-px rounded bg-ink-200 text-ink-600 text-[10px]">
                       {candidate.cutterConfig.operator}
                     </span>
@@ -288,64 +290,16 @@ export const EvolutionPanel: React.FC = () => {
                     <span className="px-1.5 py-px rounded bg-ink-200 text-ink-500 text-[10px]">
                       cube {candidate.targetCubeId.slice(-4)}
                     </span>
-                  </div>
-
-                  {/* Full reasoning — the "why" behind the proposed cut */}
-                  {isExpanded && (
-                    <div
-                      className="mt-1.5 pt-1.5 border-t border-ink-200"
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCandidateReading(candidate);
+                      }}
+                      className="ml-auto text-primary text-[10px] font-medium bg-transparent border-0 cursor-pointer p-0 hover:underline whitespace-nowrap"
                     >
-                      {candidate.pass1?.cultural_tensions && candidate.pass1.cultural_tensions.length > 0 && (
-                        <div className="mb-1.5">
-                          <div className="text-ink-500 text-[10px] mb-0.5">Cultural tensions</div>
-                          {candidate.pass1.cultural_tensions.map((t, i) => (
-                            <p key={i} className="text-ink-700 text-[10px] leading-relaxed m-0 mb-0.5">
-                              {t.description}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                      {candidate.pass1?.site_resonance && (
-                        <div className="mb-1.5">
-                          <div className="text-ink-500 text-[10px] mb-0.5">Site resonance</div>
-                          <p className="text-ink-700 text-[10px] leading-relaxed m-0">
-                            {candidate.pass1.site_resonance}
-                          </p>
-                        </div>
-                      )}
-                      {candidate.pass2?.target_reasoning && (
-                        <div className="mb-1.5">
-                          <div className="text-ink-500 text-[10px] mb-0.5">Target reasoning</div>
-                          <p className="text-ink-700 text-[10px] leading-relaxed m-0">
-                            {candidate.pass2.target_reasoning}
-                          </p>
-                        </div>
-                      )}
-                      {candidate.pass2?.cutter.geometry_reasoning && (
-                        <div className="mb-1.5">
-                          <div className="text-ink-500 text-[10px] mb-0.5">Geometry reasoning</div>
-                          <p className="text-ink-700 text-[10px] leading-relaxed m-0">
-                            {candidate.pass2.cutter.geometry_reasoning}
-                          </p>
-                        </div>
-                      )}
-                      {candidate.cutterConfig.reasoning && (
-                        <div className="mb-1.5">
-                          <div className="text-ink-500 text-[10px] mb-0.5">Translation reasoning</div>
-                          <p className="text-ink-700 text-[10px] leading-relaxed m-0">
-                            {candidate.cutterConfig.reasoning}
-                          </p>
-                        </div>
-                      )}
-                      {candidate.pass2?.confidence_vector && (
-                        <ConfidenceVectorDisplay
-                          vector={candidate.pass2.confidence_vector}
-                          note={candidate.pass2.confidence_note}
-                        />
-                      )}
-                    </div>
-                  )}
+                      Full reading →
+                    </button>
+                  </div>
                 </div>
               );
             })}

@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { ViewportControls } from './ViewportControls';
 import { CameraController } from './CameraController';
 import { ViewportCameraToggle } from './ViewportCameraToggle';
+import { ZoomToCube } from './ZoomToCube';
 import * as THREE from 'three';
 import {
   registerCaptureFunction,
@@ -620,6 +621,9 @@ export const Viewport3D: React.FC = () => {
           showPataphysicalScene={showPataphysicalScene}
           showEvolutionScene={showEvolutionScene}
         />
+        {/* Selecting a candidate or clicking a cube glides the camera to it —
+            only in Evolution mode (Decode shares the scene as a backdrop). */}
+        <ZoomToCube active={activeMode === 'evolution'} />
 
         {showBuilderScene       && <BuilderScene />}
         {showEncodingScene      && <EncodingScene />}
