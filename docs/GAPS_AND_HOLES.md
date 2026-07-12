@@ -112,7 +112,14 @@ CSG-tree edit distance and topological genus remain aspirational; the shipping
 engine is the 4-sub-score signature. Already stated honestly in CONTEXT/specs.
 **Descope the claim; keep as future work.**
 
-### P2-4 · The cross-model comparison was never run
+### P2-4 · ~~The cross-model comparison was never run~~ — BUILT 2026-07-12
+The "Model lab" panel (Pataphysical → two-pass) runs one meme through
+several models side by side with confidence vectors, timings, and per-model
+errors, and applies the chosen reading with full provenance. Decision
+protocol: `docs/MODEL_STRATEGY.md`. First probe-set run still pending.
+Original finding kept below for the record.
+
+### P2-4 (original finding) · The cross-model comparison was never run
 The `model` param exists end-to-end but there is no selector UI, so the
 thesis-flavored experiment ("same meme, same prompt, different models — compare
 confidence vectors") has never been exercised. **This is the cheapest remaining

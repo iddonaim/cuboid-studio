@@ -111,5 +111,8 @@ tokenizer + behavioral shifts) · Opus 4.8 ($5/$25, most capable standard
 tier) · Haiku 4.5 ($1/$5, fast/simple tasks). Deprecated: Sonnet 4 (the
 current OpenRouter default), retirement TBD.
 
-**Decision record:** _pending — see the model-alignment discussion; this
-section should be updated with the chosen default and date once aligned._
+**Decision record:** lives in `docs/MODEL_STRATEGY.md` (the adoption
+protocol + log). As of 2026-07-12: the Model lab (cross-model comparison
+panel in Pataphysical two-pass mode) is built, model defaults are
+env-configurable (`TRANSLATION_MODEL`, `ENCODE_MODEL`), and the default
+choice is pending the first probe-set comparison run.

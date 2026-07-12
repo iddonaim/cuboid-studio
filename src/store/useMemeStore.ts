@@ -14,6 +14,33 @@ import { CUBE_VARIATIONS } from '../lib/cube/specifications';
 
 export type PassMode = 'single' | 'two_pass';
 
+/** A finished translation handed to translate() instead of calling the LLM —
+ *  used by the model-comparison panel to apply a chosen candidate through the
+ *  exact same geometry/record pipeline as a live translation. */
+export interface PrecomputedTranslation {
+  result: LLMOperatorResult;
+  pass1: TranslationPass1 | null;
+  pass2: TranslationPass2 | null;
+  confidenceVector: ConfidenceVector | null;
+  model: string | null;
+}
+
+/** One model's outcome in a comparison run. Nothing is applied to geometry
+ *  until the architect explicitly picks an entry. */
+export interface ComparisonEntry {
+  modelId: string;
+  label: string;
+  status: 'running' | 'done' | 'error';
+  error?: string;
+  elapsedMs?: number;
+  /** Model id the server actually used (echoed back by the API). */
+  resolvedModel?: string | null;
+  pass1?: TranslationPass1;
+  pass2?: TranslationPass2;
+  confidenceVector?: ConfidenceVector | null;
+  result?: LLMOperatorResult;
+}
+
 interface MemeState {
   // Input
   memeDescription: string;
@@ -69,9 +96,16 @@ interface MemeState {
    *  existed, it just used to be thrown away on deselect. */
   cubeTranslations: Record<string, CubeTranslation>;
 
+  // Model comparison (same meme through several models side by side)
+  comparisonEntries: ComparisonEntry[];
+  isComparing: boolean;
+  runModelComparison: (models: { id: string; label: string }[]) => Promise<void>;
+  applyComparisonEntry: (modelId: string) => Promise<void>;
+  clearComparison: () => void;
+
   // Actions
   initWorkingCube: () => Promise<void>;
-  translate: () => Promise<void>;
+  translate: (precomputed?: PrecomputedTranslation) => Promise<void>;
   revertLastOperator: () => void;
   reapplyWithTweaks: (tweakedResult: LLMOperatorResult) => void;
 
@@ -168,6 +202,97 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   // Operator history (standalone)
   operators: [],
 
+  // Model comparison
+  comparisonEntries: [],
+  isComparing: false,
+
+  runModelComparison: async (models) => {
+    const { memeDescription, locationTag, engagementLevel, selectedMemeImageUrl } = get();
+    if (!memeDescription.trim()) {
+      set({ lastError: 'Please enter a meme description' });
+      return;
+    }
+    if (models.length === 0) return;
+
+    set({
+      isComparing: true,
+      lastError: null,
+      comparisonEntries: models.map((m) => ({
+        modelId: m.id,
+        label: m.label,
+        status: 'running' as const,
+      })),
+    });
+
+    const update = (modelId: string, patch: Partial<ComparisonEntry>) =>
+      set({
+        comparisonEntries: get().comparisonEntries.map((e) =>
+          e.modelId === modelId ? { ...e, ...patch } : e
+        ),
+      });
+
+    // All models run in parallel on the same inputs; failures stay per-entry
+    // so one wrong model id never sinks the rest of the comparison.
+    await Promise.all(
+      models.map(async (m) => {
+        const t0 = performance.now();
+        try {
+          const twoPass = await translateMemeTwoPass({
+            memeDescription,
+            locationTag: locationTag || null,
+            engagementLevel,
+            memeImageUrl: selectedMemeImageUrl,
+            model: m.id,
+          });
+          const result: LLMOperatorResult = {
+            operator: twoPass.pass2.operator,
+            targets: twoPass.pass2.targets,
+            magnitude: twoPass.pass2.magnitude,
+            decay: twoPass.pass2.decay,
+            cutter: {
+              type: twoPass.pass2.cutter.type,
+              proportions: twoPass.pass2.cutter.proportions,
+              position: twoPass.pass2.cutter.position,
+              rotation: twoPass.pass2.cutter.rotation,
+            },
+            reasoning: twoPass.pass2.reasoning,
+          };
+          update(m.id, {
+            status: 'done',
+            elapsedMs: Math.round(performance.now() - t0),
+            resolvedModel: twoPass.model,
+            pass1: twoPass.pass1,
+            pass2: twoPass.pass2,
+            confidenceVector: twoPass.pass2.confidence_vector,
+            result,
+          });
+        } catch (error) {
+          update(m.id, {
+            status: 'error',
+            elapsedMs: Math.round(performance.now() - t0),
+            error: error instanceof Error ? error.message : 'Translation failed',
+          });
+        }
+      })
+    );
+
+    set({ isComparing: false });
+  },
+
+  applyComparisonEntry: async (modelId) => {
+    const entry = get().comparisonEntries.find((e) => e.modelId === modelId);
+    if (!entry || entry.status !== 'done' || !entry.result) return;
+    await get().translate({
+      result: entry.result,
+      pass1: entry.pass1 ?? null,
+      pass2: entry.pass2 ?? null,
+      confidenceVector: entry.confidenceVector ?? null,
+      model: entry.resolvedModel ?? entry.modelId,
+    });
+  },
+
+  clearComparison: () => set({ comparisonEntries: [], isComparing: false }),
+
   // Assembly helpers
   getActiveOperators: () => {
     const { targetCubeId, cubeOperators, operators } = get();
@@ -194,7 +319,14 @@ export const useMemeStore = create<MemeState>((set, get) => ({
     }
   },
 
-  translate: async () => {
+  translate: async (precomputed?: PrecomputedTranslation) => {
+    // Shape-guard: if this ever gets wired directly to an onClick, React would
+    // pass a MouseEvent here — only trust a payload that looks like ours.
+    const pre =
+      precomputed && typeof precomputed === 'object' && 'result' in precomputed
+        ? precomputed
+        : undefined;
+
     const { memeDescription, locationTag, engagementLevel, targetCubeId } = get();
     if (!memeDescription.trim()) {
       set({ lastError: 'Please enter a meme description' });
@@ -258,7 +390,15 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       let confidenceVector: ConfidenceVector | null = null;
       let modelUsed: string | null = null;
 
-      if (passMode === 'two_pass') {
+      if (pre) {
+        // Applying an already-completed translation (from the comparison
+        // panel) — skip the LLM call, keep everything downstream identical.
+        result = pre.result;
+        pass1 = pre.pass1;
+        pass2 = pre.pass2;
+        confidenceVector = pre.confidenceVector;
+        modelUsed = pre.model;
+      } else if (passMode === 'two_pass') {
         const twoPass = await translateMemeTwoPass({
           memeDescription,
           locationTag: locationTag || null,
@@ -294,7 +434,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         });
       }
 
-      if (passMode === 'two_pass') {
+      if (passMode === 'two_pass' && !pre) {
         set({ translationPhase: 'geometry' });
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
