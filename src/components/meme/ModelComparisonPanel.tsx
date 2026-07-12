@@ -73,7 +73,9 @@ export const ModelComparisonPanel: React.FC = () => {
         <p className="text-ink-500 text-[11px] leading-relaxed m-0">
           Run the same meme through several models and compare their readings
           before applying one. Uses the current site context and vocabulary;
-          nothing changes in the 3D scene until you apply a result.
+          nothing changes in the 3D scene until you apply a result. Applying
+          a different reading swaps it in — the lab undoes its own previous
+          apply first, never your manual work.
         </p>
 
         {/* Candidate models */}
