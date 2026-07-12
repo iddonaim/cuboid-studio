@@ -107,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         model: ENCODE_MODEL,
-        max_tokens: 2000,
+        max_tokens: 3000,
         system: systemPrompt,
         messages: [{
           role: 'user',
@@ -122,6 +122,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data = await response.json();
+    if (data.stop_reason === 'max_tokens') {
+      throw new Error('Model response hit the 3000-token limit and was cut off — raise max_tokens in api/encode-space.ts');
+    }
     const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
     if (!textBlock?.text) {
       throw new Error('No text content in Claude response');
