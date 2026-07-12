@@ -31,6 +31,14 @@ import { toAnthropicModelId } from '../src/lib/models.js';
 // `model` body field. Model strategy: docs/MODEL_STRATEGY.md.
 const DEFAULT_MODEL = process.env.TRANSLATION_MODEL?.trim() || 'anthropic/claude-sonnet-4';
 
+// Response token ceilings. Sized for newer-generation models whose tokenizers
+// count ~30% more tokens for the same text — a two-pass answer that fit in
+// 2000 tokens on Sonnet 4 truncates mid-JSON on Sonnet 5 (observed live,
+// 2026-07-12). Ceilings are upper bounds, not spend: only actually generated
+// tokens cost time and money.
+const MAX_TOKENS_TWO_PASS = 4096;
+const MAX_TOKENS_SINGLE = 1500;
+
 type PassMode = 'single' | 'two_pass';
 
 /**
@@ -315,7 +323,7 @@ function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Prom
       },
       body: JSON.stringify({
         model: opts.selectedModel,
-        max_tokens: opts.passMode === 'two_pass' ? 2000 : 1000,
+        max_tokens: opts.passMode === 'two_pass' ? MAX_TOKENS_TWO_PASS : MAX_TOKENS_SINGLE,
         messages: [
           { role: 'system', content: opts.systemPrompt },
           { role: 'user', content },
@@ -329,6 +337,13 @@ function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Prom
     }
 
     const data = await response.json();
+    // A response cut off at the token ceiling parses as broken JSON and used
+    // to surface as a misleading "malformed_response" — name the real cause.
+    if (data.choices?.[0]?.finish_reason === 'length') {
+      throw new Error(
+        `Model response hit the ${opts.passMode === 'two_pass' ? MAX_TOKENS_TWO_PASS : MAX_TOKENS_SINGLE}-token limit and was cut off — raise the ceiling in api/translate-meme.ts`
+      );
+    }
     const text = data.choices?.[0]?.message?.content;
     if (!text) throw new Error('No text content in OpenRouter response');
     return text;
@@ -389,7 +404,7 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
       },
       body: JSON.stringify({
         model: anthropicModel,
-        max_tokens: opts.passMode === 'two_pass' ? 2000 : 1000,
+        max_tokens: opts.passMode === 'two_pass' ? MAX_TOKENS_TWO_PASS : MAX_TOKENS_SINGLE,
         system: opts.systemPrompt,
         messages: [{ role: 'user', content: messageContent }],
       }),
@@ -401,6 +416,11 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
     }
 
     const data = await response.json();
+    if (data.stop_reason === 'max_tokens') {
+      throw new Error(
+        `Model response hit the ${opts.passMode === 'two_pass' ? MAX_TOKENS_TWO_PASS : MAX_TOKENS_SINGLE}-token limit and was cut off — raise the ceiling in api/translate-meme.ts`
+      );
+    }
     const textBlock = data.content?.find((b: any) => b.type === 'text');
     if (!textBlock?.text) throw new Error('No text content in Claude response');
     return textBlock.text;
