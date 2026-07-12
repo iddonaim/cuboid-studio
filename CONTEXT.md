@@ -7,6 +7,11 @@
 > This is a factual map of what is **actually in the repo and usable today**,
 > reconciled against the live code (not aspirational spec). Where a feature is
 > only specced and not built, it says so explicitly.
+>
+> **2026-07-12:** a full audit found drift in this file — see the
+> "Audit corrections (2026-07-12)" section at the bottom, which overrides the
+> body where they conflict. Deep reference: `docs/SYSTEM_MAP.md`,
+> `docs/GAPS_AND_HOLES.md`, `docs/BOOK_AND_PRESENTATION_GUIDE.md`.
 
 ---
 
@@ -268,3 +273,43 @@ A 2D notation system for cube assembly. **Shelved** — much of its intent now l
 - **Pataphysical translation history per site** — comparing confidence vectors across memes on one site is still a spec item.
 - **Map ↔ map-context full convergence** — currently an iframe + shared site-context handoff, not a single codebase.
 - **step2views revival** — shelved.
+
+---
+
+## Audit corrections (2026-07-12)
+
+A three-way audit (code inventory, spec reconciliation, map-context audit)
+verified this file against the live code. The body above is accurate on all
+load-bearing claims **except** the following, which this section overrides:
+
+1. **Pataphysical `passMode` defaults to `'two_pass'`** (`useMemeStore.ts`),
+   not `'single'` as stated in the Pataphysical section. Evolve still always
+   sends single-pass.
+2. **`TRANSLATION_PASS_MODE` env var is dead** — nothing reads it
+   (`resolvePassMode` in `api/translate-meme.ts` only honors the request's
+   `pass_mode`). Remove from env tables when next edited.
+3. **The Evolve feature vector is 14-D**, not 13-D (`FEATURE_DIM = 14`:
+   5 one-hot cutter types incl. legacy `plane` + 3 proportions + 3 position +
+   3 rotation).
+4. **Encode uses the Anthropic-native API with `claude-sonnet-4-6` hardcoded** —
+   only `translate-meme` goes through OpenRouter.
+5. **Undocumented shipped features** (post-2026-07-03): the editable
+   **translation lexicon** system ("Level A": `useTranslationLexiconStore`,
+   Firestore `translationLexicons` collection — also covered by
+   `firestore.rules` —, `TranslationLexiconEditor` shown in two-pass mode,
+   localStorage `cuboid:activeTranslationLexiconId`); the **record-viewer
+   drawer** (click any changed cube → `TranslationRecord`/`CubeChangeCard`
+   with full pass-1/pass-2/confidence provenance); **onboarding modal + guided
+   tour**; the **API activity indicator**.
+6. **The Map → Encode automatic handoff is currently broken upstream**: the
+   map-context launcher renders its dashboard in a nested srcdoc iframe and
+   never relays the dashboard's `analysis-complete` postMessage to
+   Cuboid Studio. The manual path (SiteContextCurator, My-sites) works. Fix
+   lives in map-context (`launcher.js`) — see `docs/GAPS_AND_HOLES.md` P0-1.
+7. Known-stale internals, harmless but confusing: comments at the top of
+   `useAppStore.ts` still describe Map/Decode as unmounted placeholders;
+   `SERIALIZATION_GUIDE.md`'s connection-rules table still shows the old
+   permissive shell row (shipped rules: shell blocks all connections).
+8. **Tags are session-only** — `useTagStore` is not serialized by
+   `captureComposition()`; only composition-level tags render on the Decode
+   overlay.
