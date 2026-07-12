@@ -99,6 +99,11 @@ interface MemeState {
   // Model comparison (same meme through several models side by side)
   comparisonEntries: ComparisonEntry[];
   isComparing: boolean;
+  /** The lab's most recent apply: which cube (or 'standalone') and which
+   *  operator record it created. Lets the next lab apply SWAP readings
+   *  (undo its own previous cut first) instead of stacking cuts — validated
+   *  against the live operator stack, so manual work is never auto-undone. */
+  comparisonAppliedMark: { key: string; recordId: string } | null;
   runModelComparison: (models: { id: string; label: string }[]) => Promise<void>;
   applyComparisonEntry: (modelId: string) => Promise<void>;
   clearComparison: () => void;
@@ -205,6 +210,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   // Model comparison
   comparisonEntries: [],
   isComparing: false,
+  comparisonAppliedMark: null,
 
   runModelComparison: async (models) => {
     const { memeDescription, locationTag, engagementLevel, selectedMemeImageUrl } = get();
@@ -282,6 +288,20 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   applyComparisonEntry: async (modelId) => {
     const entry = get().comparisonEntries.find((e) => e.modelId === modelId);
     if (!entry || entry.status !== 'done' || !entry.result) return;
+
+    // Swap, don't stack: if the lab's previous apply is still the newest
+    // change on the same target, undo it before applying the new reading.
+    // The record-id check makes this conservative — any manual translation,
+    // tweak, or revert since then breaks the match and nothing is undone.
+    const activeKey = get().targetCubeId ?? 'standalone';
+    const mark = get().comparisonAppliedMark;
+    const opsBefore = get().getActiveOperators();
+    const top = opsBefore[opsBefore.length - 1];
+    if (mark && mark.key === activeKey && top && top.id === mark.recordId) {
+      get().revertLastOperator();
+    }
+
+    const opsAtApply = get().getActiveOperators().length;
     await get().translate({
       result: entry.result,
       pass1: entry.pass1 ?? null,
@@ -289,6 +309,16 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       confidenceVector: entry.confidenceVector ?? null,
       model: entry.resolvedModel ?? entry.modelId,
     });
+
+    // Only remember the apply if it actually landed (translate() swallows
+    // its own errors into lastError, so check the stack grew).
+    const opsAfter = get().getActiveOperators();
+    const newTop = opsAfter[opsAfter.length - 1];
+    if (opsAfter.length === opsAtApply + 1 && newTop) {
+      set({ comparisonAppliedMark: { key: activeKey, recordId: newTop.id } });
+    } else {
+      set({ comparisonAppliedMark: null });
+    }
   },
 
   clearComparison: () => set({ comparisonEntries: [], isComparing: false }),
