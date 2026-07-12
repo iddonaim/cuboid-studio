@@ -26,8 +26,13 @@ buildings.
 | Geocoding | nominatim.openstreetmap.org |
 | Permits ("בקשות והיתרי בניה", layer 772) | gisn.tel-aviv.gov.il ArcGIS REST |
 | Parcel gush/helka (layer 524) | gisn.tel-aviv.gov.il ArcGIS REST |
-| Building footprints & heights | OpenStreetMap via Overpass API |
+| Building footprints & heights | gisn.tel-aviv.gov.il buildings layer (discovered at runtime), falling back to OpenStreetMap via Overpass |
 | 3D rendering | three.js r128 (inlined — the file is self-contained) |
+
+All municipal calls fall back to JSONP (script-tag loading) when the browser
+blocks cross-origin `fetch` — notably Safari opening the file locally — so the
+tool works there too. Overpass has no JSONP, which is why the municipal layer
+is preferred for buildings.
 
 ## Caveats
 

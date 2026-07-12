@@ -67,10 +67,18 @@
   #details .links a { font-size: 12px; text-decoration: none; border: 1px solid var(--line);
     padding: 6px 10px; border-radius: 8px; }
 
+  #statusbar { display: flex; align-items: center; gap: 10px; padding: 5px 12px;
+    background: #0c0f14; border-top: 1px solid var(--line);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
+  #statusMsg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
   #log { max-height: 118px; overflow-y: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 11px; padding: 6px 12px; background: #0c0f14; border-top: 1px solid var(--line); }
-  #log .ok { color: var(--green); } #log .err { color: var(--red); }
-  #log .warn { color: var(--amber); } #log div { padding: 1px 0; }
+    font-size: 11px; padding: 6px 12px; background: #0c0f14; border-top: 1px solid var(--line); display: none; }
+  .ok { color: var(--green); } .err { color: var(--red); }
+  .warn { color: var(--amber); } #log div { padding: 1px 0; }
+  .notice { border-radius: 10px; padding: 8px 12px; margin: 8px 2px; font-size: 12px;
+    direction: rtl; text-align: right; background: rgba(255,107,107,.08);
+    border: 1px solid rgba(255,107,107,.4); color: #ffb4b4; }
+  .notice.warn2 { background: rgba(255,179,71,.08); border-color: rgba(255,179,71,.4); color: #ffd699; }
 
   #splash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: var(--dim); font-size: 14px; text-align: center; line-height: 1.8; pointer-events: none; }
@@ -89,7 +97,6 @@
     <input id="radius" type="range" min="50" max="300" step="25" value="100">
     <span id="radiusLabel">100 m</span>
     <button id="go" class="primary">Scan</button>
-    <button id="toggleLog" class="ghost">log</button>
   </div>
   <div id="main">
     <div id="viewport">
@@ -110,6 +117,10 @@
       <div id="permitList"></div>
       <div id="details"></div>
     </div>
+  </div>
+  <div id="statusbar">
+    <span id="statusMsg">ready</span>
+    <button id="toggleLog" class="ghost">היסטוריה ▾</button>
   </div>
   <div id="log"></div>
 </div>
@@ -1204,8 +1215,16 @@ function log(msg, cls) {
   if (cls) d.className = cls;
   d.textContent = new Date().toLocaleTimeString("he-IL") + "  " + msg;
   logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+  const sm = $("statusMsg");
+  sm.textContent = msg; sm.className = cls || "";
+  if (cls === "err") setLogOpen(true); // problems must be visible
 }
-$("toggleLog").onclick = () => { logEl.style.display = logEl.style.display === "none" ? "" : "none"; };
+function setLogOpen(open) {
+  logEl.style.display = open ? "" : "none";
+  $("toggleLog").textContent = open ? "היסטוריה ▴" : "היסטוריה ▾";
+  if (open) logEl.scrollTop = logEl.scrollHeight;
+}
+$("toggleLog").onclick = () => setLogOpen(logEl.style.display === "none");
 $("radius").oninput = () => { $("radiusLabel").textContent = $("radius").value + " m"; };
 
 /* ---------- networking helpers (fetch with JSONP fallback) ---------- */
@@ -1280,8 +1299,84 @@ async function layerAliases(base) {
   } catch (e) { log("field aliases unavailable: " + e.message, "warn"); return {}; }
 }
 
+/* ---------- buildings: municipal GIS first, OpenStreetMap as fallback ----------
+   The GIS route matters beyond data quality: ArcGIS supports JSONP, which works
+   even where the browser refuses cross-origin fetch from a local file (Safari/iOS).
+   Overpass has no JSONP, so it can only help where fetch itself is allowed.  */
+const GIS_SERVICES = [
+  "https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer",
+  "https://gisn.tel-aviv.gov.il/arcgis/rest/services/WM/IView2WM/MapServer",
+];
+async function discoverBuildingsLayer() {
+  for (const svc of GIS_SERVICES) {
+    try {
+      const meta = await fetchWithFallback(svc + "?f=json", "callback");
+      const cands = (meta.layers || []).filter(l => /בניינ|מבנים|building/i.test(l.name || ""));
+      cands.sort((a, b) => (((b.name || "").trim() === "בניינים") ? 1 : 0) - (((a.name || "").trim() === "בניינים") ? 1 : 0));
+      if (cands.length) {
+        log('GIS buildings layer: "' + cands[0].name + '" (id ' + cands[0].id + ")", "ok");
+        return svc + "/" + cands[0].id;
+      }
+      log("no buildings layer listed in " + svc.split("/services/")[1], "warn");
+    } catch (e) { log("GIS metadata failed: " + e.message, "warn"); }
+  }
+  return null;
+}
+function gisFeatureToPoly(f, proj, aliases) {
+  const g = f.geometry;
+  if (!g || !g.rings || !g.rings.length || g.rings[0].length < 4) return null;
+  const rings = g.rings.map(r => r.map(pt => proj(pt[1], pt[0])));
+  const a = f.attributes || {};
+  const floors = parseFloat(fieldVal(a, [/komot|kumot|floor|קומות/i]));
+  // height fields exist too, but some are terrain elevation — only trust plausible values
+  const hRaw = parseFloat(fieldVal(a, [/gova|height|גובה/i]));
+  let h, est = false;
+  if (floors > 0 && floors < 100) h = floors * 3.1 + 1.2;
+  else if (hRaw > 2.5 && hRaw < 400) h = hRaw;
+  else { h = 10; est = true; }
+  const tags = {};
+  for (const k of Object.keys(a)) {
+    if (a[k] == null || String(a[k]).trim() === "") continue;
+    tags[(aliases && aliases[k]) || k] = fmtEpoch(a[k]) || a[k];
+  }
+  return { rings, tags, h, est, source: 'עיריית ת"א GIS' };
+}
+async function fetchBuildingsAny(lat, lon, meters, proj) {
+  try {
+    const base = await discoverBuildingsLayer();
+    if (base) {
+      const res = await queryLayerAround([base], lat, lon, meters + 30);
+      const aliases = await layerAliases(base);
+      const polys = (res.features || []).map(f => gisFeatureToPoly(f, proj, aliases)).filter(Boolean);
+      if (polys.length) return { polys, source: 'עיריית ת"א GIS' };
+      log("GIS buildings layer returned 0 footprints here — trying OpenStreetMap", "warn");
+    }
+  } catch (e) { log("GIS buildings failed: " + e.message + " — trying OpenStreetMap", "warn"); }
+  const osm = await fetchOsmBuildings(lat, lon, meters);
+  const polys = [];
+  for (const el of (osm.elements || [])) {
+    if (el.type === "way" && el.geometry && el.geometry.length > 3) {
+      polys.push({ rings: [el.geometry.map(g => proj(g.lat, g.lon))], tags: el.tags || {} });
+    } else if (el.type === "relation" && el.members) {
+      const outers = el.members.filter(m => m.role === "outer" && m.geometry);
+      const inners = el.members.filter(m => m.role === "inner" && m.geometry);
+      for (const o of outers) {
+        if (o.geometry.length < 4) continue;
+        const rings = [o.geometry.map(g => proj(g.lat, g.lon))];
+        inners.forEach(i => rings.push(i.geometry.map(g => proj(g.lat, g.lon))));
+        polys.push({ rings, tags: el.tags || {} });
+      }
+    }
+  }
+  polys.forEach(p => {
+    const { h, est } = buildingHeight(p.tags);
+    p.h = h; p.est = est; p.source = "OpenStreetMap";
+  });
+  return { polys, source: "OpenStreetMap" };
+}
+
 /* ---------- OpenStreetMap buildings ---------- */
-async function fetchBuildings(lat, lon, meters) {
+async function fetchOsmBuildings(lat, lon, meters) {
   const r = meters + 30;
   const q = `[out:json][timeout:30];(way["building"](around:${r},${lat},${lon});relation["building"](around:${r},${lat},${lon}););out body geom;`;
   let lastErr;
@@ -1451,6 +1546,11 @@ function fmtEpoch(v) {
 function renderPermitList() {
   const wrap = $("permitList"); wrap.innerHTML = "";
   $("listTitle").textContent = `Permits · נמצאו ${state.permits.length} בקשות/היתרים ברדיוס`;
+  for (const n of (state.notices || [])) {
+    const d = document.createElement("div");
+    d.className = "notice " + n.cls; d.textContent = n.text;
+    wrap.appendChild(d);
+  }
   state.permits.forEach((p, i) => {
     const s = permitSummary(p);
     const card = document.createElement("div");
@@ -1515,10 +1615,10 @@ function showBuildingDetails(b) {
   for (const k of Object.keys(t))
     rows += `<tr><td class="k">${esc(nice[k] || k)}</td><td dir="auto">${esc(String(t[k]))}</td></tr>`;
   el.innerHTML =
-    `<div style="direction:rtl;font-weight:600;margin-bottom:6px">🏢 מבנה (מקור: OpenStreetMap)</div>
+    `<div style="direction:rtl;font-weight:600;margin-bottom:6px">🏢 מבנה (מקור: ${esc(b.source || "OpenStreetMap")})</div>
      <table>${rows || "<tr><td class='k'>—</td><td>אין תגיות נוספות</td></tr>"}</table>
      <div style="color:var(--dim);font-size:11px;margin-top:6px;direction:rtl">
-       ${b.est ? "⚠️ גובה משוער (אין נתון קומות/גובה במקור) — הוצג כ-10 מ׳." : "גובה לפי נתוני OSM (קומות × ‎3.1 מ׳ או גובה מדוד)."}
+       ${b.est ? "⚠️ גובה משוער (אין נתון קומות/גובה במקור) — הוצג כ-10 מ׳." : "גובה לפי נתוני המקור (קומות × ‎3.1 מ׳ או גובה מדוד)."}
      </div>`;
 }
 
@@ -1543,9 +1643,10 @@ async function scan() {
     const proj = makeProjector(center.lat, center.lon);
 
     // 2) fetch in parallel: permits, buildings, parcel (gush/helka)
+    state.notices = [];
     const [permitsRes, buildingsRes, parcelRes] = await Promise.allSettled([
       queryLayerAround(PERMIT_LAYER_PATHS, center.lat, center.lon, radius),
-      fetchBuildings(center.lat, center.lon, radius),
+      fetchBuildingsAny(center.lat, center.lon, radius, proj),
       queryLayerAround(PARCEL_LAYER_PATHS, center.lat, center.lon, 5),
     ]);
 
@@ -1565,24 +1666,9 @@ async function scan() {
     $("legend").style.display = "";
 
     // buildings
-    let bCount = 0, target = null;
+    let target = null;
     if (buildingsRes.status === "fulfilled") {
-      const els = buildingsRes.value.elements || [];
-      const polys = [];
-      for (const el of els) {
-        if (el.type === "way" && el.geometry && el.geometry.length > 3) {
-          polys.push({ rings: [el.geometry.map(g => proj(g.lat, g.lon))], tags: el.tags || {} });
-        } else if (el.type === "relation" && el.members) {
-          const outers = el.members.filter(m => m.role === "outer" && m.geometry);
-          const inners = el.members.filter(m => m.role === "inner" && m.geometry);
-          for (const o of outers) {
-            if (o.geometry.length < 4) continue;
-            const rings = [o.geometry.map(g => proj(g.lat, g.lon))];
-            inners.forEach(i => rings.push(i.geometry.map(g => proj(g.lat, g.lon))));
-            polys.push({ rings, tags: el.tags || {} });
-          }
-        }
-      }
+      const polys = buildingsRes.value.polys;
       // which building contains the searched point?
       for (const p of polys) if (pointInRing(0, 0, p.rings[0])) { target = p; break; }
       if (!target && polys.length) {
@@ -1593,17 +1679,17 @@ async function scan() {
         }
       }
       for (const p of polys) {
-        const { h, est } = buildingHeight(p.tags);
-        p.est = est; p.h = h;
         const color = p === target ? 0xffb347 : 0x8b94a3;
-        p.mesh = addBuildingMesh(p.rings, h, color, p);
+        p.mesh = addBuildingMesh(p.rings, p.h, color, p);
       }
-      bCount = polys.length;
       state.polys = polys;
-      log(bCount + " buildings rendered (OpenStreetMap)", "ok");
+      log(polys.length + " buildings rendered (" + buildingsRes.value.source + ")", "ok");
+      if (!polys.length)
+        state.notices.push({ cls: "warn2", text: "לא נמצאו קווי בניין באזור הזה — ההיתרים מוצגים על קרקע שטוחה." });
     } else {
       log("buildings failed: " + buildingsRes.reason.message + " — showing permits on flat ground", "err");
       state.polys = [];
+      state.notices.push({ cls: "", text: "⚠️ שכבת הבניינים לא נטענה (העירייה וגם OpenStreetMap) — ההיתרים מוצגים על קרקע שטוחה. פרטים בשורת הסטטוס למטה." });
     }
 
     // permits
@@ -1643,6 +1729,7 @@ async function scan() {
     } else {
       log("permit layer failed: " + permitsRes.reason.message, "err");
       log("→ אפשר לבדוק ידנית ב-iView: gisn.tel-aviv.gov.il/iview2js4", "warn");
+      state.notices.push({ cls: "", text: "⚠️ שכבת ההיתרים של העירייה לא נטענה (" + esc(permitsRes.reason.message) + "). אפשר לבדוק ידנית במפת iView של העירייה." });
     }
     renderPermitList();
     log("— done —", "ok");
