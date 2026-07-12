@@ -301,11 +301,12 @@ load-bearing claims **except** the following, which this section overrides:
    drawer** (click any changed cube → `TranslationRecord`/`CubeChangeCard`
    with full pass-1/pass-2/confidence provenance); **onboarding modal + guided
    tour**; the **API activity indicator**.
-6. **The Map → Encode automatic handoff is currently broken upstream**: the
-   map-context launcher renders its dashboard in a nested srcdoc iframe and
-   never relays the dashboard's `analysis-complete` postMessage to
-   Cuboid Studio. The manual path (SiteContextCurator, My-sites) works. Fix
-   lives in map-context (`launcher.js`) — see `docs/GAPS_AND_HOLES.md` P0-1.
+6. **The Map → Encode automatic handoff was broken upstream — fixed
+   2026-07-12**: the map-context launcher rendered its dashboard in a nested
+   srcdoc iframe and never relayed the dashboard's `analysis-complete`
+   postMessage to Cuboid Studio (only the manual SiteContextCurator/My-sites
+   path worked). The launcher page now relays the message upward (fix in
+   map-context `launcher.js`, verified with a nested-iframe Playwright test).
 7. Known-stale internals, harmless but confusing: comments at the top of
    `useAppStore.ts` still describe Map/Decode as unmounted placeholders;
    `SERIALIZATION_GUIDE.md`'s connection-rules table still shows the old

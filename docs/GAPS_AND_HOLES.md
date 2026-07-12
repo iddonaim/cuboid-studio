@@ -12,7 +12,13 @@
 
 ## P0 — Broken right now (fix cheap)
 
-### P0-1 · The Map → Encode handoff never fires (map-context)
+### P0-1 · ~~The Map → Encode handoff never fires~~ — FIXED 2026-07-12
+Fixed in map-context (`launcher.js`): the launcher page now relays
+`analysis-complete` from its nested dashboard iframe up to the embedding app.
+Verified with a Playwright test reproducing the production nesting. Original
+finding kept below for the record.
+
+### P0-1 (original finding) · The Map → Encode handoff never fires (map-context)
 The dashboard's `analysis-complete` postMessage targets its own parent — the
 map-context picker page — which renders the dashboard in a nested `srcdoc`
 iframe and has **no listener and no relay** (`launcher.js:93` vs `:497-519`).
@@ -170,7 +176,7 @@ generalization):
 
 ## If you only do three things before the presentation
 
-1. **Fix P0-1** (map handoff relay) — the demo's first transition, ~5 lines.
+1. ~~**Fix P0-1** (map handoff relay)~~ — done 2026-07-12.
 2. **Decide the P2-1 story** — one honest paragraph/slide: operators as
    notation + provenance, geometry as cutter. This defuses the sharpest
    possible jury question.
