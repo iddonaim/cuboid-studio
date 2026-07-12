@@ -6,6 +6,7 @@ import {
   composeTranslationPrompt,
   isTranslationLexicon,
 } from '../src/prompts/translationLexicon.default.js';
+import { toAnthropicModelId } from '../src/lib/models.js';
 
 /**
  * Vercel serverless function: POST /api/translate-meme
@@ -25,7 +26,10 @@ import {
  * the prompt file to change translation behavior without any code changes.
  */
 
-const DEFAULT_MODEL = 'anthropic/claude-sonnet-4';
+// Default model for translation, overridable per deployment via the
+// TRANSLATION_MODEL env var (OpenRouter-style id) and per request via the
+// `model` body field. Model strategy: docs/MODEL_STRATEGY.md.
+const DEFAULT_MODEL = process.env.TRANSLATION_MODEL?.trim() || 'anthropic/claude-sonnet-4';
 
 type PassMode = 'single' | 'two_pass';
 
@@ -356,12 +360,11 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
   }
 
   // Resolve model name for Anthropic-native API. Clients send OpenRouter-style
-  // IDs like "anthropic/claude-sonnet-4" — strip the vendor prefix. If the
+  // IDs like "anthropic/claude-sonnet-4.6" — strip the vendor prefix and turn
+  // version dots into dashes (Anthropic spells it "claude-sonnet-4-6"). If the
   // result doesn't look like an Anthropic model, fall back to the default.
   const anthropicDefault = 'claude-sonnet-4-6';
-  let anthropicModel = opts.selectedModel.startsWith('anthropic/')
-    ? opts.selectedModel.slice('anthropic/'.length)
-    : opts.selectedModel;
+  let anthropicModel = toAnthropicModelId(opts.selectedModel);
   if (!anthropicModel.startsWith('claude-')) {
     console.warn(`Legacy Anthropic path: unrecognized model "${opts.selectedModel}", falling back to ${anthropicDefault}`);
     anthropicModel = anthropicDefault;

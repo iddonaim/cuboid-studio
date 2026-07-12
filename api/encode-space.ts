@@ -2,6 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fs from 'fs';
 import path from 'path';
 import { DEFAULT_LEXICON, type SpatialLexicon } from '../src/prompts/lexicon.default.js';
+import { toAnthropicModelId } from '../src/lib/models.js';
+
+// Vision model for encoding, overridable per deployment via ENCODE_MODEL
+// (Anthropic or OpenRouter-style id — normalized either way). Model strategy:
+// docs/MODEL_STRATEGY.md.
+const ENCODE_MODEL = toAnthropicModelId(process.env.ENCODE_MODEL?.trim() || 'claude-sonnet-4-6');
 
 type EncodingImage = { base64: string; mediaType: string; isPrimary: boolean };
 
@@ -100,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: ENCODE_MODEL,
         max_tokens: 2000,
         system: systemPrompt,
         messages: [{
@@ -240,6 +246,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(reading ? { reading } : {}),
       reasoning: parsed.reasoning,
       cubes: validCubes,
+      // Provenance: which model produced this reading. Additive — existing
+      // clients ignore it; future capture can persist it per record.
+      model: ENCODE_MODEL,
     });
   } catch (error) {
     console.error('Encoding error:', error);

@@ -5,6 +5,7 @@ import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
 import { SiteContextCurator } from './SiteContextCurator';
 import { TranslationLexiconEditor } from './TranslationLexiconEditor';
+import { ModelComparisonPanel } from './ModelComparisonPanel';
 import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
@@ -231,10 +232,14 @@ export const MemeInputPanel: React.FC = () => {
       </div>
       </Section>
 
+      {/* Model lab — cross-model comparison, two-pass only (the comparison
+          runs the v2 pipeline so confidence vectors are always present) */}
+      {passMode === 'two_pass' && <ModelComparisonPanel />}
+
       <div className="flex flex-col gap-2.5 pt-2.5 border-t border-ink-200">
       {/* Translate button */}
       <Button
-        onClick={translate}
+        onClick={() => translate()}
         disabled={isTranslating || isDisabled}
         className={`w-full h-auto py-2.5 text-[13px] font-semibold border-0 ${
           isTranslating ? 'bg-ink-200 text-ink-600 cursor-wait' : 'bg-primary hover:bg-primary/85 text-white'
