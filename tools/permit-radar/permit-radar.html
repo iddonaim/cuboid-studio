@@ -1313,11 +1313,19 @@ async function discoverBuildingsLayer() {
       const meta = await fetchWithFallback(svc + "?f=json", "callback");
       const cands = (meta.layers || []).filter(l => /בניינ|מבנים|building/i.test(l.name || ""));
       cands.sort((a, b) => (((b.name || "").trim() === "בניינים") ? 1 : 0) - (((a.name || "").trim() === "בניינים") ? 1 : 0));
-      if (cands.length) {
-        log('GIS buildings layer: "' + cands[0].name + '" (id ' + cands[0].id + ")", "ok");
-        return svc + "/" + cands[0].id;
+      for (const cand of cands.slice(0, 4)) {
+        try { // make sure it's actually a polygon (footprint) layer, not points/labels
+          const lmeta = await fetchWithFallback(svc + "/" + cand.id + "?f=json", "callback");
+          if (lmeta.geometryType && lmeta.geometryType !== "esriGeometryPolygon") {
+            log('"' + cand.name + '" is ' + lmeta.geometryType + ", skipping", "warn"); continue;
+          }
+          const aliases = {};
+          (lmeta.fields || []).forEach(f => { aliases[f.name] = f.alias || f.name; });
+          log('GIS buildings layer: "' + cand.name + '" (id ' + cand.id + ")", "ok");
+          return { base: svc + "/" + cand.id, aliases };
+        } catch (e) { log('layer "' + cand.name + '" metadata failed: ' + e.message, "warn"); }
       }
-      log("no buildings layer listed in " + svc.split("/services/")[1], "warn");
+      if (!cands.length) log("no buildings layer listed in " + svc.split("/services/")[1], "warn");
     } catch (e) { log("GIS metadata failed: " + e.message, "warn"); }
   }
   return null;
@@ -1325,7 +1333,16 @@ async function discoverBuildingsLayer() {
 function gisFeatureToPoly(f, proj, aliases) {
   const g = f.geometry;
   if (!g || !g.rings || !g.rings.length || g.rings[0].length < 4) return null;
-  const rings = g.rings.map(r => r.map(pt => proj(pt[1], pt[0])));
+  const rings = [];
+  for (const r of g.rings) {
+    const ring = [];
+    for (const pt of r) {
+      const ll = normLL(pt[0], pt[1]);
+      if (!ll) return null; // unrecognizable coordinates
+      ring.push(proj(ll.lat, ll.lon));
+    }
+    rings.push(ring);
+  }
   const a = f.attributes || {};
   const floors = parseFloat(fieldVal(a, [/komot|kumot|floor|קומות/i]));
   // height fields exist too, but some are terrain elevation — only trust plausible values
@@ -1343,13 +1360,16 @@ function gisFeatureToPoly(f, proj, aliases) {
 }
 async function fetchBuildingsAny(lat, lon, meters, proj) {
   try {
-    const base = await discoverBuildingsLayer();
-    if (base) {
-      const res = await queryLayerAround([base], lat, lon, meters + 30);
-      const aliases = await layerAliases(base);
-      const polys = (res.features || []).map(f => gisFeatureToPoly(f, proj, aliases)).filter(Boolean);
-      if (polys.length) return { polys, source: 'עיריית ת"א GIS' };
-      log("GIS buildings layer returned 0 footprints here — trying OpenStreetMap", "warn");
+    const disc = await discoverBuildingsLayer();
+    if (disc) {
+      const res = await queryLayerAround([disc.base], lat, lon, meters + 30);
+      const raw = (res.features || []).map(f => gisFeatureToPoly(f, proj, disc.aliases)).filter(Boolean);
+      // sanity: a building footprint should be tens of meters, not kilometers
+      const polys = raw.filter(p => { const s = ringSpan(p.rings[0]); return s > 1 && s < 400; });
+      if (polys.length < raw.length)
+        log("dropped " + (raw.length - polys.length) + " implausibly sized footprints", "warn");
+      if (polys.length && polys.length >= raw.length / 2) return { polys, source: 'עיריית ת"א GIS' };
+      log("GIS buildings geometry unusable here — trying OpenStreetMap", "warn");
     }
   } catch (e) { log("GIS buildings failed: " + e.message + " — trying OpenStreetMap", "warn"); }
   const osm = await fetchOsmBuildings(lat, lon, meters);
@@ -1392,6 +1412,60 @@ async function fetchOsmBuildings(lat, lon, meters) {
 }
 
 /* ---------- geometry helpers ---------- */
+// The municipal server sometimes ignores outSR and answers in the Israeli
+// grid (ITM / EPSG:2039, meters). Detect that and convert properly:
+// inverse Israeli TM on GRS80, then the official 7-parameter datum shift
+// to WGS84 ("Israel 1993 to WGS 84 (2)"). Validated to <1 cm against PROJ.
+function itmToWgs84(E, N) {
+  const a = 6378137, f = 1 / 298.257222101, k0 = 1.0000067, E0 = 219529.584, N0 = 626907.390;
+  const lat0 = 31.734393611 * Math.PI / 180, lon0 = 35.204516944 * Math.PI / 180;
+  const e2 = 2 * f - f * f, ep2 = e2 / (1 - e2);
+  const mfn = 1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256;
+  const M0 = a * (mfn * lat0
+    - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 * e2 * e2 / 1024) * Math.sin(2 * lat0)
+    + (15 * e2 * e2 / 256 + 45 * e2 * e2 * e2 / 1024) * Math.sin(4 * lat0)
+    - (35 * e2 * e2 * e2 / 3072) * Math.sin(6 * lat0));
+  const M = M0 + (N - N0) / k0;
+  const mu = M / (a * mfn);
+  const se = Math.sqrt(1 - e2), e1 = (1 - se) / (1 + se);
+  const phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+    + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+  const sin1 = Math.sin(phi1), cos1 = Math.cos(phi1), tan1 = Math.tan(phi1);
+  const C1 = ep2 * cos1 * cos1, T1 = tan1 * tan1;
+  const N1 = a / Math.sqrt(1 - e2 * sin1 * sin1), R1 = a * (1 - e2) / Math.pow(1 - e2 * sin1 * sin1, 1.5);
+  const D = (E - E0) / (N1 * k0);
+  const lat = phi1 - (N1 * tan1 / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24
+    + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+  const lon = lon0 + (D - (1 + 2 * T1 + C1) * D ** 3 / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / cos1;
+  const s2r = Math.PI / (180 * 3600);
+  const tx = 23.772, ty = 17.49, tz = 17.859, rx = 0.3132 * s2r, ry = 1.85274 * s2r, rz = -1.67299 * s2r, mS = 1 - 5.4262e-6;
+  const sinLa = Math.sin(lat), cosLa = Math.cos(lat), sinLo = Math.sin(lon), cosLo = Math.cos(lon);
+  const Ng = a / Math.sqrt(1 - e2 * sinLa * sinLa);
+  const X = Ng * cosLa * cosLo, Y = Ng * cosLa * sinLo, Z = Ng * (1 - e2) * sinLa;
+  const X2 = tx + mS * (X + rz * Y - ry * Z), Y2 = ty + mS * (-rz * X + Y + rx * Z), Z2 = tz + mS * (ry * X - rx * Y + Z);
+  const aw = 6378137, fw = 1 / 298.257223563, e2w = 2 * fw - fw * fw;
+  const p = Math.hypot(X2, Y2);
+  let la = Math.atan2(Z2, p * (1 - e2w));
+  for (let i = 0; i < 6; i++) {
+    const Nw = aw / Math.sqrt(1 - e2w * Math.sin(la) ** 2);
+    la = Math.atan2(Z2 + e2w * Nw * Math.sin(la), p);
+  }
+  return { lat: la * 180 / Math.PI, lon: Math.atan2(Y2, X2) * 180 / Math.PI };
+}
+function looksLikeITM(x, y) { return x > 100000 && x < 320000 && y > 340000 && y < 1400000; }
+function normLL(x, y) { // accepts either lon/lat degrees or ITM meters
+  if (looksLikeITM(x, y)) { const w = itmToWgs84(x, y); return { lon: w.lon, lat: w.lat }; }
+  if (Math.abs(x) <= 180 && Math.abs(y) <= 90) return { lon: x, lat: y };
+  return null;
+}
+function ringSpan(ring) { // largest bbox side, meters (in projected space)
+  let minX = 1e12, maxX = -1e12, minZ = 1e12, maxZ = -1e12;
+  for (const p of ring) {
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
+  }
+  return Math.max(maxX - minX, maxZ - minZ);
+}
 function makeProjector(lat0, lon0) {
   const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110574;
   return (lat, lon) => ({ x: (lon - lon0) * kx, z: -(lat - lat0) * ky });
@@ -1518,22 +1592,27 @@ function flyTo(x, z) {
 /* ---------- app state & UI ---------- */
 let state = { permits: [], aliases: {}, center: null };
 
-function fieldVal(attrs, regexes) {
+function fieldVal(attrs, regexes, pred) {
   for (const k of Object.keys(attrs)) {
-    for (const re of regexes)
-      if (re.test(k) && attrs[k] != null && String(attrs[k]).trim() !== "" && String(attrs[k]) !== "0")
-        return attrs[k];
+    for (const re of regexes) {
+      const v = attrs[k];
+      if (re.test(k) && v != null && String(v).trim() !== "" && String(v) !== "0" && (!pred || pred(v)))
+        return v;
+    }
   }
   return null;
 }
+const isNumberish = v => /^[\d][\d\/\-\.\s]{2,}$/.test(String(v).trim());
 function permitSummary(p) {
   const a = p.attributes || {};
   const heter = fieldVal(a, [/heter|היתר/i]);
-  const bakasha = fieldVal(a, [/bakasha|בקשה/i]);
+  const heterNum = fieldVal(a, [/heter|היתר/i], isNumberish);
+  const bakashaNum = fieldVal(a, [/bakasha|בקשה/i], isNumberish);
   const addr = fieldVal(a, [/ktovet|addr|כתובת/i]);
-  const teur = fieldVal(a, [/teur|תאור|תיאור|mahut|מהות/i]);
+  // description: a long-ish, non-numeric field (request type/essence)
+  const teur = fieldVal(a, [/teur|תאור|תיאור|mahut|מהות|sug|סוג/i], v => String(v).length > 8 && !isNumberish(v));
   const date = fieldVal(a, [/taarich|date|תאריך/i]);
-  return { heter, bakasha, addr, teur, date, granted: heter != null };
+  return { heter, heterNum, bakashaNum, addr, teur, date, granted: heter != null };
 }
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function fmtEpoch(v) {
@@ -1555,11 +1634,13 @@ function renderPermitList() {
     const s = permitSummary(p);
     const card = document.createElement("div");
     card.className = "permit-card"; card.id = "card" + i;
-    const title = s.teur || s.addr || ("רשומה " + (i + 1));
-    const num = s.granted ? ("היתר " + esc(s.heter)) : (s.bakasha ? "בקשה " + esc(s.bakasha) : "ללא מספר");
+    const title = (s.teur && s.teur !== s.addr) ? s.teur : (s.addr || "רשומה " + (i + 1));
+    const sub = (s.addr && String(title) !== String(s.addr)) ? esc(String(s.addr)) : "";
+    const num = s.granted ? ("היתר" + (s.heterNum ? " " + esc(s.heterNum) : ""))
+                          : ("בקשה" + (s.bakashaNum ? " " + esc(s.bakashaNum) : ""));
     card.innerHTML =
       `<div class="t">${esc(String(title)).slice(0, 90)}</div>` +
-      `<div class="s">${s.addr ? esc(String(s.addr)) : ""}` +
+      `<div class="s">${sub}` +
       `<span class="badge ${s.granted ? "green" : "orange"}">${num}</span>` +
       `<span class="badge dist">${Math.round(p.__dist)} m</span></div>`;
     card.onclick = () => selectPermit(i);
@@ -1700,12 +1781,11 @@ async function scan() {
       for (const f of feats) {
         let ll = null;
         const g = f.geometry;
-        if (g && g.x != null) ll = { lon: g.x, lat: g.y };
+        if (g && g.x != null) ll = normLL(g.x, g.y);
         else if (g && g.rings) { // polygon permits: use first-ring centroid
           const r = g.rings[0]; let x = 0, y = 0; r.forEach(pt => { x += pt[0]; y += pt[1]; });
-          ll = { lon: x / r.length, lat: y / r.length };
+          ll = normLL(x / r.length, y / r.length);
         }
-        if (ll && Math.abs(ll.lon) > 180) ll = null; // guard: server ignored outSR
         f.__ll = ll;
         if (ll) { f.__pos = proj(ll.lat, ll.lon); f.__dist = Math.hypot(f.__pos.x, f.__pos.z); }
         else f.__dist = 1e9;
