@@ -9,9 +9,17 @@ export interface EncodeSpaceImage {
 
 import type { SiteContextData } from '../storage/siteContext';
 
+/** Fields common to both single- and multi-image requests. `model` is an
+ *  OpenRouter-style id (e.g. "google/gemini-3.5-flash") sent by the encode
+ *  Model lab; omit it for a normal encode to keep the deployed default. */
+interface EncodeSpaceCommon {
+  siteContext?: SiteContextData | null;
+  model?: string;
+}
+
 export type EncodeSpaceRequest =
-  | { imageBase64: string; imageMediaType?: string; siteContext?: SiteContextData | null }
-  | { images: EncodeSpaceImage[]; siteContext?: SiteContextData | null };
+  | ({ imageBase64: string; imageMediaType?: string } & EncodeSpaceCommon)
+  | ({ images: EncodeSpaceImage[] } & EncodeSpaceCommon);
 
 export interface EncodedCube {
   variationId: string;
@@ -45,6 +53,8 @@ export interface EncodeSpaceResponse {
   reading?: SpatialReading;
   reasoning: string;
   cubes: EncodedCube[];
+  /** Model id the server actually used (echoed back for provenance). */
+  model?: string;
 }
 
 export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSpaceResponse> {
@@ -55,13 +65,16 @@ export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSp
   // null activeLexiconId falls back to DEFAULT_LEXICON inside getActiveLexicon().
   const lexicon: SpatialLexicon = useLexiconStore.getState().getActiveLexicon();
 
+  const modelOverride = request.model ? { model: request.model } : {};
+
   const body =
     'images' in request
-      ? { images: request.images, lexicon, ...(siteContext ? { siteContext } : {}) }
+      ? { images: request.images, lexicon, ...modelOverride, ...(siteContext ? { siteContext } : {}) }
       : {
           imageBase64: request.imageBase64,
           imageMediaType: request.imageMediaType || 'image/jpeg',
           lexicon,
+          ...modelOverride,
           ...(siteContext ? { siteContext } : {}),
         };
 

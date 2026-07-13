@@ -28,6 +28,41 @@ function clearReadingFields() {
   };
 }
 
+/** Grid-snap each cube and drop collisions with the seed. Shared by a normal
+ *  encode and the Model lab so a compared result renders identically to a
+ *  live one. Y axis is offset by CUBE_SIZE/2 (ground level = 21, not 0). */
+function processEncodedCubes(cubes: EncodedCube[], seedCubes: PlacedCube[]): EncodedCube[] {
+  const snapAxis = (v: number, axis: number) =>
+    axis === 1
+      ? Math.round((v - CUBE_SIZE / 2) / GRID_STRIDE) * GRID_STRIDE + CUBE_SIZE / 2
+      : Math.round(v / GRID_STRIDE) * GRID_STRIDE;
+  const occupied = new Set(seedCubes.map((c) => c.position.join(',')));
+  return cubes
+    .map((cube) => ({
+      ...cube,
+      position: cube.position.map(snapAxis) as [number, number, number],
+    }))
+    .filter((cube) => !occupied.has(cube.position.join(',')));
+}
+
+/** One model's outcome in an encode comparison run. Nothing renders until the
+ *  architect picks an entry via showComparisonEntry(). */
+export interface EncodeComparisonEntry {
+  modelId: string;
+  label: string;
+  status: 'running' | 'done' | 'error';
+  error?: string;
+  elapsedMs?: number;
+  /** Model id the server actually used (echoed back by the API). */
+  resolvedModel?: string | null;
+  reading?: SpatialReading | null;
+  reasoning?: string;
+  /** Processed (grid-snapped, seed-filtered) cubes, ready to render as-is. */
+  cubes?: EncodedCube[];
+  lexicon?: SpatialLexicon | null;
+  lexiconId?: string | null;
+}
+
 export interface UploadedEncodingImage {
   id: string;
   dataUrl: string;
@@ -101,6 +136,15 @@ interface EncodingState {
   seedEditOpen: boolean;
   openSeedEdit: () => void;
   closeSeedEdit: () => void;
+
+  // Model comparison (same photo(s) through several models, one preview canvas)
+  encodeComparisonEntries: EncodeComparisonEntry[];
+  isComparingEncode: boolean;
+  runEncodeComparison: (models: { id: string; label: string }[]) => Promise<void>;
+  /** Load one finished entry into the single preview (encodedCubes + reading),
+   *  so the existing canvas and Load buttons operate on it unchanged. */
+  showComparisonEntry: (modelId: string) => void;
+  clearEncodeComparison: () => void;
 
   // Actions
   encode: () => Promise<void>;
@@ -289,6 +333,123 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     });
   },
 
+  // Model comparison
+  encodeComparisonEntries: [],
+  isComparingEncode: false,
+
+  runEncodeComparison: async (models) => {
+    const {
+      multiPhotoEnabled,
+      uploadedImages,
+      primaryImageId,
+      imageBase64,
+      imageMediaType,
+      imagesRestoredOnly,
+    } = get();
+
+    if (imagesRestoredOnly) {
+      set({ lastError: 'This composition only has saved thumbnails — re-upload the photo(s) to encode.' });
+      return;
+    }
+
+    const hasMulti = multiPhotoEnabled && uploadedImages.length > 0;
+    const hasSingle = !multiPhotoEnabled && imageBase64;
+    if (!hasMulti && !hasSingle) {
+      set({ lastError: 'No image provided' });
+      return;
+    }
+    if (models.length === 0) return;
+
+    // Capture lexicon + site context once so every model reads under the same
+    // conditions (the comparison is only meaningful if the inputs are fixed).
+    const capturedLexiconId = useLexiconStore.getState().activeLexiconId;
+    const capturedLexicon = useLexiconStore.getState().getActiveLexicon();
+    const activeSite = getActiveSiteContext();
+    const hasSiteCoords =
+      activeSite && activeSite.quantitative.location.lat && activeSite.quantitative.location.lng;
+    const siteContext = hasSiteCoords ? activeSite : undefined;
+    const seedCubes = get().seedCubes;
+
+    set({
+      isComparingEncode: true,
+      lastError: null,
+      encodeComparisonEntries: models.map((m) => ({
+        modelId: m.id,
+        label: m.label,
+        status: 'running' as const,
+      })),
+    });
+
+    const update = (modelId: string, patch: Partial<EncodeComparisonEntry>) =>
+      set({
+        encodeComparisonEntries: get().encodeComparisonEntries.map((e) =>
+          e.modelId === modelId ? { ...e, ...patch } : e
+        ),
+      });
+
+    // All models run in parallel on the same inputs; failures stay per-entry so
+    // one wrong model id never sinks the rest of the comparison.
+    await Promise.all(
+      models.map(async (m) => {
+        const t0 = performance.now();
+        try {
+          const result = hasMulti
+            ? await encodeSpace({
+                images: uploadedImages.map((img) => ({
+                  base64: img.base64,
+                  mediaType: img.mediaType,
+                  isPrimary: img.id === primaryImageId,
+                })),
+                siteContext,
+                model: m.id,
+              })
+            : await encodeSpace({
+                imageBase64: imageBase64!,
+                imageMediaType: imageMediaType || 'image/jpeg',
+                siteContext,
+                model: m.id,
+              });
+          update(m.id, {
+            status: 'done',
+            elapsedMs: Math.round(performance.now() - t0),
+            resolvedModel: result.model ?? null,
+            reading: result.reading ?? null,
+            reasoning: result.reasoning,
+            cubes: processEncodedCubes(result.cubes, seedCubes),
+            lexicon: capturedLexicon,
+            lexiconId: capturedLexiconId,
+          });
+        } catch (error) {
+          update(m.id, {
+            status: 'error',
+            elapsedMs: Math.round(performance.now() - t0),
+            error: error instanceof Error ? error.message : 'Encoding failed',
+          });
+        }
+      })
+    );
+
+    set({ isComparingEncode: false });
+  },
+
+  showComparisonEntry: (modelId) => {
+    const entry = get().encodeComparisonEntries.find((e) => e.modelId === modelId);
+    if (!entry || entry.status !== 'done' || !entry.cubes) return;
+    const modelReading = entry.reading ?? null;
+    set({
+      encodedCubes: entry.cubes,
+      encodingReasoning: entry.reasoning ?? null,
+      encodingReadingOriginal: modelReading,
+      encodingReading: modelReading ? cloneReading(modelReading) : null,
+      readingEdited: false,
+      encodingLexicon: entry.lexicon ?? null,
+      encodingLexiconId: entry.lexiconId ?? null,
+      lastError: null,
+    });
+  },
+
+  clearEncodeComparison: () => set({ encodeComparisonEntries: [], isComparingEncode: false }),
+
   // Actions
   encode: async () => {
     const {
@@ -351,19 +512,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
           });
 
       // Grid-snap each position and remove collisions with seed cubes.
-      // Y axis is offset by CUBE_SIZE/2 (ground level = 21, not 0).
-      const snapAxis = (v: number, axis: number) =>
-        axis === 1
-          ? Math.round((v - CUBE_SIZE / 2) / GRID_STRIDE) * GRID_STRIDE + CUBE_SIZE / 2
-          : Math.round(v / GRID_STRIDE) * GRID_STRIDE;
-
-      const occupied = new Set(get().seedCubes.map(c => c.position.join(',')));
-      const processed = result.cubes
-        .map(cube => ({
-          ...cube,
-          position: cube.position.map(snapAxis) as [number, number, number],
-        }))
-        .filter(cube => !occupied.has(cube.position.join(',')));
+      const processed = processEncodedCubes(result.cubes, get().seedCubes);
 
       const modelReading = result.reading ?? null;
       set({

@@ -9,6 +9,12 @@ import { toAnthropicModelId } from '../src/lib/models.js';
 // docs/MODEL_STRATEGY.md.
 const ENCODE_MODEL = toAnthropicModelId(process.env.ENCODE_MODEL?.trim() || 'claude-sonnet-4-6');
 
+// Response ceiling. Sized for newer-generation models whose tokenizers count
+// ~30% more tokens for the same text (observed on the translation path). This
+// is an upper bound, not spend — only generated tokens cost anything — so
+// raising it from the old 3000 only prevents truncation on large assemblies.
+const MAX_TOKENS_ENCODE = 4096;
+
 type EncodingImage = { base64: string; mediaType: string; isPrimary: boolean };
 
 /**
@@ -73,64 +79,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const systemPrompt = composeSystemPrompt(grammarTemplate, activeLexicon);
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-  }
+  // Per-request model override (OpenRouter-style id, e.g. "google/gemini-3.5-flash"),
+  // sent by the encode Model lab. Absent for a normal encode, which keeps the
+  // exact Anthropic-direct path below.
+  const requestedModel =
+    typeof req.body.model === 'string' && req.body.model.trim() ? req.body.model.trim() : null;
 
-  function buildContent(userText: string): { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] {
-    const content: { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] = [];
-
-    images.forEach((img) => {
-      content.push({
-        type: 'image',
-        source: { type: 'base64', media_type: img.mediaType, data: img.base64 },
-      });
-    });
-
-    const primaryIndex = images.findIndex(img => img.isPrimary);
-    const imageContext = images.length > 1
+  // Compose the final user text, adding the multi-image preamble when needed.
+  const composeUserText = (userText: string): string => {
+    const primaryIndex = images.findIndex((img) => img.isPrimary);
+    return images.length > 1
       ? `You are receiving ${images.length} images. Image ${primaryIndex + 1} is the primary reference — it should anchor the assembly's overall character and scale. The remaining images are supplementary — they contribute specific spatial qualities but should not override the primary's fundamental character.\n\n${userText}`
       : userText;
+  };
 
-    content.push({ type: 'text', text: imageContext });
-    return content;
-  }
+  // Transport selection. A request that names a model goes through OpenRouter
+  // (any vendor) when an OpenRouter key is configured; everything else — every
+  // normal encode — takes the unchanged Anthropic-direct path. `modelUsed` is
+  // echoed back for provenance.
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
-  async function callClaude(content: { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[]): Promise<string> {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ENCODE_MODEL,
-        max_tokens: 3000,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content,
-        }],
-      }),
-    });
+  let runModel: (userText: string) => Promise<string>;
+  let modelUsed: string;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${errorText}`);
+  if (requestedModel && openRouterKey) {
+    modelUsed = requestedModel;
+    runModel = makeOpenRouterEncodeCaller(openRouterKey, requestedModel, systemPrompt, images, composeUserText);
+  } else {
+    if (!anthropicKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
     }
-
-    const data = await response.json();
-    if (data.stop_reason === 'max_tokens') {
-      throw new Error('Model response hit the 3000-token limit and was cut off — raise max_tokens in api/encode-space.ts');
-    }
-    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
-    if (!textBlock?.text) {
-      throw new Error('No text content in Claude response');
-    }
-
-    return textBlock.text;
+    // Normal encode uses ENCODE_MODEL; a named Claude model with no OpenRouter
+    // key falls back here (non-Claude ids will 400 visibly, per model).
+    modelUsed = requestedModel ? toAnthropicModelId(requestedModel) : ENCODE_MODEL;
+    runModel = makeAnthropicEncodeCaller(anthropicKey, modelUsed, systemPrompt, images, composeUserText);
   }
 
   const siteContext = req.body.siteContext;
@@ -164,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userPrompt = siteContextPrefix ? `${siteContextPrefix}${basePrompt}` : basePrompt;
 
   try {
-    let rawText = await callClaude(buildContent(userPrompt));
+    let rawText = await runModel(userPrompt);
 
     // Strip markdown code fences if present
     rawText = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
@@ -188,9 +171,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch {
       // Retry once with explicit JSON instruction
       console.log('First parse failed, retrying with explicit JSON instruction');
-      const retryText = await callClaude(buildContent(
+      const retryText = await runModel(
         `${userPrompt}\n\nIMPORTANT: Return ONLY valid JSON. No markdown fences, no backticks, no explanation outside the JSON object.`
-      ));
+      );
       const cleanedRetry = retryText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
 
       try {
@@ -251,7 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cubes: validCubes,
       // Provenance: which model produced this reading. Additive — existing
       // clients ignore it; future capture can persist it per record.
-      model: ENCODE_MODEL,
+      model: modelUsed,
     });
   } catch (error) {
     console.error('Encoding error:', error);
@@ -259,6 +242,113 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: error instanceof Error ? error.message : 'Encoding failed',
     });
   }
+}
+
+// --- Transports ------------------------------------------------------------
+//
+// Both return a caller `(userText) => Promise<string>` that sends the image(s)
+// plus the composed text and returns the raw model output. Unlike the meme
+// translation retry (which drops the image), the images ride along on every
+// call here — encoding is a vision task, so a retry that couldn't see the
+// space would be meaningless.
+
+/** OpenRouter (OpenAI-compatible, multimodal) — used for any named model. */
+function makeOpenRouterEncodeCaller(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  images: EncodingImage[],
+  composeUserText: (userText: string) => string,
+): (userText: string) => Promise<string> {
+  return async (userText: string) => {
+    const content: unknown[] = images.map((img) => ({
+      type: 'image_url',
+      image_url: { url: `data:${img.mediaType};base64,${img.base64}` },
+    }));
+    content.push({ type: 'text', text: composeUserText(userText) });
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://cuboidstudio.vercel.app',
+        'X-Title': 'Cuboid Studio',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: MAX_TOKENS_ENCODE,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    if (data.choices?.[0]?.finish_reason === 'length') {
+      throw new Error(
+        `Model response hit the ${MAX_TOKENS_ENCODE}-token limit and was cut off — raise MAX_TOKENS_ENCODE in api/encode-space.ts`
+      );
+    }
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new Error('No text content in OpenRouter response');
+    return text;
+  };
+}
+
+/** Anthropic native — the default encode path and the no-OpenRouter fallback. */
+function makeAnthropicEncodeCaller(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  images: EncodingImage[],
+  composeUserText: (userText: string) => string,
+): (userText: string) => Promise<string> {
+  return async (userText: string) => {
+    const content: unknown[] = images.map((img) => ({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mediaType, data: img.base64 },
+    }));
+    content.push({ type: 'text', text: composeUserText(userText) });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: MAX_TOKENS_ENCODE,
+        system: systemPrompt,
+        messages: [{ role: 'user', content }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Anthropic API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    if (data.stop_reason === 'max_tokens') {
+      throw new Error(
+        `Model response hit the ${MAX_TOKENS_ENCODE}-token limit and was cut off — raise MAX_TOKENS_ENCODE in api/encode-space.ts`
+      );
+    }
+    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
+    if (!textBlock?.text) {
+      throw new Error('No text content in Claude response');
+    }
+    return textBlock.text;
+  };
 }
 
 // --- Prompt composition ----------------------------------------------------
