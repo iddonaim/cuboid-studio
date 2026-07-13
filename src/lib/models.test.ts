@@ -20,11 +20,20 @@ describe('toAnthropicModelId', () => {
 
   it('does not touch non-version dots or foreign vendors', () => {
     expect(toAnthropicModelId('openai/gpt-4o')).toBe('openai/gpt-4o');
+    expect(toAnthropicModelId('openai/gpt-5.6-sol')).toBe('openai/gpt-5.6-sol');
+    expect(toAnthropicModelId('google/gemini-3.5-flash')).toBe('google/gemini-3.5-flash');
   });
 
   it('registry ids are unique and OpenRouter-shaped', () => {
     const ids = MODEL_OPTIONS.map(m => m.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const id of ids) expect(id.startsWith('anthropic/')).toBe(true);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9-]+\/[a-z0-9.-]+$/);
+  });
+
+  it('registry still leads with the deployed Anthropic default', () => {
+    // The panel pre-selects entries 0 and 1; non-Anthropic candidates are
+    // appended after the Claude family so those defaults stay meaningful.
+    expect(MODEL_OPTIONS[0].id).toBe('anthropic/claude-sonnet-4');
+    expect(MODEL_OPTIONS[1].id).toBe('anthropic/claude-sonnet-4.6');
   });
 });

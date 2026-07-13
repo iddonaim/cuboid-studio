@@ -53,6 +53,16 @@ export const MODEL_OPTIONS: ModelOption[] = [
     label: 'Haiku 4.5',
     note: 'Fast/cheap baseline — useful as a comparison floor',
   },
+  {
+    id: 'google/gemini-3.5-flash',
+    label: 'Gemini 3.5 Flash',
+    note: 'Google — near-Pro reasoning at Flash speed/cost. Needs the OpenRouter path (the deployed default)',
+  },
+  {
+    id: 'openai/gpt-5.6-sol',
+    label: 'GPT-5.6 Sol',
+    note: 'OpenAI flagship (the ChatGPT-era 5.6). Needs the OpenRouter path (the deployed default)',
+  },
 ];
 
 /**
@@ -63,6 +73,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
  * handle them (the API falls back to its default with a warning).
  */
 export function toAnthropicModelId(id: string): string {
+  if (!id.startsWith('anthropic/') && !id.startsWith('claude-')) return id;
   const stripped = id.startsWith('anthropic/') ? id.slice('anthropic/'.length) : id;
   return stripped.replace(/(\d)\.(\d)/g, '$1-$2');
 }
