@@ -29,14 +29,9 @@ export interface ModelOption {
  */
 export const MODEL_OPTIONS: ModelOption[] = [
   {
-    id: 'anthropic/claude-sonnet-4',
-    label: 'Sonnet 4',
-    note: 'Current translation default — deprecated by Anthropic, retirement pending',
-  },
-  {
     id: 'anthropic/claude-sonnet-4.6',
     label: 'Sonnet 4.6',
-    note: 'Same model Encode runs; the prompts were tuned in this era',
+    note: 'Current default across the system (encode + translation) — the model the prompts were tuned against',
   },
   {
     id: 'anthropic/claude-sonnet-5',
@@ -52,6 +47,11 @@ export const MODEL_OPTIONS: ModelOption[] = [
     id: 'anthropic/claude-haiku-4.5',
     label: 'Haiku 4.5',
     note: 'Fast/cheap baseline — useful as a comparison floor',
+  },
+  {
+    id: 'anthropic/claude-sonnet-4',
+    label: 'Sonnet 4 (legacy)',
+    note: 'Former translation default — deprecated by Anthropic; kept for back-comparison only',
   },
   {
     id: 'google/gemini-3.5-flash',

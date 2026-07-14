@@ -6,6 +6,7 @@ import { ArchthesisBrowser } from './ArchthesisBrowser';
 import { SiteContextCurator } from './SiteContextCurator';
 import { TranslationLexiconEditor } from './TranslationLexiconEditor';
 import { ModelComparisonPanel } from './ModelComparisonPanel';
+import { isModelLabEnabled } from '../../lib/modelLab';
 import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
@@ -233,8 +234,9 @@ export const MemeInputPanel: React.FC = () => {
       </Section>
 
       {/* Model lab — cross-model comparison, two-pass only (the comparison
-          runs the v2 pipeline so confidence vectors are always present) */}
-      {passMode === 'two_pass' && <ModelComparisonPanel />}
+          runs the v2 pipeline so confidence vectors are always present).
+          Archived: hidden unless re-enabled (src/lib/modelLab.ts). */}
+      {passMode === 'two_pass' && isModelLabEnabled() && <ModelComparisonPanel />}
 
       <div className="flex flex-col gap-2.5 pt-2.5 border-t border-ink-200">
       {/* Translate button */}

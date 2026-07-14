@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
 import { EncodingReadingPanel } from './EncodingReadingPanel';
 import { EncodeModelComparisonPanel } from './EncodeModelComparisonPanel';
+import { isModelLabEnabled } from '../../lib/modelLab';
 import { Section } from '@/components/ui/section';
 import { LexiconEditor } from './LexiconEditor';
 
@@ -385,8 +386,9 @@ export const EncodingPanel: React.FC = () => {
       </Section>
 
       {/* Model lab — cross-model comparison on the same photo(s). Only useful
-          once there's an image to run. */}
-      {hasImages && <EncodeModelComparisonPanel />}
+          once there's an image to run. Archived: hidden unless re-enabled
+          (src/lib/modelLab.ts). */}
+      {hasImages && isModelLabEnabled() && <EncodeModelComparisonPanel />}
 
       <div className="flex flex-col gap-2.5 pt-2.5 border-t border-ink-200">
       {/* Encode button */}

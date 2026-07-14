@@ -15,40 +15,37 @@ serverless functions. API keys never reach the browser.
 |---|---|---|
 | **Function** | `api/encode-space.ts` | `api/translate-meme.ts` |
 | **Service** | Anthropic API directly — always | **OpenRouter** when `OPENROUTER_API_KEY` is set; Anthropic API as fallback |
-| **Model** | `claude-sonnet-4-6` (hardcoded, line ~103) | OpenRouter default: `anthropic/claude-sonnet-4` (`DEFAULT_MODEL`, line 28) · Anthropic fallback default: `claude-sonnet-4-6` |
+| **Model** | `claude-sonnet-4-6` (default, `ENCODE_MODEL`) | OpenRouter default: `anthropic/claude-sonnet-4.6` (`DEFAULT_MODEL`) · Anthropic fallback default: `claude-sonnet-4-6` |
 | **max_tokens** | 2000 | 2000 (two-pass) / 1000 (single) |
 | **Sampling params** | none sent | none sent |
 | **Callers** | Encode button — 1 call per encode, with resized photos attached | Pataphysical (1 call per translate) **and** Evolve (1 call per candidate — a default generation = 6 parallel two-pass calls) |
-| **Per-request override** | none | `model` body param, validated + passed through (no UI yet — see GAPS P2-4) |
+| **Per-request override** | `model` body param (used by the Model lab) | `model` body param, validated + passed through (UI = the archived Model lab; see GAPS P2-4) |
 
 Provenance: every translation records the model that produced it
 (`lastModel`, shown in the record drawer and serialized into compositions).
 Encode results do **not** currently record their model — small gap worth
 closing whenever `encode-space.ts` is next touched.
 
-### Known inconsistency (as of this writing)
+### Model alignment (resolved 2026-07-14)
 
-The three model references do not agree:
+The three model references now agree on **Sonnet 4.6**:
 
-1. Encode: `claude-sonnet-4-6` (current-generation-adjacent, still active).
-2. Translation via OpenRouter (the deployed path): `anthropic/claude-sonnet-4`
-   — plain Sonnet 4, which **Anthropic has formally deprecated** (retirement
-   date TBD, migration target Sonnet-tier current). When it is retired, the
-   deployed translation path breaks or silently degrades.
+1. Encode: `claude-sonnet-4-6` (unchanged).
+2. Translation via OpenRouter (the deployed path): `anthropic/claude-sonnet-4.6`
+   — was plain Sonnet 4, which Anthropic deprecated; moved to 4.6.
 3. Translation fallback: `claude-sonnet-4-6`.
 
-So translations currently run on an older, deprecated model than encodings,
-and removing the OpenRouter key would silently *change* translation behavior.
-Fix tracked as the "model alignment" decision (see strategy below).
+Encode and translation therefore run the same model, and removing the
+OpenRouter key no longer changes translation behavior. Decision log:
+`docs/MODEL_STRATEGY.md`.
 
-**Implementation note for whoever aligns them:** OpenRouter slugs use dots
-(`anthropic/claude-sonnet-4.6` style) while Anthropic IDs use dashes
-(`claude-sonnet-4-6`). The fallback path only strips the `anthropic/` prefix
-(`translate-meme.ts` ~line 359) — it would pass a dotted ID straight to the
-Anthropic API, which rejects it. Any new default needs (a) the OpenRouter slug
-verified against `GET https://openrouter.ai/api/v1/models` at deploy time
-(unreachable from dev sandboxes), and (b) a dot→dash normalization or explicit
-map in the fallback resolver.
+**Note on id spellings (still relevant for future swaps):** OpenRouter slugs
+use dots (`anthropic/claude-sonnet-4.6`) while Anthropic IDs use dashes
+(`claude-sonnet-4-6`). The Anthropic-fallback resolver runs the selected id
+through `toAnthropicModelId()` (`src/lib/models.ts`), which strips the vendor
+prefix **and** converts version dots to dashes, so a dotted default resolves
+correctly. Any new default should still have its OpenRouter slug verified
+against `GET https://openrouter.ai/api/v1/models` at deploy time.
 
 ---
 
@@ -109,10 +106,12 @@ Sonnet 4.6 ($3/$15, the model this system was tuned against) · Sonnet 5
 ($3/$15, intro pricing until 2026-08-31; near-Opus coding quality; new
 tokenizer + behavioral shifts) · Opus 4.8 ($5/$25, most capable standard
 tier) · Haiku 4.5 ($1/$5, fast/simple tasks). Deprecated: Sonnet 4 (the
-current OpenRouter default), retirement TBD.
+former OpenRouter default, now retired from this system), retirement TBD.
 
 **Decision record:** lives in `docs/MODEL_STRATEGY.md` (the adoption
-protocol + log). As of 2026-07-12: the Model lab (cross-model comparison
-panel in Pataphysical two-pass mode) is built, model defaults are
-env-configurable (`TRANSLATION_MODEL`, `ENCODE_MODEL`), and the default
-choice is pending the first probe-set comparison run.
+protocol + log). As of 2026-07-14: the system is standardized on **Sonnet
+4.6** across encode + translation, model defaults stay env-configurable
+(`TRANSLATION_MODEL`, `ENCODE_MODEL`), and the **Model lab is archived** —
+hidden by default behind the `MODEL_LAB_ENABLED` flag / `?modellab=1` URL
+override (`src/lib/modelLab.ts`), code kept in-tree so it can be revived when
+a new model warrants a fresh comparison run.

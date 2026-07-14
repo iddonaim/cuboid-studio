@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import ThumbnailGenerator from './components/tools/ThumbnailGenerator';
+import { syncModelLabFlagFromUrl } from './lib/modelLab';
 import './index.css';
 
 // Service worker updates. The app is an installable PWA, so a service worker
@@ -27,6 +28,9 @@ const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
+
+// Apply the ?modellab= override (archived Model lab escape hatch) before render.
+syncModelLabFlagFromUrl();
 
 // Check for ?thumbnails query param to show generator
 const params = new URLSearchParams(window.location.search);

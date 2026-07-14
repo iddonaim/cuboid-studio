@@ -112,12 +112,15 @@ CSG-tree edit distance and topological genus remain aspirational; the shipping
 engine is the 4-sub-score signature. Already stated honestly in CONTEXT/specs.
 **Descope the claim; keep as future work.**
 
-### P2-4 · ~~The cross-model comparison was never run~~ — BUILT 2026-07-12
-The "Model lab" panel (Pataphysical → two-pass) runs one meme through
-several models side by side with confidence vectors, timings, and per-model
-errors, and applies the chosen reading with full provenance. Decision
-protocol: `docs/MODEL_STRATEGY.md`. First probe-set run still pending.
-Original finding kept below for the record.
+### P2-4 · ~~The cross-model comparison was never run~~ — BUILT 2026-07-12 · ARCHIVED 2026-07-14
+The "Model lab" panels (Pataphysical → two-pass, and Encode) run one input
+through several models side by side with confidence vectors, timings, and
+per-model errors, and apply the chosen reading with full provenance. Decision
+protocol: `docs/MODEL_STRATEGY.md`. **Archived 2026-07-14** once the system
+standardized on Sonnet 4.6: hidden by default behind the `MODEL_LAB_ENABLED`
+flag / `?modellab=1` URL override (`src/lib/modelLab.ts`), all code kept
+in-tree so it can be revived when a new model warrants a fresh run. Original
+finding kept below for the record.
 
 ### P2-4 (original finding) · The cross-model comparison was never run
 The `model` param exists end-to-end but there is no selector UI, so the
