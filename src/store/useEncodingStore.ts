@@ -436,6 +436,14 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const entry = get().encodeComparisonEntries.find((e) => e.modelId === modelId);
     if (!entry || entry.status !== 'done' || !entry.cubes) return;
     const modelReading = entry.reading ?? null;
+    // Match a normal encode: in standalone, drop any leftover edited-assembly
+    // snapshot (`seedCubes`) so the preview shows THIS composition rather than
+    // staying pinned to a prior load→edit round-trip (which would make the
+    // 3D preview look unchanged when a result is shown).
+    const clearStandaloneSeed =
+      get().mode === 'standalone'
+        ? { seedCubes: [] as PlacedCube[], seedCubeIds: new Set<string>() }
+        : {};
     set({
       encodedCubes: entry.cubes,
       encodingReasoning: entry.reasoning ?? null,
@@ -445,6 +453,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       encodingLexicon: entry.lexicon ?? null,
       encodingLexiconId: entry.lexiconId ?? null,
       lastError: null,
+      ...clearStandaloneSeed,
     });
   },
 
