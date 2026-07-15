@@ -125,7 +125,7 @@ Translates a meme into a spatial operator that re-cuts a target cube. **Both v1 
 - v1 set (also used by Evolve): inversion, amplification, drift, reassignment, preservation, shuffle.
 - v2 additions: consolidation, erosion, reinforcement.
 
-**LLM gateway:** `api/translate-meme.ts` uses **OpenRouter** when `OPENROUTER_API_KEY` is set (default model `anthropic/claude-sonnet-4`), otherwise falls back to the Anthropic Messages API. The prompt is the artifact, not the model.
+**LLM gateway:** `api/translate-meme.ts` uses **OpenRouter** when `OPENROUTER_API_KEY` is set (default model `anthropic/claude-sonnet-4.6`), otherwise falls back to the Anthropic Messages API. The prompt is the artifact, not the model.
 
 **Prompts:** `src/prompts/pataphysical-translation-v2.md` (two-pass), `src/prompts/pataphysical-translation.md` (v1). **Editing the prompt is how you change behavior; code rarely needs to change.**
 
@@ -225,7 +225,7 @@ public/thumbnails/    Pre-rendered variation thumbnails
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENROUTER_API_KEY` | Primary LLM gateway (default model `anthropic/claude-sonnet-4`). |
+| `OPENROUTER_API_KEY` | Primary LLM gateway (default model `anthropic/claude-sonnet-4.6`). |
 | `ANTHROPIC_API_KEY` | Legacy fallback, used only when OpenRouter key is absent. |
 | `VITE_MAP_CONTEXT_URL` | URL of the embedded map-context iframe (defaults to the Railway deployment). |
 | `VITE_FIREBASE_*` | Firebase Auth + Firestore config (Projects/Compositions). Blank → feature hidden. |
@@ -269,7 +269,7 @@ A 2D notation system for cube assembly. **Shelved** — much of its intent now l
 ## What's Actually Deferred / Not Yet Built
 
 - **Evolution fitness axes 5 & 6** (CSG tree edit distance, topological genus) — specced, not implemented. Four sub-scores ship.
-- **Pataphysical v2 multi-model selector UI** — `model` param exists server-side; no UI to pick models for cross-model comparison.
+- **Pataphysical/Encode multi-model "Model lab"** — built (cross-model comparison UI, `model` param end-to-end), then **archived 2026-07-14** once the system standardized on Sonnet 4.6. Hidden behind the `MODEL_LAB_ENABLED` flag / `?modellab=1` URL override (`src/lib/modelLab.ts`); code kept in-tree, revivable when a new model warrants a comparison.
 - **Pataphysical translation history per site** — comparing confidence vectors across memes on one site is still a spec item.
 - **Map ↔ map-context full convergence** — currently an iframe + shared site-context handoff, not a single codebase.
 - **step2views revival** — shelved.

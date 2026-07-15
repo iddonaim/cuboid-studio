@@ -29,7 +29,7 @@ import { toAnthropicModelId } from '../src/lib/models.js';
 // Default model for translation, overridable per deployment via the
 // TRANSLATION_MODEL env var (OpenRouter-style id) and per request via the
 // `model` body field. Model strategy: docs/MODEL_STRATEGY.md.
-const DEFAULT_MODEL = process.env.TRANSLATION_MODEL?.trim() || 'anthropic/claude-sonnet-4';
+const DEFAULT_MODEL = process.env.TRANSLATION_MODEL?.trim() || 'anthropic/claude-sonnet-4.6';
 
 // Response token ceilings. Sized for newer-generation models whose tokenizers
 // count ~30% more tokens for the same text — a two-pass answer that fit in

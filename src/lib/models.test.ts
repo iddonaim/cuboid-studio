@@ -30,10 +30,12 @@ describe('toAnthropicModelId', () => {
     for (const id of ids) expect(id).toMatch(/^[a-z0-9-]+\/[a-z0-9.-]+$/);
   });
 
-  it('registry still leads with the deployed Anthropic default', () => {
-    // The panel pre-selects entries 0 and 1; non-Anthropic candidates are
-    // appended after the Claude family so those defaults stay meaningful.
-    expect(MODEL_OPTIONS[0].id).toBe('anthropic/claude-sonnet-4');
-    expect(MODEL_OPTIONS[1].id).toBe('anthropic/claude-sonnet-4.6');
+  it('registry leads with the deployed Anthropic default (Sonnet 4.6)', () => {
+    // The panel pre-selects entries 0 and 1; entry 0 is the current deployed
+    // default and entry 1 its likely successor, so the default comparison
+    // pair is meaningful. Non-Anthropic candidates are appended after the
+    // Claude family.
+    expect(MODEL_OPTIONS[0].id).toBe('anthropic/claude-sonnet-4.6');
+    expect(MODEL_OPTIONS[1].id).toBe('anthropic/claude-sonnet-5');
   });
 });
