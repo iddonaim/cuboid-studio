@@ -4,7 +4,12 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import ThumbnailGenerator from './components/tools/ThumbnailGenerator';
 import { syncModelLabFlagFromUrl } from './lib/modelLab';
+import { applyAccent, loadStoredAccent } from './lib/theme/accent';
 import './index.css';
+
+// Apply the user's saved accent to the CSS variables before the first paint,
+// so a custom accent never flashes the default vermilion on load.
+applyAccent(loadStoredAccent());
 
 // Service worker updates. The app is an installable PWA, so a service worker
 // serves the last cached build. Registering through virtual:pwa-register (in

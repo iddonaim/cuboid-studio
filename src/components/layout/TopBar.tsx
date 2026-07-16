@@ -4,6 +4,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { AuthControls } from '../auth/AuthControls';
 import { SaveCompositionButton } from '../projects/SaveCompositionButton';
 import { MapViewSegment } from '../map/MapViewToggle';
+import { SettingsPopover } from '../settings/SettingsPopover';
 import { useAuthContext } from '../../contexts/AuthContext';
 
 const glassStyle: React.CSSProperties = {
@@ -121,6 +122,8 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
         >
           ?
         </button>
+
+        <SettingsPopover />
 
         <span
           className="font-mono text-[12px] text-ink-600 bg-ink-100 border border-ink-200 px-2 py-0.5 rounded-full select-none"

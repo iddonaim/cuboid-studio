@@ -33,6 +33,7 @@ import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
+import { AccentProvider } from './contexts/AccentContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { RecordViewerDrawer } from './components/meme/TranslationRecord';
@@ -466,6 +467,7 @@ const AppInner: React.FC = () => {
  */
 const App: React.FC = () => (
   <AuthProvider>
+    <AccentProvider>
     <AppInner />
     {/* Full-reading drawer for translation records — one instance app-wide */}
     <RecordViewerDrawer />
@@ -474,6 +476,7 @@ const App: React.FC = () => (
     <ApiActivityIndicator />
     <OnboardingModal />
     <GuidedTour />
+    </AccentProvider>
   </AuthProvider>
 );
 

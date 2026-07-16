@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useAccent } from '../../contexts/AccentContext';
 import * as THREE from 'three';
 import { CUBE_SIZE } from '../../lib/cube/constants';
 import { CubeVariation } from '../../lib/cube/specifications';
@@ -38,6 +39,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   overrideGeometry,
   provenance,
 }) => {
+  const { accent } = useAccent();
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
 
   if (targeted) {
     fillColor = '#f9e2d8';
-    edgeColor = '#bc4a1f';
+    edgeColor = accent;
   }
   if (selected) {
     fillColor = '#e4e9ef';

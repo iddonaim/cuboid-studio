@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useAccent } from '../../contexts/AccentContext';
 import { Circle, Group, Image, Layer, Line, Rect, Stage } from 'react-konva';
 import type Konva from 'konva';
 import { CanvasTile, useDecodeStore } from '../../store/useDecodeStore';
@@ -57,14 +58,16 @@ interface CanvasTileNodeProps {
   onDragEnd: (tile: CanvasTile, node: Konva.Group) => void;
 }
 
-const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
+const CanvasTileNode: React.FC<CanvasTileNodeProps> = (props) => {
+  const { accent } = useAccent();
+  const {
   tile,
   selected,
   activeSnap,
   onSelect,
   onDragMove,
   onDragEnd,
-}) => {
+  } = props;
   const image = useVariationImage(tile.variationId);
   const snapPoints = getSnapPoints(tile.variationId);
 
@@ -116,7 +119,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
         <Rect
           width={TILE_SIZE}
           height={TILE_SIZE}
-          stroke="#bc4a1f"
+          stroke={accent}
           strokeWidth={2}
           listening={false}
         />
@@ -127,7 +130,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = ({
           x={sp.x * TILE_SIZE}
           y={sp.y * TILE_SIZE}
           radius={SNAP_POINT_RADIUS}
-          fill="#bc4a1f"
+          fill={accent}
           stroke="#ffffff"
           strokeWidth={1}
           opacity={isSnapPointActive(activeSnap, tile.id, index) ? 1 : 0.75}
