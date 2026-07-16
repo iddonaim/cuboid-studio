@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAccent } from '../../contexts/AccentContext';
 import type { CompressibilitySnapshot } from '../../lib/evolution/compressibility';
 
 interface Props {
@@ -20,6 +21,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
   width = 218,
   height = 48,
 }) => {
+  const { accent } = useAccent();
   if (log.length < 2) {
     return (
       <div
@@ -72,7 +74,7 @@ export const CompressibilitySparkline: React.FC<Props> = ({
       cx={p.x}
       cy={p.y}
       r={2}
-      fill={i === points.length - 1 ? '#bc4a1f' : '#a39f93'}
+      fill={i === points.length - 1 ? accent : '#a39f93'}
     />
   ));
 

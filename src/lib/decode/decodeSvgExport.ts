@@ -1,5 +1,6 @@
 import { PlacedCube } from '../cube/types';
 import { variation2dPath } from './variation2dPath';
+import { CANONICAL_ACCENT } from '../theme/accent';
 
 const COLS = 4;
 const CELL_W = 120;
@@ -37,7 +38,7 @@ export function buildDecodeGridSvg(
     const label = escapeXml(cube.variationId);
     const evolvedMarker =
       opCount > 0
-        ? `<text x="${x + CELL_W - 6}" y="${y + 14}" text-anchor="end" font-family="system-ui,sans-serif" font-size="9" fill="#BC4A1F">evolved ×${opCount}</text>`
+        ? `<text x="${x + CELL_W - 6}" y="${y + 14}" text-anchor="end" font-family="system-ui,sans-serif" font-size="9" fill="${CANONICAL_ACCENT}">evolved ×${opCount}</text>`
         : '';
 
     return `

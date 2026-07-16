@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { CANONICAL_ACCENT } from '../../lib/theme/accent';
 import {
   Rotate3d,
   Slice,
@@ -22,7 +23,9 @@ import { Button } from '@/components/ui/button';
 const INK = '#24221C';
 const MUTED = '#7C786C';
 const LINE = '#DAD6CB';
-const VERMILION = '#BC4A1F';
+// Canonical drafting vermilion — the onboarding diagram is a fixed brand
+// illustration and intentionally ignores the user's chosen UI accent.
+const VERMILION = CANONICAL_ACCENT;
 
 /* ── Frame 1 — cube → cutters → 70 variations ── */
 const PrimitivesDiagram: React.FC = () => (

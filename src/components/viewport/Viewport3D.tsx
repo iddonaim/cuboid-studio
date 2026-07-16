@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react';
+import { useAccent } from '../../contexts/AccentContext';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ViewportControls } from './ViewportControls';
 import { CameraController } from './CameraController';
@@ -421,6 +422,7 @@ const EncodingScene: React.FC = () => {
  * Geometry overrides from previous pataphysical operations are preserved.
  */
 const EvolutionScene: React.FC = () => {
+  const { accent } = useAccent();
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
   const previewCandidateId = useEvolutionStore(s => s.previewCandidateId);
@@ -527,10 +529,10 @@ const EvolutionScene: React.FC = () => {
           ]}
         >
           <mesh geometry={cutterPreview} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-            <meshBasicMaterial color="#bc4a1f" transparent opacity={0.1} side={THREE.DoubleSide} />
+            <meshBasicMaterial color={accent} transparent opacity={0.1} side={THREE.DoubleSide} />
           </mesh>
           <lineSegments geometry={cutterEdges} position={[-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2]}>
-            <lineBasicMaterial color="#bc4a1f" linewidth={1} transparent opacity={0.7} />
+            <lineBasicMaterial color={accent} linewidth={1} transparent opacity={0.7} />
           </lineSegments>
         </group>
       )}

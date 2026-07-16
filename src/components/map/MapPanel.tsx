@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { getAccent } from '../../lib/theme/accent';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -46,7 +47,7 @@ export const MapPanel: React.FC = () => {
 
   const pinIcon = L.divIcon({
     className: '',
-    html: '<div style="width:12px;height:12px;background:#bc4a1f;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>',
+    html: `<div style="width:12px;height:12px;background:${getAccent()};border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
     iconSize: [12, 12],
     iconAnchor: [6, 6],
   });
@@ -74,8 +75,8 @@ export const MapPanel: React.FC = () => {
     } else {
       circleRef.current = L.circle([lat, lng], {
         radius: r,
-        color: '#bc4a1f',
-        fillColor: '#bc4a1f',
+        color: getAccent(),
+        fillColor: getAccent(),
         fillOpacity: 0.08,
         weight: 1,
       }).addTo(map);
@@ -153,8 +154,8 @@ export const MapPanel: React.FC = () => {
       } else {
         circleRef.current = L.circle([lat, lng], {
           radius: radiusRef.current,
-          color: '#bc4a1f',
-          fillColor: '#bc4a1f',
+          color: getAccent(),
+          fillColor: getAccent(),
           fillOpacity: 0.08,
           weight: 1,
         }).addTo(map);
@@ -167,8 +168,8 @@ export const MapPanel: React.FC = () => {
       markerRef.current = L.marker([initial.lat, initial.lng], { icon: pinIcon }).addTo(map);
       circleRef.current = L.circle([initial.lat, initial.lng], {
         radius: initial.radius,
-        color: '#bc4a1f',
-        fillColor: '#bc4a1f',
+        color: getAccent(),
+        fillColor: getAccent(),
         fillOpacity: 0.08,
         weight: 1,
       }).addTo(map);

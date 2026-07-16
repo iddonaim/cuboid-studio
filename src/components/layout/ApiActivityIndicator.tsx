@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAccent } from '../../contexts/AccentContext';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
@@ -78,7 +79,9 @@ function useActivity(): Activity {
 }
 
 /** Document sheet flying from a speech-bubble (culture) into a cube (geometry). */
-const TransferAnimation: React.FC<{ large?: boolean }> = ({ large = false }) => (
+const TransferAnimation: React.FC<{ large?: boolean }> = ({ large = false }) => {
+  const { accent } = useAccent();
+  return (
   <svg
     width={large ? '100%' : 92}
     height={large ? 64 : 26}
@@ -96,8 +99,8 @@ const TransferAnimation: React.FC<{ large?: boolean }> = ({ large = false }) => 
     <path d="M22 13 H70" stroke="#DAD6CB" strokeWidth="1" strokeDasharray="3 3" />
     {/* The flying document */}
     <g className="api-flying-doc">
-      <rect x="-3.5" y="-4.5" width="7" height="9" rx="1" fill="#FFFFFF" stroke="#BC4A1F" strokeWidth="1.1" />
-      <path d="M-1.5 -1.5 H1.5 M-1.5 0.5 H1.5 M-1.5 2.5 H0.5" stroke="#BC4A1F" strokeWidth="0.7" />
+      <rect x="-3.5" y="-4.5" width="7" height="9" rx="1" fill="#FFFFFF" stroke={accent} strokeWidth="1.1" />
+      <path d="M-1.5 -1.5 H1.5 M-1.5 0.5 H1.5 M-1.5 2.5 H0.5" stroke={accent} strokeWidth="0.7" />
     </g>
     {/* Cube — the geometry side */}
     <g stroke="#24221C" strokeWidth="1.2" fill="#FFFFFF" strokeLinejoin="round">
@@ -105,7 +108,8 @@ const TransferAnimation: React.FC<{ large?: boolean }> = ({ large = false }) => 
       <path d="M75 9.5 L81 12.5 L87 9.5 M81 12.5 L81 19.5" fill="none" />
     </g>
   </svg>
-);
+  );
+};
 
 export const ApiActivityIndicator: React.FC = () => {
   const activity = useActivity();
