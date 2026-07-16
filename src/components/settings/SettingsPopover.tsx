@@ -46,8 +46,8 @@ export const SettingsPopover: React.FC = () => {
     <div ref={rootRef} className="relative flex items-center">
       <button
         onClick={() => setOpen((v) => !v)}
-        title="Settings"
-        aria-label="Settings"
+        title="Preferences"
+        aria-label="Preferences"
         aria-expanded={open}
         className="text-ink-500 hover:text-ink-800 transition-colors bg-transparent border-none cursor-pointer p-1 flex items-center"
       >
@@ -57,7 +57,7 @@ export const SettingsPopover: React.FC = () => {
       {open && (
         <div
           role="dialog"
-          aria-label="Settings"
+          aria-label="Preferences"
           className="absolute right-0 top-full mt-2 w-64 rounded-md border border-ink-200 bg-card shadow-lg p-3 z-50"
           style={{ boxShadow: '0 6px 24px hsl(45 9% 13% / 0.12)' }}
         >
