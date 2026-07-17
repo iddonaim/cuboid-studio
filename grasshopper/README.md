@@ -20,10 +20,11 @@ Connect Cuboid Studio (browser) to Rhino/Grasshopper for parametric reconstructi
 ## Quick Start
 
 > **No repo needed:** both scripts in this folder can be downloaded straight
-> from the app — in the sidebar's **Export** section, click
-> **Setup Guide & Downloads** under "GH Live-Link" for the files plus a
-> step-by-step walkthrough. The steps below are the same content for people
-> working from the repo.
+> from the app — in the sidebar's **Export & Grasshopper** section, open the
+> setup guide (the **Setup Guide & Downloads** button while disconnected, or
+> the small **setup guide** link once connected) for the files plus a
+> step-by-step walkthrough. The in-app guide is the canonical walkthrough;
+> the notes below are the condensed repo-side version.
 
 ### 1. Start the bridge server
 
@@ -32,7 +33,7 @@ No installation needed — the server uses only the Python standard library
 
 ```bash
 cd grasshopper
-python cuboid_bridge_server.py
+python3 cuboid_bridge_server.py   # Windows: py cuboid_bridge_server.py
 ```
 
 You should see:
@@ -59,7 +60,8 @@ to the bridge server automatically.
 2. Copy the contents of `cuboid_gh_receiver.py` into it
 3. Set inputs:
    - `poll` (boolean toggle) — True to fetch, False to pause
-   - `port` (integer slider) — 9876 (same port as the bridge server)
+   - `port` (integer slider — set the slider's rounding to whole numbers) —
+     9876 (same port as the bridge server), or leave unconnected for the default
 4. Connect a **Timer** component (e.g. 1000ms interval) to trigger polling
 
 ### Outputs from the GH component

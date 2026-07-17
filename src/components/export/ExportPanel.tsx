@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { Box } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { buildAssemblyExport, downloadAssemblyJSON } from '../../lib/export/assemblyExport';
 import { liveLinkClient } from '../../lib/export/liveLinkClient';
 import { ARViewer } from '../ar/ARViewer';
-import { GrasshopperSetupGuide } from './GrasshopperSetupGuide';
+// Lazy: the guide embeds both Python scripts as strings (~11 KB) and only
+// mounts on demand — keep it out of the main chunk.
+const GrasshopperSetupGuide = lazy(() =>
+  import('./GrasshopperSetupGuide').then(m => ({ default: m.GrasshopperSetupGuide }))
+);
 import { SavedStatesPanel } from '../tools/SavedStatesPanel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -44,13 +48,19 @@ export const ExportPanel: React.FC = () => {
     }
   }, [placedCubes, cubeOperators, linkStatus]);
 
+  // Clearing or mistyping the port field yields 0/NaN — fall back to the
+  // default rather than connecting to a nonsense URL.
+  const effectivePort = Number.isInteger(port) && port > 0 && port < 65536 ? port : 9876;
+
   const handleConnect = useCallback(() => {
     if (liveLinkClient.isActive) {
       liveLinkClient.disconnect();
     } else {
-      liveLinkClient.connect(port);
+      liveLinkClient.connect(effectivePort);
     }
-  }, [port]);
+  }, [effectivePort]);
+
+  const closeGuide = useCallback(() => setShowGuide(false), []);
 
   const handleManualPush = useCallback(() => {
     const data = buildAssemblyExport(placedCubes, cubeOperators);
@@ -146,7 +156,7 @@ export const ExportPanel: React.FC = () => {
           </div>
         )}
 
-        {(linkStatus === 'disconnected' || linkStatus === 'error') && (
+        {linkStatus !== 'connected' && (
           <>
             <div className="text-ink-400 text-[10px] leading-relaxed mb-1.5">
               Needs the free bridge script running on this computer — the guide has the
@@ -194,7 +204,11 @@ export const ExportPanel: React.FC = () => {
       {showAR && <ARViewer onClose={() => setShowAR(false)} />}
 
       {/* Grasshopper setup guide modal */}
-      {showGuide && <GrasshopperSetupGuide onClose={() => setShowGuide(false)} />}
+      {showGuide && (
+        <Suspense fallback={null}>
+          <GrasshopperSetupGuide onClose={closeGuide} port={effectivePort} />
+        </Suspense>
+      )}
     </div>
   );
 };

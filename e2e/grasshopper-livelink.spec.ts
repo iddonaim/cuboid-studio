@@ -163,19 +163,23 @@ test.describe('Grasshopper setup guide', () => {
     // Assert the content is the real thing, not an empty or mangled blob.
     const downloadButtons = page.getByRole('button', { name: 'Download', exact: true });
 
+    // Exact-match against the repo files: the ?raw bundling must serve
+    // byte-identical scripts, not merely something that looks similar.
     const bridgePromise = page.waitForEvent('download');
     await downloadButtons.first().click();
     const bridge = await bridgePromise;
     expect(bridge.suggestedFilename()).toBe('cuboid_bridge_server.py');
-    const bridgeText = await downloadedText(bridge);
-    expect(bridgeText).toContain('DEFAULT_PORT = 9876');
-    expect(bridgeText).toContain('ThreadingHTTPServer');
+    expect(await downloadedText(bridge)).toBe(
+      readFileSync('grasshopper/cuboid_bridge_server.py', 'utf-8')
+    );
 
     const receiverPromise = page.waitForEvent('download');
     await downloadButtons.nth(1).click();
     const receiver = await receiverPromise;
     expect(receiver.suggestedFilename()).toBe('cuboid_gh_receiver.py');
-    expect(await downloadedText(receiver)).toContain('Rhino.Geometry');
+    expect(await downloadedText(receiver)).toBe(
+      readFileSync('grasshopper/cuboid_gh_receiver.py', 'utf-8')
+    );
 
     // Escape closes the guide
     await page.keyboard.press('Escape');

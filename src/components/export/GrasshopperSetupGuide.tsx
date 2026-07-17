@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -24,7 +25,9 @@ const downloadScript = (filename: string, source: string) => {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Deferred: revoking synchronously races the download navigation in
+  // Firefox/Safari and can yield an empty file.
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 };
 
 /* ── Small building blocks ── */
@@ -78,20 +81,35 @@ const DownloadRow: React.FC<{
 
 /* ── The guide ── */
 
-export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: number }> = ({
+  onClose,
+  port = 9876,
+}) => {
+  // startsWith, not includes: 'darwin' contains 'win'. Optional chain:
+  // navigator.platform is deprecated and absent in some webviews.
   const [os, setOs] = useState<string>(() =>
-    navigator.platform.toLowerCase().includes('win') ? 'windows' : 'mac'
+    navigator.platform?.toLowerCase().startsWith('win') ? 'windows' : 'mac'
   );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        // Capture-phase + stopPropagation so App.tsx's global Escape
+        // shortcut (clear cube selection / picker) doesn't also fire.
+        e.stopPropagation();
+        onClose();
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
   }, [onClose]);
 
-  return (
+  const pythonCmd = os === 'windows' ? 'py' : 'python3';
+
+  // Portal: on mobile this panel lives inside the BottomSheet, whose
+  // CSS transform would otherwise trap `position: fixed` and clip the
+  // modal to the sheet instead of covering the viewport.
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       style={{
@@ -227,7 +245,7 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
             <div className="mt-2 p-2 bg-ink-100 border border-ink-200 rounded-md">
               <div className="text-[11px] text-ink-500 mb-1">You&apos;ll know it worked when you see:</div>
               <div className="font-mono text-[11px] text-ink-700 whitespace-pre">
-                [Bridge] Listening on http://localhost:9876
+                [Bridge] Listening on http://localhost:{port}
               </div>
               <div className="text-[11px] text-ink-500 mt-1">
                 Leave this window open — closing it stops the link.
@@ -261,8 +279,11 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
                   copy everything, and paste it into the component.
                 </>,
                 <>
-                  Give it two inputs: <code>poll</code> (a Boolean Toggle, set to True) and{' '}
-                  <code>port</code> (a slider or panel set to 9876).
+                  Give it two inputs named exactly <code>poll</code> and <code>port</code> (zoom
+                  in on the component and use the ⊕ icons to add them, right-click each to
+                  rename). Wire a Boolean Toggle (set to True) into <code>poll</code> and a
+                  slider or panel set to <strong>{port}</strong> into <code>port</code> — if you
+                  use a slider, right-click it and set its rounding to whole numbers.
                 </>,
                 <>
                   Add a <strong>Timer</strong> at ~1000 ms and wire it to the component so it
@@ -292,13 +313,14 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
               </li>
               <li>
                 <strong>Port already in use</strong> — run{' '}
-                <code>python3 cuboid_bridge_server.py --port 9877</code> and set the same port
-                in this panel&apos;s settings and in Grasshopper.
+                <code>{pythonCmd} cuboid_bridge_server.py --port 9877</code> and set the same
+                port in this panel&apos;s settings and in Grasshopper.
               </li>
             </ul>
           </section>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

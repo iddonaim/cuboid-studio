@@ -46,9 +46,12 @@ import Rhino.Geometry as rg
 import Grasshopper as gh
 from Grasshopper.Kernel.Data import GH_Path
 
-# Default port (same as the bridge server)
+# Default port (same as the bridge server). GH sliders often deliver
+# floats ("9876.0") and panels deliver strings — urllib rejects both as
+# a nonnumeric port, so coerce whatever arrives into an int.
 if port is None:
     port = 9876
+port = int(float(port))
 
 # ─── Fetch from bridge server ─────────────────────────────────────────
 
