@@ -5,6 +5,7 @@ import { useMemeStore } from '../../store/useMemeStore';
 import { buildAssemblyExport, downloadAssemblyJSON } from '../../lib/export/assemblyExport';
 import { liveLinkClient } from '../../lib/export/liveLinkClient';
 import { ARViewer } from '../ar/ARViewer';
+import { GrasshopperSetupGuide } from './GrasshopperSetupGuide';
 import { SavedStatesPanel } from '../tools/SavedStatesPanel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +26,7 @@ export const ExportPanel: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [lastPush, setLastPush] = useState<string | null>(null);
   const [showAR, setShowAR] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Subscribe to live-link status changes
   useEffect(() => {
@@ -145,10 +147,27 @@ export const ExportPanel: React.FC = () => {
         )}
 
         {(linkStatus === 'disconnected' || linkStatus === 'error') && (
-          <div className="text-ink-400 text-[10px] leading-relaxed">
-            Run <code className="text-primary">python cuboid_bridge_server.py</code> first
-            (no install needed — it&apos;s in the repo&apos;s <code>grasshopper/</code> folder)
-          </div>
+          <>
+            <div className="text-ink-400 text-[10px] leading-relaxed mb-1.5">
+              Needs the free bridge script running on this computer — the guide has the
+              downloads and every step.
+            </div>
+            <Button
+              onClick={() => setShowGuide(true)}
+              className="w-full h-auto py-1 text-[11px] bg-ink-100 hover:bg-ink-200 text-ink-600 border border-ink-200"
+            >
+              Setup Guide &amp; Downloads
+            </Button>
+          </>
+        )}
+
+        {linkStatus === 'connected' && (
+          <button
+            onClick={() => setShowGuide(true)}
+            className="bg-transparent border-0 text-ink-400 hover:text-ink-600 cursor-pointer text-[10px] px-0 py-0.5 mt-1"
+          >
+            setup guide
+          </button>
         )}
       </div>
 
@@ -173,6 +192,9 @@ export const ExportPanel: React.FC = () => {
 
       {/* AR Viewer modal */}
       {showAR && <ARViewer onClose={() => setShowAR(false)} />}
+
+      {/* Grasshopper setup guide modal */}
+      {showGuide && <GrasshopperSetupGuide onClose={() => setShowGuide(false)} />}
     </div>
   );
 };
