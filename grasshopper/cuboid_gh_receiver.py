@@ -22,9 +22,10 @@ Setup:
     7. Attach a Timer (~1000 ms) to the component body for live updates
 
 Outputs:
-    - boxes        : list of Brep   — fully carved cubes (master cutters
-                                      + meme operator cuts), upright in
-                                      Rhino (Z-up), placed and rotated
+    - boxes        : list of Brep   — fully carved cubes: master cutters,
+                                      1.6 mm shell with one open face,
+                                      then meme operator cuts — upright
+                                      in Rhino (Z-up), placed and rotated
     - positions   : list of Point3d — cube centers, Rhino Z-up (they sit
                                       at the centers of the boxes output)
     - variations   : list of str     — variation IDs (e.g. "v-00")
@@ -57,6 +58,7 @@ except Exception:
 TOL = 0.01
 CUBE = 42.0
 HALF = CUBE / 2.0
+SHELL = 1.6  # wall thickness (src/lib/cube/constants.ts, golden-ratio homage)
 
 # ─── Master cutters ───────────────────────────────────────────────────
 # Ported from src/lib/cube/specifications.ts — keep in sync with the app.
@@ -171,6 +173,39 @@ def _subtract(breps, cutter):
     return out
 
 
+def _shell(breps):
+    """Hollow each solid to a 1.6 mm wall, opening the largest flat face.
+
+    Mirrors the app's displayed geometry (pre-shelled GLB models): walls
+    of SHELL thickness with one face left open — the one with the
+    largest flat surface area. Shelling can fail on gnarly solids; a
+    failure keeps the solid piece rather than dropping it.
+    """
+    out = []
+    for b in breps:
+        # Group planar faces by their plane (normal + offset), sum areas
+        groups = {}
+        for i in range(b.Faces.Count):
+            face = b.Faces[i]
+            rc, plane = face.TryGetPlane(TOL)
+            if not rc:
+                continue
+            n = plane.Normal
+            n.Unitize()
+            d = n.X * plane.Origin.X + n.Y * plane.Origin.Y + n.Z * plane.Origin.Z
+            key = (round(n.X, 3), round(n.Y, 3), round(n.Z, 3), round(d, 1))
+            amp = rg.AreaMassProperties.Compute(face)
+            area = amp.Area if amp else 0.0
+            indices, total = groups.get(key, ([], 0.0))
+            groups[key] = (indices + [i], total + area)
+        shelled = None
+        if groups:
+            open_faces = max(groups.values(), key=lambda g: g[1])[0]
+            shelled = rg.Brep.CreateShell(b, open_faces, SHELL, TOL)
+        out.append(shelled if shelled else b)
+    return out
+
+
 def _carve(cutter_indices, op_cutters):
     """Carved cube in cube-local space, centered at the origin."""
     base_plane = rg.Plane(rg.Point3d.Origin, rg.Vector3d(1, 0, 0), rg.Vector3d(0, 1, 0))
@@ -180,6 +215,9 @@ def _carve(cutter_indices, op_cutters):
     for idx in cutter_indices:
         if 0 <= idx < len(MASTER_CUTTERS):
             breps = _subtract(breps, _master_cutter_brep(MASTER_CUTTERS[idx]))
+    # Shell BEFORE operator cuts — the app applies meme cutters to the
+    # already-shelled variation geometry, so a meme cut goes through walls.
+    breps = _shell(breps)
     for cutter in op_cutters:
         breps = _subtract(breps, _operator_cutter_brep(cutter))
     center = rg.Transform.Translation(rg.Vector3d(-HALF, -HALF, -HALF))
@@ -192,7 +230,7 @@ def _carved_for(cube):
     """Cache-aware carve, keyed on everything that shapes this cube."""
     cutter_indices = cube.get("cutterIndices", [])
     op_cutters = [op.get("cutter", {}) for op in cube.get("operators", [])]
-    key = "cuboid_carve_v1:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
+    key = "cuboid_carve_v2:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
     if key not in _CACHE:
         _CACHE[key] = _carve(cutter_indices, op_cutters)
     return _CACHE[key]
