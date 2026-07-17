@@ -17,6 +17,9 @@ Setup:
     6. Connect a Timer component (e.g. 1000ms) to trigger polling
 
 Outputs:
+    - boxes        : list of Box     — solid 42 mm cubes, upright in Rhino
+                                       (Z-up) — connect nothing, just watch
+                                       the viewport
     - positions   : list of Point3d — cube center positions
     - variations   : list of str     — variation IDs (e.g. "v-00")
     - rotations_y  : list of int     — Y-axis rotation (0-3)
@@ -62,6 +65,7 @@ grid_stride = 42.6
 
 # Output lists
 positions = []
+boxes = []
 variations = []
 rotations_y = []
 rotations_x = []
@@ -102,10 +106,21 @@ if raw_json:
 
         cubes = data.get("cubes", [])
 
+        half = cube_size / 2.0
+
         for i, cube in enumerate(cubes):
-            # Position as Rhino Point3d
+            # Position as Rhino Point3d (app coordinates, Y-up, as exported)
             pos = cube.get("position", [0, 0, 0])
             positions.append(rg.Point3d(pos[0], pos[1], pos[2]))
+
+            # Solid cube, ready to preview. Cuboid Studio is Y-up but
+            # Rhino is Z-up, so swap Y/Z here — assemblies stand upright
+            # in the viewport. (90-degree cube rotations don't change an
+            # uncut box, so rotation is not applied to these.)
+            center = rg.Point3d(pos[0], pos[2], pos[1])
+            plane = rg.Plane(center, rg.Vector3d(1, 0, 0), rg.Vector3d(0, 1, 0))
+            extent = rg.Interval(-half, half)
+            boxes.append(rg.Box(plane, extent, extent, extent))
 
             # Variation ID
             variations.append(cube.get("variationId", ""))

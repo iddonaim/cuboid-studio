@@ -272,28 +272,46 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
             <NumberedList
               items={[
                 <>
-                  In Grasshopper, add a <strong>GHPython</strong> component to the canvas.
+                  In Grasshopper, add a <strong>Python script</strong> component to the canvas
+                  (called <em>GHPython</em> in Rhino 7, <em>Script</em> in Rhino 8 — set its
+                  language to Python).
                 </>,
                 <>
                   Open the downloaded <code>cuboid_gh_receiver.py</code> in any text editor,
                   copy everything, and paste it into the component.
                 </>,
                 <>
-                  Give it two inputs named exactly <code>poll</code> and <code>port</code> (zoom
-                  in on the component and use the ⊕ icons to add them, right-click each to
-                  rename). Wire a Boolean Toggle (set to True) into <code>poll</code> and a
-                  slider or panel set to <strong>{port}</strong> into <code>port</code> — if you
-                  use a slider, right-click it and set its rounding to whole numbers.
+                  <strong>Inputs:</strong> the component needs two input sockets named exactly{' '}
+                  <code>poll</code> and <code>port</code>. Zoom in close on its <em>left</em>{' '}
+                  edge until small ⊕ icons appear, add/remove until there are two, and
+                  right-click each name to rename it. Wire a <strong>Boolean Toggle</strong>{' '}
+                  (set to True) into <code>poll</code>. You can leave <code>port</code>{' '}
+                  unconnected — it uses {port} automatically. (If you do wire a slider into it,
+                  right-click the slider and set its rounding to whole numbers.)
                 </>,
                 <>
-                  Add a <strong>Timer</strong> at ~1000 ms and wire it to the component so it
-                  re-fetches every second.
+                  <strong>Outputs:</strong> same trick on the <em>right</em> edge — add an
+                  output and rename it to exactly <code>boxes</code>. The moment it exists,
+                  your cubes appear as solid 42&nbsp;mm boxes in the Rhino viewport. Nothing
+                  needs to be wired to it.
+                </>,
+                <>
+                  <strong>Make it live:</strong> add a <strong>Timer</strong> component and
+                  double-click it to set the interval to 1&nbsp;second. The Timer doesn&apos;t
+                  plug into a socket — drag a wire from its output nub onto the{' '}
+                  <em>middle of the Python component itself</em>; it latches onto the whole
+                  component with a dashed wire. Now changes in the browser show up in Rhino
+                  within a second.
                 </>,
               ]}
             />
             <Hint>
-              The component outputs cube positions, variation IDs, rotations, and cutter data —
-              ready to wire into boxes and booleans.
+              Not sure it&apos;s working? Attach a <strong>Panel</strong> to the
+              component&apos;s <code>out</code> socket — it prints status messages like
+              &ldquo;Loaded 13 cubes from bridge&rdquo;. And for parametric work beyond
+              preview, add more outputs the same way: <code>positions</code>,{' '}
+              <code>variations</code>, <code>rotations_y</code>, <code>cutter_ids</code>,{' '}
+              <code>operators</code>, <code>raw_json</code>.
             </Hint>
           </section>
 
