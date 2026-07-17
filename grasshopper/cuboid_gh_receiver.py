@@ -25,7 +25,8 @@ Outputs:
     - boxes        : list of Brep   — fully carved cubes (master cutters
                                       + meme operator cuts), upright in
                                       Rhino (Z-up), placed and rotated
-    - positions   : list of Point3d — cube centers (app coords, Y-up)
+    - positions   : list of Point3d — cube centers, Rhino Z-up (they sit
+                                      at the centers of the boxes output)
     - variations   : list of str     — variation IDs (e.g. "v-00")
     - rotations_y  : list of int     — Y-axis rotation (0-3)
     - rotations_x  : list of int     — X-axis rotation (0-3)
@@ -275,9 +276,11 @@ if raw_json:
         carve_failures = 0
 
         for i, cube in enumerate(cubes):
-            # Position as Rhino Point3d (app coordinates, Y-up, as exported)
+            # Cube center, remapped to Rhino Z-up like the carved solids —
+            # each point sits at its cube's center. Raw app coordinates
+            # remain available via raw_json.
             pos = cube.get("position", [0, 0, 0])
-            positions.append(rg.Point3d(pos[0], pos[1], pos[2]))
+            positions.append(rg.Point3d(pos[0], -pos[2], pos[1]))
 
             # Carved solid, placed and remapped upright for Rhino
             try:
