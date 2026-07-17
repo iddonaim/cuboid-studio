@@ -68,7 +68,7 @@ to the bridge server automatically.
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `boxes` | List<Box> | Solid 42 mm cubes, remapped upright for Rhino (Z-up) — instant preview |
+| `boxes` | List<Brep> | Fully carved cubes (master cutters + meme operator cuts), placed, rotated, and remapped upright for Rhino (Z-up) |
 | `positions` | List<Point3d> | Cube center positions in mm |
 | `variations` | List<string> | Variation IDs ("v-00" to "v-69") |
 | `rotations_y` | List<int> | Y-axis rotation (0-3 = 0/90/180/270 deg) |

@@ -292,8 +292,10 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
                 <>
                   <strong>Outputs:</strong> same trick on the <em>right</em> edge — add an
                   output and rename it to exactly <code>boxes</code>. The moment it exists,
-                  your cubes appear as solid 42&nbsp;mm boxes in the Rhino viewport. Nothing
-                  needs to be wired to it.
+                  your carved cubes — master cuts and meme cuts included — appear in the Rhino
+                  viewport, placed and rotated as in the browser. Nothing needs to be wired to
+                  it. The first load takes a few seconds while the cuts are computed; after
+                  that they&apos;re cached and updates are instant.
                 </>,
                 <>
                   <strong>Make it live:</strong> add a <strong>Timer</strong> component and
