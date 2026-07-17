@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Download } from '@playwright/test';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 /**
  * Grasshopper live-link end-to-end check.
@@ -137,6 +138,50 @@ test.describe('Grasshopper live-link (bridge running)', () => {
     // Stop cleanly disconnects
     await page.getByRole('button', { name: 'Stop' }).click();
     await expect(page.getByText('GH Live-Link: disconnected')).toBeVisible();
+  });
+});
+
+// Needs no bridge — the guide and its script downloads are fully client-side.
+test.describe('Grasshopper setup guide', () => {
+  const downloadedText = async (download: Download) =>
+    readFileSync((await download.path())!, 'utf-8');
+
+  test('guide opens from the Export panel and serves both scripts', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('cs-onboarding-seen', '1');
+    });
+    await page.goto('/');
+    await expect(page.getByText('Upload or capture a photo')).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('button', { name: 'Export & Grasshopper' }).click();
+    await page.getByRole('button', { name: 'Setup Guide & Downloads' }).click();
+    await expect(
+      page.getByRole('dialog', { name: 'Grasshopper live-link setup guide' })
+    ).toBeVisible();
+
+    // Both scripts download from the app itself — no repo access needed.
+    // Assert the content is the real thing, not an empty or mangled blob.
+    const downloadButtons = page.getByRole('button', { name: 'Download', exact: true });
+
+    const bridgePromise = page.waitForEvent('download');
+    await downloadButtons.first().click();
+    const bridge = await bridgePromise;
+    expect(bridge.suggestedFilename()).toBe('cuboid_bridge_server.py');
+    const bridgeText = await downloadedText(bridge);
+    expect(bridgeText).toContain('DEFAULT_PORT = 9876');
+    expect(bridgeText).toContain('ThreadingHTTPServer');
+
+    const receiverPromise = page.waitForEvent('download');
+    await downloadButtons.nth(1).click();
+    const receiver = await receiverPromise;
+    expect(receiver.suggestedFilename()).toBe('cuboid_gh_receiver.py');
+    expect(await downloadedText(receiver)).toContain('Rhino.Geometry');
+
+    // Escape closes the guide
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('dialog', { name: 'Grasshopper live-link setup guide' })
+    ).toBeHidden();
   });
 });
 

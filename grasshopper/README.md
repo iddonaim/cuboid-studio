@@ -19,6 +19,12 @@ Connect Cuboid Studio (browser) to Rhino/Grasshopper for parametric reconstructi
 
 ## Quick Start
 
+> **No repo needed:** both scripts in this folder can be downloaded straight
+> from the app — in the sidebar's **Export** section, click
+> **Setup Guide & Downloads** under "GH Live-Link" for the files plus a
+> step-by-step walkthrough. The steps below are the same content for people
+> working from the repo.
+
 ### 1. Start the bridge server
 
 No installation needed — the server uses only the Python standard library
