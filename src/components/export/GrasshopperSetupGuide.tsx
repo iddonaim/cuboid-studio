@@ -166,7 +166,7 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
               <DownloadRow
                 filename="cuboid_live_link.ghx"
                 source={ghCanvasSource}
-                role="Ready-made Grasshopper canvas — open it and skip step 4 entirely"
+                role="Ready-made Grasshopper canvas — everything pre-wired (step 4)"
               />
               <DownloadRow
                 filename="cuboid_bridge_server.py"
@@ -274,59 +274,62 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
 
           {/* Step 4 — Grasshopper */}
           <section>
-            <StepHeading n={4} title="Wire up Grasshopper" />
-            <p className="text-[12.5px] text-ink-700 leading-relaxed m-0 mb-1.5">
-              <strong>Easy path:</strong> open the downloaded{' '}
-              <code>cuboid_live_link.ghx</code> in Grasshopper — toggle, timer, and script come
-              pre-wired, and your cubes appear as soon as the bridge has data. The steps below
-              are only for building it into an existing definition by hand.
+            <StepHeading n={4} title="Open it in Grasshopper" />
+            <p className="text-[12.5px] text-ink-700 leading-relaxed m-0">
+              Open the downloaded <code>cuboid_live_link.ghx</code> in Grasshopper. That&apos;s
+              it — toggle, timer, and script come pre-wired, and your carved cubes (master cuts
+              and meme cuts included) appear in the Rhino viewport as soon as the bridge has
+              data. The first load takes a few seconds while the cuts are computed; after that
+              they&apos;re cached and updates land within a second.
             </p>
-            <NumberedList
-              items={[
-                <>
-                  In Grasshopper, add a <strong>Python script</strong> component to the canvas
-                  (called <em>GHPython</em> in Rhino 7, <em>Script</em> in Rhino 8 — set its
-                  language to Python).
-                </>,
-                <>
-                  Open the downloaded <code>cuboid_gh_receiver.py</code> in any text editor,
-                  copy everything, and paste it into the component.
-                </>,
-                <>
-                  <strong>Inputs:</strong> the component needs two input sockets named exactly{' '}
-                  <code>poll</code> and <code>port</code>. Zoom in close on its <em>left</em>{' '}
-                  edge until small ⊕ icons appear, add/remove until there are two, and
-                  right-click each name to rename it. Wire a <strong>Boolean Toggle</strong>{' '}
-                  (set to True) into <code>poll</code>. You can leave <code>port</code>{' '}
-                  unconnected — it uses {port} automatically. (If you do wire a slider into it,
-                  right-click the slider and set its rounding to whole numbers.)
-                </>,
-                <>
-                  <strong>Outputs:</strong> same trick on the <em>right</em> edge — add an
-                  output and rename it to exactly <code>boxes</code>. The moment it exists,
-                  your carved cubes — master cuts and meme cuts included — appear in the Rhino
-                  viewport, placed and rotated as in the browser. Nothing needs to be wired to
-                  it. The first load takes a few seconds while the cuts are computed; after
-                  that they&apos;re cached and updates are instant.
-                </>,
-                <>
-                  <strong>Make it live:</strong> add a <strong>Timer</strong> component and
-                  double-click it to set the interval to 1&nbsp;second. The Timer doesn&apos;t
-                  plug into a socket — drag a wire from its output nub onto the{' '}
-                  <em>middle of the Python component itself</em>; it latches onto the whole
-                  component with a dashed wire. Now changes in the browser show up in Rhino
-                  within a second.
-                </>,
-              ]}
-            />
             <Hint>
-              Not sure it&apos;s working? Attach a <strong>Panel</strong> to the
-              component&apos;s <code>out</code> socket — it prints status messages like
-              &ldquo;Loaded 13 cubes from bridge&rdquo;. And for parametric work beyond
-              preview, add more outputs the same way: <code>positions</code>,{' '}
-              <code>variations</code>, <code>rotations_y</code>, <code>cutter_ids</code>,{' '}
-              <code>operators</code>, <code>raw_json</code>.
+              The yellow Panel in the file shows live status, e.g. &ldquo;Loaded 13 cubes from
+              bridge&rdquo;. For parametric work beyond preview, the script component also
+              offers data outputs: <code>positions</code>, <code>variations</code>,{' '}
+              <code>rotations_y</code>, <code>cutter_ids</code>, <code>operators</code>,{' '}
+              <code>raw_json</code> — add output sockets with those names to expose them.
             </Hint>
+            <details className="mt-2">
+              <summary className="text-[11.5px] text-ink-500 cursor-pointer select-none">
+                Building it into an existing definition by hand instead? Full wiring steps
+              </summary>
+              <div className="mt-1.5">
+                <NumberedList
+                  items={[
+                    <>
+                      Add a <strong>Python script</strong> component to your canvas (called{' '}
+                      <em>GHPython</em> in Rhino 7, <em>Script</em> in Rhino 8 — set its
+                      language to Python).
+                    </>,
+                    <>
+                      Open the downloaded <code>cuboid_gh_receiver.py</code> in any text
+                      editor, copy everything, and paste it into the component (save in the
+                      script editor to apply).
+                    </>,
+                    <>
+                      <strong>Inputs:</strong> two input sockets named exactly{' '}
+                      <code>poll</code> and <code>port</code>. Zoom in close on the{' '}
+                      <em>left</em> edge until small ⊕ icons appear, add/remove until there
+                      are two, and right-click each name to rename it. Wire a{' '}
+                      <strong>Boolean Toggle</strong> (set to True) into <code>poll</code>;
+                      leave <code>port</code> unconnected — it uses {port} automatically. (If
+                      you do wire a slider into it, set the slider&apos;s rounding to whole
+                      numbers.)
+                    </>,
+                    <>
+                      <strong>Outputs:</strong> same trick on the <em>right</em> edge — add an
+                      output named exactly <code>boxes</code>. It previews in the viewport by
+                      itself; nothing needs to be wired to it.
+                    </>,
+                    <>
+                      <strong>Make it live:</strong> add a <strong>Timer</strong> at
+                      1&nbsp;second. It doesn&apos;t plug into a socket — drag a wire from its
+                      output nub onto the <em>middle of the Python component itself</em>.
+                    </>,
+                  ]}
+                />
+              </div>
+            </details>
           </section>
 
           {/* Troubleshooting */}
