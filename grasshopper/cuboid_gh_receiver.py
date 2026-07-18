@@ -70,9 +70,13 @@ MASTER_CUTTERS = [
     {"type": "sphere", "center": (42.00, 14.40, 29.20), "radius": 9.864601},
     {"type": "sphere", "center": (26.54, 42.00, 40.90), "radius": 13.0},
     {"type": "sphere", "center": (0.00, 24.30, 29.10), "radius": 17.085938},
-    {"type": "cylinder", "axis": "Y", "pos": (21.0, 21.0), "radius": 16.18034, "length": 51.0},
-    {"type": "cylinder", "axis": "X", "pos": (21.0, 21.0), "radius": 9.864601, "length": 51.0},
-    {"type": "cylinder", "axis": "Y", "pos": (40.20, 21.0), "radius": 13.0, "length": 51.0},
+    # Cylinder positions are the original GH plane origins, measured
+    # directly from the shipped models (public/models). The (21,21) /
+    # (40.2,21) values in specifications.ts are a reconstruction error —
+    # its own planeOrigin fields hold the true axis positions.
+    {"type": "cylinder", "axis": "Y", "pos": (4.90, -1.20), "radius": 16.18034, "length": 51.0},
+    {"type": "cylinder", "axis": "X", "pos": (-1.80, 27.80), "radius": 9.864601, "length": 51.0},
+    {"type": "cylinder", "axis": "Y", "pos": (30.60, 26.30), "radius": 13.0, "length": 51.0},
     {"type": "sphere", "center": (0.00, 37.00, 21.25), "radius": 17.085938},
 ]
 
@@ -281,7 +285,7 @@ def _carved_for(cube):
     """Cache-aware carve, keyed on everything that shapes this cube."""
     cutter_indices = cube.get("cutterIndices", [])
     op_cutters = [op.get("cutter", {}) for op in cube.get("operators", [])]
-    key = "cuboid_carve_v4:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
+    key = "cuboid_carve_v5:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
     if key not in _CACHE:
         _CACHE[key] = _carve(cutter_indices, op_cutters)
     return _CACHE[key]
