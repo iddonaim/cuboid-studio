@@ -173,18 +173,14 @@ def _subtract(breps, cutter):
     return out
 
 
-def _shell(breps):
-    """Hollow each solid to a 1.6 mm wall, opening the largest flat face.
+def _largest_flat_cube_face(breps):
+    """(axis, side) of the cube face with the most remaining flat area.
 
-    Mirrors the app's displayed geometry (pre-shelled GLB models): walls
-    of SHELL thickness with one face left open — the one with the
-    largest flat surface area. Shelling can fail on gnarly solids; a
-    failure keeps the solid piece rather than dropping it.
+    axis is 0/1/2 for X/Y/Z, side is 0.0 or 42.0. Returns (None, None)
+    if no planar face lies on any of the six cube planes.
     """
-    out = []
+    areas = {}
     for b in breps:
-        # Group planar faces by their plane (normal + offset), sum areas
-        groups = {}
         for i in range(b.Faces.Count):
             face = b.Faces[i]
             rc, plane = face.TryGetPlane(TOL)
@@ -192,17 +188,63 @@ def _shell(breps):
                 continue
             n = plane.Normal
             n.Unitize()
-            d = n.X * plane.Origin.X + n.Y * plane.Origin.Y + n.Z * plane.Origin.Z
-            key = (round(n.X, 3), round(n.Y, 3), round(n.Z, 3), round(d, 1))
-            amp = rg.AreaMassProperties.Compute(face)
-            area = amp.Area if amp else 0.0
-            indices, total = groups.get(key, ([], 0.0))
-            groups[key] = (indices + [i], total + area)
-        shelled = None
-        if groups:
-            open_faces = max(groups.values(), key=lambda g: g[1])[0]
-            shelled = rg.Brep.CreateShell(b, open_faces, SHELL, TOL)
-        out.append(shelled if shelled else b)
+            comps = (n.X, n.Y, n.Z)
+            origin = (plane.Origin.X, plane.Origin.Y, plane.Origin.Z)
+            for axis in range(3):
+                if abs(comps[axis]) > 0.999:
+                    coord = origin[axis]
+                    for side in (0.0, CUBE):
+                        if abs(coord - side) < 0.5:
+                            amp = rg.AreaMassProperties.Compute(face)
+                            if amp:
+                                key = (axis, side)
+                                areas[key] = areas.get(key, 0.0) + amp.Area
+    if not areas:
+        return None, None
+    return max(areas.items(), key=lambda kv: kv[1])[0]
+
+
+def _expanded_master_cutter_brep(spec):
+    grown = dict(spec)
+    grown["radius"] = spec["radius"] + SHELL
+    if spec["type"] == "cylinder":
+        grown["length"] = spec["length"] + 2.0 * SHELL
+    return _master_cutter_brep(grown)
+
+
+def _shell_by_boolean(breps, cutter_indices):
+    """Hollow to a 1.6 mm wall using only booleans (no CreateShell).
+
+    The original definition's recipe: subtract an inner solid inset by
+    SHELL on every face — except the open face, where it pokes through —
+    with every master cutter ENLARGED by SHELL carved out of it, which
+    is what leaves SHELL-thick walls around the cut openings. The open
+    face is the one with the largest remaining flat area. If the final
+    subtraction fails, the solid piece is kept.
+    """
+    axis, side = _largest_flat_cube_face(breps)
+    if axis is None:
+        return breps
+    lo = [SHELL, SHELL, SHELL]
+    hi = [CUBE - SHELL, CUBE - SHELL, CUBE - SHELL]
+    if side == 0.0:
+        lo[axis] = -1.0  # extend past the open face so it stays open
+    else:
+        hi[axis] = CUBE + 1.0
+    plane = rg.Plane(rg.Point3d.Origin, rg.Vector3d(1, 0, 0), rg.Vector3d(0, 1, 0))
+    inner = rg.Box(plane, rg.Interval(lo[0], hi[0]), rg.Interval(lo[1], hi[1]),
+                   rg.Interval(lo[2], hi[2])).ToBrep()
+    inners = [inner]
+    for idx in cutter_indices:
+        if 0 <= idx < len(MASTER_CUTTERS):
+            inners = _subtract(inners, _expanded_master_cutter_brep(MASTER_CUTTERS[idx]))
+    out = []
+    for b in breps:
+        result = rg.Brep.CreateBooleanDifference([b], inners, TOL)
+        if result:
+            out.extend(result)
+        else:
+            out.append(b)  # shell failed: keep solid rather than vanish
     return out
 
 
@@ -217,7 +259,7 @@ def _carve(cutter_indices, op_cutters):
             breps = _subtract(breps, _master_cutter_brep(MASTER_CUTTERS[idx]))
     # Shell BEFORE operator cuts — the app applies meme cutters to the
     # already-shelled variation geometry, so a meme cut goes through walls.
-    breps = _shell(breps)
+    breps = _shell_by_boolean(breps, cutter_indices)
     for cutter in op_cutters:
         breps = _subtract(breps, _operator_cutter_brep(cutter))
     center = rg.Transform.Translation(rg.Vector3d(-HALF, -HALF, -HALF))
@@ -230,7 +272,7 @@ def _carved_for(cube):
     """Cache-aware carve, keyed on everything that shapes this cube."""
     cutter_indices = cube.get("cutterIndices", [])
     op_cutters = [op.get("cutter", {}) for op in cube.get("operators", [])]
-    key = "cuboid_carve_v2:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
+    key = "cuboid_carve_v3:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
     if key not in _CACHE:
         _CACHE[key] = _carve(cutter_indices, op_cutters)
     return _CACHE[key]
