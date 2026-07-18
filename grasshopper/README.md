@@ -56,6 +56,10 @@ to the bridge server automatically.
 
 ### 3. Set up Grasshopper
 
+**Easy path:** open `cuboid_live_link.ghx` (in this folder, also downloadable
+from the in-app setup guide) — the component, toggle, and timer come
+pre-wired. The manual path:
+
 1. Add a **GHPython** component to your canvas
 2. Copy the contents of `cuboid_gh_receiver.py` into it
 3. Set inputs:

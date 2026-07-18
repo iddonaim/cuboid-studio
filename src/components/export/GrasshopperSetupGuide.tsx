@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 // the downloadable scripts can't drift apart.
 import bridgeServerSource from '../../../grasshopper/cuboid_bridge_server.py?raw';
 import ghReceiverSource from '../../../grasshopper/cuboid_gh_receiver.py?raw';
+import ghCanvasSource from '../../../grasshopper/cuboid_live_link.ghx?raw';
 
 /**
  * Grasshopper Setup Guide — modal opened from the Export panel.
@@ -19,7 +20,7 @@ import ghReceiverSource from '../../../grasshopper/cuboid_gh_receiver.py?raw';
  */
 
 const downloadScript = (filename: string, source: string) => {
-  const blob = new Blob([source], { type: 'text/x-python' });
+  const blob = new Blob([source], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -157,11 +158,16 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
           <section>
             <StepHeading n={1} title="Download the two helper files" />
             <p className="text-[12.5px] text-ink-700 leading-relaxed m-0 mb-2">
-              These come straight from this app — no GitHub account or repo needed. Save both
+              These come straight from this app — no GitHub account or repo needed. Save them
               into <strong>one folder you can find again</strong>, e.g.{' '}
               <code className="text-[11.5px]">Documents/cuboid-grasshopper</code>.
             </p>
             <div className="flex flex-col gap-1.5">
+              <DownloadRow
+                filename="cuboid_live_link.ghx"
+                source={ghCanvasSource}
+                role="Ready-made Grasshopper canvas — open it and skip step 4 entirely"
+              />
               <DownloadRow
                 filename="cuboid_bridge_server.py"
                 source={bridgeServerSource}
@@ -170,7 +176,7 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
               <DownloadRow
                 filename="cuboid_gh_receiver.py"
                 source={ghReceiverSource}
-                role="The receiver — paste into a Grasshopper component (step 4)"
+                role="The receiver script — only needed for the manual path in step 4"
               />
             </div>
           </section>
@@ -269,6 +275,12 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: numbe
           {/* Step 4 — Grasshopper */}
           <section>
             <StepHeading n={4} title="Wire up Grasshopper" />
+            <p className="text-[12.5px] text-ink-700 leading-relaxed m-0 mb-1.5">
+              <strong>Easy path:</strong> open the downloaded{' '}
+              <code>cuboid_live_link.ghx</code> in Grasshopper — toggle, timer, and script come
+              pre-wired, and your cubes appear as soon as the bridge has data. The steps below
+              are only for building it into an existing definition by hand.
+            </p>
             <NumberedList
               items={[
                 <>

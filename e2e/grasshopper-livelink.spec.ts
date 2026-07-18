@@ -164,9 +164,21 @@ test.describe('Grasshopper setup guide', () => {
     const downloadButtons = page.getByRole('button', { name: 'Download', exact: true });
 
     // Exact-match against the repo files: the ?raw bundling must serve
-    // byte-identical scripts, not merely something that looks similar.
-    const bridgePromise = page.waitForEvent('download');
+    // byte-identical files, not merely something that looks similar.
+    // (BOM-tolerant: Vite may strip the ghx's UTF-8 BOM.)
+    const stripBom = (s: string) => s.replace(/^﻿/, '');
+
+    const canvasPromise = page.waitForEvent('download');
     await downloadButtons.first().click();
+    const canvas = await canvasPromise;
+    expect(canvas.suggestedFilename()).toBe('cuboid_live_link.ghx');
+    const canvasText = await downloadedText(canvas);
+    expect(stripBom(canvasText)).toBe(
+      stripBom(readFileSync('grasshopper/cuboid_live_link.ghx', 'utf-8'))
+    );
+
+    const bridgePromise = page.waitForEvent('download');
+    await downloadButtons.nth(1).click();
     const bridge = await bridgePromise;
     expect(bridge.suggestedFilename()).toBe('cuboid_bridge_server.py');
     expect(await downloadedText(bridge)).toBe(
@@ -174,12 +186,25 @@ test.describe('Grasshopper setup guide', () => {
     );
 
     const receiverPromise = page.waitForEvent('download');
-    await downloadButtons.nth(1).click();
+    await downloadButtons.nth(2).click();
     const receiver = await receiverPromise;
     expect(receiver.suggestedFilename()).toBe('cuboid_gh_receiver.py');
     expect(await downloadedText(receiver)).toBe(
       readFileSync('grasshopper/cuboid_gh_receiver.py', 'utf-8')
     );
+
+    // Drift guard: the script embedded inside the packaged .ghx canvas
+    // must stay identical to the standalone receiver script. If this
+    // fails, re-embed the current receiver into the ghx (base64 Text
+    // item in its Script chunk) before shipping.
+    const scriptItems = canvasText.match(
+      /<item name="Text" type_name="gh_string" type_code="10">([A-Za-z0-9+/=\s]+)<\/item>/g
+    );
+    expect(scriptItems).not.toBeNull();
+    const embedded = scriptItems!
+      .map(item => Buffer.from(item.replace(/<[^>]+>/g, ''), 'base64').toString('utf-8'))
+      .find(text => text.includes('Cuboid Studio'));
+    expect(embedded).toBe(readFileSync('grasshopper/cuboid_gh_receiver.py', 'utf-8'));
 
     // Escape closes the guide
     await page.keyboard.press('Escape');

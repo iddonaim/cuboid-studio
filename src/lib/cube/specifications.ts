@@ -127,65 +127,54 @@ export const SPHERE_08: SphereSpec = {
 /**
  * Cylinders are defined by:
  * 1. A plane (origin + normal) from cutter-05-06-07_plane.png
- * 2. A local 2D position on that plane from cutter-XX_specs.png
- * 3. An extrusion vector (direction and length = 51)
+ * 2. An extrusion vector (direction and length = 51)
  *
- * The cylinder axis position is computed by transforming the local 2D
- * coordinates to world 3D coordinates using the plane definition.
- *
- * COORDINATE TRANSFORMATION:
- * For a plane with normal N, the local X and Y axes are perpendicular to N.
- * - Plane normal (0, -1, 0): local X = world X, local Y = world -Z
- * - Plane normal (1, 0, 0): local X = world Y, local Y = world -Z
- * - Plane normal (0, 1, 0): local X = world X, local Y = world Z
+ * The cylinder axis passes through the PLANE ORIGIN — measured directly
+ * from the shipped variation models (public/models/v-01..v-03, each of
+ * which contains exactly one cylinder). An earlier reconstruction applied
+ * the panel's local 2D offsets on top of the plane origin, which placed
+ * all cylinders near the cube center ((21,21) / (40.2,21)); the actual
+ * geometry disproves that — the cylinders clip the cube off-center at
+ * the plane origins themselves.
  */
 
 export const CYLINDER_05: CylinderSpec = {
   id: 4,
   type: 'cylinder',
   // Plane origin: (4.90, 0.00, -1.20), normal: (0, -1, 0)
-  // Local position: (16.10, -22.20)
-  // World X = 4.90 + 16.10 = 21.0
-  // World Z = -1.20 + 22.20 = 21.0 (local Y inverted due to -Y normal)
-  axisPosition: [21.0, 21.0],  // [X, Z] since cylinder runs along Y
+  axisPosition: [4.90, -1.20],  // [X, Z] since cylinder runs along Y
   axis: 'Y',
   radius: 16.18034,  // 10φ - same as SPHERE_01
   length: 51,
   planeOrigin: [4.90, 0.00, -1.20],
   extrusionVector: [0, 51, 0],
-  notes: 'Runs along Y-axis, centered in XZ plane at cube center'
+  notes: 'Runs along Y-axis, off-center near the front-bottom-left edge'
 };
 
 export const CYLINDER_06: CylinderSpec = {
   id: 5,
   type: 'cylinder',
   // Plane origin: (42.00, -1.80, 27.80), normal: (1, 0, 0)
-  // Local position: (22.80, 6.80)
-  // World Y = -1.80 + 22.80 = 21.0
-  // World Z = 27.80 - 6.80 = 21.0 (local Y inverted)
-  axisPosition: [21.0, 21.0],  // [Y, Z] since cylinder runs along X
+  axisPosition: [-1.80, 27.80],  // [Y, Z] since cylinder runs along X
   axis: 'X',
   radius: 9.864601,  // Same as SPHERE_02
   length: 51,
   planeOrigin: [42.00, -1.80, 27.80],
   extrusionVector: [-51, 0, 0],
-  notes: 'Runs along X-axis (negative direction), centered in YZ plane'
+  notes: 'Runs along X-axis (negative direction), off-center near the front-upper edge'
 };
 
 export const CYLINDER_07: CylinderSpec = {
   id: 6,
   type: 'cylinder',
   // Plane origin: (30.60, 42.00, 26.30), normal: (0, 1, 0)
-  // Local position: (9.60, 5.30)
-  // World X = 30.60 + 9.60 = 40.20
-  // World Z = 26.30 - 5.30 = 21.0 (local Y inverted due to +Y normal convention)
-  axisPosition: [40.20, 21.0],  // [X, Z] since cylinder runs along Y
+  axisPosition: [30.60, 26.30],  // [X, Z] since cylinder runs along Y
   axis: 'Y',
   radius: 13,  // Same as SPHERE_03
   length: 51,
   planeOrigin: [30.60, 42.00, 26.30],
   extrusionVector: [0, -51, 0],
-  notes: 'Runs along Y-axis (negative direction), offset toward +X edge'
+  notes: 'Runs along Y-axis (negative direction), offset toward the +X upper area'
 };
 
 // =============================================================================
@@ -273,9 +262,9 @@ export const CUBE_VARIATIONS = generateVariations();
  * | 1  | Sphere   | (42.00, 14.40, 29.20)      | 9.864601  | X=42 (right)   |
  * | 2  | Sphere   | (26.54, 42.00, 40.90)      | 13        | Y=42 (back)    |
  * | 3  | Sphere   | (0.00, 24.30, 29.10)       | 17.085938 | X=0 (left)     |
- * | 4  | Cylinder | X=21.0, Z=21.0, axis Y     | 16.18034  | Along +Y       |
- * | 5  | Cylinder | Y=21.0, Z=21.0, axis X     | 9.864601  | Along -X       |
- * | 6  | Cylinder | X=40.2, Z=21.0, axis Y     | 13        | Along -Y       |
+ * | 4  | Cylinder | X=4.9, Z=-1.2, axis Y      | 16.18034  | Along +Y       |
+ * | 5  | Cylinder | Y=-1.8, Z=27.8, axis X     | 9.864601  | Along -X       |
+ * | 6  | Cylinder | X=30.6, Z=26.3, axis Y     | 13        | Along -Y       |
  * | 7  | Sphere   | (0.00, 37.00, 21.25)       | 17.085938 | X=0 (left)     |
  *
  *
