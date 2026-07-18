@@ -260,6 +260,15 @@ def _carve(cutter_indices, op_cutters):
     # Shell BEFORE operator cuts — the app applies meme cutters to the
     # already-shelled variation geometry, so a meme cut goes through walls.
     breps = _shell_by_boolean(breps, cutter_indices)
+    # Spec frame -> app frame. The models the app displays are the
+    # original Z-up geometry converted by the glTF export:
+    # (x, y, z) -> (x, z, 42 - y). Meme cutters are defined in the app
+    # frame, so convert before applying them. This mapping was measured
+    # from public/models/v-00.glb (hole positions vs cutter spec).
+    to_app = rg.Transform.Translation(rg.Vector3d(0, 0, CUBE)) \
+        * rg.Transform.Rotation(-math.pi / 2.0, rg.Vector3d.XAxis, rg.Point3d.Origin)
+    for b in breps:
+        b.Transform(to_app)
     for cutter in op_cutters:
         breps = _subtract(breps, _operator_cutter_brep(cutter))
     center = rg.Transform.Translation(rg.Vector3d(-HALF, -HALF, -HALF))
@@ -272,7 +281,7 @@ def _carved_for(cube):
     """Cache-aware carve, keyed on everything that shapes this cube."""
     cutter_indices = cube.get("cutterIndices", [])
     op_cutters = [op.get("cutter", {}) for op in cube.get("operators", [])]
-    key = "cuboid_carve_v3:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
+    key = "cuboid_carve_v4:" + json.dumps([cutter_indices, op_cutters], sort_keys=True)
     if key not in _CACHE:
         _CACHE[key] = _carve(cutter_indices, op_cutters)
     return _CACHE[key]
