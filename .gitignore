@@ -42,3 +42,4 @@ REFERENCES/
 
 # Demo recordings (scripts/record-demo.mjs output)
 /recordings/
+__pycache__/

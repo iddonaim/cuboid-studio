@@ -18,9 +18,9 @@ This document ensures that Grasshopper exports match the web app's variation num
 | 1  | Sphere   | (42.00, 14.40, 29.20)      | 9.864601   | X_POS (right, X=42) |
 | 2  | Sphere   | (26.54, 42.00, 40.90)      | 13.0       | Y_POS (back, Y=42)  |
 | 3  | Sphere   | (0.00, 24.30, 29.10)       | 17.085938  | X_NEG (left, X=0)   |
-| 4  | Cylinder | axis=Y, pos=(21.0, 21.0)   | 16.18034   | Y_NEG + Y_POS       |
-| 5  | Cylinder | axis=X, pos=(21.0, 21.0)   | 9.864601   | X_NEG + X_POS       |
-| 6  | Cylinder | axis=Y, pos=(40.2, 21.0)   | 13.0       | Y_NEG + Y_POS       |
+| 4  | Cylinder | axis=Y, pos=(4.9, -1.2)    | 16.18034   | Y_NEG + Y_POS       |
+| 5  | Cylinder | axis=X, pos=(-1.8, 27.8)   | 9.864601   | X_NEG + X_POS       |
+| 6  | Cylinder | axis=Y, pos=(30.6, 26.3)   | 13.0       | Y_NEG + Y_POS       |
 | 7  | Sphere   | (0.00, 37.00, 21.25)       | 17.085938  | X_NEG (left, X=0)   |
 
 ### Cutter Types for Connection Rules

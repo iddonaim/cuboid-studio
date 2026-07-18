@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -7,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 // the downloadable scripts can't drift apart.
 import bridgeServerSource from '../../../grasshopper/cuboid_bridge_server.py?raw';
 import ghReceiverSource from '../../../grasshopper/cuboid_gh_receiver.py?raw';
+import ghCanvasSource from '../../../grasshopper/cuboid_live_link.ghx?raw';
 
 /**
  * Grasshopper Setup Guide — modal opened from the Export panel.
@@ -18,13 +20,15 @@ import ghReceiverSource from '../../../grasshopper/cuboid_gh_receiver.py?raw';
  */
 
 const downloadScript = (filename: string, source: string) => {
-  const blob = new Blob([source], { type: 'text/x-python' });
+  const blob = new Blob([source], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Deferred: revoking synchronously races the download navigation in
+  // Firefox/Safari and can yield an empty file.
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 };
 
 /* ── Small building blocks ── */
@@ -78,20 +82,35 @@ const DownloadRow: React.FC<{
 
 /* ── The guide ── */
 
-export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const GrasshopperSetupGuide: React.FC<{ onClose: () => void; port?: number }> = ({
+  onClose,
+  port = 9876,
+}) => {
+  // startsWith, not includes: 'darwin' contains 'win'. Optional chain:
+  // navigator.platform is deprecated and absent in some webviews.
   const [os, setOs] = useState<string>(() =>
-    navigator.platform.toLowerCase().includes('win') ? 'windows' : 'mac'
+    navigator.platform?.toLowerCase().startsWith('win') ? 'windows' : 'mac'
   );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        // Capture-phase + stopPropagation so App.tsx's global Escape
+        // shortcut (clear cube selection / picker) doesn't also fire.
+        e.stopPropagation();
+        onClose();
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
   }, [onClose]);
 
-  return (
+  const pythonCmd = os === 'windows' ? 'py' : 'python3';
+
+  // Portal: on mobile this panel lives inside the BottomSheet, whose
+  // CSS transform would otherwise trap `position: fixed` and clip the
+  // modal to the sheet instead of covering the viewport.
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       style={{
@@ -139,11 +158,16 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
           <section>
             <StepHeading n={1} title="Download the two helper files" />
             <p className="text-[12.5px] text-ink-700 leading-relaxed m-0 mb-2">
-              These come straight from this app — no GitHub account or repo needed. Save both
+              These come straight from this app — no GitHub account or repo needed. Save them
               into <strong>one folder you can find again</strong>, e.g.{' '}
               <code className="text-[11.5px]">Documents/cuboid-grasshopper</code>.
             </p>
             <div className="flex flex-col gap-1.5">
+              <DownloadRow
+                filename="cuboid_live_link.ghx"
+                source={ghCanvasSource}
+                role="Ready-made Grasshopper canvas — open it and skip step 4 entirely"
+              />
               <DownloadRow
                 filename="cuboid_bridge_server.py"
                 source={bridgeServerSource}
@@ -152,7 +176,7 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
               <DownloadRow
                 filename="cuboid_gh_receiver.py"
                 source={ghReceiverSource}
-                role="The receiver — paste into a Grasshopper component (step 4)"
+                role="The receiver script — only needed for the manual path in step 4"
               />
             </div>
           </section>
@@ -227,7 +251,7 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
             <div className="mt-2 p-2 bg-ink-100 border border-ink-200 rounded-md">
               <div className="text-[11px] text-ink-500 mb-1">You&apos;ll know it worked when you see:</div>
               <div className="font-mono text-[11px] text-ink-700 whitespace-pre">
-                [Bridge] Listening on http://localhost:9876
+                [Bridge] Listening on http://localhost:{port}
               </div>
               <div className="text-[11px] text-ink-500 mt-1">
                 Leave this window open — closing it stops the link.
@@ -251,28 +275,57 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
           {/* Step 4 — Grasshopper */}
           <section>
             <StepHeading n={4} title="Wire up Grasshopper" />
+            <p className="text-[12.5px] text-ink-700 leading-relaxed m-0 mb-1.5">
+              <strong>Easy path:</strong> open the downloaded{' '}
+              <code>cuboid_live_link.ghx</code> in Grasshopper — toggle, timer, and script come
+              pre-wired, and your cubes appear as soon as the bridge has data. The steps below
+              are only for building it into an existing definition by hand.
+            </p>
             <NumberedList
               items={[
                 <>
-                  In Grasshopper, add a <strong>GHPython</strong> component to the canvas.
+                  In Grasshopper, add a <strong>Python script</strong> component to the canvas
+                  (called <em>GHPython</em> in Rhino 7, <em>Script</em> in Rhino 8 — set its
+                  language to Python).
                 </>,
                 <>
                   Open the downloaded <code>cuboid_gh_receiver.py</code> in any text editor,
                   copy everything, and paste it into the component.
                 </>,
                 <>
-                  Give it two inputs: <code>poll</code> (a Boolean Toggle, set to True) and{' '}
-                  <code>port</code> (a slider or panel set to 9876).
+                  <strong>Inputs:</strong> the component needs two input sockets named exactly{' '}
+                  <code>poll</code> and <code>port</code>. Zoom in close on its <em>left</em>{' '}
+                  edge until small ⊕ icons appear, add/remove until there are two, and
+                  right-click each name to rename it. Wire a <strong>Boolean Toggle</strong>{' '}
+                  (set to True) into <code>poll</code>. You can leave <code>port</code>{' '}
+                  unconnected — it uses {port} automatically. (If you do wire a slider into it,
+                  right-click the slider and set its rounding to whole numbers.)
                 </>,
                 <>
-                  Add a <strong>Timer</strong> at ~1000 ms and wire it to the component so it
-                  re-fetches every second.
+                  <strong>Outputs:</strong> same trick on the <em>right</em> edge — add an
+                  output and rename it to exactly <code>boxes</code>. The moment it exists,
+                  your carved cubes — master cuts and meme cuts included — appear in the Rhino
+                  viewport, placed and rotated as in the browser. Nothing needs to be wired to
+                  it. The first load takes a few seconds while the cuts are computed; after
+                  that they&apos;re cached and updates are instant.
+                </>,
+                <>
+                  <strong>Make it live:</strong> add a <strong>Timer</strong> component and
+                  double-click it to set the interval to 1&nbsp;second. The Timer doesn&apos;t
+                  plug into a socket — drag a wire from its output nub onto the{' '}
+                  <em>middle of the Python component itself</em>; it latches onto the whole
+                  component with a dashed wire. Now changes in the browser show up in Rhino
+                  within a second.
                 </>,
               ]}
             />
             <Hint>
-              The component outputs cube positions, variation IDs, rotations, and cutter data —
-              ready to wire into boxes and booleans.
+              Not sure it&apos;s working? Attach a <strong>Panel</strong> to the
+              component&apos;s <code>out</code> socket — it prints status messages like
+              &ldquo;Loaded 13 cubes from bridge&rdquo;. And for parametric work beyond
+              preview, add more outputs the same way: <code>positions</code>,{' '}
+              <code>variations</code>, <code>rotations_y</code>, <code>cutter_ids</code>,{' '}
+              <code>operators</code>, <code>raw_json</code>.
             </Hint>
           </section>
 
@@ -292,13 +345,14 @@ export const GrasshopperSetupGuide: React.FC<{ onClose: () => void }> = ({ onClo
               </li>
               <li>
                 <strong>Port already in use</strong> — run{' '}
-                <code>python3 cuboid_bridge_server.py --port 9877</code> and set the same port
-                in this panel&apos;s settings and in Grasshopper.
+                <code>{pythonCmd} cuboid_bridge_server.py --port 9877</code> and set the same
+                port in this panel&apos;s settings and in Grasshopper.
               </li>
             </ul>
           </section>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
