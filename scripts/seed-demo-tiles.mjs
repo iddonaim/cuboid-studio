@@ -88,9 +88,31 @@ const addAll = iter => {
     Math.max(...lngs) + lngSpan * pad,
   ];
   addAll(tilesForBBox(...box(0.2), WIDE_ZOOMS));
-  // 0.6: fit-bounds centers the pins but a 16:10 viewport shows well past the
-  // bbox horizontally; 60% padding covers the whole visible frame with margin.
-  addAll(tilesForBBox(...box(0.6), MID_ZOOMS));
+
+  // Mid zooms: the fit-bounds opening view centers the pins, but which zoom
+  // Leaflet picks — and how far past the pins the frame reaches — depends on
+  // the window size. Cover, at every mid zoom, at least a full large-screen
+  // viewport (2400×1500 px with margin) centered on the pins, so the opening
+  // view is complete whatever laptop/projector resolution the talk runs at.
+  const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const midLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+  for (const z of MID_ZOOMS) {
+    const mPerPx = (156543.03392 * Math.cos((midLat * Math.PI) / 180)) / 2 ** z;
+    const halfW = (2400 / 2) * mPerPx;
+    const halfH = (1500 / 2) * mPerPx;
+    const dLat = halfH / 111_320;
+    const dLng = halfW / (111_320 * Math.cos((midLat * Math.PI) / 180));
+    const [bMinLat, bMaxLat, bMinLng, bMaxLng] = box(0.3);
+    addAll(
+      tilesForBBox(
+        Math.min(bMinLat, midLat - dLat),
+        Math.max(bMaxLat, midLat + dLat),
+        Math.min(bMinLng, midLng - dLng),
+        Math.max(bMaxLng, midLng + dLng),
+        [z],
+      ),
+    );
+  }
 }
 
 // Tight boxes per pin.
