@@ -23,9 +23,16 @@ export const DemoExportButton: React.FC = () => {
     try {
       const bundle = await buildRawDemoBundle(user.uid);
       downloadRawDemoBundle(bundle);
+      const rec = bundle.recordings;
+      const recLine = rec
+        ? `Recording included: ${rec.geocode.length} address(es), ${rec.encodes.length} ` +
+          `photo encode(s), ${rec.evolveRounds.length} evolve round(s), ${rec.twoPass.length} ` +
+          `live translation(s). `
+        : 'No ?demoRecord session found in this browser. ';
       setMessage(
         `Exported ${bundle.compositions.length} composition(s), ${bundle.pins.length} pin(s), ` +
           `${bundle.memes.length} meme(s), ${bundle.translations.length} canned translation(s). ` +
+          recLine +
           'Now run: node scripts/build-demo-bundle.mjs demo-bundle-raw.json',
       );
     } catch (err) {

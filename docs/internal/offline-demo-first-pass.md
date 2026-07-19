@@ -72,6 +72,29 @@ Full e2e suite (9), unit tests (147), typecheck and production build all pass.
 4. Commit `public/demo/` and build. Load the build once online; then the
    airplane-mode test below.
 
+## Recording a live session (second pass — the "exactly like the live app" demo)
+
+The demo replays ONE recorded online run of the talk workflow. Protocol:
+
+1. Open the live site with `?demoRecord`, signed in, online. Perform the talk
+   workflow normally — every network/AI answer is captured as it happens
+   (watch the console for `[demoRecord]` lines): address geocode, photo
+   encode(s) (keyed to the exact image file), every two-pass translation, and
+   each "Generate candidates" click (full round, in click order).
+2. In the SAME browser, open `?demoExport` and export — the recording is
+   folded into `demo-bundle-raw.json` (the button reports what it included).
+3. `node scripts/build-demo-bundle.mjs …` + `seed-demo-tiles.mjs` as before.
+
+Replay rules (choreography contract):
+- The encode beat only recognises the EXACT photo files used while recording —
+  keep them in a folder on the presentation laptop.
+- Evolve clicks replay rounds in recorded order; a click past the last
+  recorded round shows a clear error. Reloading the page restarts the order.
+- The address bar matches loosely (partial typing OK); with a single recorded
+  address, any query resolves to it.
+- Re-recording a beat overwrites (geocode/encode/translation) or appends
+  (evolve rounds). `localStorage.removeItem('cs-demo-recording')` starts over.
+
 ## What remains (honest list)
 
 - **The acceptance test** — actual presentation laptop, wifi off, cold start,

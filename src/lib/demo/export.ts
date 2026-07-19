@@ -15,7 +15,8 @@ import { loadSitePins, isLocated } from '../projects/sitePins';
 import { listCompositions } from '../projects/firestore';
 import type { OperatorRecord } from '../operators/types';
 import type { ArchthesisMeme, FetchMemesResponse } from '../../types/archthesis';
-import type { DemoBundle, DemoComposition, DemoTranslation } from './types';
+import type { DemoBundle, DemoComposition, DemoRecordings, DemoTranslation } from './types';
+import { getRecording } from './recorder';
 
 /** How many memes to snapshot for the offline browser grid. */
 const MEME_SNAPSHOT_LIMIT = 60;
@@ -41,7 +42,11 @@ function harvestTranslations(compositions: DemoComposition[]): DemoTranslation[]
   return [...out.values()];
 }
 
-function collectImageUrls(compositions: DemoComposition[], memes: ArchthesisMeme[]): string[] {
+function collectImageUrls(
+  compositions: DemoComposition[],
+  memes: ArchthesisMeme[],
+  recordings: DemoRecordings | null,
+): string[] {
   const urls = new Set<string>();
   const remote = (u: string | null | undefined) => {
     if (u && /^https?:\/\//.test(u)) urls.add(u);
@@ -55,6 +60,10 @@ function collectImageUrls(compositions: DemoComposition[], memes: ArchthesisMeme
     for (const r of all) remote(r.memeImageUrl);
   }
   for (const m of memes) remote(m.imageUrl);
+  // Candidate thumbnails from recorded evolve rounds must render offline too.
+  for (const round of recordings?.evolveRounds ?? []) {
+    for (const c of round.candidates) remote(c.memeImageUrl);
+  }
   return [...urls];
 }
 
@@ -81,7 +90,11 @@ export async function buildRawDemoBundle(ownerId: string): Promise<DemoBundle> {
     // Meme snapshot is best-effort; the browser grid just stays empty offline.
   }
 
-  const imageUrls = collectImageUrls(compositions, memes);
+  // Fold in the live-session recording (?demoRecord), if one exists in this
+  // browser — geocode, photo encodes, evolve rounds, extra translations.
+  const recordings = getRecording();
+
+  const imageUrls = collectImageUrls(compositions, memes, recordings);
   const images: Record<string, string> = {};
   imageUrls.forEach((url, i) => {
     const ext = /\.(png|webp|gif)(\?|$)/i.exec(url)?.[1]?.toLowerCase() ?? 'jpg';
@@ -96,6 +109,7 @@ export async function buildRawDemoBundle(ownerId: string): Promise<DemoBundle> {
     memes,
     translations: harvestTranslations(compositions),
     images,
+    ...(recordings ? { recordings } : {}),
   };
 }
 

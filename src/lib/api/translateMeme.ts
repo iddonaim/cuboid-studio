@@ -3,6 +3,7 @@ import { getActiveSiteContext } from '../storage/siteContext';
 import { useTranslationLexiconStore } from '../../store/useTranslationLexiconStore';
 import { isDemoMode } from '../demo/demoMode';
 import { getDemoTranslation } from '../demo/bundle';
+import { isDemoRecordMode } from '../demo/recorder';
 
 export interface TranslateMemeRequest {
   memeDescription: string;
@@ -107,5 +108,14 @@ export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise
     );
   }
 
-  return data as TwoPassTranslationResult;
+  const result = data as TwoPassTranslationResult;
+
+  // ?demoRecord: capture this translation for offline replay (keyed by the
+  // exact description string, same key getDemoTranslation matches on).
+  if (isDemoRecordMode()) {
+    const { recordTwoPass } = await import('../demo/recorder');
+    recordTwoPass({ memeDescription: req.memeDescription, result });
+  }
+
+  return result;
 }
