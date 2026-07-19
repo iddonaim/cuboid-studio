@@ -1,5 +1,7 @@
 import { type SpatialLexicon } from '../../prompts/lexicon.default';
 import { useLexiconStore } from '../../store/useLexiconStore';
+import { isDemoMode } from '../demo/demoMode';
+import { isDemoRecordMode } from '../demo/recorder';
 
 export interface EncodeSpaceImage {
   base64: string;
@@ -57,7 +59,24 @@ export interface EncodeSpaceResponse {
   model?: string;
 }
 
+/** The base64 payload that identifies "which photo": the primary (or only) image. */
+function primaryImageBase64(request: EncodeSpaceRequest): string {
+  if ('images' in request) {
+    const primary = request.images.find(i => i.isPrimary) ?? request.images[0];
+    return primary?.base64 ?? '';
+  }
+  return request.imageBase64;
+}
+
 export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSpaceResponse> {
+  // Offline demo: replay the recorded reading for this exact photo. The
+  // encoding animation and everything downstream run unchanged.
+  if (isDemoMode()) {
+    const { getDemoEncode } = await import('../demo/bundle');
+    const { hashImageBase64 } = await import('../demo/recorder');
+    return getDemoEncode(hashImageBase64(primaryImageBase64(request)));
+  }
+
   const siteContext =
     'siteContext' in request && request.siteContext ? request.siteContext : undefined;
 
@@ -89,5 +108,13 @@ export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSp
     throw new Error(errorData.error || `Encoding failed (${response.status})`);
   }
 
-  return response.json();
+  const result = (await response.json()) as EncodeSpaceResponse;
+
+  // ?demoRecord: capture this encode, keyed to the exact photo, for offline replay.
+  if (isDemoRecordMode()) {
+    const { recordEncode, hashImageBase64 } = await import('../demo/recorder');
+    recordEncode({ imageHash: hashImageBase64(primaryImageBase64(request)), response: result });
+  }
+
+  return result;
 }

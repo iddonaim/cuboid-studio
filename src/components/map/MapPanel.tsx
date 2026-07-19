@@ -8,6 +8,8 @@ import {
   NearbyPoisData,
 } from '../../lib/storage/siteContext';
 import { buildSiteContextFromMap } from '../../lib/siteContext/mapSiteContext';
+import { isDemoMode } from '../../lib/demo/demoMode';
+import { isDemoRecordMode } from '../../lib/demo/recorder';
 import { Button } from '@/components/ui/button';
 
 const DEFAULT_CENTER: [number, number] = [32.08, 34.78];
@@ -17,6 +19,8 @@ const DEFAULT_RADIUS = 500;
 const ESRI_IMAGERY =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+/** Offline demo: tiles pre-seeded into the repo by scripts/seed-demo-tiles.mjs. */
+const DEMO_TILES = '/demo/tiles/{z}/{x}/{y}.png';
 
 function readPinFromContext(): {
   lat: number;
@@ -120,24 +124,34 @@ export const MapPanel: React.FC = () => {
       zoomControl: true,
     });
 
-    const esriLayer = L.tileLayer(ESRI_IMAGERY, {
-      attribution: 'Tiles &copy; Esri',
-      maxZoom: 19,
-    }).addTo(map);
+    if (isDemoMode()) {
+      // Offline demo: local pre-seeded tiles only (same set SitesMapView uses),
+      // so the address beat renders identically with wifi on or off.
+      L.tileLayer(DEMO_TILES, {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19,
+        maxNativeZoom: 17,
+      }).addTo(map);
+    } else {
+      const esriLayer = L.tileLayer(ESRI_IMAGERY, {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19,
+      }).addTo(map);
 
-    const osmLayer = L.tileLayer(OSM_TILES, {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    });
+      const osmLayer = L.tileLayer(OSM_TILES, {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      });
 
-    let usingOsm = false;
-    esriLayer.on('tileerror', () => {
-      if (!usingOsm) {
-        usingOsm = true;
-        map.removeLayer(esriLayer);
-        osmLayer.addTo(map);
-      }
-    });
+      let usingOsm = false;
+      esriLayer.on('tileerror', () => {
+        if (!usingOsm) {
+          usingOsm = true;
+          map.removeLayer(esriLayer);
+          osmLayer.addTo(map);
+        }
+      });
+    }
 
     map.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
@@ -199,6 +213,14 @@ export const MapPanel: React.FC = () => {
     setGeocoding(true);
     setGeocodeError(null);
     try {
+      // Offline demo: replay the recorded lookup for this address.
+      if (isDemoMode()) {
+        const { getDemoGeocode } = await import('../../lib/demo/bundle');
+        const hit = await getDemoGeocode(q);
+        placePin(hit.lat, hit.lng, hit.displayName || q);
+        return;
+      }
+
       const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -209,6 +231,13 @@ export const MapPanel: React.FC = () => {
       if (Number.isNaN(lat) || Number.isNaN(lng)) {
         throw new Error('Invalid coordinates returned');
       }
+
+      // ?demoRecord: capture the successful lookup for offline replay.
+      if (isDemoRecordMode()) {
+        const { recordGeocode } = await import('../../lib/demo/recorder');
+        recordGeocode({ query: q, lat, lng, displayName: data.display_name || q });
+      }
+
       placePin(lat, lng, data.display_name || q);
     } catch (err) {
       setGeocodeError(err instanceof Error ? err.message : 'Geocoding failed');

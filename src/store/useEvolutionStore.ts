@@ -4,6 +4,8 @@ import type { ArchthesisMeme } from '../types/archthesis';
 import type { FetchMemesResponse } from '../types/archthesis';
 import { mapMemeToCuboidInput } from '../lib/meme-mapper';
 import { translateMemeTwoPass } from '../lib/api/translateMeme';
+import { isDemoMode } from '../lib/demo/demoMode';
+import { isDemoRecordMode } from '../lib/demo/recorder';
 import {
   computeCompressibility,
   compressionProgress,
@@ -96,6 +98,12 @@ interface EvolutionState {
   getCompressibilityDelta: () => number;
 }
 
+// Offline-demo replay cursor: which recorded "Generate candidates" round the
+// next click serves. Module-level on purpose — it must never be persisted
+// into saved compositions, and a page reload resetting it is exactly the
+// rehearsal behaviour we want (reload → the choreography starts over).
+let demoEvolveRoundIndex = 0;
+
 const DEFAULT_CONFIG: EvolutionConfig = {
   populationSize: 6,
   selectionPressure: 0.7,
@@ -144,6 +152,14 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   fetchMemePool: async () => {
     set({ isFetchingMemes: true, lastError: null });
     try {
+      // Offline demo: the pool comes from the bundle (replayed rounds don't
+      // sample it, but the panel's meme strip still needs something to show).
+      if (isDemoMode()) {
+        const { fetchDemoMemes } = await import('../lib/demo/bundle');
+        const data = await fetchDemoMemes({ limit: 50, offset: 0, sort: 'recent' });
+        set({ memePool: data.memes, isFetchingMemes: false });
+        return;
+      }
       const res = await fetch('/api/fetch-memes?limit=50');
       if (!res.ok) throw new Error(`Failed to fetch memes: ${res.status}`);
       const data: FetchMemesResponse = await res.json();
@@ -159,6 +175,38 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   generateCandidates: async () => {
     const state = get();
     if (state.isGenerating) return;
+
+    // Offline demo: replay the recorded rounds in click order, driving the
+    // same phase states the live path does so the beat looks identical.
+    if (isDemoMode()) {
+      set({ isGenerating: true, generationPhase: 'reading', lastError: null, candidates: [] });
+      try {
+        const { getDemoEvolveRound } = await import('../lib/demo/bundle');
+        const candidates = await getDemoEvolveRound(demoEvolveRoundIndex);
+        // Live rounds take a while (parallel AI calls); pace the replay so it
+        // reads as work happening, not as a cached flash.
+        await new Promise(r => setTimeout(r, 1600));
+        set({ generationPhase: 'scoring' });
+        await new Promise(r => setTimeout(r, 350));
+        demoEvolveRoundIndex += 1;
+        set({
+          candidates,
+          isGenerating: false,
+          generationPhase: null,
+          generation: get().generation + 1,
+          lastError: null,
+        });
+      } catch (err) {
+        set({
+          candidates: [],
+          isGenerating: false,
+          generationPhase: null,
+          lastError: err instanceof Error ? err.message : String(err),
+        });
+      }
+      return;
+    }
+
     if (state.memePool.length === 0) {
       set({ lastError: 'Meme pool is empty — fetch memes first' });
       return;
@@ -286,6 +334,12 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
 
     // Rank by compression progress (descending)
     candidates.sort((a, b) => b.compressionProgress - a.compressionProgress);
+
+    // ?demoRecord: capture the full ranked round for offline replay.
+    if (isDemoRecordMode() && candidates.length > 0) {
+      const { recordEvolveRound } = await import('../lib/demo/recorder');
+      recordEvolveRound({ candidates });
+    }
 
     // Build a warning if some (but not all) candidates failed
     const failedCount = targetCubeIds.length - candidates.length;
@@ -508,19 +562,22 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     });
   },
 
-  reset: () => set({
-    generation: 0,
-    candidates: [],
-    compressibilityLog: [],
-    config: { ...DEFAULT_CONFIG },
-    isGenerating: false,
-    generationPhase: null,
-    selectedCandidateId: null,
-    previewCandidateId: null,
-    lastError: null,
-    baselineScore: null,
-    lastAppliedCubeId: null,
-  }),
+  reset: () => {
+    demoEvolveRoundIndex = 0;
+    set({
+      generation: 0,
+      candidates: [],
+      compressibilityLog: [],
+      config: { ...DEFAULT_CONFIG },
+      isGenerating: false,
+      generationPhase: null,
+      selectedCandidateId: null,
+      previewCandidateId: null,
+      lastError: null,
+      baselineScore: null,
+      lastAppliedCubeId: null,
+    });
+  },
 
   // --- Computed ---
 

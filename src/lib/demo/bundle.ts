@@ -15,6 +15,8 @@ import type { CompositionData, CompositionDoc } from '../projects/types';
 import type { SitePin } from '../projects/sitePins';
 import type { ArchthesisMeme, FetchMemesResponse } from '../../types/archthesis';
 import type { TwoPassTranslationResult, OperatorRecord } from '../operators/types';
+import type { EncodeSpaceResponse } from '../api/encodeSpace';
+import type { EvolutionCandidate } from '../../store/useEvolutionStore';
 import type { DemoBundle, DemoComposition } from './types';
 
 const BUNDLE_URL = '/demo/bundle.json';
@@ -140,15 +142,92 @@ export async function getDemoTranslation(
   memeDescription: string,
 ): Promise<TwoPassTranslationResult> {
   const bundle = await loadDemoBundle();
-  const exact = bundle.translations.find(t => t.memeDescription === memeDescription);
+  // Live-session recordings take precedence over the harvested set: they are
+  // the exact strings the store sent during the recorded run.
+  const pool = [...(bundle.recordings?.twoPass ?? []), ...bundle.translations];
+  const exact = pool.find(t => t.memeDescription === memeDescription);
   if (exact) return exact.result;
 
   const norm = (s: string) => s.trim().toLowerCase();
-  const fuzzy = bundle.translations.find(t => norm(t.memeDescription) === norm(memeDescription));
+  const fuzzy = pool.find(t => norm(t.memeDescription) === norm(memeDescription));
   if (fuzzy) return fuzzy.result;
 
   throw new Error(
     'Offline demo: no canned translation for this meme. ' +
       'Pick a meme that was translated in one of the exported compositions.',
   );
+}
+
+// --- Live-session replays (recorded with ?demoRecord) -----------------------
+
+/** Rewrite one remote meme-image URL to its bundled local copy, if known. */
+export async function rewriteMemeImageUrl(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  const { images } = await loadDemoBundle();
+  return images[url] ?? url;
+}
+
+/**
+ * Replay the recorded geocode for a typed address. Exact/normalised match
+ * first; falls back to substring containment either way, and — stage
+ * insurance — to the single recorded address when only one exists, so a typo
+ * during the talk can't kill the beat.
+ */
+export async function getDemoGeocode(
+  query: string,
+): Promise<{ lat: number; lng: number; displayName: string }> {
+  const recorded = (await loadDemoBundle()).recordings?.geocode ?? [];
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const q = norm(query);
+
+  const hit =
+    recorded.find(g => norm(g.query) === q) ??
+    recorded.find(g => norm(g.query).includes(q) || q.includes(norm(g.query))) ??
+    (recorded.length === 1 ? recorded[0] : undefined);
+
+  if (!hit) {
+    throw new Error(
+      recorded.length === 0
+        ? 'Offline demo: no recorded address. Record a session with ?demoRecord first.'
+        : `Offline demo: "${query}" doesn't match a recorded address. Recorded: ${recorded
+            .map(g => `"${g.query}"`)
+            .join(', ')}.`,
+    );
+  }
+  return { lat: hit.lat, lng: hit.lng, displayName: hit.displayName };
+}
+
+/** Replay a recorded photo encode, matched by image fingerprint. */
+export async function getDemoEncode(imageHash: string): Promise<EncodeSpaceResponse> {
+  const recorded = (await loadDemoBundle()).recordings?.encodes ?? [];
+  const hit = recorded.find(e => e.imageHash === imageHash);
+  if (!hit) {
+    throw new Error(
+      `Offline demo: this photo has no recorded encode (${recorded.length} photo(s) were ` +
+        'recorded). Pick one of the exact image files used in the ?demoRecord session.',
+    );
+  }
+  return hit.response;
+}
+
+/**
+ * Replay one recorded "Generate candidates" round. Rounds are served in click
+ * order (0-based); meme thumbnails inside are rewritten to bundled copies.
+ */
+export async function getDemoEvolveRound(roundIndex: number): Promise<EvolutionCandidate[]> {
+  const bundle = await loadDemoBundle();
+  const rounds = bundle.recordings?.evolveRounds ?? [];
+  if (roundIndex >= rounds.length) {
+    throw new Error(
+      rounds.length === 0
+        ? 'Offline demo: no recorded evolve rounds. Record a session with ?demoRecord first.'
+        : `Offline demo: only ${rounds.length} evolve round(s) were recorded — this is click ` +
+          `${roundIndex + 1}. The choreography must match the recorded session.`,
+    );
+  }
+  const { images } = bundle;
+  return rounds[roundIndex].candidates.map(c => ({
+    ...c,
+    memeImageUrl: c.memeImageUrl ? (images[c.memeImageUrl] ?? c.memeImageUrl) : c.memeImageUrl,
+  }));
 }

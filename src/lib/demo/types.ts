@@ -20,6 +20,8 @@ import type { SitePin } from '../projects/sitePins';
 import type { CompositionDoc } from '../projects/types';
 import type { ArchthesisMeme } from '../../types/archthesis';
 import type { TwoPassTranslationResult } from '../operators/types';
+import type { EncodeSpaceResponse } from '../api/encodeSpace';
+import type { EvolutionCandidate } from '../../store/useEvolutionStore';
 
 /** A composition doc plus the hierarchy path it came from. */
 export interface DemoComposition {
@@ -33,6 +35,39 @@ export interface DemoTranslation {
   /** Exact memeDescription the store sends to translateMemeTwoPass. */
   memeDescription: string;
   result: TwoPassTranslationResult;
+}
+
+// --- Live-session recordings -------------------------------------------------
+// Captured with `?demoRecord` during ONE real online run of the talk workflow,
+// so the demo can replay the exact same clicks offline. See lib/demo/recorder.ts.
+
+/** A successful address-bar geocode: what was typed → where the pin landed. */
+export interface RecordedGeocode {
+  query: string;
+  lat: number;
+  lng: number;
+  displayName: string;
+}
+
+/** A successful photo encode, keyed by a fingerprint of the image bytes. */
+export interface RecordedEncode {
+  imageHash: string;
+  response: EncodeSpaceResponse;
+}
+
+/** One "Generate candidates" click: the full ranked set the AI produced. */
+export interface RecordedEvolveRound {
+  candidates: EvolutionCandidate[];
+}
+
+export interface DemoRecordings {
+  startedAt: string;
+  geocode: RecordedGeocode[];
+  encodes: RecordedEncode[];
+  /** In click order — replay serves round 0 on the first click, 1 on the second… */
+  evolveRounds: RecordedEvolveRound[];
+  /** Two-pass translations observed live (merged with the harvested ones). */
+  twoPass: DemoTranslation[];
 }
 
 export interface DemoBundle {
@@ -58,4 +93,10 @@ export interface DemoBundle {
    * Applied to composition data at load time and to memes[] at build time.
    */
   images: Record<string, string>;
+  /**
+   * Optional live-session recordings (geocode, encodes, evolve rounds, extra
+   * two-pass translations). Absent in bundles exported before the recorder
+   * existed — every consumer must tolerate that.
+   */
+  recordings?: DemoRecordings;
 }
