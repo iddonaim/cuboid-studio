@@ -31,7 +31,8 @@ import { SitesMapView } from './components/map/SitesMapView';
 import { MapViewToggle } from './components/map/MapViewToggle';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
-import { setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
+import { getActiveSiteContext, setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
+import { isSameSite } from './lib/siteContext/mapContextUrl';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { AccentProvider } from './contexts/AccentContext';
 import { ProjectsPanel } from './components/projects/ProjectsPanel';
@@ -169,6 +170,15 @@ const AppInner: React.FC = () => {
   const isMobile            = useIsMobile();
   const { user }            = useAuthContext();
   const [showSiteToast, setShowSiteToast] = React.useState(false);
+
+  // Map-context iframe finished (or restored) an analysis. Only toast for a
+  // genuinely new site — when the payload matches the already-active site
+  // it's the Analysis tab restoring itself (e.g. after a page reload), not news.
+  const handleAnalysisComplete = React.useCallback((context: SiteContextData) => {
+    const isRestore = isSameSite(context, getActiveSiteContext());
+    setActiveSiteContext(context);
+    if (!isRestore) setShowSiteToast(true);
+  }, []);
   // Map tab sub-view: the analysis iframe or the signed-in "My sites" layer.
   // Lives in the app store so the TopBar can render the switch.
   const mapView    = useAppStore(s => s.mapView);
@@ -317,12 +327,7 @@ const AppInner: React.FC = () => {
               and analysis run inside this iframe, and destroying the iframe
               on every tab switch was wiping that in-progress state. */}
           <div className={showMapCanvas && !showSitesMap ? undefined : 'hidden'}>
-            <MapContextCanvas
-              onAnalysisComplete={(context: SiteContextData) => {
-                setActiveSiteContext(context);
-                setShowSiteToast(true);
-              }}
-            />
+            <MapContextCanvas onAnalysisComplete={handleAnalysisComplete} />
           </div>
           {showSitesMap && <SitesMapView />}
           {showMapCanvas && (user || isDemoMode()) && <MapViewToggle />}
@@ -401,12 +406,7 @@ const AppInner: React.FC = () => {
         {/* Kept mounted (just hidden) instead of unmounted when leaving Map
             mode — see matching comment in the mobile layout above. */}
         <div className={showMapCanvas && !showSitesMap ? undefined : 'hidden'}>
-          <MapContextCanvas
-            onAnalysisComplete={(context: SiteContextData) => {
-              setActiveSiteContext(context);
-              setShowSiteToast(true);
-            }}
-          />
+          <MapContextCanvas onAnalysisComplete={handleAnalysisComplete} />
         </div>
         {showSitesMap && <SitesMapView />}
         {/* Desktop: the Analysis / My sites switch lives in the TopBar, so
