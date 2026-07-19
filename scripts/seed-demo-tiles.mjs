@@ -23,9 +23,20 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dryRun = process.argv.includes('--dry-run');
 
-const TILE_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+// Esri World Imagery — the same satellite layer the app uses online, so the
+// demo looks identical to the live map. (OSM's raster servers refuse scripted
+// bulk downloads and answer with an "Access blocked" placeholder image at
+// HTTP 200, which the first seed pass silently saved 421 times. Don't go back.)
+// NOTE Esri's path order is {z}/{y}/{x}; local files stay {z}/{x}/{y}.png to
+// match the app's tile URL template. Tiles are JPEG bytes in .png files —
+// browsers render by content, not extension.
+const TILE_URL = (z, x, y) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
 const USER_AGENT = 'cuboid-studio-offline-demo/1.0 (thesis presentation; one-time seed)';
 const THROTTLE_MS = 500;
+// The OSM block placeholder is a fixed 6987-byte PNG; refuse any tile whose
+// bytes look like a "blocked" placeholder pattern (identical small responses).
+const seenSizes = new Map();
 
 const WIDE_ZOOMS = [8, 9, 10, 11];
 // The map opens on a fit-bounds view framing ALL pins together, which lands at
@@ -141,8 +152,23 @@ for (const { z, x, y } of wanted.values()) {
   try {
     const res = await fetch(TILE_URL(z, x, y), { headers: { 'User-Agent': USER_AGENT } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    // Placeholder guard: a provider refusing us serves the SAME image for every
+    // tile (OSM's "Access blocked" tile is one). Real imagery never repeats
+    // byte-identically dozens of times.
+    // Coastal cities legitimately repeat solid sea tiles, so only a run where
+    // one identical image dominates everything signals a blocked placeholder.
+    const sig = `${buf.length}:${buf.subarray(0, 64).toString('hex')}`;
+    const count = (seenSizes.get(sig) ?? 0) + 1;
+    seenSizes.set(sig, count);
+    if (count > 60 && count > (ok + 1) * 0.5) {
+      console.error(
+        '\nABORT: one byte-identical image dominates the downloads — the provider is serving a "blocked" placeholder, not imagery. Delete public/demo/tiles and investigate before re-running.',
+      );
+      process.exit(3);
+    }
     await mkdir(dir, { recursive: true });
-    await writeFile(file, Buffer.from(await res.arrayBuffer()));
+    await writeFile(file, buf);
     ok += 1;
     if (ok % 50 === 0) console.log(`  ${ok}/${wanted.size}…`);
   } catch (err) {
