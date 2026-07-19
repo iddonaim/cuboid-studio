@@ -19,6 +19,12 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { loadSitePins, isLocated, SitePin } from '../../lib/projects/sitePins';
 import { listCompositions, updateSite } from '../../lib/projects/firestore';
 import { restoreComposition } from '../../lib/projects/composition';
+import { isDemoMode } from '../../lib/demo/demoMode';
+import {
+  loadDemoSitePins,
+  listDemoCompositions,
+  rewriteCompositionImages,
+} from '../../lib/demo/bundle';
 import { buildSiteContextAt } from '../../lib/siteContext/mapSiteContext';
 import { setActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CompositionDoc } from '../../lib/projects/types';
@@ -31,6 +37,8 @@ const PLACEMENT_RADIUS_METERS = 500;
 const ESRI_IMAGERY =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+/** Offline demo: tiles pre-seeded into the repo by scripts/seed-demo-tiles.mjs. */
+const DEMO_TILES = '/demo/tiles/{z}/{x}/{y}.png';
 
 function pinKey(pin: SitePin): string {
   return `${pin.projectId}:${pin.siteId}`;
@@ -123,7 +131,7 @@ export const SitesMapView: React.FC = () => {
     setPinsLoading(true);
     setPinsError(null);
     try {
-      setPins(await loadSitePins(uid));
+      setPins(isDemoMode() ? await loadDemoSitePins() : await loadSitePins(uid));
     } catch (err) {
       console.error('Failed to load site pins:', err);
       setPinsError('Could not load your projects — check your connection and try again.');
@@ -142,24 +150,35 @@ export const SitesMapView: React.FC = () => {
       zoomControl: true,
     });
 
-    const esriLayer = L.tileLayer(ESRI_IMAGERY, {
-      attribution: 'Tiles &copy; Esri',
-      maxZoom: 19,
-    }).addTo(map);
+    if (isDemoMode()) {
+      // Offline demo: local pre-seeded tiles only. Deterministic — identical
+      // with wifi on or off; unseeded areas simply stay blank, so the seed
+      // script's coverage is rehearsed exactly as it will present.
+      L.tileLayer(DEMO_TILES, {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+        maxNativeZoom: 17,
+      }).addTo(map);
+    } else {
+      const esriLayer = L.tileLayer(ESRI_IMAGERY, {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19,
+      }).addTo(map);
 
-    const osmLayer = L.tileLayer(OSM_TILES, {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    });
+      const osmLayer = L.tileLayer(OSM_TILES, {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      });
 
-    let usingOsm = false;
-    esriLayer.on('tileerror', () => {
-      if (!usingOsm) {
-        usingOsm = true;
-        map.removeLayer(esriLayer);
-        osmLayer.addTo(map);
-      }
-    });
+      let usingOsm = false;
+      esriLayer.on('tileerror', () => {
+        if (!usingOsm) {
+          usingOsm = true;
+          map.removeLayer(esriLayer);
+          osmLayer.addTo(map);
+        }
+      });
+    }
 
     map.on('click', (e: L.LeafletMouseEvent) => mapClickRef.current(e));
 
@@ -175,9 +194,11 @@ export const SitesMapView: React.FC = () => {
     };
   }, []);
 
-  // Initial pins load.
+  // Initial pins load. In demo mode the bundle needs no signed-in user.
   useEffect(() => {
-    if (user) void refreshPins(user.uid);
+    if (isDemoMode()) void refreshPins('demo');
+    else if (user) void refreshPins(user.uid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Fit the map to the located pins once, after the first successful load.
@@ -262,7 +283,10 @@ export const SitesMapView: React.FC = () => {
     }
     let cancelled = false;
     setCompsLoading(true);
-    listCompositions(selectedPin.projectId, selectedPin.siteId)
+    const list = isDemoMode()
+      ? listDemoCompositions(selectedPin.projectId, selectedPin.siteId)
+      : listCompositions(selectedPin.projectId, selectedPin.siteId);
+    list
       .then((list) => { if (!cancelled) setCompositions(list); })
       .catch((err) => {
         console.error('Failed to load compositions:', err);
@@ -279,7 +303,10 @@ export const SitesMapView: React.FC = () => {
   const handleLoadComposition = async (c: CompositionDoc) => {
     setRestoring(true);
     try {
-      const { landingMode } = await restoreComposition(c.data);
+      // Demo mode: point meme images at their bundled local copies before
+      // restore, so nothing in the session references Firebase Storage.
+      const data = isDemoMode() ? await rewriteCompositionImages(c.data) : c.data;
+      const { landingMode } = await restoreComposition(data);
       setActiveMode(landingMode);
       showToast('Composition loaded', 'success');
     } catch (err) {

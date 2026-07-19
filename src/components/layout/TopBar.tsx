@@ -6,6 +6,7 @@ import { SaveCompositionButton } from '../projects/SaveCompositionButton';
 import { MapViewSegment } from '../map/MapViewToggle';
 import { SettingsPopover } from '../settings/SettingsPopover';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { isDemoMode } from '../../lib/demo/demoMode';
 
 const glassStyle: React.CSSProperties = {
   background: 'hsl(var(--card) / 0.94)',
@@ -109,7 +110,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
       <div className="flex items-center justify-end gap-2 px-4">
         {/* Map view switch lives in the bar (desktop) so it never floats over
             the embedded map-context app's own toolbar. */}
-        {showModeTabs && activeMode === 'map' && user && <MapViewSegment />}
+        {showModeTabs && activeMode === 'map' && (user || isDemoMode()) && <MapViewSegment />}
         <SaveCompositionButton />
         <AuthControls />
 
