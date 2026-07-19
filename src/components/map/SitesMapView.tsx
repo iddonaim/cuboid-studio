@@ -155,7 +155,7 @@ export const SitesMapView: React.FC = () => {
       // with wifi on or off; unseeded areas simply stay blank, so the seed
       // script's coverage is rehearsed exactly as it will present.
       L.tileLayer(DEMO_TILES, {
-        attribution: '&copy; OpenStreetMap contributors',
+        attribution: 'Tiles &copy; Esri',
         maxZoom: 19,
         maxNativeZoom: 17,
       }).addTo(map);
