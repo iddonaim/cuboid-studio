@@ -1,6 +1,8 @@
 import { LLMOperatorResult, TwoPassTranslationResult } from '../operators/types';
 import { getActiveSiteContext } from '../storage/siteContext';
 import { useTranslationLexiconStore } from '../../store/useTranslationLexiconStore';
+import { isDemoMode } from '../demo/demoMode';
+import { getDemoTranslation } from '../demo/bundle';
 
 export interface TranslateMemeRequest {
   memeDescription: string;
@@ -59,6 +61,13 @@ export interface TranslateMemeV2Request extends TranslateMemeRequest {
  * or an explicit site_context is provided.
  */
 export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise<TwoPassTranslationResult> {
+  // Offline demo: replay the real two-pass result harvested from the exported
+  // compositions (keyed by meme description). The store's phased animation
+  // downstream is unchanged, so the beat still reads as live.
+  if (isDemoMode()) {
+    return getDemoTranslation(req.memeDescription);
+  }
+
   // Resolve site context
   let siteContext = req.site_context;
   if (siteContext === undefined && !req.skipSiteContext) {

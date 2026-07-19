@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ArchthesisMeme, CuboidMemeInput, FetchMemesResponse } from '../../types/archthesis';
 import { mapMemeToCuboidInput } from '../../lib/meme-mapper';
+import { isDemoMode } from '../../lib/demo/demoMode';
+import { fetchDemoMemes } from '../../lib/demo/bundle';
 import { Button } from '@/components/ui/button';
 
 interface ArchthesisBrowserProps {
@@ -43,12 +45,24 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
     const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
-      const res = await fetch(`/api/fetch-memes?${params}`, { signal: controller.signal });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Error ${res.status}: ${body}`);
+      let data: FetchMemesResponse;
+      if (isDemoMode()) {
+        // Offline demo: serve the bundled meme snapshot instead of /api.
+        data = await fetchDemoMemes({
+          limit: 20,
+          offset: append ? memes.length : 0,
+          sort,
+          search,
+          tag,
+        });
+      } else {
+        const res = await fetch(`/api/fetch-memes?${params}`, { signal: controller.signal });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`Error ${res.status}: ${body}`);
+        }
+        data = await res.json();
       }
-      const data: FetchMemesResponse = await res.json();
       if (append) {
         // Drop anything already shown (a meme added/removed upstream shifts
         // the pages) so duplicate ids never collide as React keys.

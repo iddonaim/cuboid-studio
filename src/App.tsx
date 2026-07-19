@@ -41,6 +41,8 @@ import { Section } from '@/components/ui/section';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { GuidedTour } from './components/onboarding/GuidedTour';
 import { ApiActivityIndicator } from './components/layout/ApiActivityIndicator';
+import { isDemoMode } from './lib/demo/demoMode';
+import { DemoExportButton } from './components/demo/DemoExportButton';
 
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
@@ -176,12 +178,22 @@ const AppInner: React.FC = () => {
   const showBuilderSurface     = activeMode === 'encoding' && seedEditOpen;
   const showPataphysicalSurface = activeMode === 'evolution' && evolutionSubMode === 'pataphysical';
   const showMapCanvas = activeMode === 'map';
-  const showSitesMap  = showMapCanvas && mapView === 'sites' && !!user;
+  // Offline demo: the sites map reads the bundled fixture, so no user is needed.
+  const showSitesMap  = showMapCanvas && mapView === 'sites' && (!!user || isDemoMode());
 
   // Signing out while on "My sites" falls back to the analysis view.
   useEffect(() => {
-    if (!user) setMapView('analyze');
+    if (!user && !isDemoMode()) setMapView('analyze');
   }, [user]);
+
+  // Offline demo: open straight on the sites map — the demo's entry beat.
+  useEffect(() => {
+    if (isDemoMode()) {
+      setActiveMode('map');
+      setMapView('sites');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Pre-generate geometries on mount (CSG mode only)
   useEffect(() => {
@@ -313,7 +325,7 @@ const AppInner: React.FC = () => {
             />
           </div>
           {showSitesMap && <SitesMapView />}
-          {showMapCanvas && user && <MapViewToggle />}
+          {showMapCanvas && (user || isDemoMode()) && <MapViewToggle />}
           {!showMapCanvas && (
             <>
               <Viewport3D />
@@ -474,6 +486,7 @@ const App: React.FC = () => (
     <ProjectsPanel />
     <ToastContainer />
     <ApiActivityIndicator />
+    <DemoExportButton />
     <OnboardingModal />
     <GuidedTour />
     </AccentProvider>
