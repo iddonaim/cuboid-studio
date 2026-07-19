@@ -28,6 +28,19 @@ if (bundle.version !== 1) {
   process.exit(1);
 }
 
+// --- Keep only located sites -------------------------------------------------
+// Unlocated pins are test leftovers; they render as a "N sites without
+// location" list in the demo, which the jury shouldn't see. Compositions of a
+// dropped site are dropped with it.
+{
+  const before = bundle.pins.length;
+  bundle.pins = bundle.pins.filter(p => p.lat != null && p.lng != null);
+  const keptSites = new Set(bundle.pins.map(p => p.siteId));
+  bundle.compositions = bundle.compositions.filter(c => keptSites.has(c.siteId));
+  const dropped = before - bundle.pins.length;
+  if (dropped) console.log(`Dropped ${dropped} unlocated site(s) from the demo.`);
+}
+
 const demoDir = join(root, 'public', 'demo');
 const memesDir = join(demoDir, 'memes');
 await mkdir(memesDir, { recursive: true });

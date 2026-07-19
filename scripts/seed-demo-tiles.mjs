@@ -28,6 +28,11 @@ const USER_AGENT = 'cuboid-studio-offline-demo/1.0 (thesis presentation; one-tim
 const THROTTLE_MS = 500;
 
 const WIDE_ZOOMS = [8, 9, 10, 11];
+// The map opens on a fit-bounds view framing ALL pins together, which lands at
+// a mid zoom (~z13–14 when pins span a city). The tight per-pin boxes don't
+// cover the corridor between pins at those zooms, so without MID_ZOOMS the
+// opening view has missing tiles (seen as gray 404 squares in the first cut).
+const MID_ZOOMS = [12, 13, 14, 15];
 const TIGHT_ZOOMS = [12, 13, 14, 15, 16, 17];
 const MIN_TIGHT_RADIUS_M = 600;
 
@@ -68,22 +73,24 @@ const addAll = iter => {
   for (const t of iter) wanted.set(`${t.z}/${t.x}/${t.y}`, t);
 };
 
-// Wide context: one box around all pins (padded ~20%).
+// Wide context: one box around all pins (padded ~20%), plus the same box with
+// a generous pad at mid zooms so the opening fit-bounds view (and a wide
+// laptop viewport around it) is fully covered.
 {
   const lats = pins.map(p => p.lat);
   const lngs = pins.map(p => p.lng);
-  const pad = 0.2;
   const latSpan = Math.max(Math.max(...lats) - Math.min(...lats), 0.05);
   const lngSpan = Math.max(Math.max(...lngs) - Math.min(...lngs), 0.05);
-  addAll(
-    tilesForBBox(
-      Math.min(...lats) - latSpan * pad,
-      Math.max(...lats) + latSpan * pad,
-      Math.min(...lngs) - lngSpan * pad,
-      Math.max(...lngs) + lngSpan * pad,
-      WIDE_ZOOMS,
-    ),
-  );
+  const box = pad => [
+    Math.min(...lats) - latSpan * pad,
+    Math.max(...lats) + latSpan * pad,
+    Math.min(...lngs) - lngSpan * pad,
+    Math.max(...lngs) + lngSpan * pad,
+  ];
+  addAll(tilesForBBox(...box(0.2), WIDE_ZOOMS));
+  // 0.6: fit-bounds centers the pins but a 16:10 viewport shows well past the
+  // bbox horizontally; 60% padding covers the whole visible frame with margin.
+  addAll(tilesForBBox(...box(0.6), MID_ZOOMS));
 }
 
 // Tight boxes per pin.
