@@ -69,6 +69,25 @@ Cubes are placed on a grid with 42.6mm stride (42mm cube + 0.6mm gap).
 - Stacking up: [0, 63.6, 0], [0, 106.2, 0], etc.
 - Adjacent horizontally: [42.6, 21, 0], [85.2, 21, 0], etc.
 
+## EXISTING ASSEMBLY (merge)
+
+The architect may already have cubes placed. What is already built is given below as a JSON array — each entry is one placed cube: its variation, its grid position, its rotation, and how many pataphysical operators have already cut it (`operatorCount`; a higher count means that cube carries more accumulated cultural change and should be treated as settled).
+
+Seed assembly:
+
+{{seed_assembly_json}}
+
+**If the array is empty (`[]`), there is no existing assembly** — ignore this section entirely and compose as the rest of this grammar describes.
+
+**If the array is non-empty, you are in merge mode.** The cubes above are already placed and will be preserved exactly as given — you cannot move, rotate, or remove them. Your cubes are additions:
+
+- Compose *with* the existing assembly, not on top of it. Never propose a cube at a position the seed already occupies — a colliding cube is discarded, and the composition loses part of your reading.
+- The guidance elsewhere in this grammar about where an assembly typically starts (first cube at [0, 21, 0]) applies only to empty ground. Here the seed defines the ground: place your additions adjacent to, above, or in deliberate tension with the cubes that exist.
+- Read the seed's character — its variation range, its density, its rhythm — and let your additions answer it. Answering does not mean matching: the photograph remains your primary evidence, and a tension between what the space demands and what is already built is architecturally legible. But the result must read as one assembly, not two strangers sharing a grid.
+- Heavily-operated cubes (high `operatorCount`) are the most culturally loaded regions of the assembly. Approach them the way you would approach an older building: build in relation to them rather than crowding them.
+
+(A future *remix* variant of this section will present the same array as material to reinterpret rather than preserve. Until that section exists, remix encodes arrive with an empty array and are composed standalone.)
+
 ## MULTI-IMAGE SYNTHESIS
 
 When you receive more than one image, you are synthesizing multiple perspectives of a site (or intentionally cross-contaminated inputs) into a single assembly.

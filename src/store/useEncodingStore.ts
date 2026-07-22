@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { encodeSpace, EncodedCube, SpatialReading } from '../lib/api/encodeSpace';
+import { encodeSpace, EncodedCube, SpatialReading, SeedAssemblyCube } from '../lib/api/encodeSpace';
 import { getActiveSiteContext } from '../lib/storage/siteContext';
 import { PlacedCube } from '../lib/cube/types';
 import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
@@ -43,6 +43,26 @@ function processEncodedCubes(cubes: EncodedCube[], seedCubes: PlacedCube[]): Enc
       position: cube.position.map(snapAxis) as [number, number, number],
     }))
     .filter((cube) => !occupied.has(cube.position.join(',')));
+}
+
+/** Merge mode: summarise the seed assembly for the encode request so the
+ *  model composes its additions against what's already placed. Operator
+ *  counts come from the meme store (dynamic import — matches the pattern the
+ *  evolution store uses to avoid circular deps). Returns undefined outside
+ *  merge mode / with an empty seed, keeping those requests byte-identical. */
+async function buildSeedAssembly(
+  mode: EncodingMode,
+  seedCubes: PlacedCube[],
+): Promise<SeedAssemblyCube[] | undefined> {
+  if (mode !== 'merge' || seedCubes.length === 0) return undefined;
+  const { useMemeStore } = await import('./useMemeStore');
+  const cubeOperators = useMemeStore.getState().cubeOperators;
+  return seedCubes.map((c) => ({
+    variationId: c.variationId,
+    position: c.position,
+    rotation: { x: c.rotation.x, y: c.rotation.y },
+    operatorCount: cubeOperators[c.id]?.length ?? 0,
+  }));
 }
 
 /** One model's outcome in an encode comparison run. Nothing renders until the
@@ -369,6 +389,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       activeSite && activeSite.quantitative.location.lat && activeSite.quantitative.location.lng;
     const siteContext = hasSiteCoords ? activeSite : undefined;
     const seedCubes = get().seedCubes;
+    // Captured once so every compared model sees the same seed summary.
+    const seedAssembly = await buildSeedAssembly(get().mode, seedCubes);
 
     set({
       isComparingEncode: true,
@@ -402,12 +424,14 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
                 })),
                 siteContext,
                 model: m.id,
+                seedAssembly,
               })
             : await encodeSpace({
                 imageBase64: imageBase64!,
                 imageMediaType: imageMediaType || 'image/jpeg',
                 siteContext,
                 model: m.id,
+                seedAssembly,
               });
           update(m.id, {
             status: 'done',
@@ -505,6 +529,10 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const siteContext = hasSiteCoords ? activeSite : undefined;
 
     try {
+      // Merge mode: send the existing assembly so the model builds against it
+      // rather than proposing cubes blind (standalone/remix send nothing).
+      const seedAssembly = await buildSeedAssembly(get().mode, get().seedCubes);
+
       const result = hasMulti
         ? await encodeSpace({
             images: uploadedImages.map((img) => ({
@@ -513,11 +541,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
               isPrimary: img.id === primaryImageId,
             })),
             siteContext,
+            seedAssembly,
           })
         : await encodeSpace({
             imageBase64: imageBase64!,
             imageMediaType: imageMediaType || 'image/jpeg',
             siteContext,
+            seedAssembly,
           });
 
       // Grid-snap each position and remove collisions with seed cubes.
