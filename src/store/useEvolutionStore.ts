@@ -31,10 +31,10 @@ export interface EvolutionCandidate {
    *  applied candidate stays fully explainable when its cube is re-inspected. */
   pass2?: TranslationPass2;
 
-  // Fitness
+  // Fitness: candidates are ranked by raw compression progress. (A blended
+  // user-score fitness existed here once but nothing downstream ever read it
+  // — see EVOLUTION_SPEC.md "future work" for the generational version.)
   compressionProgress: number;
-  userScore: number | null;
-  combinedFitness: number;
 }
 
 export type TargetCubeStrategy = 'random' | 'least-compressed' | 'adaptive';
@@ -50,7 +50,6 @@ export type EvolutionSubMode = 'evolve' | 'pataphysical';
 
 export interface EvolutionConfig {
   populationSize: number;        // candidates per generation (default 6)
-  selectionPressure: number;     // weight of compression progress vs user choice (default 0.7)
   targetCubeStrategy: TargetCubeStrategy;
   memePoolFilter: string | null; // optional tag filter
 }
@@ -106,7 +105,6 @@ let demoEvolveRoundIndex = 0;
 
 const DEFAULT_CONFIG: EvolutionConfig = {
   populationSize: 6,
-  selectionPressure: 0.7,
   targetCubeStrategy: 'least-compressed',
   memePoolFilter: null,
 };
@@ -298,8 +296,6 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           pass1,
           pass2,
           compressionProgress: progress,
-          userScore: null,
-          combinedFitness: progress, // user score will blend in later
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -359,20 +355,8 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   previewCandidate: (id) => set({ previewCandidateId: id }),
 
   selectCandidate: (id) => {
-    const { candidates, config } = get();
-    const candidate = candidates.find(c => c.id === id);
-    if (!candidate) return;
-
-    // Blend user selection with compression progress
-    const updated = candidates.map(c => ({
-      ...c,
-      userScore: c.id === id ? 1.0 : 0.0,
-      combinedFitness:
-        config.selectionPressure * c.compressionProgress +
-        (1 - config.selectionPressure) * (c.id === id ? 1.0 : 0.0),
-    }));
-
-    set({ candidates: updated, selectedCandidateId: id });
+    if (!get().candidates.some(c => c.id === id)) return;
+    set({ selectedCandidateId: id });
   },
 
   applySelected: async () => {
