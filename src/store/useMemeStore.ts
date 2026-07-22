@@ -441,7 +441,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         modelUsed = twoPass.model;
         // Synthesize v1-shaped result from pass2 so the existing cutter
         // pipeline, CutterTweakPanel, and revertLastOperator all work
-        // unchanged. applyLLMOperator only reads cutter + magnitude.
+        // unchanged. applyLLMOperator only reads `cutter`.
         result = {
           operator: twoPass.pass2.operator,
           targets: twoPass.pass2.targets,

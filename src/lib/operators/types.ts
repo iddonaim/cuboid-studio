@@ -16,9 +16,20 @@ export interface LLMCutterResult {
 
 export interface LLMOperatorResult {
   operator: OperatorClassV2;
+  /**
+   * Semantic provenance, not a geometric input: records which edge
+   * relationships (adjacency, access, …) the translation *claims* to act on.
+   * Never read by geometry — applyLLMOperator consumes only `cutter`.
+   * Consumed by the UI panels, the assembly export, and persistence.
+   */
   targets: EdgeType[];
-  magnitude: number;        // 0.0-1.0
-  decay: number;            // 0.0-1.0
+  /** 0.0-1.0. Not read by geometry (only `cutter` shapes the cut), but it IS
+   *  part of the compressibility engine's cut fingerprint, so it affects
+   *  Evolution scoring. Also shown in UI and included in exports. */
+  magnitude: number;
+  /** 0.0-1.0. Semantic provenance only — read by nothing behavioral (neither
+   *  geometry nor scoring); shown in UI and included in exports. */
+  decay: number;
   cutter: LLMCutterResult;
   reasoning: string;
 }
@@ -27,8 +38,11 @@ export interface OperatorRecord {
   id: string;
   source: 'meme';
   operator: OperatorClassV2;
+  /** Semantic provenance, not a geometric input — see LLMOperatorResult.targets. */
   targets: EdgeType[];
+  /** Not read by geometry; feeds the compressibility fingerprint — see LLMOperatorResult.magnitude. */
   magnitude: number;
+  /** Semantic provenance only — see LLMOperatorResult.decay. */
   decay: number;
   createdAt: string;
   memeDescription: string;
@@ -97,9 +111,12 @@ export interface TranslationPass1 {
 export interface TranslationPass2 {
   pass: 2;
   operator: OperatorClassV2;
+  /** Semantic provenance, not a geometric input — see LLMOperatorResult.targets. */
   targets: EdgeType[];
   target_reasoning: string;
+  /** Not read by geometry; feeds the compressibility fingerprint — see LLMOperatorResult.magnitude. */
   magnitude: number;
+  /** Semantic provenance only — see LLMOperatorResult.decay. */
   decay: number;
   cutter: LLMCutterResult & {
     geometry_reasoning: string;
