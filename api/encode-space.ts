@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { DEFAULT_LEXICON, type SpatialLexicon } from '../src/prompts/lexicon.default.js';
 import { toAnthropicModelId } from '../src/lib/models.js';
+import { parsePromptVersion } from '../src/lib/promptVersion.js';
 
 // Vision model for encoding, overridable per deployment via ENCODE_MODEL
 // (Anthropic or OpenRouter-style id — normalized either way). Model strategy:
@@ -84,6 +85,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const seedAssemblyJson = sanitiseSeedAssembly(req.body.seedAssembly);
 
   const systemPrompt = composeSystemPrompt(grammarTemplate, activeLexicon, seedAssemblyJson);
+
+  // Prompt provenance: the grammar file carries a "# version: N" header that
+  // the architect bumps on edit; echo it so results record their conditions.
+  const promptVersion = parsePromptVersion(grammarTemplate);
 
   // Per-request model override (OpenRouter-style id, e.g. "google/gemini-3.5-flash"),
   // sent by the encode Model lab. Absent for a normal encode, which keeps the
@@ -238,9 +243,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(reading ? { reading } : {}),
       reasoning: parsed.reasoning,
       cubes: validCubes,
-      // Provenance: which model produced this reading. Additive — existing
-      // clients ignore it; future capture can persist it per record.
+      // Provenance: which model + grammar version produced this reading.
+      // Additive — existing clients ignore them; capture persists them.
       model: modelUsed,
+      ...(promptVersion ? { promptVersion } : {}),
     });
   } catch (error) {
     console.error('Encoding error:', error);

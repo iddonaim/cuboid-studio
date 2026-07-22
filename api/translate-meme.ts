@@ -7,6 +7,7 @@ import {
   isTranslationLexicon,
 } from '../src/prompts/translationLexicon.default.js';
 import { toAnthropicModelId } from '../src/lib/models.js';
+import { parsePromptVersion } from '../src/lib/promptVersion.js';
 
 /**
  * Vercel serverless function: POST /api/translate-meme
@@ -98,6 +99,7 @@ export async function parseAndRoute(
   userMessage: string,
   passMode: PassMode,
   selectedModel: string,
+  promptVersion: string | null = null,
 ): Promise<VercelResponse> {
   const validate = (value: any): ValidationResult =>
     passMode === 'two_pass'
@@ -157,7 +159,13 @@ export async function parseAndRoute(
       raw: JSON.stringify(result.raw).substring(0, 500),
     });
   }
-  return res.status(200).json(result.payload);
+  // Prompt provenance rides along when the loaded prompt file declared a
+  // "# version: N" header (currently only the v2 translation prompt does).
+  const payload =
+    promptVersion && result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)
+      ? { ...(result.payload as Record<string, unknown>), promptVersion }
+      : result.payload;
+  return res.status(200).json(payload);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -227,6 +235,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: `Failed to load translation prompt: ${promptFile}` });
   }
 
+  // Prompt provenance: parsed from the raw file before slot filling. Null for
+  // prompts without a "# version: N" header (the v1 file, by design).
+  const promptVersion = parsePromptVersion(systemPrompt);
+
   // Inject site context into v2 prompt. If the prompt template has drifted
   // and no longer contains the {site_context} placeholder, the replace is a
   // silent no-op — warn loudly so the breakage is visible in logs.
@@ -267,7 +279,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       selectedModel,
       passMode,
     });
-    return parseAndRoute(res, caller, userMessage, passMode, selectedModel);
+    return parseAndRoute(res, caller, userMessage, passMode, selectedModel, promptVersion);
   }
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -282,7 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     selectedModel,
     passMode,
   });
-  return parseAndRoute(res, caller, userMessage, passMode, selectedModel);
+  return parseAndRoute(res, caller, userMessage, passMode, selectedModel, promptVersion);
 }
 
 // ---------------------------------------------------------------------------

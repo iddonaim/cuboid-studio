@@ -63,6 +63,8 @@ export interface OperatorRecord {
   pass2?: TranslationPass2;
   confidenceVector?: ConfidenceVector;
   model?: string;
+  /** "# version: N" header of the prompt file that produced this translation. */
+  promptVersion?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,4 +133,6 @@ export interface TwoPassTranslationResult {
   pass1: TranslationPass1;
   pass2: TranslationPass2;
   model: string;
+  /** "# version: N" header of the prompt file used (absent on old demo recordings). */
+  promptVersion?: string;
 }

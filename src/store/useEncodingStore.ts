@@ -25,6 +25,8 @@ function clearReadingFields() {
     readingEdited: false,
     encodingLexicon: null as SpatialLexicon | null,
     encodingLexiconId: null as string | null,
+    encodingModel: null as string | null,
+    encodingPromptVersion: null as string | null,
   };
 }
 
@@ -81,6 +83,8 @@ export interface EncodeComparisonEntry {
   cubes?: EncodedCube[];
   lexicon?: SpatialLexicon | null;
   lexiconId?: string | null;
+  /** Grammar "# version" the server reported for this entry's encode. */
+  promptVersion?: string | null;
 }
 
 export interface UploadedEncodingImage {
@@ -130,6 +134,10 @@ interface EncodingState {
   encodingLexicon: SpatialLexicon | null;
   /** The Firestore id of the lexicon used, if it was a saved one. Null = DEFAULT_LEXICON. */
   encodingLexiconId: string | null;
+  /** Model id the server reported for the current encode result (provenance). */
+  encodingModel: string | null;
+  /** Grammar-template "# version" the server reported for the current encode. */
+  encodingPromptVersion: string | null;
   lastError: string | null;
   updateEncodingReading: (reading: SpatialReading) => void;
 
@@ -298,6 +306,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   readingEdited: false,
   encodingLexicon: null,
   encodingLexiconId: null,
+  encodingModel: null,
+  encodingPromptVersion: null,
   lastError: null,
 
   updateEncodingReading: (reading) => {
@@ -437,6 +447,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
             status: 'done',
             elapsedMs: Math.round(performance.now() - t0),
             resolvedModel: result.model ?? null,
+            promptVersion: result.promptVersion ?? null,
             reading: result.reading ?? null,
             reasoning: result.reasoning,
             cubes: processEncodedCubes(result.cubes, seedCubes),
@@ -476,6 +487,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       readingEdited: false,
       encodingLexicon: entry.lexicon ?? null,
       encodingLexiconId: entry.lexiconId ?? null,
+      encodingModel: entry.resolvedModel ?? entry.modelId,
+      encodingPromptVersion: entry.promptVersion ?? null,
       lastError: null,
       ...clearStandaloneSeed,
     });
@@ -562,6 +575,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         readingEdited: false,
         encodingLexicon: capturedLexicon,
         encodingLexiconId: capturedLexiconId,
+        encodingModel: result.model ?? null,
+        encodingPromptVersion: result.promptVersion ?? null,
         isEncoding: false,
       });
     } catch (error) {

@@ -71,6 +71,9 @@ export interface EncodeSpaceResponse {
   cubes: EncodedCube[];
   /** Model id the server actually used (echoed back for provenance). */
   model?: string;
+  /** "# version: N" header of the grammar template that produced this encode.
+   *  Absent from older recorded responses. */
+  promptVersion?: string;
 }
 
 /** The base64 payload that identifies "which photo": the primary (or only) image. */

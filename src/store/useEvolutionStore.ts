@@ -30,6 +30,10 @@ export interface EvolutionCandidate {
   /** Full pass-2 output (geometry reasoning + confidence vector), kept so an
    *  applied candidate stays fully explainable when its cube is re-inspected. */
   pass2?: TranslationPass2;
+  /** Model id the server reported for this candidate's translation. */
+  model?: string;
+  /** Prompt-file "# version" the server reported. */
+  promptVersion?: string;
 
   // Fitness: candidates are ranked by raw compression progress. (A blended
   // user-score fitness existed here once but nothing downstream ever read it
@@ -295,6 +299,9 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           cutterConfig,
           pass1,
           pass2,
+          // Provenance — conditional so Firestore never sees undefined.
+          ...(twoPassResult.model ? { model: twoPassResult.model } : {}),
+          ...(twoPassResult.promptVersion ? { promptVersion: twoPassResult.promptVersion } : {}),
           compressionProgress: progress,
         };
       } catch (err) {
@@ -434,6 +441,8 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       ...(candidate.pass1 ? { pass1: candidate.pass1 } : {}),
       ...(candidate.pass2 ? { pass2: candidate.pass2 } : {}),
       ...(confidenceVector ? { confidenceVector } : {}),
+      ...(candidate.model ? { model: candidate.model } : {}),
+      ...(candidate.promptVersion ? { promptVersion: candidate.promptVersion } : {}),
     };
 
     // Update meme store state directly. cubeTranslations gets the same
@@ -460,7 +469,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           pass1: candidate.pass1 ?? null,
           pass2: candidate.pass2 ?? null,
           confidenceVector,
-          model: null,
+          model: candidate.model ?? null,
           cutterGeometry: cutterGeo,
           memeDescription: candidate.memeDescription,
           memeTitle: candidate.memeTitle ?? null,

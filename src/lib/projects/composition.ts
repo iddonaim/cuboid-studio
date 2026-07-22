@@ -80,6 +80,14 @@ export function captureComposition(): CompositionData {
           // Thumbnails of the photo(s) that informed this encode — only
           // written when at least one is loaded.
           ...(imageThumbnails.length > 0 ? { images: imageThumbnails } : {}),
+          // Provenance: which model + grammar version produced this encode.
+          // The full re-run is unreproducible by design (photos are saved as
+          // thumbnails only, and the LLM is nondeterministic) — so at least
+          // the conditions of the translation are archived.
+          ...(encoding.encodingModel ? { model: encoding.encodingModel } : {}),
+          ...(encoding.encodingPromptVersion
+            ? { promptVersion: encoding.encodingPromptVersion }
+            : {}),
           // Reading + lexicon provenance — only written when a reading exists.
           ...(encoding.encodingReading
             ? {
@@ -254,6 +262,9 @@ export async function restoreComposition(
       // Lexicon provenance — restore so a re-save after load preserves the snapshot.
       encodingLexicon: data.encode.lexiconSnapshot ?? null,
       encodingLexiconId: data.encode.lexiconId ?? null,
+      // Model + prompt provenance — absent on pre-provenance compositions.
+      encodingModel: data.encode.model ?? null,
+      encodingPromptVersion: data.encode.promptVersion ?? null,
       // Photo thumbnails — display-only, no full-res base64 to re-encode with.
       multiPhotoEnabled: isMultiPhoto,
       uploadedImage: !isMultiPhoto && images[0] ? images[0].thumbnailDataUrl : null,

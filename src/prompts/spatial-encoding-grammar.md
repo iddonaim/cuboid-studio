@@ -6,7 +6,12 @@
 # To change WHAT the model does: edit this file.
 # To change WHAT WORDS it uses: edit lexicon.default.ts (or the active Firestore lexicon in L3).
 #
-# Last edited: 2026-06-01
+# version: 2
+# (Provenance: bump this number whenever this file is edited. The API reads it
+#  and stamps it onto every encode result as `promptVersion`, so saved
+#  compositions record which grammar produced them.)
+#
+# Last edited: 2026-07-22
 # Author: Iddo Naim
 
 ---

@@ -58,6 +58,12 @@ export interface EncodeData {
   /** Reference to the saved lexicon document used for this encode, if any.
    *  Absent when the encode used DEFAULT_LEXICON (no saved lexicon was active). */
   lexiconId?: string;
+  /** Model id the server reported for this encode. Absent on compositions
+   *  saved before provenance capture existed. */
+  model?: string;
+  /** "# version" header of the grammar template that produced this encode.
+   *  Absent on older compositions and pre-versioned grammar files. */
+  promptVersion?: string;
   /** Small (~240px) JPEG thumbnails of the photo(s) that informed this encode.
    *  Kept deliberately tiny (not the full-resolution upload) so a composition
    *  document stays well under Firestore's size limit. Display-only on

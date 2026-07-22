@@ -23,6 +23,8 @@ export interface PrecomputedTranslation {
   pass2: TranslationPass2 | null;
   confidenceVector: ConfidenceVector | null;
   model: string | null;
+  /** Prompt-file "# version" of the run that produced this translation. */
+  promptVersion?: string | null;
 }
 
 /** One model's outcome in a comparison run. Nothing is applied to geometry
@@ -35,6 +37,8 @@ export interface ComparisonEntry {
   elapsedMs?: number;
   /** Model id the server actually used (echoed back by the API). */
   resolvedModel?: string | null;
+  /** Prompt-file "# version" the server reported for this run. */
+  promptVersion?: string | null;
   pass1?: TranslationPass1;
   pass2?: TranslationPass2;
   confidenceVector?: ConfidenceVector | null;
@@ -267,6 +271,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
             status: 'done',
             elapsedMs: Math.round(performance.now() - t0),
             resolvedModel: twoPass.model,
+            promptVersion: twoPass.promptVersion ?? null,
             pass1: twoPass.pass1,
             pass2: twoPass.pass2,
             confidenceVector: twoPass.pass2.confidence_vector,
@@ -308,6 +313,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       pass2: entry.pass2 ?? null,
       confidenceVector: entry.confidenceVector ?? null,
       model: entry.resolvedModel ?? entry.modelId,
+      promptVersion: entry.promptVersion ?? null,
     });
 
     // Only remember the apply if it actually landed (translate() swallows
@@ -419,6 +425,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       let pass2: TranslationPass2 | null = null;
       let confidenceVector: ConfidenceVector | null = null;
       let modelUsed: string | null = null;
+      let promptVersionUsed: string | null = null;
 
       if (pre) {
         // Applying an already-completed translation (from the comparison
@@ -428,6 +435,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         pass2 = pre.pass2;
         confidenceVector = pre.confidenceVector;
         modelUsed = pre.model;
+        promptVersionUsed = pre.promptVersion ?? null;
       } else if (passMode === 'two_pass') {
         const twoPass = await translateMemeTwoPass({
           memeDescription,
@@ -439,6 +447,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         pass2 = twoPass.pass2;
         confidenceVector = twoPass.pass2.confidence_vector;
         modelUsed = twoPass.model;
+        promptVersionUsed = twoPass.promptVersion ?? null;
         // Synthesize v1-shaped result from pass2 so the existing cutter
         // pipeline, CutterTweakPanel, and revertLastOperator all work
         // unchanged. applyLLMOperator only reads `cutter`.
@@ -502,6 +511,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         ...(pass2 ? { pass2 } : {}),
         ...(confidenceVector ? { confidenceVector } : {}),
         ...(modelUsed ? { model: modelUsed } : {}),
+        ...(promptVersionUsed ? { promptVersion: promptVersionUsed } : {}),
       };
 
       if (targetCubeId) {
