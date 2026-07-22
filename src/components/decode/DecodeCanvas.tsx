@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccent } from '../../contexts/AccentContext';
 import { Circle, Group, Image, Layer, Line, Rect, Stage } from 'react-konva';
 import type Konva from 'konva';
-import { CanvasTile, useDecodeStore } from '../../store/useDecodeStore';
+import { CanvasTile, DecodeUnderlay, useDecodeStore } from '../../store/useDecodeStore';
 import { getSnapPoints } from '../../lib/decode/snapPoints';
 import {
   ActiveSnap,
@@ -36,6 +36,41 @@ function useVariationImage(variationId: string): HTMLImageElement | null {
 
   return image;
 }
+
+/** Locked plan underlay: renders beneath the tiles, in world coordinates, at
+ *  its recorded registration. Non-interactive by design — tiles drag over it.
+ *  Falls back to the persisted thumbnail (stretched to the registered size)
+ *  when the full-res data URL is gone after a composition restore. */
+const UnderlayImage: React.FC<{ underlay: DecodeUnderlay }> = ({ underlay }) => {
+  const src = underlay.dataUrl ?? underlay.thumbnailDataUrl;
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new window.Image();
+    img.src = src;
+    img.onload = () => {
+      if (!cancelled) setImage(img);
+    };
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  if (!image) return null;
+  return (
+    <Image
+      image={image}
+      x={underlay.offsetX}
+      y={underlay.offsetY}
+      rotation={underlay.rotation}
+      width={underlay.width * underlay.scale}
+      height={underlay.height * underlay.scale}
+      opacity={0.45}
+      listening={false}
+    />
+  );
+};
 
 function isSnapPointActive(
   activeSnap: ActiveSnap | null,
@@ -158,6 +193,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const [activeSnap, setActiveSnap] = useState<ActiveSnap | null>(null);
 
   const canvasTiles = useDecodeStore(s => s.canvasTiles);
+  const underlay = useDecodeStore(s => s.underlay);
   const selectedTileId = useDecodeStore(s => s.selectedTileId);
   const pendingPlacementVariationId = useDecodeStore(s => s.pendingPlacementVariationId);
   const moveTile = useDecodeStore(s => s.moveTile);
@@ -415,6 +451,11 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
             />
           ))}
         </Layer>
+        {underlay && (
+          <Layer listening={false}>
+            <UnderlayImage underlay={underlay} />
+          </Layer>
+        )}
         <Layer>
           {canvasTiles.map(tile => (
             <CanvasTileNode

@@ -103,6 +103,20 @@ export interface EvolutionData {
 export interface DecodeData {
   canvasTiles: CanvasTile[];
   freestyle: boolean;
+  /** Plan-underlay reference + registration. Same policy as encode photos:
+   *  a ~240px thumbnail and a fingerprint of the imported file, never
+   *  full-res base64 (Firestore doc-size limit). Absent on compositions
+   *  saved before underlays existed and when none was imported. */
+  underlay?: {
+    thumbnailDataUrl: string;
+    imageHash: string;
+    width: number;
+    height: number;
+    offsetX: number;
+    offsetY: number;
+    rotation: number;
+    scale: number;
+  };
 }
 
 /** The full composition payload stored under a composition document. */

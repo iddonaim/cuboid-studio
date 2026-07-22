@@ -134,6 +134,22 @@ export function captureComposition(): CompositionData {
     decode: {
       canvasTiles: decode.canvasTiles,
       freestyle: decode.freestyle,
+      // Underlay: thumbnail + fingerprint + registration only — the full-res
+      // dataUrl is session-only, same policy as encode photos.
+      ...(decode.underlay
+        ? {
+            underlay: {
+              thumbnailDataUrl: decode.underlay.thumbnailDataUrl,
+              imageHash: decode.underlay.imageHash,
+              width: decode.underlay.width,
+              height: decode.underlay.height,
+              offsetX: decode.underlay.offsetX,
+              offsetY: decode.underlay.offsetY,
+              rotation: decode.underlay.rotation,
+              scale: decode.underlay.scale,
+            },
+          }
+        : {}),
     },
     siteContextSnapshot: getActiveSiteContext(),
   };
@@ -344,6 +360,9 @@ export async function restoreComposition(
   useDecodeStore.setState({
     canvasTiles: data.decode.canvasTiles,
     freestyle: data.decode.freestyle,
+    // Underlay restores registered but thumbnail-only (dataUrl is never
+    // persisted); re-importing the plan file restores full resolution.
+    underlay: data.decode.underlay ? { ...data.decode.underlay, dataUrl: null } : null,
     selectedTileId: null,
     pendingPlacementVariationId: null,
   });
