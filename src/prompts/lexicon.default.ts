@@ -47,6 +47,12 @@ export interface EmotionAxis extends ContinuousAxis {
    * would misfire into partial assemblies simply because melancholic sat at 0.5.
    */
   melancholic: string;
+  /**
+   * Override descriptor for the joyful/carnival register (grammar v3 added a
+   * {{emotion.joy}} slot). Optional because lexicons saved before it existed
+   * lack the field — the server falls back to DEFAULT_LEXICON's value.
+   */
+  joy?: string;
 }
 
 export interface LightAxis extends ContinuousAxis {
@@ -118,6 +124,9 @@ export const DEFAULT_LEXICON: SpatialLexicon = {
     pole_low: 'Calm, serene spaces',
     pole_high: 'Energetic, busy spaces',
     melancholic: 'Melancholic or abandoned spaces',
+    // Grammar v3: second override register, wording from the grammar's own
+    // description of the trigger ("joyful or carnival-like quality").
+    joy: 'Joyful or carnival-like spaces',
   },
 
   rhythm: {

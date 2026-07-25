@@ -434,11 +434,22 @@ function composeSystemPrompt(
     .replace(/\{\{emotion\.pole_low\}\}/g, lexicon.emotion.pole_low)
     .replace(/\{\{emotion\.pole_high\}\}/g, lexicon.emotion.pole_high)
     .replace(/\{\{emotion\.melancholic\}\}/g, lexicon.emotion.melancholic)
+    // Grammar v3 slot. Lexicons saved before `joy` existed lack the field —
+    // fall back to the default vocabulary rather than leaking the raw slot.
+    .replace(
+      /\{\{emotion\.joy\}\}/g,
+      lexicon.emotion.joy ?? DEFAULT_LEXICON.emotion.joy ?? 'Joyful or carnival-like spaces',
+    )
     .replace(/\{\{rhythm\.options_list\}\}/g, rhythmOptionsList)
     .replace(/\{\{placement\.options_list\}\}/g, placementOptionsList)
     .replace(/\{\{rhythm\.option_ids_list\}\}/g, rhythmOptionIds)
     .replace(/\{\{placement\.option_ids_list\}\}/g, placementOptionIds)
-    .replace(/\{\{seed_assembly_json\}\}/g, seedAssemblyJson);
+    .replace(/\{\{seed_assembly_json\}\}/g, seedAssemblyJson)
+    // Grammar v3 authored the remix section ahead of its implementation. The
+    // client does not yet send a remix seed and no code fills this slot, so it
+    // is pinned to "[]" — the state the section itself defines as "not a
+    // remix". Remove this pin when remix mode is actually wired up.
+    .replace(/\{\{remix_seed_assembly_json\}\}/g, '[]');
 }
 
 // --- Reading passthrough / sanitisation ------------------------------------
