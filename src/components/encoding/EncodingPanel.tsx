@@ -204,8 +204,9 @@ export const EncodingPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Remix seed picker */}
-      {mode === 'remix' && !hasImages && (
+      {/* Remix seed picker — always visible in remix; hiding it once an
+          image was uploaded left Encode disabled with no way to pick a seed. */}
+      {mode === 'remix' && (
         <div className="flex flex-col gap-1">
           <div className="text-ink-500 text-[11px]">Select a seed assembly:</div>
           {savedStates.length === 0 ? (
@@ -485,8 +486,16 @@ export const EncodingPanel: React.FC = () => {
           <button
             type="button"
             onClick={handleEncode}
-            disabled={isEncoding || imagesRestoredOnly}
-            title={imagesRestoredOnly ? 'Re-upload the photo(s) first' : undefined}
+            disabled={encodeDisabled}
+            title={
+              imagesRestoredOnly
+                ? 'Re-upload the photo(s) first'
+                : mode === 'merge' && seedCubes.length === 0
+                ? 'Add cubes to the Builder first'
+                : mode === 'remix' && seedCubes.length === 0
+                ? 'Select a seed assembly above'
+                : undefined
+            }
             className="py-1.5 bg-transparent border border-ink-200 rounded-md text-ink-500 cursor-pointer text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isEncoding ? 'Re-encoding…' : 'Re-encode'}

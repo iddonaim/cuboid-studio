@@ -91,6 +91,15 @@ export const EvolutionPanel: React.FC = () => {
   const hasAssembly = placedCubes.length > 0;
   const generateDisabled = isGenerating || !hasAssembly || memePool.length === 0;
 
+  // Candidates are pinned to specific cube ids at generation time. If the
+  // assembly has been replaced since (loading an encode result, a saved
+  // state, a remix), those candidates can no longer be applied — mark them
+  // stale in the list instead of failing with an error on Apply.
+  const liveCubeIds = useMemo(() => new Set(placedCubes.map(c => c.id)), [placedCubes]);
+  const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
+  const selectedStale = !!selectedCandidate && !liveCubeIds.has(selectedCandidate.targetCubeId);
+  const applyEnabled = !!selectedCandidateId && !selectedStale;
+
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
 
@@ -203,19 +212,23 @@ export const EvolutionPanel: React.FC = () => {
             {candidates.map((candidate, idx) => {
               const isSelected = selectedCandidateId === candidate.id;
               const isPreviewing = previewCandidateId === candidate.id;
+              const isStale = !liveCubeIds.has(candidate.targetCubeId);
               return (
                 <div
                   key={candidate.id}
                   onClick={() => {
+                    if (isStale) return;
                     previewCandidate(candidate.id);
                     selectCandidate(candidate.id);
                   }}
-                  className={`p-2 rounded-md border cursor-pointer ${
-                    isSelected
-                      ? 'bg-green-50 border-green-600/50'
+                  className={`p-2 rounded-md border ${
+                    isStale
+                      ? 'bg-ink-100 border-ink-200 opacity-50 cursor-default'
+                      : isSelected
+                      ? 'bg-green-50 border-green-600/50 cursor-pointer'
                       : isPreviewing
-                      ? 'bg-ink-100 border-amber-500'
-                      : 'bg-ink-100 border-ink-200'
+                      ? 'bg-ink-100 border-amber-500 cursor-pointer'
+                      : 'bg-ink-100 border-ink-200 cursor-pointer'
                   }`}
                 >
                   {/* Rank + score */}
@@ -300,6 +313,13 @@ export const EvolutionPanel: React.FC = () => {
                       Full reading →
                     </button>
                   </div>
+
+                  {isStale && (
+                    <div className="mt-1 text-[10px] text-amber-600">
+                      The assembly changed since this was generated — its target
+                      cube is gone. Generate new candidates.
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -309,9 +329,10 @@ export const EvolutionPanel: React.FC = () => {
           <div className="flex gap-1.5 mt-2">
             <Button
               onClick={applySelected}
-              disabled={!selectedCandidateId}
+              disabled={!applyEnabled}
+              title={selectedStale ? 'The assembly changed — generate new candidates' : undefined}
               className={`flex-1 h-auto py-2.5 text-[13px] font-semibold border-0 ${
-                selectedCandidateId
+                applyEnabled
                   ? 'bg-primary hover:bg-primary/85 text-white'
                   : 'bg-ink-200 text-ink-500 cursor-default'
               }`}

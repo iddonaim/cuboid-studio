@@ -319,6 +319,7 @@ const EncodingScene: React.FC = () => {
   const seedCubes = useEncodingStore(s => s.seedCubes);
   const mode = useEncodingStore(s => s.mode);
   const showAdditions = useEncodingStore(s => s.showAdditions);
+  const placedCubes = useBuilderStore(s => s.placedCubes);
 
   // After a standalone load → edit → Done round-trip, `seedCubes` holds the
   // edited assembly (original encoded cubes + anything added in the builder).
@@ -345,15 +346,40 @@ const EncodingScene: React.FC = () => {
   const hasSeed = !editedStandalone && mode !== 'standalone' && seedCubes.length > 0;
   const hasEncoded = !editedStandalone && !!encodedCubes && encodedCubes.length > 0;
 
+  // Cells the seed (or edited assembly) occupies. Encoded cubes were filtered
+  // against the seed at encode time, but the result now survives mode
+  // switches, so re-filter at render time to never draw two cubes in one cell.
+  const seedOccupiedKeys = useMemo(
+    () => new Set(seedCubes.map(c => c.position.join(','))),
+    [seedCubes]
+  );
+
+  const visibleEncoded = useMemo(() => {
+    if (!hasEncoded || !encodedCubes) return [];
+    return encodedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')));
+  }, [hasEncoded, encodedCubes, seedOccupiedKeys]);
+
+  // Faint ghost of the current builder assembly in Standalone / Remix, so
+  // switching modes never looks like the composition vanished (it lives in
+  // the builder throughout). Merge already shows the builder as the seed.
+  // Cells already drawn by the seed or the encode result are skipped.
+  const ghostCubes = useMemo(() => {
+    if (mode === 'merge') return [];
+    const drawn = new Set(seedOccupiedKeys);
+    for (const c of visibleEncoded) drawn.add(c.position.join(','));
+    return placedCubes.filter(c => !drawn.has(c.position.join(',')));
+  }, [mode, placedCubes, seedOccupiedKeys, visibleEncoded]);
+
   const allPositions = useMemo(() => {
     const positions: [number, number, number][] = [];
     if (editedStandalone) for (const c of editedVisibleCubes) positions.push(c.position);
     if (hasSeed) for (const c of seedCubes) positions.push(c.position);
-    if (hasEncoded && encodedCubes) for (const c of encodedCubes) positions.push(c.position);
+    for (const c of visibleEncoded) positions.push(c.position);
+    for (const c of ghostCubes) positions.push(c.position);
     return positions;
-  }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, hasEncoded, encodedCubes]);
+  }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, visibleEncoded, ghostCubes]);
 
-  if (!editedStandalone && !hasSeed && !hasEncoded) {
+  if (!editedStandalone && !hasSeed && visibleEncoded.length === 0 && ghostCubes.length === 0) {
     return <SpatialGrid extent={{ minCellX: -1, maxCellX: 1, minCellZ: -1, maxCellZ: 1, levels: 2 }} />;
   }
 
@@ -395,7 +421,7 @@ const EncodingScene: React.FC = () => {
       })}
 
       {/* Encoded (added) cubes */}
-      {hasEncoded && encodedCubes && encodedCubes.map((cube, i) => {
+      {visibleEncoded.map((cube, i) => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         return (
@@ -408,6 +434,22 @@ const EncodingScene: React.FC = () => {
               y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
             }}
             provenance="added"
+          />
+        );
+      })}
+
+      {/* Builder-assembly ghost (Standalone / Remix) — non-interactive */}
+      {ghostCubes.map(cube => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        return (
+          <CubeWithCuts
+            key={`ghost-${cube.id}`}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            opacity={0.15}
+            isPreview
           />
         );
       })}
