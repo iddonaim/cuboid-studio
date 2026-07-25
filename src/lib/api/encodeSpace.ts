@@ -24,6 +24,11 @@ export type EncodeSpaceRequest =
   | ({ images: EncodeSpaceImage[] } & EncodeSpaceCommon);
 
 export interface EncodedCube {
+  /** Stable client-side id, assigned by the encoding store when a result
+   *  lands — the API never returns one. Re-loading the same result into the
+   *  builder reuses these ids, so per-cube state keyed by id (operator
+   *  history, evolution candidates) survives the round-trip. */
+  id?: string;
   variationId: string;
   position: [number, number, number];
   rotation: { x: number; y: number };
