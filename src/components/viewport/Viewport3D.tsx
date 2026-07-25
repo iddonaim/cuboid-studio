@@ -317,8 +317,10 @@ const PataphysicalScene: React.FC = () => {
 const EncodingScene: React.FC = () => {
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const seedCubes = useEncodingStore(s => s.seedCubes);
+  const seedCubeIds = useEncodingStore(s => s.seedCubeIds);
   const mode = useEncodingStore(s => s.mode);
   const showAdditions = useEncodingStore(s => s.showAdditions);
+  const remixResultReplacesSeed = useEncodingStore(s => s.remixResultReplacesSeed);
   const placedCubes = useBuilderStore(s => s.placedCubes);
 
   // After a standalone load → edit → Done round-trip, `seedCubes` holds the
@@ -343,7 +345,14 @@ const EncodingScene: React.FC = () => {
     );
   }, [editedStandalone, seedCubes, showAdditions, encodedPositionKeys]);
 
-  const hasSeed = !editedStandalone && mode !== 'standalone' && seedCubes.length > 0;
+  // Remix v2: the result is the complete reinterpreted assembly — it stands
+  // in for the seed entirely (kept cubes render as "preserved", the rest as
+  // "added"), so the seed layer is hidden while it's showing.
+  const remixReplaced =
+    mode === 'remix' && remixResultReplacesSeed && !!encodedCubes && encodedCubes.length > 0;
+
+  const hasSeed =
+    !editedStandalone && !remixReplaced && mode !== 'standalone' && seedCubes.length > 0;
   const hasEncoded = !editedStandalone && !!encodedCubes && encodedCubes.length > 0;
 
   // Cells the seed (or edited assembly) occupies. Encoded cubes were filtered
@@ -356,8 +365,9 @@ const EncodingScene: React.FC = () => {
 
   const visibleEncoded = useMemo(() => {
     if (!hasEncoded || !encodedCubes) return [];
+    if (remixReplaced) return encodedCubes;
     return encodedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')));
-  }, [hasEncoded, encodedCubes, seedOccupiedKeys]);
+  }, [hasEncoded, encodedCubes, remixReplaced, seedOccupiedKeys]);
 
   // Faint ghost of the current builder assembly in Standalone / Remix, so
   // switching modes never looks like the composition vanished (it lives in
@@ -420,10 +430,12 @@ const EncodingScene: React.FC = () => {
         );
       })}
 
-      {/* Encoded (added) cubes */}
+      {/* Encoded cubes. In a remix result, cubes that kept their seed
+          identity read as "preserved"; new/transformed ones as "added". */}
       {visibleEncoded.map((cube, i) => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
+        const kept = remixReplaced && !!cube.id && seedCubeIds.has(cube.id);
         return (
           <CubeWithCuts
             key={`enc-${i}`}
@@ -433,7 +445,7 @@ const EncodingScene: React.FC = () => {
               x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
               y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
             }}
-            provenance="added"
+            provenance={kept ? 'preserved' : 'added'}
           />
         );
       })}

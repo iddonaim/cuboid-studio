@@ -11,7 +11,19 @@ export interface EncodeSpaceImage {
 
 import type { SiteContextData } from '../storage/siteContext';
 
-/** One already-placed cube, summarised for the encode prompt (merge mode).
+/** One already-applied cut, summarised for the encode prompt. Orientation is
+ *  the point: a cut's meaning changes with its rotation (which compounds with
+ *  the cube's own rotation), so the model reads operated cubes through both.
+ *  Short enum-like tokens and numbers only — no free text can ride along. */
+export interface SeedOperatorSummary {
+  operator: string;
+  cutterType: string;
+  /** Cutter rotation in degrees, cube-local. */
+  cutterRotation: [number, number, number];
+  magnitude: number;
+}
+
+/** One already-placed cube, summarised for the encode prompt (merge/remix).
  *  Compact on purpose — no ids, no free text — the server re-serialises it
  *  from whitelisted fields before it reaches the model. */
 export interface SeedAssemblyCube {
@@ -20,6 +32,8 @@ export interface SeedAssemblyCube {
   rotation: { x: number; y: number };
   /** How many pataphysical operators have already cut this cube. */
   operatorCount: number;
+  /** Per-cut detail (operator, cutter shape + rotation, magnitude). */
+  operators?: SeedOperatorSummary[];
 }
 
 /** Fields common to both single- and multi-image requests. `model` is an
@@ -28,9 +42,11 @@ export interface SeedAssemblyCube {
 interface EncodeSpaceCommon {
   siteContext?: SiteContextData | null;
   model?: string;
-  /** Merge mode only: the assembly already placed, so the model composes its
-   *  additions against it instead of proposing cubes blind. */
+  /** Merge/remix: the assembly already placed (merge) or the saved seed to
+   *  reinterpret (remix), so the model doesn't propose cubes blind. */
   seedAssembly?: SeedAssemblyCube[];
+  /** Which grammar slot the seed fills. Defaults to 'merge' server-side. */
+  seedMode?: 'merge' | 'remix';
 }
 
 export type EncodeSpaceRequest =
@@ -46,6 +62,13 @@ export interface EncodedCube {
   variationId: string;
   position: [number, number, number];
   rotation: { x: number; y: number };
+  /** Remix only ("Transplant"): the model asks for the discarded seed cube's
+   *  operators to be re-applied to this replacement body. */
+  inheritOperators?: boolean;
+  /** Client-side (remix): which seed cube's operator history this cube
+   *  carries forward — its own id for kept cubes, the replaced cube's id for
+   *  transplants. Assigned by processRemixResult, never by the API. */
+  inheritFromSeedId?: string;
 }
 
 // --- Reading types ----------------------------------------------------------
@@ -79,6 +102,12 @@ export interface EncodeSpaceResponse {
   /** "# version: N" header of the grammar template that produced this encode.
    *  Absent from older recorded responses. */
   promptVersion?: string;
+  /** True when a remix seed was actually injected into the prompt (the
+   *  grammar file contains the remix section AND a non-empty seed arrived).
+   *  The client treats the result as a full replacement assembly only when
+   *  this is set — otherwise it falls back to the legacy overlay behaviour,
+   *  so a not-yet-pasted grammar section can never destroy a saved seed. */
+  remixApplied?: boolean;
 }
 
 /** The base64 payload that identifies "which photo": the primary (or only) image. */
@@ -103,7 +132,11 @@ function demoReplayKey(
 ): string {
   const imageKey = hash(primaryImageBase64(request));
   const seed = 'seedAssembly' in request ? request.seedAssembly : undefined;
-  return seed && seed.length > 0 ? `${imageKey}:seed-${hash(JSON.stringify(seed))}` : imageKey;
+  if (!seed || seed.length === 0) return imageKey;
+  // Merge and remix carry the same seed shape but mean opposite things, so
+  // they never share a recording.
+  const prefix = request.seedMode === 'remix' ? 'remix' : 'seed';
+  return `${imageKey}:${prefix}-${hash(JSON.stringify(seed))}`;
 }
 
 export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSpaceResponse> {
@@ -126,7 +159,7 @@ export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSp
   const modelOverride = request.model ? { model: request.model } : {};
   const seedAssembly =
     request.seedAssembly && request.seedAssembly.length > 0
-      ? { seedAssembly: request.seedAssembly }
+      ? { seedAssembly: request.seedAssembly, seedMode: request.seedMode ?? 'merge' }
       : {};
 
   const body =

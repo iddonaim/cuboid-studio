@@ -69,6 +69,14 @@ export interface EncodeData {
    *  document stays well under Firestore's size limit. Display-only on
    *  restore — re-encoding requires re-uploading the real photo(s). */
   images?: Array<{ id: string; thumbnailDataUrl: string; isPrimary: boolean }>;
+  /** Remix v2: true when `encodedCubes` is a complete reinterpreted assembly
+   *  that replaces the seed on load (rather than overlaying it). Absent on
+   *  older compositions and non-remix encodes. */
+  remixResultReplacesSeed?: boolean;
+  /** Remix: operator records of the selected saved seed, keyed by cube id —
+   *  what keep/transplant inheritance re-applies on load. Absent when the
+   *  seed carried no operators. */
+  seedOperators?: Record<string, OperatorRecord[]>;
 }
 
 export interface PataphysicalData {
