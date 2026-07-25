@@ -499,13 +499,19 @@ function composeSystemPrompt(
     .replace(/\{\{emotion\.pole_low\}\}/g, lexicon.emotion.pole_low)
     .replace(/\{\{emotion\.pole_high\}\}/g, lexicon.emotion.pole_high)
     .replace(/\{\{emotion\.melancholic\}\}/g, lexicon.emotion.melancholic)
+    // Grammar v3 slot. Lexicons saved before `joy` existed lack the field —
+    // fall back to the default vocabulary rather than leaking the raw slot.
+    .replace(
+      /\{\{emotion\.joy\}\}/g,
+      lexicon.emotion.joy ?? DEFAULT_LEXICON.emotion.joy ?? 'Joyful or carnival-like spaces',
+    )
     .replace(/\{\{rhythm\.options_list\}\}/g, rhythmOptionsList)
     .replace(/\{\{placement\.options_list\}\}/g, placementOptionsList)
     .replace(/\{\{rhythm\.option_ids_list\}\}/g, rhythmOptionIds)
     .replace(/\{\{placement\.option_ids_list\}\}/g, placementOptionIds)
     .replace(/\{\{seed_assembly_json\}\}/g, seedAssemblyJson)
-    // No-op until the grammar file gains its SEED ASSEMBLY (remix) section;
-    // once present, the slot is filled (or emptied) like the merge one.
+    // Grammar v3's SEED ASSEMBLY (remix) slot — filled with the sanitised
+    // remix seed, or "[]" ("not a remix") for merge/standalone requests.
     .replace(/\{\{remix_seed_assembly_json\}\}/g, remixSeedAssemblyJson);
 }
 
