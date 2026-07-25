@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
-import { SiteContextData } from '../../lib/storage/siteContext';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getActiveSiteContext,
+  SiteContextData,
+  subscribeActiveSiteContext,
+} from '../../lib/storage/siteContext';
 import { buildSiteContextAt } from '../../lib/siteContext/mapSiteContext';
+import { buildMapContextSrc, siteKeyFromContext } from '../../lib/siteContext/mapContextUrl';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const DEFAULT_MAP_CONTEXT_URL = 'https://map-context-production.up.railway.app';
@@ -60,6 +65,31 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
     []
   );
 
+  // Boot the iframe into the active site's analysis when one exists
+  // (map-context versions without boot-param support just show the picker).
+  const [iframeSrc, setIframeSrc] = useState(() =>
+    buildMapContextSrc(mapContextUrl, getActiveSiteContext())
+  );
+
+  // Identity of the site the iframe currently shows (or is booting toward).
+  // Updated when we re-point the iframe AND when the iframe itself reports
+  // an analysis — so the context change caused by the iframe's own
+  // analysis-complete never reloads it (that would wipe the fresh run),
+  // and only a genuinely different site becoming active re-points it.
+  const iframeSiteKeyRef = useRef<string | null>(siteKeyFromContext(getActiveSiteContext()));
+
+  useEffect(() => {
+    return subscribeActiveSiteContext(() => {
+      const context = getActiveSiteContext();
+      const key = siteKeyFromContext(context);
+      // Cleared or unlocated context: leave the iframe alone rather than
+      // resetting it to the blank picker (it may hold an in-progress run).
+      if (!key || key === iframeSiteKeyRef.current) return;
+      iframeSiteKeyRef.current = key;
+      setIframeSrc(buildMapContextSrc(mapContextUrl, context));
+    });
+  }, [mapContextUrl]);
+
   useEffect(() => {
     const expectedOrigin = new URL(mapContextUrl).origin;
     const handleMessage = (event: MessageEvent<unknown>) => {
@@ -67,6 +97,10 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
       if (!isAnalysisCompleteMessage(event.data)) return;
       const context = adaptAnalysisPayload(event.data.data);
       if (!context) return;
+      // Record before onAnalysisComplete: saving the context fires the
+      // subscription synchronously, and the guard above must already know
+      // the iframe is showing this site.
+      iframeSiteKeyRef.current = siteKeyFromContext(context) ?? iframeSiteKeyRef.current;
       onAnalysisComplete(context);
     };
     window.addEventListener('message', handleMessage);
@@ -75,7 +109,7 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
 
   return (
     <iframe
-      src={mapContextUrl}
+      src={iframeSrc}
       title="Map context analysis"
       className={
         isMobile

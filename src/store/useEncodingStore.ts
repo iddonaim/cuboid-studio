@@ -39,12 +39,14 @@ function processEncodedCubes(cubes: EncodedCube[], seedCubes: PlacedCube[]): Enc
       ? Math.round((v - CUBE_SIZE / 2) / GRID_STRIDE) * GRID_STRIDE + CUBE_SIZE / 2
       : Math.round(v / GRID_STRIDE) * GRID_STRIDE;
   const occupied = new Set(seedCubes.map((c) => c.position.join(',')));
+  const batch = Date.now();
   return cubes
     .map((cube) => ({
       ...cube,
       position: cube.position.map(snapAxis) as [number, number, number],
     }))
-    .filter((cube) => !occupied.has(cube.position.join(',')));
+    .filter((cube) => !occupied.has(cube.position.join(',')))
+    .map((cube, i) => ({ ...cube, id: cube.id ?? `encoded-${batch}-${i}` }));
 }
 
 /** Merge mode: summarise the seed assembly for the encode request so the
@@ -325,14 +327,15 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   showAdditions: true,
   setShowAdditions: (showAdditions) => set({ showAdditions }),
 
+  // Switching modes resets only the mode-specific seed. The encode result
+  // (cubes + reading + provenance) survives the switch — it cost an API call,
+  // and clearing it here silently destroyed work on a single tab click. It is
+  // replaced by the next successful encode or cleared with the image.
   setMode: (mode) => set({
     mode,
     seedCubes: [],
     seedCubeIds: new Set<string>(),
     showAdditions: true,
-    encodedCubes: null,
-    encodingReasoning: null,
-    ...clearReadingFields(),
     lastError: null,
   }),
 
@@ -591,8 +594,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const { encodedCubes, mode, seedCubes } = get();
     if (!encodedCubes || encodedCubes.length === 0) return;
 
+    // Reuse the result's stable ids (older saved compositions may predate
+    // them, hence the fallback) so loading the same result twice — or via
+    // both Load buttons — keeps identical cube ids, and id-keyed state
+    // (operator history, evolution candidates) stays valid.
+    const fallbackBatch = Date.now();
     const newPlacedCubes: PlacedCube[] = encodedCubes.map((cube, i) => ({
-      id: `encoded-${Date.now()}-${i}`,
+      id: cube.id ?? `encoded-${fallbackBatch}-${i}`,
       variationId: cube.variationId,
       position: cube.position,
       rotation: {
@@ -602,14 +610,16 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     }));
 
     const store = useBuilderStore.getState();
-    let result: PlacedCube[];
-    if (mode === 'merge') {
-      result = [...store.placedCubes, ...newPlacedCubes];
-    } else if (mode === 'remix') {
-      result = [...seedCubes, ...newPlacedCubes];
-    } else {
-      result = newPlacedCubes;
-    }
+    const base =
+      mode === 'merge' ? store.placedCubes : mode === 'remix' ? seedCubes : [];
+    // Skip cubes already present (same id or same occupied cell) so repeated
+    // loads never stack duplicates into one grid cell.
+    const usedIds = new Set(base.map(c => c.id));
+    const usedCells = new Set(base.map(c => c.position.join(',')));
+    const additions = newPlacedCubes.filter(
+      c => !usedIds.has(c.id) && !usedCells.has(c.position.join(','))
+    );
+    const result = [...base, ...additions];
     store.setPlacedCubes(result);
     store.pushToHistory(result);
   },
