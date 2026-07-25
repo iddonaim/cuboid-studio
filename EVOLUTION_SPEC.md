@@ -83,8 +83,15 @@ interface EvolutionCandidate {
 
   // Fitness scores
   compressionProgress: number;  // computed by compressibility engine
-  userScore: number | null;     // from user selection (null = not yet rated)
-  combinedFitness: number;      // weighted sum
+
+  // FUTURE WORK (removed from the implementation 2026-07): a blended fitness
+  // (userScore from selection + compressionProgress, weighted by a
+  // selectionPressure config) was carried on candidates but never read by
+  // ranking or apply. It comes back when selection spans generations — i.e.
+  // when the previous generation's blended fitness biases the next
+  // generation's target-cube choice or meme sampling.
+  // userScore: number | null;  // from user selection (null = not yet rated)
+  // combinedFitness: number;   // weighted sum
 }
 
 interface CompressibilityEntry {
@@ -96,7 +103,9 @@ interface CompressibilityEntry {
 
 interface EvolutionConfig {
   populationSize: number;       // candidates shown per generation (default 6)
-  selectionPressure: number;    // weight of compression progress vs user choice (default 0.7)
+  // selectionPressure: number; // FUTURE WORK — weight of compression progress
+                                // vs user choice; removed with the unread
+                                // blended-fitness path (see above)
   targetCubeStrategy: 'random' | 'least-compressed' | 'adaptive';
   memePoolFilter: string | null; // optional: restrict to meme tag subset
 }

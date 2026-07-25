@@ -2,7 +2,7 @@
 
 > This file is the always-on context for the Cuboid Studio Claude Project.
 > Read it in full before responding to any message in this project.
-> Last updated: 2026-07-03
+> Last updated: 2026-07-22
 >
 > This is a factual map of what is **actually in the repo and usable today**,
 > reconciled against the live code (not aspirational spec). Where a feature is
@@ -12,6 +12,11 @@
 > "Audit corrections (2026-07-12)" section at the bottom, which overrides the
 > body where they conflict. Deep reference: `docs/SYSTEM_MAP.md`,
 > `docs/GAPS_AND_HOLES.md`, `docs/BOOK_AND_PRESENTATION_GUIDE.md`.
+>
+> **2026-07-22:** external-review fixes landed — see "Review fixes
+> (2026-07-22)" at the bottom for merge-seed encoding, provenance capture,
+> the removed Evolve fitness slider, capture metadata, and the Decode plan
+> underlay.
 
 ---
 
@@ -86,7 +91,8 @@ Reads a photographed space and proposes a cuboid assembly that mirrors its spati
   - `src/prompts/spatial-encoding.md` — the older standalone curatorial artifact (still present).
 - **Editable lexicons (L3):** the vocabulary is no longer code-only. Signed-in architects author named lexicons in a full editor (`LexiconEditor.tsx`, surfaced at the top of the Encode panel), tag them, save them to a Firestore-backed library, and pick which one is active. The active lexicon drives every encode; `activeLexiconId === null` means "use `DEFAULT_LEXICON`". The active id is persisted in `localStorage` and **validated against the loaded list on init** — a deleted/stale id silently falls back to the default rather than pointing at a ghost (guards against silently encoding on the wrong vocabulary). Each axis carries consequence-framed hint text (`DEFAULT_DESCRIPTIONS`) explaining in plain language what editing it does.
   - **Stores/lib:** `src/store/useLexiconStore.ts` (list + active selection + Firestore CRUD, callable from plain functions via `getState()`), `src/lib/projects/lexiconFirestore.ts` (top-level `lexicons` collection, scoped by `ownerId`), `src/lib/storage/activeLexicon.ts` (localStorage wrapper for the active id).
-- **Three modes:** `standalone` (image only), `merge` (image + seed cubes from Builder — opens the inline seed editor), `remix` (image + a saved state).
+- **Three modes:** `standalone` (image only), `merge` (image + seed cubes from Builder — opens the inline seed editor), `remix` (image + a saved state). In **merge** mode the request carries a compact summary of the seed assembly (variation, position, rotation, operator count per cube) which the server injects into the grammar's "EXISTING ASSEMBLY (merge)" section — the model composes *with* what's already placed instead of proposing cubes blind. Standalone/remix send nothing; the client-side collision-drop stays as a safety net.
+- **Provenance:** encode results carry the model id and the grammar file's `# version` header (`promptVersion`); both persist with saved compositions. The full encode is unreproducible by design (thumbnail-only photos, nondeterministic LLM) — the *conditions* are what's archived.
 
 **Key files:** `api/encode-space.ts`, `src/lib/api/encodeSpace.ts`, `src/components/encoding/EncodingPanel.tsx`, `src/components/encoding/EncodingReadingPanel.tsx`, `src/components/encoding/LexiconEditor.tsx`, `src/store/useEncodingStore.ts`, `src/store/useLexiconStore.ts`.
 
@@ -141,6 +147,7 @@ A 2D notational view of the assembly — **implemented**, not a placeholder.
 - **Tile glyphs:** per-variation 2D paths (`src/lib/decode/variation2dPath.ts`), snap points (`snapPoints.ts` / `snapUtils.ts`).
 - **Palette:** all 70 variations (freestyle) or only those present in the current assembly.
 - **Export:** SVG (`decodeSvgExport.ts`) and DXF (`decodeDxfExport.ts`, via `dxf-writer`). History up to 5 undo states.
+- **Plan underlay:** a raster plan image can be imported as a locked, non-interactive underlay beneath the tiles, with an editable registration (offset / rotation / scale). Saved compositions persist thumbnail + fingerprint + registration only (same no-full-res policy as encode photos); after restore it renders from the thumbnail until re-imported.
 - Tags assigned in the Builder show as an overlay on the canvas.
 
 ---
@@ -179,7 +186,7 @@ There is also a **local-only** save layer independent of Firebase: `src/lib/save
 - **GLB:** `src/lib/export/glbExport.ts` — merged mesh of the assembly (used by the AR viewer and downloadable).
 - **AR:** `src/components/ar/ARViewer.tsx` — Google `<model-viewer>` web component. Android → Scene Viewer (ARCore), iOS 15+ → Quick Look (ARKit), desktop → 3D orbit. Scale slider for real-world sizing.
 - **Live-link:** `src/lib/export/liveLinkClient.ts` — HTTP client (default port 9876) that POSTs assembly state to the local Python bridge in `grasshopper/` (stdlib-only, no pip installs) for round-tripping into a running Grasshopper definition. Covered end-to-end by `e2e/grasshopper-livelink.spec.ts` (spawns the real bridge; skips if `python3` is unavailable).
-- **Screenshot:** `src/components/tools/CaptureButton.tsx` (uses `preserveDrawingBuffer` on the canvas; shares via Web Share API on mobile, downloads on desktop).
+- **Screenshot:** `src/components/tools/CaptureButton.tsx` (uses `preserveDrawingBuffer` on the canvas; shares via Web Share API on mobile, downloads on desktop). Every capture embeds a `cuboid-provenance` PNG metadata chunk — camera position/target, projection + zoom, section-plane params, timestamp, active composition path — and stamps the composition id into the filename.
 - **Decode** has its own SVG/DXF export (above).
 
 ---
@@ -314,3 +321,38 @@ load-bearing claims **except** the following, which this section overrides:
 8. **Tags are session-only** — `useTagStore` is not serialized by
    `captureComposition()`; only composition-level tags render on the Decode
    overlay.
+
+---
+
+## Review fixes (2026-07-22)
+
+Six changes landed on `claude/external-review-findings-d7uqhh` from an
+external code review; the body above has been updated where they apply.
+
+1. **Merge-mode encode sees the seed.** The encode request now carries the
+   already-placed assembly (variation/position/rotation/operator-count per
+   cube); the server whitelist-revalidates it and fills the grammar's new
+   "EXISTING ASSEMBLY (merge)" `{{seed_assembly_json}}` slot. All framing
+   language lives in `spatial-encoding-grammar.md` (the curatorial artifact),
+   never in TS. Offline-demo replay keys include a seed fingerprint so a
+   standalone recording can't silently replay for a merge request.
+2. **Dead Evolve fitness path removed.** `userScore`/`combinedFitness`/
+   `selectionPressure` (and the "Algorithm vs. intuition" slider) were
+   computed but never read anywhere — deleted. Concept retained in
+   `EVOLUTION_SPEC.md` as future work (returns when selection spans
+   generations). Old saved compositions still restore.
+3. **Operator `targets`/`decay` documented as semantic provenance** on the
+   types (never read by geometry — `applyLLMOperator` consumes only `cutter`;
+   `magnitude` feeds the compressibility fingerprint). Prompt files untouched.
+4. **Model + prompt-version provenance.** Both API handlers echo the model id
+   and the prompt file's `# version` header; they persist on
+   `EncodeData.model`/`.promptVersion` and on OperatorRecords from all three
+   translation surfaces (Pataphysical, Model lab, Evolution — the last
+   previously recorded no model at all). Bump the `# version` line whenever a
+   prompt file is edited.
+5. **Capture provenance.** Viewport PNGs embed a `cuboid-provenance` tEXt
+   chunk (camera, section plane, composition path, timestamp); composition id
+   in the filename.
+6. **Decode plan underlay.** Raster plan as a locked underlay with persisted
+   registration (offset/rotation/scale); saves keep thumbnail + fingerprint
+   only, per the encode-photo size policy.

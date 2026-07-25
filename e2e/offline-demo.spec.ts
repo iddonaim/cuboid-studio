@@ -80,7 +80,6 @@ const COMPOSITION_DATA = {
     compressibilityLog: [],
     config: {
       populationSize: 6,
-      selectionPressure: 0.7,
       targetCubeStrategy: 'adaptive',
       memePoolFilter: null,
     },

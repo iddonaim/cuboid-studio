@@ -30,11 +30,15 @@ export interface EvolutionCandidate {
   /** Full pass-2 output (geometry reasoning + confidence vector), kept so an
    *  applied candidate stays fully explainable when its cube is re-inspected. */
   pass2?: TranslationPass2;
+  /** Model id the server reported for this candidate's translation. */
+  model?: string;
+  /** Prompt-file "# version" the server reported. */
+  promptVersion?: string;
 
-  // Fitness
+  // Fitness: candidates are ranked by raw compression progress. (A blended
+  // user-score fitness existed here once but nothing downstream ever read it
+  // — see EVOLUTION_SPEC.md "future work" for the generational version.)
   compressionProgress: number;
-  userScore: number | null;
-  combinedFitness: number;
 }
 
 export type TargetCubeStrategy = 'random' | 'least-compressed' | 'adaptive';
@@ -50,7 +54,6 @@ export type EvolutionSubMode = 'evolve' | 'pataphysical';
 
 export interface EvolutionConfig {
   populationSize: number;        // candidates per generation (default 6)
-  selectionPressure: number;     // weight of compression progress vs user choice (default 0.7)
   targetCubeStrategy: TargetCubeStrategy;
   memePoolFilter: string | null; // optional tag filter
 }
@@ -106,7 +109,6 @@ let demoEvolveRoundIndex = 0;
 
 const DEFAULT_CONFIG: EvolutionConfig = {
   populationSize: 6,
-  selectionPressure: 0.7,
   targetCubeStrategy: 'least-compressed',
   memePoolFilter: null,
 };
@@ -297,9 +299,10 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           cutterConfig,
           pass1,
           pass2,
+          // Provenance — conditional so Firestore never sees undefined.
+          ...(twoPassResult.model ? { model: twoPassResult.model } : {}),
+          ...(twoPassResult.promptVersion ? { promptVersion: twoPassResult.promptVersion } : {}),
           compressionProgress: progress,
-          userScore: null,
-          combinedFitness: progress, // user score will blend in later
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -359,20 +362,8 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   previewCandidate: (id) => set({ previewCandidateId: id }),
 
   selectCandidate: (id) => {
-    const { candidates, config } = get();
-    const candidate = candidates.find(c => c.id === id);
-    if (!candidate) return;
-
-    // Blend user selection with compression progress
-    const updated = candidates.map(c => ({
-      ...c,
-      userScore: c.id === id ? 1.0 : 0.0,
-      combinedFitness:
-        config.selectionPressure * c.compressionProgress +
-        (1 - config.selectionPressure) * (c.id === id ? 1.0 : 0.0),
-    }));
-
-    set({ candidates: updated, selectedCandidateId: id });
+    if (!get().candidates.some(c => c.id === id)) return;
+    set({ selectedCandidateId: id });
   },
 
   applySelected: async () => {
@@ -450,6 +441,8 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
       ...(candidate.pass1 ? { pass1: candidate.pass1 } : {}),
       ...(candidate.pass2 ? { pass2: candidate.pass2 } : {}),
       ...(confidenceVector ? { confidenceVector } : {}),
+      ...(candidate.model ? { model: candidate.model } : {}),
+      ...(candidate.promptVersion ? { promptVersion: candidate.promptVersion } : {}),
     };
 
     // Update meme store state directly. cubeTranslations gets the same
@@ -476,7 +469,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
           pass1: candidate.pass1 ?? null,
           pass2: candidate.pass2 ?? null,
           confidenceVector,
-          model: null,
+          model: candidate.model ?? null,
           cutterGeometry: cutterGeo,
           memeDescription: candidate.memeDescription,
           memeTitle: candidate.memeTitle ?? null,

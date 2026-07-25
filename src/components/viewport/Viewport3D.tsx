@@ -542,7 +542,7 @@ const EvolutionScene: React.FC = () => {
 
 /** Registers a screenshot capture function with the module-level ref. */
 const SceneCapture: React.FC = () => {
-  const { gl, scene, camera } = useThree();
+  const { gl, scene, camera, get } = useThree();
   useEffect(() => {
     // Hi-res, background-free capture: the render buffer is transparent (the
     // paper tone is CSS on the canvas element, never drawn by WebGL), so the
@@ -558,14 +558,30 @@ const SceneCapture: React.FC = () => {
       try {
         gl.setPixelRatio(ratio);
         gl.render(scene, camera);
-        return gl.domElement.toDataURL('image/png');
+        // Camera state read at capture time (not effect time) so the stamped
+        // provenance matches the exact frame in the file. Controls come from
+        // the live R3F store — `camera` from the closure is the active one
+        // because CameraController re-sets it on every projection toggle.
+        const controls = get().controls as { target?: THREE.Vector3 } | null;
+        return {
+          dataURL: gl.domElement.toDataURL('image/png'),
+          camera: {
+            projection: (camera as THREE.Camera & { isOrthographicCamera?: boolean })
+              .isOrthographicCamera ? 'orthographic' as const : 'perspective' as const,
+            position: camera.position.toArray() as [number, number, number],
+            target: controls?.target
+              ? (controls.target.toArray() as [number, number, number])
+              : null,
+            zoom: (camera as THREE.PerspectiveCamera | THREE.OrthographicCamera).zoom,
+          },
+        };
       } finally {
         gl.setPixelRatio(prevRatio);
         gl.render(scene, camera);
       }
     });
     return () => unregisterCaptureFunction();
-  }, [gl, scene, camera]);
+  }, [gl, scene, camera, get]);
   return null;
 };
 

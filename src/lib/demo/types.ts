@@ -49,7 +49,9 @@ export interface RecordedGeocode {
   displayName: string;
 }
 
-/** A successful photo encode, keyed by a fingerprint of the image bytes. */
+/** A successful photo encode, keyed by a fingerprint of the image bytes.
+ *  Merge encodes append a seed-assembly fingerprint ("<image>:seed-<hash>"),
+ *  so a standalone recording never silently replays for a merge request. */
 export interface RecordedEncode {
   imageHash: string;
   response: EncodeSpaceResponse;
