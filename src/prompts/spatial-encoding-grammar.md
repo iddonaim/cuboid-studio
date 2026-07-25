@@ -6,7 +6,12 @@
 # To change WHAT the model does: edit this file.
 # To change WHAT WORDS it uses: edit lexicon.default.ts (or the active Firestore lexicon in L3).
 #
-# Last edited: 2026-06-01
+# version: 3
+# (Provenance: bump this number whenever this file is edited. The API reads it
+#  and stamps it onto every encode result as `promptVersion`, so saved
+#  compositions record which grammar produced them.)
+#
+# Last edited: 2026-07-25
 # Author: Iddo Naim
 
 ---
@@ -35,13 +40,14 @@ Do not try to match openings to spheres or windows to cylinders. Instead:
 - {{atmosphere.pole_low}} → low-index variations (v-00 to v-20)
 - {{atmosphere.pole_mid}} → mid-range variations (v-20 to v-50)
 - {{atmosphere.pole_high}} → high-index variations (v-50 to v-69)
-- But override freely when the space demands it. Trust association over logic.
+- Override freely when the space demands it; Trust association over logic.
 
 ### Spatial rhythm → Assembly size and shape
 
 {{rhythm.options_list}}
-- Scale the assembly to feel right. A small bathroom might be 2×2×1. A grand hall might be 4×4×3.
-- Keep assemblies modest: typically 4–20 cubes. Enough to capture the character, not reconstruct the space.
+- Scale the assembly to feel "right", at the very least in terms of proportions, spread, breadth and topological relations. A small bathroom might be 2×2×1. A grand hall might be 4×4×3.
+- Keep assemblies modest: typically 4–20 cubes. Enough to capture the character, not reconstruct the space. In case of a very large context shown in the photograph, e.g. an aerial view, more than 20 cubes is okay, and in any case no more than 42 is allowed.
+- Prioritize spatial relations and proportions of space.
 
 ### Spatial qualities → Cube placement
 
@@ -51,14 +57,15 @@ Do not try to match openings to spheres or windows to cylinders. Instead:
 
 - {{light.triggers.uniform}} → repeat the same variation throughout
 - {{light.triggers.varied}} → use different variations in different zones
-- {{light.triggers.rich}} → high variation diversity (many different v-numbers)
+- {{light.triggers.rich}} → high variation diversity (many different v-numbers, low repetition)
 - {{light.triggers.austere}} → few unique variations, more repetition
 
 ### Emotional register → Assembly density
 
-- {{emotion.pole_low}} → sparse arrangement with gaps
-- {{emotion.pole_high}} → dense, tightly packed assembly
+- {{emotion.pole_low}} → sparse arrangement with gaps.
+- {{emotion.pole_high}} → dense, tightly packed assembly, still may have gaps.
 - {{emotion.melancholic}} → partial assembly, some positions left empty — apply this **regardless of the calm–energetic position value** whenever the space carries a melancholic or abandoned quality
+- {{emotion.joy}} → partial assembly, some positions left empty but relate through a higher degree reading - apply this **regardless of the calm–energetic position value** whenever the space carries a joyful or carnival-like quality
 
 ## GRID SYSTEM
 
@@ -69,6 +76,102 @@ Cubes are placed on a grid with 42.6mm stride (42mm cube + 0.6mm gap).
 - Stacking up: [0, 63.6, 0], [0, 106.2, 0], etc.
 - Adjacent horizontally: [42.6, 21, 0], [85.2, 21, 0], etc.
 
+## EXISTING ASSEMBLY (merge)
+
+The architect may already have cubes placed. What is already built is given below as a JSON array — each entry is one placed cube: its variation, its grid position, its rotation, and how many pataphysical operators have already cut it (`operatorCount`; a higher count means that cube carries more accumulated cultural change and should be treated as settled).
+
+Seed assembly:
+
+{{seed_assembly_json}}
+
+**If the array is empty (`[]`), there is no existing assembly** — ignore this section entirely and compose as the rest of this grammar describes.
+
+**If the array is non-empty, you are in merge mode.** The cubes above are already placed and will be preserved exactly as given — you cannot move, rotate, or remove them. Your cubes are additions:
+
+- Compose *with* the existing assembly, not on top of it or instead of it. Never propose a cube at a position the seed already occupies — a colliding cube is discarded, and the composition loses part of your reading.
+- The guidance elsewhere in this grammar about where an assembly typically starts (first cube at [0, 21, 0]) applies only to empty ground. Here the seed defines the ground: place your additions adjacent to, above, or in deliberate tension with the cubes that exist.
+- Read the seed's character — its variation range, its density, its rhythm — and let your additions answer it. Answering does not mean matching: the photograph remains your primary evidence, and a tension between what the space demands and what is already built is architecturally legible. But the result must read as one assembly, not two strangers sharing a grid.
+- Heavily-operated cubes (high `operatorCount`) are the most culturally loaded regions of the assembly. Approach them the way you would approach an older building: build in relation to them rather than crowding them.
+
+(Remix mode uses the SEED ASSEMBLY (remix) section below instead — there the
+array is material to reinterpret rather than preserve. A merge request arrives
+with an empty remix array, and vice versa.)
+
+## SEED ASSEMBLY (remix)
+
+In remix mode the architect hands you two things: a saved assembly — something
+already composed, possibly already carrying pataphysical cuts — and a new
+photograph. The assembly below is not to be preserved. It is material.
+
+Merge and remix are exclusive: a request fills either the merge array above or
+the remix array below, never both. Only the non-empty one binds you. (If both
+ever arrive non-empty, treat the request as a merge and ignore this section.)
+
+Remix seed assembly:
+
+{{remix_seed_assembly_json}}
+
+Each entry is one placed cube: its variation, its grid position, its rotation,
+and its full operator history — for every pataphysical cut already applied,
+the operator type, the cutter shape, the cutter's rotation, and its magnitude.
+A cut's meaning lives in its orientation: the same erosion reads differently
+turned 90 degrees, and the cutter's rotation compounds with the rotation of
+the cube it sits on. Read operated cubes through both.
+
+**If the remix array is empty (`[]`), this is not a remix** — ignore this
+section entirely and compose as the rest of this grammar describes.
+
+**If the remix array is non-empty, you are in remix mode.** Unlike merge, your
+output is not a set of additions — it is the *complete reinterpreted
+assembly*. Every cube in your output is one of five decisions, and every cube
+in the seed must receive one:
+
+- **Keep** — carry a cube forward exactly as given (same variationId,
+  position, rotation) when it already answers the photograph. A kept cube
+  keeps its accumulated history.
+- **Transform** — keep a cube's role but change its body: move it, rotate it,
+  or exchange its variation for a neighbor in mood. Rotating an operated cube
+  rotates its cuts with it — a re-orientation of its memes is itself a
+  reading, so rotate operated cubes deliberately, not decoratively.
+- **Transplant** — discard a cube's body but keep its memes: place a
+  different variation in its cell with `"inheritOperators": true`, and the
+  discarded cube's operators are re-applied to the new body. The cultural
+  change survives; the material that hosted it does not. This is the remix's
+  sharpest instrument — memory persisting across replacement.
+- **Discard** — omit a cube from your output entirely, operators and all.
+  Absence is a statement; use it the way the emotional register uses gaps.
+- **Add** — introduce new cubes where the photograph demands something the
+  seed never had.
+
+How to reinterpret:
+
+- **The photograph is the agent of transformation.** Read the space first —
+  commit to the five-axis reading — then let that reading act on the seed. The
+  distance between the seed's evident character (its variation range, density,
+  rhythm) and your reading of the photograph is the distance of the remix: a
+  photo that resonates with the seed yields a light touch, a photo that
+  contradicts it yields an aggressive one.
+- **A remix is neither a copy nor an erasure.** If you keep everything, you
+  have refused the photograph. If you keep nothing, you have refused the seed
+  and composed standalone. The result must be recognizable as a descendant of
+  the seed that could not have existed without the photograph.
+- **Heavily-operated cubes are the seed's memory.** Their cuts carry
+  accumulated cultural change that cannot be regenerated. Prefer keeping them,
+  transforming them in place, or transplanting their operators onto a new
+  body; discarding operators outright erases history and must read as a
+  deliberate act of the composition, not a tidying-up.
+- **Preserve the grid, not the footprint.** All positions obey the grid system
+  above, but the remixed assembly may grow, shrink, shift, or change
+  silhouette freely. The seed's ground is not your ground unless you choose
+  it.
+
+In remix mode the `cubes` array in your output is the entire final assembly —
+kept, transformed, transplanted, and added cubes together. Anything you omit
+is discarded. A cube may carry one extra field, `"inheritOperators": true`,
+valid only at a cell the seed occupied: it transplants that seed cube's
+operators onto your cube. It is meaningless on kept cubes (they inherit
+automatically) and forbidden elsewhere.
+
 ## MULTI-IMAGE SYNTHESIS
 
 When you receive more than one image, you are synthesizing multiple perspectives of a site (or intentionally cross-contaminated inputs) into a single assembly.
@@ -77,7 +180,7 @@ When you receive more than one image, you are synthesizing multiple perspectives
 
 **Supplementary images:** Each contributes specific spatial qualities — a texture, a light condition, a rhythm — that the primary image may not express. Let them inflect the assembly: a supplementary image might shift the variation range, add a zone of different density, or introduce asymmetry that the primary wouldn't suggest alone.
 
-**Do not average.** A synthesis is not a mean. Let tensions between images produce interesting configurations rather than mediocre compromises. A calm primary with a chaotic supplementary should yield an assembly that has a calm core and turbulent edges — not a uniformly mid-range composition.
+**Do not average.** A synthesis is not a mean. Let tensions between images produce interesting configurations rather than mediocre compromises. A calm primary with a chaotic supplementary should yield an assembly that has, for example, a calm core and turbulent edges — not a uniformly mid-range composition.
 
 **Dirty inputs:** If the images appear to be from different places, treat that as a curatorial decision by the architect. Honor the cross-contamination. Let the assembly carry spatial memory from each source without resolving the contradiction.
 
@@ -99,7 +202,7 @@ Your response must begin with a `reading` — your five-axis qualitative reading
 
 - **atmosphere** (continuous): `position` 0.0–1.0, where 0.0 = {{atmosphere.pole_low}}, ~0.5 = {{atmosphere.pole_mid}}, and 1.0 = {{atmosphere.pole_high}}. `phrase` = your own 2–5 words describing this space's atmosphere — not the pole label verbatim, but your genuine reading.
 - **light** (continuous): `position` 0.0–1.0, where 0.0 = {{light.pole_low}} and 1.0 = {{light.pole_high}}. `phrase` = your own 2–5 words.
-- **emotion** (continuous): `position` 0.0–1.0, where 0.0 = {{emotion.pole_low}} and 1.0 = {{emotion.pole_high}}. `phrase` = your own 2–5 words. If the space reads as {{emotion.melancholic}}, note it in the phrase and produce a partial assembly regardless of the position value.
+- **emotion** (continuous): `position` 0.0–1.0, where 0.0 = {{emotion.pole_low}} and 1.0 = {{emotion.pole_high}}. `phrase` = your own 2–5 words. If the space reads as {{emotion.melancholic}} or {{emotion.joy}}, note it in the phrase and produce an appropriate assembly regardless of the position value.
 - **rhythm** (categorical): `option` must be one of: {{rhythm.option_ids_list}}. `phrase` = your own 2–5 words describing the spatial rhythm.
 - **placement** (categorical): `option` must be one of: {{placement.option_ids_list}}. `phrase` = your own 2–5 words describing the placement logic.
 

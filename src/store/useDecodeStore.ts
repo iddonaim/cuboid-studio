@@ -15,6 +15,37 @@ export interface CompositionSnapshot {
   savedAt: number;
 }
 
+/**
+ * A raster plan image registered under the Decode canvas as a locked,
+ * non-interactive underlay. Only the registration is recorded — this is not
+ * a sheet composer. Persistence follows the encode-photo policy: the full-res
+ * data URL is session-only; saved compositions carry the ~240px thumbnail
+ * plus a fingerprint of the imported file, never full-res base64 (Firestore
+ * doc-size limit).
+ */
+export interface DecodeUnderlay {
+  /** Full-res data URL for crisp on-screen display. Null after a composition
+   *  restore — the underlay then renders from the thumbnail (blurry but
+   *  registered) until the architect re-imports the plan file. */
+  dataUrl: string | null;
+  /** Small JPEG (longest edge ~240px) persisted with saved compositions. */
+  thumbnailDataUrl: string;
+  /** FNV-1a fingerprint of the imported (resized) plan — the stable external
+   *  reference identifying which file this was without persisting it. */
+  imageHash: string;
+  /** Pixel dimensions of the imported (resized) plan; the registration
+   *  transform is defined against these. */
+  width: number;
+  height: number;
+  /** Registration: canvas world-unit offset of the plan's top-left corner. */
+  offsetX: number;
+  offsetY: number;
+  /** Registration: degrees clockwise. */
+  rotation: number;
+  /** Registration: canvas world units per plan pixel. */
+  scale: number;
+}
+
 const MAX_HISTORY = 5;
 
 function cloneTiles(tiles: CanvasTile[]): CanvasTile[] {
@@ -29,6 +60,14 @@ interface DecodeState {
   selectedTileId: string | null;
   /** Mobile: variation picked in parts drawer, pending canvas tap. */
   pendingPlacementVariationId: string | null;
+  /** Locked plan underlay beneath the tiles, or null when none imported. */
+  underlay: DecodeUnderlay | null;
+
+  setUnderlay: (underlay: DecodeUnderlay | null) => void;
+  /** Adjust registration (offset/rotation/scale) of the current underlay. */
+  updateUnderlayRegistration: (
+    patch: Partial<Pick<DecodeUnderlay, 'offsetX' | 'offsetY' | 'rotation' | 'scale'>>,
+  ) => void;
 
   addTile: (tile: Omit<CanvasTile, 'id'> & { id?: string }) => void;
   moveTile: (id: string, x: number, y: number) => void;
@@ -49,6 +88,15 @@ export const useDecodeStore = create<DecodeState>((set, get) => ({
   canvasExpanded: false,
   selectedTileId: null,
   pendingPlacementVariationId: null,
+  underlay: null,
+
+  setUnderlay: (underlay) => set({ underlay }),
+
+  updateUnderlayRegistration: (patch) => {
+    const current = get().underlay;
+    if (!current) return;
+    set({ underlay: { ...current, ...patch } });
+  },
 
   addTile: (tile) => {
     const id = tile.id ?? crypto.randomUUID();

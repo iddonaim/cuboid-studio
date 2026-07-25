@@ -392,25 +392,6 @@ export const EvolutionPanel: React.FC = () => {
           />
         </div>
 
-        {/* Selection pressure */}
-        <div className="mb-2">
-          <div className="flex justify-between mb-1">
-            <label className="text-ink-600 text-[11px]">Algorithm vs. intuition</label>
-            <span className="text-ink-800 text-[11px]">{Math.round(config.selectionPressure * 100)}%</span>
-          </div>
-          <Slider
-            min={0}
-            max={100}
-            step={5}
-            value={[config.selectionPressure * 100]}
-            onValueChange={([v]) => setConfig({ selectionPressure: v / 100 })}
-          />
-          <div className="flex justify-between text-[10px] text-ink-400 mt-0.5">
-            <span>Your choice matters more</span>
-            <span>Algorithm decides</span>
-          </div>
-        </div>
-
         {/* Meme filter */}
         <div>
           <label className="text-ink-600 text-[11px] block mb-1">Meme tag filter (optional)</label>

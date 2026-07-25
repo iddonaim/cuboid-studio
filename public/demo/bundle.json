@@ -547,8 +547,7 @@
             "config": {
               "targetCubeStrategy": "least-compressed",
               "populationSize": 6,
-              "memePoolFilter": null,
-              "selectionPressure": 0.7
+              "memePoolFilter": null
             },
             "generation": 2,
             "subMode": "evolve",
@@ -3082,7 +3081,6 @@
             "lastAppliedCubeId": "encoded-1783234557646-2",
             "config": {
               "populationSize": 6,
-              "selectionPressure": 0.7,
               "memePoolFilter": null,
               "targetCubeStrategy": "least-compressed"
             },
@@ -4211,7 +4209,6 @@
             "config": {
               "populationSize": 6,
               "memePoolFilter": null,
-              "selectionPressure": 0.7,
               "targetCubeStrategy": "least-compressed"
             }
           },
@@ -4487,7 +4484,6 @@
             "config": {
               "populationSize": 6,
               "memePoolFilter": null,
-              "selectionPressure": 0.7,
               "targetCubeStrategy": "least-compressed"
             },
             "subMode": "evolve",
@@ -6648,8 +6644,7 @@
             "config": {
               "targetCubeStrategy": "least-compressed",
               "populationSize": 6,
-              "memePoolFilter": null,
-              "selectionPressure": 0.7
+              "memePoolFilter": null
             },
             "compressibilityLog": [],
             "candidates": [],
@@ -6677,7 +6672,6 @@
             "subMode": "evolve",
             "config": {
               "memePoolFilter": null,
-              "selectionPressure": 0.7,
               "populationSize": 6,
               "targetCubeStrategy": "least-compressed"
             },
@@ -7443,7 +7437,6 @@
             "lastAppliedCubeId": "encoded-1784300692133-4",
             "config": {
               "populationSize": 6,
-              "selectionPressure": 0.7,
               "memePoolFilter": null,
               "targetCubeStrategy": "least-compressed"
             },
@@ -8148,7 +8141,6 @@
             "generation": 0,
             "config": {
               "targetCubeStrategy": "least-compressed",
-              "selectionPressure": 0.7,
               "memePoolFilter": null,
               "populationSize": 6
             },

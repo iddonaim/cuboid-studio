@@ -5,6 +5,7 @@ import { Expand, RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
 import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
+import { importPlanUnderlay } from '../../lib/decode/planUnderlay';
 import { TILE_SIZE, worldSnapPoints } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -26,6 +27,28 @@ function dedupeVariationsFromAssembly(placedCubes: { variationId: string }[]): s
   }
   return result;
 }
+
+/** One labelled numeric field of the underlay registration row. */
+const RegistrationField: React.FC<{
+  label: string;
+  value: number;
+  step?: number;
+  onChange: (v: number) => void;
+}> = ({ label, value, step = 1, onChange }) => (
+  <label className="flex items-center gap-1 text-[11px] text-ink-500">
+    {label}
+    <input
+      type="number"
+      step={step}
+      value={Number(value.toFixed(step < 1 ? 3 : 1))}
+      onChange={e => {
+        const v = Number(e.target.value);
+        if (Number.isFinite(v)) onChange(v);
+      }}
+      className="w-[64px] px-1 py-0.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[11px] box-border"
+    />
+  </label>
+);
 
 const DrawerTile: React.FC<{
   variationId: string;
@@ -86,6 +109,9 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
   const selectedTileId = useDecodeStore(s => s.selectedTileId);
   const pendingPlacementVariationId = useDecodeStore(s => s.pendingPlacementVariationId);
 
+  const underlay = useDecodeStore(s => s.underlay);
+  const setUnderlay = useDecodeStore(s => s.setUnderlay);
+  const updateUnderlayRegistration = useDecodeStore(s => s.updateUnderlayRegistration);
   const setFreestyle = useDecodeStore(s => s.setFreestyle);
   const toggleCanvasExpanded = useDecodeStore(s => s.toggleCanvasExpanded);
   const addTile = useDecodeStore(s => s.addTile);
@@ -102,6 +128,25 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
 
   const isEmpty = canvasTiles.length === 0;
   const [exporting, setExporting] = useState(false);
+  const [importingUnderlay, setImportingUnderlay] = useState(false);
+  const [underlayError, setUnderlayError] = useState<string | null>(null);
+  const underlayInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUnderlayFile = useCallback(
+    async (file: File | null) => {
+      if (!file) return;
+      setImportingUnderlay(true);
+      setUnderlayError(null);
+      try {
+        setUnderlay(await importPlanUnderlay(file));
+      } catch (err) {
+        setUnderlayError(err instanceof Error ? err.message : 'Failed to import plan');
+      } finally {
+        setImportingUnderlay(false);
+      }
+    },
+    [setUnderlay],
+  );
 
   // Auto-composition: grow the notation like the Builder's +N buttons grow
   // the assembly. The notation rule is that elements connect through their
@@ -338,6 +383,72 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
           Tap the canvas to place {pendingPlacementVariationId}
         </p>
       )}
+
+      {/* Zone 2.5 — Plan underlay: a locked raster plan registered under the
+          canvas. Only registration is recorded (offset / rotation / scale);
+          saves keep a thumbnail + fingerprint, never full-res base64. */}
+      <div>
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
+          Plan underlay
+        </p>
+        <input
+          ref={underlayInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={e => {
+            void handleUnderlayFile(e.target.files?.[0] ?? null);
+            e.target.value = '';
+          }}
+        />
+        {!underlay ? (
+          <Button
+            type="button"
+            disabled={importingUnderlay}
+            onClick={() => underlayInputRef.current?.click()}
+            className="h-auto py-1 px-2.5 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200"
+          >
+            {importingUnderlay ? 'Importing…' : 'Import plan image'}
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-1.5 rounded border border-ink-200 bg-ink-100/60 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <img
+                  src={underlay.dataUrl ?? underlay.thumbnailDataUrl}
+                  alt="Plan underlay"
+                  className="h-8 w-8 rounded border border-ink-300 object-cover"
+                />
+                <span className="truncate font-mono text-[10px] text-ink-500">
+                  {underlay.dataUrl ? `plan ${underlay.imageHash}` : `plan ${underlay.imageHash} · thumbnail only`}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="Remove underlay"
+                className="h-7 w-7 text-ink-600 hover:text-ink-800"
+                onClick={() => setUnderlay(null)}
+                aria-label="Remove underlay"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <RegistrationField label="X" value={underlay.offsetX}
+                onChange={v => updateUnderlayRegistration({ offsetX: v })} />
+              <RegistrationField label="Y" value={underlay.offsetY}
+                onChange={v => updateUnderlayRegistration({ offsetY: v })} />
+              <RegistrationField label="Rot°" value={underlay.rotation}
+                onChange={v => updateUnderlayRegistration({ rotation: v })} />
+              <RegistrationField label="Scale" value={underlay.scale} step={0.01}
+                onChange={v => { if (v > 0) updateUnderlayRegistration({ scale: v }); }} />
+            </div>
+          </div>
+        )}
+        {underlayError && <p className="mt-1 text-[11px] text-red-600">{underlayError}</p>}
+      </div>
 
       {/* Zone 3 — Canvas. In expanded mode this zone claims all remaining
           height so the stage stretches vertically, not just horizontally. */}

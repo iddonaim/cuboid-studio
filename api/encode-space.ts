@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { DEFAULT_LEXICON, type SpatialLexicon } from '../src/prompts/lexicon.default.js';
 import { toAnthropicModelId } from '../src/lib/models.js';
+import { parsePromptVersion } from '../src/lib/promptVersion.js';
 
 // Vision model for encoding, overridable per deployment via ENCODE_MODEL
 // (Anthropic or OpenRouter-style id — normalized either way). Model strategy:
@@ -77,7 +78,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? (req.body.lexicon as SpatialLexicon)
       : DEFAULT_LEXICON;
 
-  const systemPrompt = composeSystemPrompt(grammarTemplate, activeLexicon);
+  // Merge mode: the client sends the already-placed assembly. Re-serialise it
+  // from whitelisted, validated fields only — no request-controlled string can
+  // reach the prompt except a regex-checked variation id. Absent/invalid seed
+  // → "[]", which the grammar's EXISTING ASSEMBLY section defines as "none".
+  const seedAssemblyJson = sanitiseSeedAssembly(req.body.seedAssembly);
+
+  const systemPrompt = composeSystemPrompt(grammarTemplate, activeLexicon, seedAssemblyJson);
+
+  // Prompt provenance: the grammar file carries a "# version: N" header that
+  // the architect bumps on edit; echo it so results record their conditions.
+  const promptVersion = parsePromptVersion(grammarTemplate);
 
   // Per-request model override (OpenRouter-style id, e.g. "google/gemini-3.5-flash"),
   // sent by the encode Model lab. Absent for a normal encode, which keeps the
@@ -232,9 +243,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(reading ? { reading } : {}),
       reasoning: parsed.reasoning,
       cubes: validCubes,
-      // Provenance: which model produced this reading. Additive — existing
-      // clients ignore it; future capture can persist it per record.
+      // Provenance: which model + grammar version produced this reading.
+      // Additive — existing clients ignore them; capture persists them.
       model: modelUsed,
+      ...(promptVersion ? { promptVersion } : {}),
     });
   } catch (error) {
     console.error('Encoding error:', error);
@@ -351,9 +363,53 @@ function makeAnthropicEncodeCaller(
   };
 }
 
+// --- Seed assembly sanitisation ---------------------------------------------
+
+/** Cap on seed cubes serialised into the prompt (assemblies are typically
+ *  4–20 cubes; this only bounds a hostile or runaway request). */
+const MAX_SEED_CUBES = 300;
+
+/**
+ * Rebuild the merge-mode seed assembly from whitelisted fields only, then
+ * serialise it for the {{seed_assembly_json}} grammar slot. Every field is
+ * validated the same way encode output is: variation ids against the v-NN
+ * regex, positions/rotations through Number() with clamps. Anything invalid
+ * is dropped; a missing or non-array input yields "[]".
+ */
+function sanitiseSeedAssembly(raw: unknown): string {
+  if (!raw || !Array.isArray(raw)) return '[]';
+  const cubes = raw
+    .slice(0, MAX_SEED_CUBES)
+    .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === 'object')
+    .map((c) => {
+      const variationId = typeof c.variationId === 'string' ? c.variationId : '';
+      const match = variationId.match(/^v-(\d+)$/);
+      if (!match) return null;
+      const num = parseInt(match[1], 10);
+      if (num < 0 || num > 69) return null;
+      const pos = c.position;
+      if (!Array.isArray(pos) || pos.length !== 3 || pos.some((v) => !isFinite(Number(v)))) return null;
+      const rot = (c.rotation ?? {}) as { x?: unknown; y?: unknown };
+      const clampRot = (v: unknown) => Math.max(0, Math.min(3, Math.round(Number(v) || 0)));
+      const operatorCount = Math.max(0, Math.min(999, Math.round(Number(c.operatorCount) || 0)));
+      return {
+        variationId,
+        position: pos.map(Number) as [number, number, number],
+        rotation: { x: clampRot(rot.x), y: clampRot(rot.y) },
+        operatorCount,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  return JSON.stringify(cubes);
+}
+
 // --- Prompt composition ----------------------------------------------------
 
-function composeSystemPrompt(grammarTemplate: string, lexicon: SpatialLexicon): string {
+function composeSystemPrompt(
+  grammarTemplate: string,
+  lexicon: SpatialLexicon,
+  seedAssemblyJson: string,
+): string {
   const rhythmOptionsList = lexicon.rhythm.options
     .map(o => `- ${o.trigger} → ${o.label}${o.grid_hint ? ` (${o.grid_hint})` : ''}`)
     .join('\n');
@@ -378,10 +434,22 @@ function composeSystemPrompt(grammarTemplate: string, lexicon: SpatialLexicon): 
     .replace(/\{\{emotion\.pole_low\}\}/g, lexicon.emotion.pole_low)
     .replace(/\{\{emotion\.pole_high\}\}/g, lexicon.emotion.pole_high)
     .replace(/\{\{emotion\.melancholic\}\}/g, lexicon.emotion.melancholic)
+    // Grammar v3 slot. Lexicons saved before `joy` existed lack the field —
+    // fall back to the default vocabulary rather than leaking the raw slot.
+    .replace(
+      /\{\{emotion\.joy\}\}/g,
+      lexicon.emotion.joy ?? DEFAULT_LEXICON.emotion.joy ?? 'Joyful or carnival-like spaces',
+    )
     .replace(/\{\{rhythm\.options_list\}\}/g, rhythmOptionsList)
     .replace(/\{\{placement\.options_list\}\}/g, placementOptionsList)
     .replace(/\{\{rhythm\.option_ids_list\}\}/g, rhythmOptionIds)
-    .replace(/\{\{placement\.option_ids_list\}\}/g, placementOptionIds);
+    .replace(/\{\{placement\.option_ids_list\}\}/g, placementOptionIds)
+    .replace(/\{\{seed_assembly_json\}\}/g, seedAssemblyJson)
+    // Grammar v3 authored the remix section ahead of its implementation. The
+    // client does not yet send a remix seed and no code fills this slot, so it
+    // is pinned to "[]" — the state the section itself defines as "not a
+    // remix". Remove this pin when remix mode is actually wired up.
+    .replace(/\{\{remix_seed_assembly_json\}\}/g, '[]');
 }
 
 // --- Reading passthrough / sanitisation ------------------------------------
