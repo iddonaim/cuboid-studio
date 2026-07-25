@@ -53,6 +53,8 @@ export const EncodingPanel: React.FC = () => {
   const setSeedFromBuilder = useEncodingStore(s => s.setSeedFromBuilder);
   const setSeedFromSavedState = useEncodingStore(s => s.setSeedFromSavedState);
   const seedCubes = useEncodingStore(s => s.seedCubes);
+  const seedCubeIds = useEncodingStore(s => s.seedCubeIds);
+  const remixResultReplacesSeed = useEncodingStore(s => s.remixResultReplacesSeed);
   const showAdditions = useEncodingStore(s => s.showAdditions);
   const setShowAdditions = useEncodingStore(s => s.setShowAdditions);
   const openSeedEdit = useEncodingStore(s => s.openSeedEdit);
@@ -447,6 +449,17 @@ export const EncodingPanel: React.FC = () => {
             {encodedCubes.length} cubes encoded
             {' '}({new Set(encodedCubes.map(c => c.variationId)).size} unique variations)
           </div>
+
+          {/* Remix v2 result — say what loading will do (replace, not add). */}
+          {mode === 'remix' && remixResultReplacesSeed && (() => {
+            const kept = encodedCubes.filter(c => c.id && seedCubeIds.has(c.id)).length;
+            return (
+              <div className="text-ink-500 text-[11px] leading-relaxed">
+                Remixed assembly: {kept} kept from the seed · {encodedCubes.length - kept} new
+                or transformed. Loading replaces the seed with this assembly.
+              </div>
+            );
+          })()}
 
           {/* Before / after toggle — appears once the assembly has been edited
               in the builder and there are hand-added cubes to show or hide. */}

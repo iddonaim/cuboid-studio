@@ -7,6 +7,7 @@ import { GRID_STRIDE, CUBE_SIZE } from '../lib/cube/constants';
 import { useBuilderStore } from './useBuilderStore';
 import { useLexiconStore } from './useLexiconStore';
 import type { SpatialLexicon } from '../prompts/lexicon.default';
+import type { OperatorRecord } from '../lib/operators/types';
 
 type EncodingMode = 'standalone' | 'merge' | 'remix';
 
@@ -27,45 +28,111 @@ function clearReadingFields() {
     encodingLexiconId: null as string | null,
     encodingModel: null as string | null,
     encodingPromptVersion: null as string | null,
+    // Every caller of this helper also nulls encodedCubes, and this flag only
+    // describes the current result — drop it alongside.
+    remixResultReplacesSeed: false,
   };
+}
+
+/** Grid-snap a cube's position. Y is offset by CUBE_SIZE/2 (ground = 21). */
+function snapCube(cube: EncodedCube): EncodedCube {
+  const snapAxis = (v: number, axis: number) => {
+    const snapped =
+      axis === 1
+        ? Math.round((v - CUBE_SIZE / 2) / GRID_STRIDE) * GRID_STRIDE + CUBE_SIZE / 2
+        : Math.round(v / GRID_STRIDE) * GRID_STRIDE;
+    return snapped === 0 ? 0 : snapped; // normalise -0 from negative rounding
+  };
+  return { ...cube, position: cube.position.map(snapAxis) as [number, number, number] };
 }
 
 /** Grid-snap each cube and drop collisions with the seed. Shared by a normal
  *  encode and the Model lab so a compared result renders identically to a
- *  live one. Y axis is offset by CUBE_SIZE/2 (ground level = 21, not 0). */
+ *  live one. */
 function processEncodedCubes(cubes: EncodedCube[], seedCubes: PlacedCube[]): EncodedCube[] {
-  const snapAxis = (v: number, axis: number) =>
-    axis === 1
-      ? Math.round((v - CUBE_SIZE / 2) / GRID_STRIDE) * GRID_STRIDE + CUBE_SIZE / 2
-      : Math.round(v / GRID_STRIDE) * GRID_STRIDE;
   const occupied = new Set(seedCubes.map((c) => c.position.join(',')));
   const batch = Date.now();
   return cubes
-    .map((cube) => ({
-      ...cube,
-      position: cube.position.map(snapAxis) as [number, number, number],
-    }))
+    .map(snapCube)
     .filter((cube) => !occupied.has(cube.position.join(',')))
     .map((cube, i) => ({ ...cube, id: cube.id ?? `encoded-${batch}-${i}` }));
 }
 
-/** Merge mode: summarise the seed assembly for the encode request so the
- *  model composes its additions against what's already placed. Operator
- *  counts come from the meme store (dynamic import — matches the pattern the
- *  evolution store uses to avoid circular deps). Returns undefined outside
- *  merge mode / with an empty seed, keeping those requests byte-identical. */
+/**
+ * Remix result processing. The model returns the COMPLETE reinterpreted
+ * assembly (not additions), so nothing is filtered against the seed; instead
+ * each cube is matched to the seed cell it lands on:
+ *
+ * - same cell + same variation → "kept": it inherits the seed cube's id, so
+ *   its operator history and any id-keyed state carry forward automatically.
+ * - same cell + different variation + `inheritOperators` → "transplant": new
+ *   id, but `inheritFromSeedId` records whose operators to re-apply on load.
+ * - everything else → a new cube with a fresh id.
+ *
+ * Exported for tests. If the model places two cubes in one cell, the first
+ * wins (a cell can only hold one cube).
+ */
+export function processRemixResult(cubes: EncodedCube[], seedCubes: PlacedCube[]): EncodedCube[] {
+  const seedByCell = new Map(seedCubes.map((c) => [c.position.join(','), c]));
+  const batch = Date.now();
+  const seen = new Set<string>();
+  const out: EncodedCube[] = [];
+  cubes.map(snapCube).forEach((cube, i) => {
+    const cell = cube.position.join(',');
+    if (seen.has(cell)) return;
+    seen.add(cell);
+    const seed = seedByCell.get(cell);
+    if (seed && seed.variationId === cube.variationId) {
+      out.push({ ...cube, id: seed.id, inheritFromSeedId: seed.id });
+    } else if (seed && cube.inheritOperators) {
+      out.push({ ...cube, id: cube.id ?? `encoded-${batch}-${i}`, inheritFromSeedId: seed.id });
+    } else {
+      out.push({ ...cube, id: cube.id ?? `encoded-${batch}-${i}` });
+    }
+  });
+  return out;
+}
+
+/** Compress operator records into the enum-and-numbers summary the seed
+ *  serialisation carries (the server whitelists exactly these fields). */
+function summariseOperators(records: OperatorRecord[] | undefined) {
+  if (!records || records.length === 0) return {};
+  return {
+    operators: records.map((r) => ({
+      operator: r.operator,
+      cutterType: r.cutter.type,
+      cutterRotation: r.cutter.rotation,
+      magnitude: r.magnitude,
+    })),
+  };
+}
+
+/** Merge/remix: summarise the seed assembly for the encode request so the
+ *  model reads what's already placed instead of proposing cubes blind.
+ *  Merge reads operator records from the live meme store (dynamic import —
+ *  matches the pattern the evolution store uses to avoid circular deps);
+ *  remix reads the snapshot taken when the saved seed was selected, since a
+ *  saved state's operators are not in the live stores. Returns undefined in
+ *  standalone / with an empty seed, keeping those requests byte-identical. */
 async function buildSeedAssembly(
   mode: EncodingMode,
   seedCubes: PlacedCube[],
+  seedOperators: Record<string, OperatorRecord[]> = {},
 ): Promise<SeedAssemblyCube[] | undefined> {
-  if (mode !== 'merge' || seedCubes.length === 0) return undefined;
-  const { useMemeStore } = await import('./useMemeStore');
-  const cubeOperators = useMemeStore.getState().cubeOperators;
+  if (mode === 'standalone' || seedCubes.length === 0) return undefined;
+  let cubeOperators: Record<string, OperatorRecord[]>;
+  if (mode === 'merge') {
+    const { useMemeStore } = await import('./useMemeStore');
+    cubeOperators = useMemeStore.getState().cubeOperators;
+  } else {
+    cubeOperators = seedOperators;
+  }
   return seedCubes.map((c) => ({
     variationId: c.variationId,
     position: c.position,
     rotation: { x: c.rotation.x, y: c.rotation.y },
     operatorCount: cubeOperators[c.id]?.length ?? 0,
+    ...summariseOperators(cubeOperators[c.id]),
   }));
 }
 
@@ -147,6 +214,16 @@ interface EncodingState {
   mode: EncodingMode;
   seedCubes: PlacedCube[];
   seedCubeIds: Set<string>;
+  /** Remix: operator records of the selected saved seed, keyed by cube id.
+   *  Snapshotted when the seed is picked (a saved state's operators live in
+   *  the save, not the live stores). Feeds the encode request's per-cut
+   *  summary and the keep/transplant inheritance on load. */
+  seedOperators: Record<string, OperatorRecord[]>;
+  /** True when the current encode result is a remix reinterpretation — the
+   *  full assembly, which REPLACES the seed on load instead of overlaying it.
+   *  Only set when the server confirmed the remix grammar section ran
+   *  (`remixApplied`), so a not-yet-pasted section degrades to overlay. */
+  remixResultReplacesSeed: boolean;
   /**
    * Standalone edited-assembly preview toggle. After the user loads an encoded
    * result into the builder, edits it, and presses Done, the Encoding preview
@@ -324,6 +401,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   mode: 'standalone',
   seedCubes: [],
   seedCubeIds: new Set<string>(),
+  seedOperators: {},
+  remixResultReplacesSeed: false,
   showAdditions: true,
   setShowAdditions: (showAdditions) => set({ showAdditions }),
 
@@ -335,6 +414,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     mode,
     seedCubes: [],
     seedCubeIds: new Set<string>(),
+    seedOperators: {},
     showAdditions: true,
     lastError: null,
   }),
@@ -349,9 +429,28 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
 
   setSeedFromSavedState: (savedState: SavedState) => {
     const cubes = savedStateToPlacedCubes(savedState);
+    // Snapshot the save's operator records too — remix sends them to the
+    // model and re-applies them to kept/transplanted cubes on load.
+    const seedOperators: Record<string, OperatorRecord[]> = {};
+    for (const cube of savedState.data.cubes) {
+      if (!cube.operators || cube.operators.length === 0) continue;
+      seedOperators[cube.id] = cube.operators.map((op) => ({
+        id: op.id,
+        source: 'meme' as const,
+        operator: op.operator as OperatorRecord['operator'],
+        targets: op.targets as OperatorRecord['targets'],
+        magnitude: op.magnitude,
+        decay: op.decay,
+        createdAt: op.createdAt,
+        memeDescription: op.memeDescription,
+        reasoning: op.reasoning,
+        cutter: op.cutter as OperatorRecord['cutter'],
+      }));
+    }
     set({
       seedCubes: cubes,
       seedCubeIds: new Set(cubes.map(c => c.id)),
+      seedOperators,
     });
   },
 
@@ -403,7 +502,10 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const siteContext = hasSiteCoords ? activeSite : undefined;
     const seedCubes = get().seedCubes;
     // Captured once so every compared model sees the same seed summary.
-    const seedAssembly = await buildSeedAssembly(get().mode, seedCubes);
+    // Comparison stays merge-only: the (archived) Model lab has no handling
+    // for remix's replace-the-seed result semantics.
+    const seedAssembly =
+      get().mode === 'merge' ? await buildSeedAssembly('merge', seedCubes) : undefined;
 
     set({
       isComparingEncode: true,
@@ -545,9 +647,11 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const siteContext = hasSiteCoords ? activeSite : undefined;
 
     try {
-      // Merge mode: send the existing assembly so the model builds against it
-      // rather than proposing cubes blind (standalone/remix send nothing).
-      const seedAssembly = await buildSeedAssembly(get().mode, get().seedCubes);
+      // Merge/remix: send the seed so the model builds against it (merge) or
+      // reinterprets it (remix). Standalone sends nothing.
+      const mode = get().mode;
+      const seedAssembly = await buildSeedAssembly(mode, get().seedCubes, get().seedOperators);
+      const seedMode = mode === 'remix' ? ('remix' as const) : ('merge' as const);
 
       const result = hasMulti
         ? await encodeSpace({
@@ -558,20 +662,29 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
             })),
             siteContext,
             seedAssembly,
+            seedMode,
           })
         : await encodeSpace({
             imageBase64: imageBase64!,
             imageMediaType: imageMediaType || 'image/jpeg',
             siteContext,
             seedAssembly,
+            seedMode,
           });
 
-      // Grid-snap each position and remove collisions with seed cubes.
-      const processed = processEncodedCubes(result.cubes, get().seedCubes);
+      // Remix v2 (server confirmed the remix grammar ran): the result is the
+      // complete reinterpreted assembly — match cubes to seed cells for
+      // keep/transplant inheritance instead of dropping collisions. Anything
+      // else keeps the legacy path: snap + drop seed collisions (overlay).
+      const isRemixReplace = get().mode === 'remix' && result.remixApplied === true;
+      const processed = isRemixReplace
+        ? processRemixResult(result.cubes, get().seedCubes)
+        : processEncodedCubes(result.cubes, get().seedCubes);
 
       const modelReading = result.reading ?? null;
       set({
         encodedCubes: processed,
+        remixResultReplacesSeed: isRemixReplace,
         encodingReasoning: result.reasoning,
         encodingReadingOriginal: modelReading,
         encodingReading: modelReading ? cloneReading(modelReading) : null,
@@ -591,7 +704,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   },
 
   loadIntoBuilder: () => {
-    const { encodedCubes, mode, seedCubes } = get();
+    const { encodedCubes, mode, seedCubes, remixResultReplacesSeed, seedOperators } = get();
     if (!encodedCubes || encodedCubes.length === 0) return;
 
     // Reuse the result's stable ids (older saved compositions may predate
@@ -610,6 +723,17 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     }));
 
     const store = useBuilderStore.getState();
+
+    // Remix v2: the result IS the assembly — it replaces the seed rather than
+    // overlaying it. Operator history the model kept or transplanted is then
+    // re-applied asynchronously (geometry rebuilding is CSG work).
+    if (mode === 'remix' && remixResultReplacesSeed) {
+      store.setPlacedCubes(newPlacedCubes);
+      store.pushToHistory(newPlacedCubes);
+      void applyInheritedSeedOperators(encodedCubes, seedOperators);
+      return;
+    }
+
     const base =
       mode === 'merge' ? store.placedCubes : mode === 'remix' ? seedCubes : [];
     // Skip cubes already present (same id or same occupied cell) so repeated
@@ -624,3 +748,41 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     store.pushToHistory(result);
   },
 }));
+
+/**
+ * Remix load, step two: carry the seed's operator history onto the cubes that
+ * kept or transplanted it. `inheritFromSeedId` (assigned by
+ * processRemixResult) says whose records each cube inherits; the records are
+ * replayed against the cube's base variation geometry — the same rebuild a
+ * composition load does — so the cuts reappear on the new assembly, and the
+ * explanation cards stay intact. Per-cube state is overwritten, not appended,
+ * so re-loading the same result twice can't double-cut anything.
+ */
+async function applyInheritedSeedOperators(
+  encodedCubes: EncodedCube[],
+  seedOperators: Record<string, OperatorRecord[]>,
+) {
+  const inherited: Record<string, OperatorRecord[]> = {};
+  const variations: Record<string, string> = {};
+  for (const cube of encodedCubes) {
+    if (!cube.id || !cube.inheritFromSeedId) continue;
+    const records = seedOperators[cube.inheritFromSeedId];
+    if (!records || records.length === 0) continue;
+    inherited[cube.id] = records;
+    variations[cube.id] = cube.variationId;
+  }
+  if (Object.keys(inherited).length === 0) return;
+
+  // Dynamic imports: composition.ts and the meme store both reach back into
+  // this store at module level.
+  const { rebuildAssemblyGeometry } = await import('../lib/projects/composition');
+  const { useMemeStore } = await import('./useMemeStore');
+  const rebuilt = await rebuildAssemblyGeometry(variations, inherited);
+  const meme = useMemeStore.getState();
+  useMemeStore.setState({
+    cubeOperators: { ...meme.cubeOperators, ...inherited },
+    cubeGeometryOverrides: { ...meme.cubeGeometryOverrides, ...rebuilt.cubeGeometryOverrides },
+    cubeGeometryStacks: { ...meme.cubeGeometryStacks, ...rebuilt.cubeGeometryStacks },
+    cubeTranslations: { ...meme.cubeTranslations, ...rebuilt.cubeTranslations },
+  });
+}

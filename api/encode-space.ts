@@ -78,13 +78,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? (req.body.lexicon as SpatialLexicon)
       : DEFAULT_LEXICON;
 
-  // Merge mode: the client sends the already-placed assembly. Re-serialise it
-  // from whitelisted, validated fields only — no request-controlled string can
-  // reach the prompt except a regex-checked variation id. Absent/invalid seed
-  // → "[]", which the grammar's EXISTING ASSEMBLY section defines as "none".
-  const seedAssemblyJson = sanitiseSeedAssembly(req.body.seedAssembly);
+  // Merge/remix: the client sends the seed assembly. Re-serialise it from
+  // whitelisted, validated fields only — no request-controlled string can
+  // reach the prompt except regex-checked enum-like tokens. Absent/invalid
+  // seed → "[]", which both grammar sections define as "none". The seed fills
+  // exactly one of the two grammar slots; the other is emptied.
+  const seedMode: 'merge' | 'remix' = req.body.seedMode === 'remix' ? 'remix' : 'merge';
+  const seedCubes = sanitiseSeedAssembly(req.body.seedAssembly);
+  const seedJson = JSON.stringify(seedCubes);
+  const mergeSeedJson = seedMode === 'merge' ? seedJson : '[]';
+  const remixSeedJson = seedMode === 'remix' ? seedJson : '[]';
 
-  const systemPrompt = composeSystemPrompt(grammarTemplate, activeLexicon, seedAssemblyJson);
+  // Remix only takes effect when the grammar file actually contains the remix
+  // section (its slot). Echoed to the client as `remixApplied` — without it
+  // the client keeps the legacy overlay behaviour, so a grammar file that
+  // predates the section can never cause a saved seed to be replaced.
+  const remixApplied =
+    seedMode === 'remix' &&
+    seedCubes.length > 0 &&
+    grammarTemplate.includes('{{remix_seed_assembly_json}}');
+
+  const systemPrompt = composeSystemPrompt(grammarTemplate, activeLexicon, mergeSeedJson, remixSeedJson);
 
   // Prompt provenance: the grammar file carries a "# version: N" header that
   // the architect bumps on edit; echo it so results record their conditions.
@@ -174,7 +188,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let parsed: {
       reading?: RawReading;
       reasoning?: string;
-      cubes?: { variationId?: string; position?: number[]; rotation?: { x?: number; y?: number } }[];
+      cubes?: {
+        variationId?: string;
+        position?: number[];
+        rotation?: { x?: number; y?: number };
+        inheritOperators?: unknown;
+      }[];
     };
 
     try {
@@ -211,7 +230,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Validate and sanitize each cube
     const validCubes = parsed.cubes
-      .filter((c): c is { variationId: string; position: number[]; rotation?: { x?: number; y?: number } } => {
+      .filter((c): c is { variationId: string; position: number[]; rotation?: { x?: number; y?: number }; inheritOperators?: unknown } => {
         if (!c.variationId || typeof c.variationId !== 'string') return false;
         const match = c.variationId.match(/^v-(\d+)$/);
         if (!match) return false;
@@ -227,6 +246,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           x: Math.max(0, Math.min(3, Math.round(c.rotation?.x ?? 0))),
           y: Math.max(0, Math.min(3, Math.round(c.rotation?.y ?? 0))),
         },
+        // Remix "Transplant": strictly boolean-true or absent.
+        ...(remixApplied && c.inheritOperators === true ? { inheritOperators: true } : {}),
       }));
 
     if (validCubes.length === 0) {
@@ -247,6 +268,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Additive — existing clients ignore them; capture persists them.
       model: modelUsed,
       ...(promptVersion ? { promptVersion } : {}),
+      // Remix confirmation — the client only treats the result as a full
+      // replacement assembly when the remix grammar section actually ran.
+      ...(remixApplied ? { remixApplied: true } : {}),
     });
   } catch (error) {
     console.error('Encoding error:', error);
@@ -369,16 +393,55 @@ function makeAnthropicEncodeCaller(
  *  4–20 cubes; this only bounds a hostile or runaway request). */
 const MAX_SEED_CUBES = 300;
 
+/** Cap on operator summaries per seed cube (real cubes carry a handful). */
+const MAX_SEED_OPERATORS = 20;
+
+/** Enum-like token: operator classes and cutter types are short lowercase
+ *  identifiers. Anything else is dropped — free text can never reach the
+ *  prompt through the seed. */
+const SEED_TOKEN_RE = /^[a-z][a-z_-]{0,31}$/;
+
+/** Whitelist one cube's operator summaries (operator, cutter type + rotation,
+ *  magnitude — the fields the grammar's remix section documents). */
+function sanitiseSeedOperators(raw: unknown): Array<{
+  operator: string;
+  cutterType: string;
+  cutterRotation: [number, number, number];
+  magnitude: number;
+}> {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw
+    .slice(0, MAX_SEED_OPERATORS)
+    .filter((o): o is Record<string, unknown> => Boolean(o) && typeof o === 'object')
+    .map((o) => {
+      const operator = typeof o.operator === 'string' && SEED_TOKEN_RE.test(o.operator) ? o.operator : null;
+      const cutterType =
+        typeof o.cutterType === 'string' && SEED_TOKEN_RE.test(o.cutterType) ? o.cutterType : null;
+      const rot = o.cutterRotation;
+      if (!operator || !cutterType) return null;
+      if (!Array.isArray(rot) || rot.length !== 3 || rot.some((v) => !isFinite(Number(v)))) return null;
+      const magnitude = Math.max(0, Math.min(1, Number(o.magnitude) || 0));
+      return {
+        operator,
+        cutterType,
+        cutterRotation: rot.map(Number) as [number, number, number],
+        magnitude,
+      };
+    })
+    .filter((o): o is NonNullable<typeof o> => o !== null);
+}
+
 /**
- * Rebuild the merge-mode seed assembly from whitelisted fields only, then
- * serialise it for the {{seed_assembly_json}} grammar slot. Every field is
- * validated the same way encode output is: variation ids against the v-NN
- * regex, positions/rotations through Number() with clamps. Anything invalid
- * is dropped; a missing or non-array input yields "[]".
+ * Rebuild the seed assembly (merge or remix) from whitelisted fields only,
+ * ready to serialise into a grammar slot. Every field is validated the same
+ * way encode output is: variation ids against the v-NN regex,
+ * positions/rotations through Number() with clamps, operator summaries
+ * through an enum-token whitelist. Anything invalid is dropped; a missing or
+ * non-array input yields [].
  */
-function sanitiseSeedAssembly(raw: unknown): string {
-  if (!raw || !Array.isArray(raw)) return '[]';
-  const cubes = raw
+function sanitiseSeedAssembly(raw: unknown): Array<Record<string, unknown>> {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw
     .slice(0, MAX_SEED_CUBES)
     .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === 'object')
     .map((c) => {
@@ -392,15 +455,16 @@ function sanitiseSeedAssembly(raw: unknown): string {
       const rot = (c.rotation ?? {}) as { x?: unknown; y?: unknown };
       const clampRot = (v: unknown) => Math.max(0, Math.min(3, Math.round(Number(v) || 0)));
       const operatorCount = Math.max(0, Math.min(999, Math.round(Number(c.operatorCount) || 0)));
+      const operators = sanitiseSeedOperators(c.operators);
       return {
         variationId,
         position: pos.map(Number) as [number, number, number],
         rotation: { x: clampRot(rot.x), y: clampRot(rot.y) },
         operatorCount,
+        ...(operators.length > 0 ? { operators } : {}),
       };
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
-  return JSON.stringify(cubes);
 }
 
 // --- Prompt composition ----------------------------------------------------
@@ -409,6 +473,7 @@ function composeSystemPrompt(
   grammarTemplate: string,
   lexicon: SpatialLexicon,
   seedAssemblyJson: string,
+  remixSeedAssemblyJson: string,
 ): string {
   const rhythmOptionsList = lexicon.rhythm.options
     .map(o => `- ${o.trigger} → ${o.label}${o.grid_hint ? ` (${o.grid_hint})` : ''}`)
@@ -445,11 +510,9 @@ function composeSystemPrompt(
     .replace(/\{\{rhythm\.option_ids_list\}\}/g, rhythmOptionIds)
     .replace(/\{\{placement\.option_ids_list\}\}/g, placementOptionIds)
     .replace(/\{\{seed_assembly_json\}\}/g, seedAssemblyJson)
-    // Grammar v3 authored the remix section ahead of its implementation. The
-    // client does not yet send a remix seed and no code fills this slot, so it
-    // is pinned to "[]" — the state the section itself defines as "not a
-    // remix". Remove this pin when remix mode is actually wired up.
-    .replace(/\{\{remix_seed_assembly_json\}\}/g, '[]');
+    // Grammar v3's SEED ASSEMBLY (remix) slot — filled with the sanitised
+    // remix seed, or "[]" ("not a remix") for merge/standalone requests.
+    .replace(/\{\{remix_seed_assembly_json\}\}/g, remixSeedAssemblyJson);
 }
 
 // --- Reading passthrough / sanitisation ------------------------------------
