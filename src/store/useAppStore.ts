@@ -45,6 +45,11 @@ interface AppState {
    *  switch without floating anything over the map-context iframe. */
   mapView: MapView;
   setMapView: (view: MapView) => void;
+  /** Set when the map-context iframe reports a fresh analysis. Drives the
+   *  "Go to Encode" handoff button in the TopBar — it lives in app chrome
+   *  rather than floating over the map, which would cover the map's own UI. */
+  siteAnalysisReady: boolean;
+  setSiteAnalysisReady: (ready: boolean) => void;
   floatingPanelOpen: boolean;
   toggleFloatingPanel: () => void;
   /** Onboarding showcase modal — auto-opens on first ever visit. */
@@ -96,6 +101,8 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveMode: (mode) => set({ activeMode: mode }),
   mapView: 'analyze',
   setMapView: (view) => set({ mapView: view }),
+  siteAnalysisReady: false,
+  setSiteAnalysisReady: (ready) => set({ siteAnalysisReady: ready }),
   floatingPanelOpen: true,
   toggleFloatingPanel: () => set(s => ({ floatingPanelOpen: !s.floatingPanelOpen })),
   onboardingOpen: !onboardingSeen(),
