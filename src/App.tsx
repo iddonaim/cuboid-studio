@@ -28,8 +28,7 @@ import { ExportPanel } from './components/export/ExportPanel';
 import { DecodePanel } from './components/decode/DecodePanel';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { SitesMapView } from './components/map/SitesMapView';
-import { MapViewToggle } from './components/map/MapViewToggle';
-import { EncodeHandoffBar } from './components/map/EncodeHandoff';
+import { MapChromeBar } from './components/map/MapChromeBar';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 import { getActiveSiteContext, setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
@@ -151,7 +150,6 @@ const AppInner: React.FC = () => {
   const evolutionSubMode    = useEvolutionStore(s => s.subMode);
   const isMobile            = useIsMobile();
   const { user }            = useAuthContext();
-  const siteAnalysisReady    = useAppStore(s => s.siteAnalysisReady);
   const setSiteAnalysisReady = useAppStore(s => s.setSiteAnalysisReady);
 
   // Map-context iframe finished (or restored) an analysis. Only announce a
@@ -311,10 +309,10 @@ const AppInner: React.FC = () => {
             must match the TopBar's own height calc (42px + top safe area). */}
         <div style={{ height: 'calc(42px + env(safe-area-inset-top, 0px))', flexShrink: 0 }} aria-hidden />
 
-        {/* Site-analysis handoff. Its own row in the column, so it pushes the
-            map down instead of covering the embedded map app's controls.
-            (Desktop puts the same action in the TopBar.) */}
-        {showMapCanvas && siteAnalysisReady && <EncodeHandoffBar />}
+        {/* Map controls (view switch + Encode handoff). Its own row in the
+            column, so it pushes the map down instead of covering the embedded
+            map app's own UI. Desktop puts both in the TopBar. */}
+        {showMapCanvas && <MapChromeBar />}
 
         {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
@@ -327,7 +325,6 @@ const AppInner: React.FC = () => {
             <MapContextCanvas onAnalysisComplete={handleAnalysisComplete} />
           </div>
           {showSitesMap && <SitesMapView />}
-          {showMapCanvas && (user || isDemoMode()) && <MapViewToggle />}
           {!showMapCanvas && (
             <>
               <Viewport3D />

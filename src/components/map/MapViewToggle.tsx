@@ -3,9 +3,9 @@
  * sites layer). Only rendered for signed-in users (the sites layer reads
  * Firestore).
  *
- * Desktop: `MapViewSegment` is embedded in the TopBar so nothing floats over
- * the embedded map-context app's own toolbar. Mobile: `MapViewToggle` floats
- * top-right (the mobile TopBar has no room for it).
+ * Never floats over the map: the Map tab is an embedded third-party app and
+ * anything on top of it covers that app's own controls. Desktop embeds this in
+ * the TopBar; mobile puts it in the MapChromeBar strip above the map.
  */
 import React from 'react';
 import { useAppStore, MapView } from '../../store/useAppStore';
@@ -39,12 +39,3 @@ export const MapViewSegment: React.FC = () => {
     </div>
   );
 };
-
-/** Mobile-only floating wrapper. z must beat Leaflet's internal panes (tile
- *  200 … popup 700, controls 1000) — they share this stacking context when
- *  the sites map is shown. */
-export const MapViewToggle: React.FC = () => (
-  <div className="absolute top-2 right-2 z-[1100] shadow-lg rounded-md">
-    <MapViewSegment />
-  </div>
-);
