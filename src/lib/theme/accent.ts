@@ -64,6 +64,12 @@ export function hexToHslTriad(hex: string): string {
   return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
+  const c = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
 /** WCAG relative luminance (0 = black, 1 = white). */
 function luminance(hex: string): number {
   const { r, g, b } = hexToRgb(hex);
@@ -81,6 +87,42 @@ function luminance(hex: string): number {
  */
 export function readableForegroundTriad(hex: string): string {
   return luminance(hex) > 0.5 ? '45 9% 13%' /* ink */ : '0 0% 100%' /* white */;
+}
+
+/** The drafting ink the cut surface used to be painted with, flat. */
+const INK = '#33312a';
+
+/** Max luminance a cut surface may have and still read as solid poché against
+ *  the white cube fill. Vermilion (0.14) and every preset sit well below it. */
+const CUT_MAX_LUMINANCE = 0.3;
+
+/**
+ * The color of a section-cut surface (the poché face revealed where a clipping
+ * plane slices a cube) for a given accent.
+ *
+ * Section cuts are drafting poché: they must read as a solid, weighty fill
+ * against the white cube. A dark accent does that on its own, so it is used
+ * as-is. A pale accent (the picker allows any RGB) would wash out into the
+ * white fill and make the cut vanish, so it is stepped toward the drafting ink
+ * until it is dark enough to hold — keeping the hue the user chose while
+ * preserving the cut's weight.
+ */
+export function sectionCutColor(hex: string): string {
+  if (luminance(hex) <= CUT_MAX_LUMINANCE) return hex;
+
+  const from = hexToRgb(hex);
+  const ink = hexToRgb(INK);
+  // Blend in 10% steps so the result stays close to the chosen hue.
+  for (let step = 1; step <= 10; step++) {
+    const t = step / 10;
+    const mixed = rgbToHex({
+      r: from.r + (ink.r - from.r) * t,
+      g: from.g + (ink.g - from.g) * t,
+      b: from.b + (ink.b - from.b) * t,
+    });
+    if (luminance(mixed) <= CUT_MAX_LUMINANCE) return mixed;
+  }
+  return INK;
 }
 
 // ── Apply / persist ─────────────────────────────────────────────────────────

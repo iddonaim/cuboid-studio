@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAccent } from '../../contexts/AccentContext';
+import { sectionCutColor } from '../../lib/theme/accent';
 import * as THREE from 'three';
 import { CUBE_SIZE } from '../../lib/cube/constants';
 import { CubeVariation } from '../../lib/cube/specifications';
@@ -99,6 +100,9 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     return new THREE.EdgesGeometry(geometry, 15);
   }, [geometry]);
 
+  // The poché face where a section plane slices the cube, in the user's accent.
+  const cutColor = useMemo(() => sectionCutColor(accent), [accent]);
+
   let fillColor = '#ffffff';
   let edgeColor = '#000000';
 
@@ -148,7 +152,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       {clippingPlanes && clippingPlanes.length > 0 && (
         <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>
           <meshBasicMaterial
-            color="#33312a"
+            color={cutColor}
             side={THREE.BackSide}
             clippingPlanes={clippingPlanes}
           />
