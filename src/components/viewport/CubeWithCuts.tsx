@@ -100,6 +100,19 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     return new THREE.EdgesGeometry(geometry, 15);
   }, [geometry]);
 
+  // Whether the section plane actually passes through THIS cube. The poché
+  // (cut-surface) mesh paints the cube's whole interior and relies on the
+  // front faces to hide it; when the plane doesn't slice this cube, that
+  // back-side paint z-fights with the fill along silhouettes and bleeds
+  // through as colored fringes — so it only mounts while genuinely slicing.
+  const planeSlicesCube = useMemo(() => {
+    if (!clippingPlanes || clippingPlanes.length === 0) return false;
+    const plane = clippingPlanes[0];
+    const axisIndex = plane.normal.x !== 0 ? 0 : plane.normal.y !== 0 ? 1 : 2;
+    const center = position[axisIndex];
+    return Math.abs(plane.constant - center) < CUBE_SIZE / 2;
+  }, [clippingPlanes, position]);
+
   // The poché face where a section plane slices the cube, in the user's accent.
   const cutColor = useMemo(() => sectionCutColor(accent), [accent]);
 
@@ -149,7 +162,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
           clippingPlanes={clippingPlanes || []}
         />
       </mesh>
-      {clippingPlanes && clippingPlanes.length > 0 && (
+      {planeSlicesCube && (
         <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>
           <meshBasicMaterial
             color={cutColor}

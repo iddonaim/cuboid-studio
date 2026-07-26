@@ -12,6 +12,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { DecodeCanvas } from './DecodeCanvas';
+import { ActiveSiteChip } from '../layout/ActiveSiteChip';
 
 const ALL_VARIATIONS = Array.from({ length: 70 }, (_, i) =>
   `v-${String(i).padStart(2, '0')}`,
@@ -276,6 +277,7 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
 
   return (
     <div className={`flex flex-col gap-2 ${expanded ? 'h-full' : ''}`}>
+      {!expanded && <ActiveSiteChip />}
       {/* Zone 1 — Toolbar */}
       <div className="flex items-center justify-between gap-2">
         <label className="flex items-center gap-2 text-[12px] text-ink-600">

@@ -28,9 +28,10 @@ function clearReadingFields() {
     encodingLexiconId: null as string | null,
     encodingModel: null as string | null,
     encodingPromptVersion: null as string | null,
-    // Every caller of this helper also nulls encodedCubes, and this flag only
-    // describes the current result — drop it alongside.
+    // Every caller of this helper also nulls encodedCubes, and these flags
+    // only describe the current result — drop them alongside.
     remixResultReplacesSeed: false,
+    resultApplied: false,
   };
 }
 
@@ -253,6 +254,12 @@ interface EncodingState {
   showComparisonEntry: (modelId: string) => void;
   clearEncodeComparison: () => void;
 
+  /** True once the current encode result has been applied into the assembly
+   *  (via Apply / Edit / Apply-memes). Reset whenever a new result arrives or
+   *  the inputs change, so the panel knows whether to offer "Apply" or the
+   *  post-apply follow-ups. */
+  resultApplied: boolean;
+
   // Actions
   encode: () => Promise<void>;
   loadIntoBuilder: () => void;
@@ -403,6 +410,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   seedCubeIds: new Set<string>(),
   seedOperators: {},
   remixResultReplacesSeed: false,
+  resultApplied: false,
   showAdditions: true,
   setShowAdditions: (showAdditions) => set({ showAdditions }),
 
@@ -594,6 +602,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       encodingLexiconId: entry.lexiconId ?? null,
       encodingModel: entry.resolvedModel ?? entry.modelId,
       encodingPromptVersion: entry.promptVersion ?? null,
+      resultApplied: false,
       lastError: null,
       ...clearStandaloneSeed,
     });
@@ -693,6 +702,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         encodingLexiconId: capturedLexiconId,
         encodingModel: result.model ?? null,
         encodingPromptVersion: result.promptVersion ?? null,
+        resultApplied: false,
         isEncoding: false,
       });
     } catch (error) {
@@ -706,6 +716,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   loadIntoBuilder: () => {
     const { encodedCubes, mode, seedCubes, remixResultReplacesSeed, seedOperators } = get();
     if (!encodedCubes || encodedCubes.length === 0) return;
+    set({ resultApplied: true });
 
     // Reuse the result's stable ids (older saved compositions may predate
     // them, hence the fallback) so loading the same result twice — or via

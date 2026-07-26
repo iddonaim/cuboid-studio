@@ -78,7 +78,15 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
         <div className="flex items-center gap-2">
           <Switch
             checked={enabled}
-            onCheckedChange={setEnabled}
+            onCheckedChange={(on) => {
+              // Turning the cut on with the plane parked outside the assembly
+              // looks like the toggle does nothing — snap it to mid-assembly
+              // so enabling always shows a visible cut.
+              if (on && (position <= bounds.min[axis] || position >= bounds.max[axis])) {
+                setPosition((bounds.min[axis] + bounds.max[axis]) / 2);
+              }
+              setEnabled(on);
+            }}
             id="section-cut"
             className="data-[state=checked]:bg-accent"
           />

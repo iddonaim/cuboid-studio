@@ -99,9 +99,13 @@ export const CameraController: React.FC<SceneFlags> = (flags) => {
         far={20000}
         position={INITIAL_POSITION}
       />
+      {/* Ortho near is negative (CAD convention): an orthographic view has no
+          meaningful "behind the camera", so the model and its grid must not
+          vanish when the camera plane moves inside them while zooming.
+          fitOrthoFrustum keeps the same convention. */}
       <OrthographicCamera
         ref={orthoRef}
-        near={0.1}
+        near={-20000}
         far={20000}
         position={INITIAL_POSITION}
       />
