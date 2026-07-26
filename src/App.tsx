@@ -29,6 +29,7 @@ import { DecodePanel } from './components/decode/DecodePanel';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { SitesMapView } from './components/map/SitesMapView';
 import { MapViewToggle } from './components/map/MapViewToggle';
+import { EncodeHandoffBar } from './components/map/EncodeHandoff';
 import { CaptureButton } from './components/tools/CaptureButton';
 import { Button } from '@/components/ui/button';
 import { getActiveSiteContext, setActiveSiteContext, SiteContextData } from './lib/storage/siteContext';
@@ -119,25 +120,6 @@ const PataphysicalSurface: React.FC = () => (
   </div>
 );
 
-const SiteAnalysisToast: React.FC<{ onGoToEncode: () => void }> = ({ onGoToEncode }) => (
-  <div
-    className="absolute bottom-4 right-4 z-[70] max-w-sm rounded-md border px-3 py-2 text-[12px] text-ink-800 shadow-xl"
-    style={{
-      background: 'hsl(var(--card) / 0.96)',
-      borderColor: 'hsl(var(--border))',
-      boxShadow: '0 6px 24px hsl(45 9% 13% / 0.12)',
-    }}
-  >
-    <div className="mb-2">Site analysis ready — continue to Encode whenever you'd like.</div>
-    <Button
-      onClick={onGoToEncode}
-      className="h-auto py-1.5 px-2.5 text-[11px] bg-primary hover:bg-primary/85 text-white border-0"
-    >
-      Go to Encode
-    </Button>
-  </div>
-);
-
 const DecodeTagsOverlay: React.FC = () => {
   const compositionTags = useTagStore(s => s.compositionTags);
   if (compositionTags.length === 0) return null;
@@ -169,16 +151,20 @@ const AppInner: React.FC = () => {
   const evolutionSubMode    = useEvolutionStore(s => s.subMode);
   const isMobile            = useIsMobile();
   const { user }            = useAuthContext();
-  const [showSiteToast, setShowSiteToast] = React.useState(false);
+  const siteAnalysisReady    = useAppStore(s => s.siteAnalysisReady);
+  const setSiteAnalysisReady = useAppStore(s => s.setSiteAnalysisReady);
 
-  // Map-context iframe finished (or restored) an analysis. Only toast for a
+  // Map-context iframe finished (or restored) an analysis. Only announce a
   // genuinely new site — when the payload matches the already-active site
   // it's the Analysis tab restoring itself (e.g. after a page reload), not news.
+  // The announcement is Cuboid chrome (TopBar button on desktop, a strip above
+  // the map on mobile), not a floating card — anything floating over the Map
+  // tab lands on top of the embedded map app's own UI.
   const handleAnalysisComplete = React.useCallback((context: SiteContextData) => {
     const isRestore = isSameSite(context, getActiveSiteContext());
     setActiveSiteContext(context);
-    if (!isRestore) setShowSiteToast(true);
-  }, []);
+    if (!isRestore) setSiteAnalysisReady(true);
+  }, [setSiteAnalysisReady]);
   // Map tab sub-view: the analysis iframe or the signed-in "My sites" layer.
   // Lives in the app store so the TopBar can render the switch.
   const mapView    = useAppStore(s => s.mapView);
@@ -195,6 +181,12 @@ const AppInner: React.FC = () => {
   useEffect(() => {
     if (!user && !isDemoMode()) setMapView('analyze');
   }, [user]);
+
+  // The Encode handoff is a Map-tab affordance: once you've left the tab
+  // (by taking it or any other route) it has served its purpose.
+  useEffect(() => {
+    if (!showMapCanvas) setSiteAnalysisReady(false);
+  }, [showMapCanvas, setSiteAnalysisReady]);
 
   // Offline demo: open straight on the sites map — the demo's entry beat.
   useEffect(() => {
@@ -319,6 +311,11 @@ const AppInner: React.FC = () => {
             must match the TopBar's own height calc (42px + top safe area). */}
         <div style={{ height: 'calc(42px + env(safe-area-inset-top, 0px))', flexShrink: 0 }} aria-hidden />
 
+        {/* Site-analysis handoff. Its own row in the column, so it pushes the
+            map down instead of covering the embedded map app's controls.
+            (Desktop puts the same action in the TopBar.) */}
+        {showMapCanvas && siteAnalysisReady && <EncodeHandoffBar />}
+
         {/* Viewport area: transform:translateZ(0) creates GPU compositing boundary
             so the WebGL canvas cannot visually bleed over the sibling BottomSheet. */}
         <div className="flex-1 min-h-0 relative overflow-hidden [transform:translateZ(0)]" data-tour="canvas-stage">
@@ -348,14 +345,6 @@ const AppInner: React.FC = () => {
               <CaptureButton />
               <HelpBar />
             </>
-          )}
-          {showSiteToast && (
-            <SiteAnalysisToast
-              onGoToEncode={() => {
-                setShowSiteToast(false);
-                setActiveMode('encoding');
-              }}
-            />
           )}
         </div>
 
@@ -428,14 +417,6 @@ const AppInner: React.FC = () => {
             <CaptureButton />
             <HelpBar />
           </>
-        )}
-        {showSiteToast && (
-          <SiteAnalysisToast
-            onGoToEncode={() => {
-              setShowSiteToast(false);
-              setActiveMode('encoding');
-            }}
-          />
         )}
       </div>
 

@@ -4,6 +4,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { AuthControls } from '../auth/AuthControls';
 import { SaveCompositionButton } from '../projects/SaveCompositionButton';
 import { MapViewSegment } from '../map/MapViewToggle';
+import { EncodeHandoffButton } from '../map/EncodeHandoff';
 import { SettingsPopover } from '../settings/SettingsPopover';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { isDemoMode } from '../../lib/demo/demoMode';
@@ -50,7 +51,13 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
   const togglePanel       = useAppStore(s => s.toggleFloatingPanel);
   const openOnboarding    = useAppStore(s => s.openOnboarding);
   const placedCubes       = useBuilderStore(s => s.placedCubes);
+  const siteAnalysisReady = useAppStore(s => s.siteAnalysisReady);
   const { user }          = useAuthContext();
+
+  // Only offered from the Map tab — App.tsx clears the flag on the way out.
+  // Desktop only: the mobile bar has no room, so mobile gets its own strip
+  // above the map (EncodeHandoffBar, mounted in App.tsx).
+  const showEncodeHandoff = showModeTabs && siteAnalysisReady && activeMode === 'map';
 
   return (
     <div
@@ -68,8 +75,10 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
         ...glassStyle,
       }}
     >
-      {/* ── Left: logo ── */}
-      <div className="flex items-center px-4">
+      {/* ── Left: logo ──
+          min-w-0 so the 1fr side columns can shrink instead of pushing the
+          right-hand controls off-screen on narrow phones. */}
+      <div className="flex items-center px-4 min-w-0 overflow-hidden">
         <span className="font-mono text-[13px] font-semibold tracking-tight text-ink-900 select-none">
           Cuboid<span className="text-primary">·</span>Studio
         </span>
@@ -107,9 +116,10 @@ export const TopBar: React.FC<TopBarProps> = ({ showModeTabs = true }) => {
       </div>
 
       {/* ── Right: save + account/projects + cube count + help + panel toggle ── */}
-      <div className="flex items-center justify-end gap-2 px-4">
-        {/* Map view switch lives in the bar (desktop) so it never floats over
-            the embedded map-context app's own toolbar. */}
+      <div className="flex items-center justify-end gap-2 px-4 min-w-0">
+        {/* Map controls live in the bar (desktop) so they never float over the
+            embedded map-context app's own toolbar. */}
+        {showEncodeHandoff && <EncodeHandoffButton />}
         {showModeTabs && activeMode === 'map' && (user || isDemoMode()) && <MapViewSegment />}
         <SaveCompositionButton />
         <AuthControls />
