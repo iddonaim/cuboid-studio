@@ -529,8 +529,9 @@ const EncodingScene: React.FC = () => {
               x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
               y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
             }}
-            opacity={proposalPending ? 1 : 0.3}
+            opacity={proposalPending ? 1 : 0.45}
             isPreview={!proposalPending}
+            ghost={!proposalPending}
             provenance={kept ? 'preserved' : 'added'}
           />
         );
@@ -554,8 +555,9 @@ const EncodingScene: React.FC = () => {
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
-            opacity={proposalPending ? 0.3 : 1}
+            opacity={proposalPending ? 0.45 : 1}
             isPreview={proposalPending}
+            ghost={proposalPending}
             provenance={fromEncode ? (kept ? 'preserved' : 'added') : undefined}
           />
         );
@@ -574,8 +576,9 @@ const EncodingScene: React.FC = () => {
               x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
               y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
             }}
-            opacity={0.22}
+            opacity={0.35}
             isPreview
+            ghost
           />
         );
       })}

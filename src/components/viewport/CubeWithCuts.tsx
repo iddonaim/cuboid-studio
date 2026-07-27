@@ -20,6 +20,15 @@ interface CubeWithCutsProps {
   onClick?: (nativeEvent: MouseEvent) => void;
   onFaceHover?: (info: FaceHoverInfo | null) => void;
   isPreview?: boolean;
+  /**
+   * Render as a receded reference layer rather than part of the composition:
+   * outline-forward, fill barely there, and never occluding what's behind it.
+   *
+   * Plain `opacity` isn't enough on its own — a white fill at 0.3 over the
+   * paper background still reads as a solid white card, and it depth-writes,
+   * so it hides the solid layer behind it and looks like the thing in front.
+   */
+  ghost?: boolean;
   clippingPlanes?: THREE.Plane[];
   overrideGeometry?: THREE.BufferGeometry | null;
   provenance?: 'preserved' | 'added';
@@ -36,6 +45,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   onClick,
   onFaceHover,
   isPreview = false,
+  ghost = false,
   clippingPlanes,
   overrideGeometry,
   provenance,
@@ -159,8 +169,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>
         <meshBasicMaterial
           color={fillColor}
-          transparent={opacity < 1}
-          opacity={opacity}
+          transparent={ghost || opacity < 1}
+          // A ghost's fill is a hint of volume, not a surface — the outline
+          // carries it. depthWrite off so it can never hide the solid layer.
+          opacity={ghost ? opacity * 0.22 : opacity}
+          depthWrite={!ghost}
           side={THREE.FrontSide}
           clippingPlanes={clippingPlanes || []}
         />
@@ -178,8 +191,9 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
         <lineBasicMaterial
           color={edgeColor}
           linewidth={2}
-          transparent={opacity < 1}
+          transparent={ghost || opacity < 1}
           opacity={opacity}
+          depthWrite={!ghost}
           clippingPlanes={clippingPlanes || []}
         />
       </lineSegments>
