@@ -253,7 +253,11 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  // `measured` guards the first framing: the placeholder size below is a
+  // stand-in until the ResizeObserver reports, and framing against it puts the
+  // drawing somewhere off in the corner of the real canvas.
   const [size, setSize] = useState({ width: 300, height: 240 });
+  const [measured, setMeasured] = useState(false);
   const [activeSnap, setActiveSnap] = useState<ActiveSnap | null>(null);
 
   const canvasTiles = useDecodeStore(s => s.canvasTiles);
@@ -288,6 +292,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         width: Math.max(1, entry.contentRect.width),
         height: Math.max(1, entry.contentRect.height),
       });
+      setMeasured(true);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -504,7 +509,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const framedRef = useRef(false);
   useEffect(() => {
     const stage = stageRef.current;
-    if (!stage || framedRef.current || size.width <= 1) return;
+    if (!stage || framedRef.current || !measured) return;
     framedRef.current = true;
     if (useDecodeStore.getState().canvasTiles.length > 0) {
       fitView();
@@ -513,7 +518,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
       stage.batchDraw();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size.width, size.height]);
+  }, [measured, size.width, size.height]);
 
   /**
    * Transparent PNG of the drawing itself: the drafting chrome is hidden, the

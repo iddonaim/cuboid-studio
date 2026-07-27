@@ -15,6 +15,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ActiveSiteChip } from '../layout/ActiveSiteChip';
+import { SectionCutControls } from '../viewport/SectionCutControls';
 
 const ALL_VARIATIONS = Array.from({ length: 70 }, (_, i) =>
   `v-${String(i).padStart(2, '0')}`,
@@ -435,6 +436,10 @@ const DecodeComposer: React.FC = () => {
         </div>
         {exportError && <p className="text-[11px] text-red-600">{exportError}</p>}
       </div>
+
+      {/* Section cut — it drives the corner preview and the full 3D alike, so
+          the view you draw against can be set up without leaving Decode. */}
+      <SectionCutControls />
     </div>
   );
 };
