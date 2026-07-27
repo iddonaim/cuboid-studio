@@ -28,8 +28,12 @@ export function fitOrthoFrustum(
 
   // Keep far beyond the ground grid's fadeDistance so the floor never
   // gets frustum-clipped in ortho views.
-  camera.near = 0.1;
+  //
+  // near is NEGATIVE (CAD convention): an orthographic view has no meaningful
+  // "behind the camera", so nothing should vanish when the camera plane moves
+  // inside the model or its grid while zooming/orbiting.
   camera.far = Math.max(20000, maxDim * 12);
+  camera.near = -camera.far;
   camera.updateProjectionMatrix();
 }
 

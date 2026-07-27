@@ -2,6 +2,8 @@ import React, { useRef } from 'react';
 import { useEncodingStore, UploadedEncodingImage } from '../../store/useEncodingStore';
 import { useAppStore } from '../../store/useAppStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
+import { useLexiconStore } from '../../store/useLexiconStore';
+import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
 import { listSavedStates, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
@@ -9,6 +11,7 @@ import { EncodingReadingPanel } from './EncodingReadingPanel';
 import { EncodeModelComparisonPanel } from './EncodeModelComparisonPanel';
 import { isModelLabEnabled } from '../../lib/modelLab';
 import { Section } from '@/components/ui/section';
+import { ActiveSiteChip } from '../layout/ActiveSiteChip';
 import { LexiconEditor } from './LexiconEditor';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
@@ -44,6 +47,7 @@ export const EncodingPanel: React.FC = () => {
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const encodingReading = useEncodingStore(s => s.encodingReading);
   const encodingLexicon = useEncodingStore(s => s.encodingLexicon);
+  const encodingLexiconId = useEncodingStore(s => s.encodingLexiconId);
   const readingEdited = useEncodingStore(s => s.readingEdited);
   const lastError = useEncodingStore(s => s.lastError);
   const encode = useEncodingStore(s => s.encode);
@@ -58,8 +62,20 @@ export const EncodingPanel: React.FC = () => {
   const showAdditions = useEncodingStore(s => s.showAdditions);
   const setShowAdditions = useEncodingStore(s => s.setShowAdditions);
   const openSeedEdit = useEncodingStore(s => s.openSeedEdit);
+  const resultApplied = useEncodingStore(s => s.resultApplied);
   const setActiveMode = useAppStore(s => s.setActiveMode);
   const setEvolutionSubMode = useEvolutionStore(s => s.setSubMode);
+
+  // Item 3: the reading shown below was produced with the lexicon captured at
+  // encode time. If the active vocabulary has changed since (switched or
+  // edited in place), nothing re-reads automatically — surface that and offer
+  // the re-read explicitly.
+  const activeLexiconId = useLexiconStore(s => s.activeLexiconId);
+  const lexicons = useLexiconStore(s => s.lexicons);
+  const activeLexiconValue = React.useMemo(() => {
+    if (activeLexiconId === null) return DEFAULT_LEXICON;
+    return lexicons.find(l => l.id === activeLexiconId)?.lexicon ?? DEFAULT_LEXICON;
+  }, [activeLexiconId, lexicons]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [savedStates, setSavedStates] = React.useState<SavedState[]>([]);
@@ -139,6 +155,14 @@ export const EncodingPanel: React.FC = () => {
     (mode === 'merge' && seedCubes.length === 0) ||
     (mode === 'remix' && seedCubes.length === 0);
 
+  // The current result was read under a different vocabulary than the one now
+  // active. Compare values, not just ids — an in-place edit keeps the id.
+  const lexiconChangedSinceEncode =
+    !!encodedCubes &&
+    !!encodingLexicon &&
+    !isEncoding &&
+    JSON.stringify(activeLexiconValue) !== JSON.stringify(encodingLexicon);
+
   const handleEncode = () => {
     if (mode === 'merge') {
       setSeedFromBuilder();
@@ -154,6 +178,7 @@ export const EncodingPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col">
+      <ActiveSiteChip />
 
       {/* Primary task: photograph an inhabited space */}
       <Section id="encode-photograph" title="Photograph" defaultOpen>
@@ -442,12 +467,40 @@ export const EncodingPanel: React.FC = () => {
               reading={encodingReading}
               readingEdited={readingEdited}
               lexicon={encodingLexicon}
+              lexiconName={
+                encodingLexiconId === null
+                  ? 'Default'
+                  : lexicons.find(l => l.id === encodingLexiconId)?.name ?? 'Custom'
+              }
             />
           )}
 
-          <div className="text-ink-600 text-[12px]">
-            {encodedCubes.length} cubes encoded
-            {' '}({new Set(encodedCubes.map(c => c.variationId)).size} unique variations)
+          {/* Result stats — same at-a-glance strip style as Evolution's header */}
+          <div className="flex gap-1.5">
+            <div className="flex-1 bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-center">
+              <div className="text-ink-800 text-[15px] font-semibold leading-none">
+                {encodedCubes.length}
+              </div>
+              <div className="text-ink-500 text-[9px] font-mono uppercase tracking-wide mt-1">
+                cubes
+              </div>
+            </div>
+            <div className="flex-1 bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-center">
+              <div className="text-ink-800 text-[15px] font-semibold leading-none">
+                {new Set(encodedCubes.map(c => c.variationId)).size}
+              </div>
+              <div className="text-ink-500 text-[9px] font-mono uppercase tracking-wide mt-1">
+                variations
+              </div>
+            </div>
+            <div className="flex-1 bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-center">
+              <div className="text-ink-800 text-[15px] font-semibold leading-none">
+                {new Set(encodedCubes.map(c => c.position[1])).size}
+              </div>
+              <div className="text-ink-500 text-[9px] font-mono uppercase tracking-wide mt-1">
+                levels
+              </div>
+            </div>
           </div>
 
           {/* Remix v2 result — say what loading will do (replace, not add). */}
@@ -483,18 +536,62 @@ export const EncodingPanel: React.FC = () => {
             ))}
           </div>
 
-          <Button
-            onClick={() => handleLoadAndSwitch('edit')}
-            className="w-full h-auto py-2.5 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
-          >
-            Load &amp; edit
-          </Button>
-          <Button
-            onClick={() => handleLoadAndSwitch('memes')}
-            className="w-full h-auto py-2.5 text-[13px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border-0"
-          >
-            Load &amp; apply memes
-          </Button>
+          {/* Vocabulary drift notice — the reading above used the lexicon
+              captured at encode time; changing the active lexicon does NOT
+              re-read automatically. */}
+          {lexiconChangedSinceEncode && (
+            <div className="p-2 bg-amber-50 border border-amber-300 rounded flex flex-col gap-1.5">
+              <div className="text-amber-700 text-[11px] leading-relaxed">
+                The vocabulary changed since this reading. Re-read the space to
+                re-generate the reading and the assembly with the new vocabulary.
+              </div>
+              <Button
+                onClick={handleEncode}
+                disabled={encodeDisabled}
+                title={imagesRestoredOnly ? 'Re-upload the photo(s) first' : undefined}
+                className="w-full h-auto py-2 text-[12px] font-semibold bg-amber-600 hover:bg-amber-600/85 text-white border-0"
+              >
+                {isEncoding ? 'Re-reading…' : 'Re-read with new vocabulary'}
+              </Button>
+            </div>
+          )}
+
+          {/* Step 1: accept the encoding into the assembly. Editing and memes
+              are follow-ups, offered once the result is applied. */}
+          {!resultApplied ? (
+            <>
+              <Button
+                onClick={loadIntoBuilder}
+                className="w-full h-auto py-2.5 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
+              >
+                Apply encoding
+              </Button>
+              <div className="text-ink-400 text-[11px] text-center leading-snug">
+                Accepts this result into the assembly — you can edit it or apply
+                memes right after.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1.5">
+                Applied to the assembly. Continue when ready:
+              </div>
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={() => handleLoadAndSwitch('edit')}
+                  className="flex-1 h-auto py-2.5 text-[13px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border-0"
+                >
+                  Edit assembly
+                </Button>
+                <Button
+                  onClick={() => handleLoadAndSwitch('memes')}
+                  className="flex-1 h-auto py-2.5 text-[13px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary border-0"
+                >
+                  Apply memes
+                </Button>
+              </div>
+            </>
+          )}
 
           <button
             type="button"

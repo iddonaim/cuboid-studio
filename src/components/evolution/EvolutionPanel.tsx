@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { SectionCutControls } from '../viewport/SectionCutControls';
 import { Section } from '@/components/ui/section';
+import { ActiveSiteChip } from '../layout/ActiveSiteChip';
 import { useRecordViewerStore } from '../../store/useRecordViewerStore';
 import { viewFromCandidate } from '../../lib/operators/recordView';
 import { createCutterFromLLMOutput } from '../../lib/operators/applyOperator';
@@ -102,6 +103,7 @@ export const EvolutionPanel: React.FC = () => {
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
+      <ActiveSiteChip />
 
       {/* Header + generation counter */}
       <div>

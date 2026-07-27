@@ -45,19 +45,30 @@ function ContinuousRow({
   variant: 'three-pole' | 'two-pole';
   poles: { low: string; mid?: string; high: string };
 }) {
-  const markerLeft = `${clamp01(reading.position) * 100}%`;
+  const pct = clamp01(reading.position) * 100;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] uppercase tracking-wide text-ink-500">
-        {AXIS_LABELS[axisKey]}
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
+          {AXIS_LABELS[axisKey]}
+        </span>
+        <span className="font-mono text-[10px] text-ink-400">
+          {(clamp01(reading.position)).toFixed(2)}
+        </span>
       </div>
       <p className="text-ink-800 text-[12px] leading-relaxed m-0">{reading.phrase}</p>
-      <div className="relative pt-5 pb-1">
-        <div className="relative h-1 rounded-full bg-ink-300/80">
+      <div className="relative pt-4 pb-1">
+        {/* Track — filled up to the marker so the reading has visual weight,
+            like the Evolution score bars. */}
+        <div className="relative h-1.5 rounded-full bg-ink-200 overflow-visible">
           <div
-            className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-sky-400 border border-sky-200/40 shadow-sm"
-            style={{ left: markerLeft }}
+            className="absolute inset-y-0 left-0 rounded-full bg-primary/25"
+            style={{ width: `${pct}%` }}
+          />
+          <div
+            className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card shadow"
+            style={{ left: `${pct}%` }}
           />
         </div>
         <div className="flex justify-between items-start gap-1 mt-1.5">
@@ -89,9 +100,9 @@ function CategoricalRow({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] uppercase tracking-wide text-ink-500">
+      <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
         {AXIS_LABELS[axisKey]}
-      </div>
+      </span>
       <p className="text-ink-800 text-[12px] leading-relaxed m-0">{reading.phrase}</p>
       <div className="flex flex-wrap gap-1">
         {options.map((opt) => {
@@ -99,10 +110,10 @@ function CategoricalRow({
           return (
             <span
               key={opt.id}
-              className={`px-1.5 py-0.5 rounded text-[10px] leading-snug ${
+              className={`px-2 py-0.5 rounded-full text-[10px] leading-snug border ${
                 active
-                  ? 'bg-ink-300 text-ink-900 border border-ink-400'
-                  : 'bg-transparent text-ink-400 border border-transparent'
+                  ? 'bg-primary/10 text-primary border-primary font-medium'
+                  : 'bg-transparent text-ink-400 border-ink-200'
               }`}
             >
               {opt.label}
@@ -112,7 +123,7 @@ function CategoricalRow({
         {/* If the model returned an option id not in the lexicon (open vocabulary),
             show it as an active chip so the reading isn't silent about it. */}
         {reading.option && !options.some(o => o.id === reading.option) && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] leading-snug bg-ink-300 text-ink-900 border border-ink-400">
+          <span className="px-2 py-0.5 rounded-full text-[10px] leading-snug bg-primary/10 text-primary border border-primary font-medium">
             {reading.option}
           </span>
         )}
@@ -134,12 +145,15 @@ export interface EncodingReadingPanelProps {
    * Falls back to DEFAULT_LEXICON when absent.
    */
   lexicon?: SpatialLexicon | null;
+  /** Display name of the lexicon that produced the reading (e.g. "Default"). */
+  lexiconName?: string | null;
 }
 
 export const EncodingReadingPanel: React.FC<EncodingReadingPanelProps> = ({
   reading,
   readingEdited = false,
   lexicon,
+  lexiconName,
 }) => {
   // Source all vocabulary from the lexicon that produced the reading.
   // Null / undefined both fall back to the built-in default.
@@ -160,11 +174,18 @@ export const EncodingReadingPanel: React.FC<EncodingReadingPanelProps> = ({
   };
 
   return (
-    <div className="p-2 bg-ink-100 border border-ink-200 rounded flex flex-col gap-3">
-      <div className="min-w-0">
-        <h3 className="text-ink-700 text-[12px] font-medium m-0 leading-snug">
-          How the engine read this space
-        </h3>
+    <div className="p-2.5 bg-ink-100 border border-ink-200 rounded-md flex flex-col gap-3.5">
+      <div className="min-w-0 border-b border-ink-200 pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-ink-700 text-[12px] font-medium m-0 leading-snug">
+            How the engine read this space
+          </h3>
+          {lexiconName && (
+            <span className="shrink-0 px-1.5 py-0.5 rounded bg-ink-200 text-ink-600 font-mono text-[9px] uppercase tracking-wide">
+              {lexiconName}
+            </span>
+          )}
+        </div>
         <p className="text-ink-500 text-[11px] m-0 mt-0.5 leading-snug">
           An associative reading, not a measurement.
         </p>

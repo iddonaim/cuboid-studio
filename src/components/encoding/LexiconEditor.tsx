@@ -47,12 +47,12 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] text-ink-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[11px] text-ink-500 uppercase tracking-wide">{label}</span>
       <input
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400 w-full"
+        className="bg-ink-50 border border-ink-200 rounded px-2 py-1.5 text-[13px] text-ink-800 outline-none focus:border-ink-400 w-full"
       />
     </div>
   );
@@ -70,7 +70,7 @@ function HintField({
       value={value}
       onChange={e => onChange(e.target.value)}
       rows={3}
-      className="bg-ink-100 border border-ink-200 rounded px-1.5 py-1 text-[10px] text-ink-500 italic outline-none focus:border-ink-300 resize-y w-full"
+      className="bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-[12px] text-ink-500 italic outline-none focus:border-ink-300 resize-y w-full"
     />
   );
 }
@@ -120,12 +120,12 @@ function TagInput({
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
           placeholder="type a tag, press Enter"
-          className="flex-1 bg-ink-50 border border-ink-200 rounded px-1.5 py-1 text-[11px] text-ink-800 outline-none focus:border-ink-400"
+          className="flex-1 bg-ink-50 border border-ink-200 rounded px-2 py-1.5 text-[13px] text-ink-800 outline-none focus:border-ink-400"
         />
         <button
           type="button"
           onClick={add}
-          className="px-1.5 text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
+          className="px-2 py-1 text-[12px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded cursor-pointer"
         >
           Add
         </button>
@@ -153,7 +153,7 @@ function RhythmOptionList({
             <button
               type="button"
               onClick={() => onChange(options.filter((_, j) => j !== i))}
-              className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0"
+              className="text-[12px] text-destructive bg-destructive/10 hover:bg-destructive/20 border-0 rounded px-2 py-0.5 cursor-pointer"
             >
               remove
             </button>
@@ -185,7 +185,7 @@ function RhythmOptionList({
       <button
         type="button"
         onClick={() => onChange([...options, { id: '', trigger: '', label: '' }])}
-        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0"
+        className="self-start text-[12px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded px-2 py-1 cursor-pointer"
       >
         + add option
       </button>
@@ -212,7 +212,7 @@ function PlacementOptionList({
             <button
               type="button"
               onClick={() => onChange(options.filter((_, j) => j !== i))}
-              className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0"
+              className="text-[12px] text-destructive bg-destructive/10 hover:bg-destructive/20 border-0 rounded px-2 py-0.5 cursor-pointer"
             >
               remove
             </button>
@@ -237,7 +237,7 @@ function PlacementOptionList({
       <button
         type="button"
         onClick={() => onChange([...options, { id: '', trigger: '', label: '' }])}
-        className="self-start text-[10px] text-sky-600 hover:text-sky-400 bg-transparent border-0 cursor-pointer p-0"
+        className="self-start text-[12px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded px-2 py-1 cursor-pointer"
       >
         + add option
       </button>
@@ -431,7 +431,7 @@ function EditorForm({
             type="button"
             onClick={onUpdate}
             disabled={saving || !draft.name.trim()}
-            className="px-2 py-1 text-[11px] bg-ink-200 hover:bg-ink-300 text-ink-800 rounded border-0 cursor-pointer disabled:opacity-50"
+            className="px-3 py-2 text-[13px] font-medium bg-ink-200 hover:bg-ink-300 text-ink-800 rounded border-0 cursor-pointer disabled:opacity-50"
           >
             {saving ? 'Saving…' : `Update "${draft.name || '…'}"`}
           </button>
@@ -440,14 +440,14 @@ function EditorForm({
           type="button"
           onClick={onSaveAsNew}
           disabled={saving || !draft.name.trim()}
-          className="px-2 py-1 text-[11px] bg-primary/10 hover:bg-primary/20 text-primary rounded border-0 cursor-pointer disabled:opacity-50"
+          className="px-3 py-2 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white rounded border-0 cursor-pointer disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save as new'}
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="px-2 py-1 text-[11px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer p-0"
+          className="px-3 py-2 text-[13px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer"
         >
           Close editor
         </button>
@@ -533,12 +533,12 @@ function LibraryPanel({
             : 'border-ink-200'
         }`}
       >
-        <span className="text-[11px] text-ink-700">Default (built-in)</span>
+        <span className="text-[13px] text-ink-700">Default (built-in)</span>
         {activeLexiconId !== null && (
           <button
             type="button"
             onClick={() => onActivate(null)}
-            className="text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
+            className="text-[12px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded px-2 py-1 cursor-pointer"
           >
             Activate
           </button>
@@ -578,7 +578,7 @@ function LibraryPanel({
                 className="flex-1 bg-ink-100 border border-ink-300 rounded px-1 py-0.5 text-[11px] text-ink-800 outline-none"
               />
             ) : (
-              <span className="text-[11px] text-ink-800 truncate flex-1">{l.name}</span>
+              <span className="text-[13px] text-ink-800 truncate flex-1">{l.name}</span>
             )}
             {activeLexiconId === l.id && (
               <span className="text-[10px] text-sky-400 shrink-0">Active</span>
@@ -605,7 +605,7 @@ function LibraryPanel({
               <button
                 type="button"
                 onClick={() => onActivate(l.id)}
-                className="text-[10px] text-sky-500 hover:text-sky-300 bg-transparent border-0 cursor-pointer p-0"
+                className="text-[12px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded px-2 py-1 cursor-pointer"
               >
                 Activate
               </button>
@@ -613,28 +613,28 @@ function LibraryPanel({
             <button
               type="button"
               onClick={() => onEdit(l)}
-              className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[12px] text-ink-700 hover:text-ink-900 bg-ink-200 hover:bg-ink-300 border-0 rounded px-2 py-1 cursor-pointer"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => startRename(l)}
-              className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[12px] text-ink-700 hover:text-ink-900 bg-ink-200 hover:bg-ink-300 border-0 rounded px-2 py-1 cursor-pointer"
             >
               Rename
             </button>
             <button
               type="button"
               onClick={() => onDuplicate(l.id)}
-              className="text-[10px] text-ink-600 hover:text-ink-800 bg-transparent border-0 cursor-pointer p-0"
+              className="text-[12px] text-ink-700 hover:text-ink-900 bg-ink-200 hover:bg-ink-300 border-0 rounded px-2 py-1 cursor-pointer"
             >
               Duplicate
             </button>
             <button
               type="button"
               onClick={() => onDelete(l.id, l.name)}
-              className="text-[10px] text-destructive hover:text-destructive bg-transparent border-0 cursor-pointer p-0"
+              className="text-[12px] text-destructive bg-destructive/10 hover:bg-destructive/20 border-0 rounded px-2 py-1 cursor-pointer"
             >
               Delete
             </button>
@@ -645,7 +645,7 @@ function LibraryPanel({
       <button
         type="button"
         onClick={onNewFromDefault}
-        className="self-start text-[10px] text-green-700 hover:text-green-600 bg-transparent border-0 cursor-pointer p-0 mt-0.5"
+        className="self-start text-[12px] text-green-800 bg-green-50 hover:bg-green-100 border border-green-200 rounded px-2 py-1 cursor-pointer mt-1"
       >
         + New lexicon from default
       </button>
@@ -837,14 +837,14 @@ export const LexiconEditor: React.FC = () => {
           <button
             type="button"
             onClick={() => { setLibraryOpen(v => !v); if (editorOpen) setEditorOpen(false); }}
-            className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0"
+            className="text-[12px] text-ink-700 hover:text-ink-900 bg-ink-200 hover:bg-ink-300 border-0 rounded px-2 py-1 cursor-pointer"
           >
             {libraryOpen ? 'Close library' : 'Library'}
           </button>
           <button
             type="button"
             onClick={() => { openEditorForActive(); setLibraryOpen(false); }}
-            className="text-[10px] text-ink-500 hover:text-ink-700 bg-transparent border-0 cursor-pointer underline p-0"
+            className="text-[12px] text-ink-700 hover:text-ink-900 bg-ink-200 hover:bg-ink-300 border-0 rounded px-2 py-1 cursor-pointer"
           >
             Edit
           </button>
