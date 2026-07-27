@@ -109,8 +109,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     if (!clippingPlanes || clippingPlanes.length === 0) return false;
     const plane = clippingPlanes[0];
     const axisIndex = plane.normal.x !== 0 ? 0 : plane.normal.y !== 0 ? 1 : 2;
-    const center = position[axisIndex];
-    return Math.abs(plane.constant - center) < CUBE_SIZE / 2;
+    // Solve normal·p + constant = 0 for the plane's coordinate on its axis.
+    // Reading `constant` directly would only be right for one of the two cut
+    // directions — flipping the section negates both normal and constant.
+    const planeCoord = -plane.constant / plane.normal.getComponent(axisIndex);
+    return Math.abs(planeCoord - position[axisIndex]) < CUBE_SIZE / 2;
   }, [clippingPlanes, position]);
 
   // The poché face where a section plane slices the cube, in the user's accent.

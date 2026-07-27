@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
+import { FlipVertical2 } from 'lucide-react';
 import { useSectionCutStore } from '../../store/useSectionCutStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { assemblyBoundsFromPositions } from '../../lib/viewport/assemblyBounds';
@@ -25,6 +26,8 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
   const setAxis = useSectionCutStore(s => s.setAxis);
   const position = useSectionCutStore(s => s.position);
   const setPosition = useSectionCutStore(s => s.setPosition);
+  const flipped = useSectionCutStore(s => s.flipped);
+  const toggleFlipped = useSectionCutStore(s => s.toggleFlipped);
 
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const bounds = useMemo(
@@ -70,9 +73,27 @@ export const SectionCutControls: React.FC<SectionCutControlsProps> = ({
               value={[position]}
               onValueChange={([v]) => setPosition(v)}
             />
-            <span className="text-ink-500 text-[11px] text-center">
-              {axis.toUpperCase()} = {Math.round(position)}
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-ink-500 text-[11px]">
+                {axis.toUpperCase()} = {Math.round(position)}
+              </span>
+              {/* Same plane, other half kept — the architect's "look at it from
+                  the other side" move. Naming the kept half in words ("above" /
+                  "left") would be wrong on at least one axis and would drift as
+                  the camera orbits, so the viewport does the explaining. */}
+              <Button
+                onClick={toggleFlipped}
+                title="Flip which half of the assembly the cut keeps"
+                className={`h-auto py-0.5 px-1.5 text-[11px] gap-1 rounded-sm border-0 ${
+                  flipped
+                    ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                    : 'bg-card text-muted-foreground hover:bg-ink-200'
+                }`}
+              >
+                <FlipVertical2 size={11} />
+                Flip
+              </Button>
+            </div>
           </div>
         )}
         <div className="flex items-center gap-2">

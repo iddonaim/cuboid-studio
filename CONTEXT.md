@@ -163,6 +163,7 @@ Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly s
 - Variation picker (all 70), hover preview, click-to-place on a 3D grid.
 - **Connection rules** (`rulesEnabled`) + **strict alignment** (`strictRulesEnabled`) — `src/lib/cube/connectionRules.ts`.
 - Rotate (Space = Y / preview cycles valid rotations, R = X), delete, undo/redo (Ctrl/Cmd+Z, +Shift to redo), auto-fill, section cuts.
+- **Section cut** (`useSectionCutStore`, `SectionCutControls.tsx`, shared by Builder and Evolution): axis + position + a **Flip** that swaps which half of the assembly the plane keeps. `buildClippingPlanes()` (`src/hooks/useClippingPlanes.ts`) is the pure sign convention — Three discards `normal·p + constant < 0`, so flipping negates both and leaves the plane in place. Cut surfaces are painted in the accent (poché) via a back-face mesh, mounted only on cubes the plane genuinely slices. `flipped` is stamped into captured PNGs' provenance, since axis + position alone describe two different drawings.
 - Tagging (`TaggingPanel.tsx`): word + intensity per cube.
 
 **Key files:** `src/components/builder/*`, `src/store/useBuilderStore.ts`, `src/lib/cube/*` (constants `CUBE_SIZE = 42`, `GRID_STRIDE = 42.6`).
