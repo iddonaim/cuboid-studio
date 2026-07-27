@@ -3,8 +3,11 @@ import { useEncodingStore, UploadedEncodingImage } from '../../store/useEncoding
 import { useAppStore } from '../../store/useAppStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { useLexiconStore } from '../../store/useLexiconStore';
+import { useBuilderStore } from '../../store/useBuilderStore';
+import { useMemeStore } from '../../store/useMemeStore';
+import { useDecodeStore } from '../../store/useDecodeStore';
 import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
-import { listSavedStates, SavedState } from '../../lib/savedStates';
+import { listSavedStates, saveState, SavedState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
 import { EncodingReadingPanel } from './EncodingReadingPanel';
@@ -63,8 +66,14 @@ export const EncodingPanel: React.FC = () => {
   const setShowAdditions = useEncodingStore(s => s.setShowAdditions);
   const openSeedEdit = useEncodingStore(s => s.openSeedEdit);
   const resultApplied = useEncodingStore(s => s.resultApplied);
+  const previousResult = useEncodingStore(s => s.previousResult);
+  const showPreviousProposal = useEncodingStore(s => s.showPreviousProposal);
+  const setShowPreviousProposal = useEncodingStore(s => s.setShowPreviousProposal);
+  const restorePreviousResult = useEncodingStore(s => s.restorePreviousResult);
+  const discardPreviousResult = useEncodingStore(s => s.discardPreviousResult);
   const setActiveMode = useAppStore(s => s.setActiveMode);
   const setEvolutionSubMode = useEvolutionStore(s => s.setSubMode);
+  const placedCubes = useBuilderStore(s => s.placedCubes);
 
   // Item 3: the reading shown below was produced with the lexicon captured at
   // encode time. If the active vocabulary has changed since (switched or
@@ -163,11 +172,67 @@ export const EncodingPanel: React.FC = () => {
     !isEncoding &&
     JSON.stringify(activeLexiconValue) !== JSON.stringify(encodingLexicon);
 
+  // "Applied" is only true while the result is still *in* the assembly.
+  // Loading a saved state (or editing the assembly away from it) takes it back
+  // out, and the panel has to offer Apply again rather than keep claiming the
+  // encoding is live.
+  const placedCubeIds = React.useMemo(
+    () => new Set(placedCubes.map(c => c.id)),
+    [placedCubes]
+  );
+  const resultInAssembly = React.useMemo(() => {
+    if (!encodedCubes || encodedCubes.length === 0) return false;
+    return encodedCubes.every(c => !!c.id && placedCubeIds.has(c.id));
+  }, [encodedCubes, placedCubeIds]);
+  const appliedAndLive = resultApplied && resultInAssembly;
+  const appliedThenReplaced = resultApplied && !resultInAssembly;
+
+  // Applying in standalone replaces the whole assembly; merge adds to it and
+  // remix swaps the seed for the reinterpretation.
+  const applyReplacesAssembly =
+    mode === 'standalone' && placedCubes.length > 0 && !resultInAssembly;
+
   const handleEncode = () => {
     if (mode === 'merge') {
       setSeedFromBuilder();
     }
     encode();
+  };
+
+  // Re-encoding throws away the current reading and proposal. Never run it
+  // straight off a click when there's something to lose — confirm first, and
+  // say exactly what goes.
+  const [reencodeConfirm, setReencodeConfirm] = React.useState<
+    null | 'plain' | 'vocabulary'
+  >(null);
+  const [savedBeforeReencode, setSavedBeforeReencode] = React.useState<string | null>(null);
+  const [compareReadings, setCompareReadings] = React.useState(false);
+
+  const requestReencode = (reason: 'plain' | 'vocabulary') => {
+    if (!encodedCubes || encodedCubes.length === 0) {
+      handleEncode();
+      return;
+    }
+    setSavedBeforeReencode(null);
+    setReencodeConfirm(reason);
+  };
+
+  const confirmReencode = () => {
+    setReencodeConfirm(null);
+    setSavedBeforeReencode(null);
+    handleEncode();
+  };
+
+  /** Snapshot the current assembly into Saved States before a destructive step. */
+  const handleSaveAssembly = () => {
+    if (placedCubes.length === 0) return;
+    const decode = useDecodeStore.getState();
+    const cubeOperators = useMemeStore.getState().cubeOperators;
+    const saved = saveState('', placedCubes, cubeOperators, {
+      canvasTiles: decode.canvasTiles,
+      freestyle: decode.freestyle,
+    });
+    setSavedBeforeReencode(saved.name);
   };
 
   const MODE_LABELS: { value: 'standalone' | 'merge' | 'remix'; label: string }[] = [
@@ -475,6 +540,72 @@ export const EncodingPanel: React.FC = () => {
             />
           )}
 
+          {/* A re-encode replaced an earlier result — make the swap visible and
+              reversible instead of letting it happen silently. */}
+          {previousResult && (
+            <div className="p-2 bg-ink-100 border border-ink-300 rounded flex flex-col gap-1.5">
+              <div className="text-ink-600 text-[11px] leading-relaxed">
+                This replaced an earlier reading
+                {previousResult.readingEdited ? ' (including your revisions to it)' : ''} and its{' '}
+                {previousResult.cubes.length}-cube proposal.
+                {previousResult.wasApplied
+                  ? ' That one had been applied — your assembly still holds it until you apply this one.'
+                  : ''}
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer text-[11px] text-ink-600">
+                <input
+                  type="checkbox"
+                  checked={showPreviousProposal}
+                  onChange={e => setShowPreviousProposal(e.target.checked)}
+                  className="rounded border-ink-300"
+                />
+                Ghost the old proposal in the viewport
+              </label>
+              <button
+                type="button"
+                onClick={() => setCompareReadings(v => !v)}
+                className="self-start bg-transparent border-0 p-0 text-primary text-[11px] cursor-pointer underline"
+              >
+                {compareReadings ? 'Hide the previous reading' : 'Compare with the previous reading'}
+              </button>
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={restorePreviousResult}
+                  title="Bring the previous reading and proposal back (nothing is written to the assembly until you apply)"
+                  className="flex-1 h-auto py-1.5 text-[11px] bg-ink-200 hover:bg-ink-300 text-ink-900 border-0"
+                >
+                  Restore previous
+                </Button>
+                <Button
+                  onClick={discardPreviousResult}
+                  className="flex-1 h-auto py-1.5 text-[11px] bg-transparent hover:bg-ink-200 text-ink-500 border border-ink-200"
+                >
+                  Keep this one
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {previousResult && compareReadings && previousResult.reading && (
+            <div className="flex flex-col gap-1">
+              <div className="font-mono text-[9px] uppercase tracking-wider text-ink-400">
+                Previous reading
+              </div>
+              <div className="opacity-80">
+                <EncodingReadingPanel
+                  reading={previousResult.reading}
+                  readingEdited={previousResult.readingEdited}
+                  lexicon={previousResult.lexicon}
+                  lexiconName={
+                    previousResult.lexiconId === null
+                      ? 'Default'
+                      : lexicons.find(l => l.id === previousResult.lexiconId)?.name ?? 'Custom'
+                  }
+                />
+              </div>
+            </div>
+          )}
+
           {/* Result stats — same at-a-glance strip style as Evolution's header */}
           <div className="flex gap-1.5">
             <div className="flex-1 bg-ink-100 border border-ink-200 rounded px-2 py-1.5 text-center">
@@ -539,14 +670,15 @@ export const EncodingPanel: React.FC = () => {
           {/* Vocabulary drift notice — the reading above used the lexicon
               captured at encode time; changing the active lexicon does NOT
               re-read automatically. */}
-          {lexiconChangedSinceEncode && (
+          {lexiconChangedSinceEncode && !reencodeConfirm && (
             <div className="p-2 bg-amber-50 border border-amber-300 rounded flex flex-col gap-1.5">
               <div className="text-amber-700 text-[11px] leading-relaxed">
-                The vocabulary changed since this reading. Re-read the space to
-                re-generate the reading and the assembly with the new vocabulary.
+                The vocabulary changed since this reading. Re-reading generates a
+                new reading and a new proposed assembly — it replaces this
+                result, it doesn't add to it.
               </div>
               <Button
-                onClick={handleEncode}
+                onClick={() => requestReencode('vocabulary')}
                 disabled={encodeDisabled}
                 title={imagesRestoredOnly ? 'Re-upload the photo(s) first' : undefined}
                 className="w-full h-auto py-2 text-[12px] font-semibold bg-amber-600 hover:bg-amber-600/85 text-white border-0"
@@ -556,20 +688,107 @@ export const EncodingPanel: React.FC = () => {
             </div>
           )}
 
+          {/* Re-encode confirmation — spells out what a re-read destroys, and
+              offers a one-click save of the assembly before it runs. */}
+          {reencodeConfirm && (
+            <div className="p-2 bg-amber-50 border border-amber-300 rounded flex flex-col gap-2">
+              <div className="text-amber-800 text-[12px] font-semibold leading-snug">
+                {reencodeConfirm === 'vocabulary'
+                  ? 'Re-read with the new vocabulary?'
+                  : 'Re-encode this space?'}
+              </div>
+              <ul className="text-amber-700 text-[11px] leading-relaxed list-disc pl-4 m-0 flex flex-col gap-1">
+                <li>
+                  The reading above and this {encodedCubes.length}-cube proposal are
+                  replaced by new ones.
+                  {readingEdited && ' Your revisions to the reading go with them.'}
+                </li>
+                <li>
+                  Your assembly ({placedCubes.length} cube{placedCubes.length !== 1 ? 's' : ''})
+                  is not touched by the re-read
+                  {applyReplacesAssembly
+                    ? ' — but applying the new result afterwards replaces it.'
+                    : '.'}
+                </li>
+                <li>
+                  Afterwards you can compare the two readings, ghost the old
+                  proposal over the new one, and restore this one.
+                </li>
+              </ul>
+              {placedCubes.length > 0 && (
+                savedBeforeReencode ? (
+                  <div className="text-green-700 text-[11px]">
+                    Assembly saved as “{savedBeforeReencode}”.
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleSaveAssembly}
+                    className="w-full h-auto py-1.5 text-[11px] bg-ink-100 hover:bg-ink-200 text-ink-700 border border-ink-300"
+                  >
+                    Save the assembly to Saved States first
+                  </Button>
+                )
+              )}
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={confirmReencode}
+                  disabled={encodeDisabled}
+                  className="flex-1 h-auto py-2 text-[12px] font-semibold bg-amber-600 hover:bg-amber-600/85 text-white border-0"
+                >
+                  {reencodeConfirm === 'vocabulary' ? 'Re-read' : 'Re-encode'}
+                </Button>
+                <Button
+                  onClick={() => { setReencodeConfirm(null); setSavedBeforeReencode(null); }}
+                  className="flex-1 h-auto py-2 text-[12px] bg-transparent hover:bg-ink-200 text-ink-600 border border-ink-300"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: accept the encoding into the assembly. Editing and memes
               are follow-ups, offered once the result is applied. */}
-          {!resultApplied ? (
+          {!appliedAndLive ? (
             <>
+              {/* What the canvas is showing right now. Two layers on screen
+                  with no label was the whole confusion: people read the solid
+                  proposal as their assembly and the ghosted assembly as junk. */}
+              {placedCubes.length > 0 && (
+                <div className="text-ink-500 text-[11px] leading-relaxed bg-ink-100 border border-ink-200 rounded px-2 py-1.5">
+                  {appliedThenReplaced
+                    ? `Your assembly changed since you applied this encoding. On the canvas the solid ${placedCubes.length}-cube assembly is what you have; this ${encodedCubes.length}-cube encoding is ghosted over it so you can compare. Apply it again to put it back.`
+                    : `On the canvas: this ${encodedCubes.length}-cube proposal is solid; your current ${placedCubes.length}-cube assembly is ghosted behind it. Nothing is written until you apply.`}
+                </div>
+              )}
               <Button
                 onClick={loadIntoBuilder}
                 className="w-full h-auto py-2.5 text-[13px] font-semibold bg-primary hover:bg-primary/85 text-white border-0"
               >
-                Apply encoding
+                {appliedThenReplaced ? 'Apply encoding again' : 'Apply encoding'}
               </Button>
               <div className="text-ink-400 text-[11px] text-center leading-snug">
-                Accepts this result into the assembly — you can edit it or apply
-                memes right after.
+                {applyReplacesAssembly
+                  ? `Replaces your current ${placedCubes.length}-cube assembly with this result.`
+                  : mode === 'merge'
+                  ? 'Adds this result to the assembly — you can edit it or apply memes right after.'
+                  : 'Accepts this result into the assembly — you can edit it or apply memes right after.'}
               </div>
+              {applyReplacesAssembly && (
+                savedBeforeReencode ? (
+                  <div className="text-green-700 text-[11px] text-center">
+                    Assembly saved as “{savedBeforeReencode}”.
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveAssembly}
+                    className="bg-transparent border-0 p-0 text-primary text-[11px] cursor-pointer underline self-center"
+                  >
+                    Save the current assembly first
+                  </button>
+                )
+              )}
             </>
           ) : (
             <>
@@ -595,7 +814,7 @@ export const EncodingPanel: React.FC = () => {
 
           <button
             type="button"
-            onClick={handleEncode}
+            onClick={() => requestReencode('plain')}
             disabled={encodeDisabled}
             title={
               imagesRestoredOnly
@@ -604,11 +823,11 @@ export const EncodingPanel: React.FC = () => {
                 ? 'Add cubes to the Builder first'
                 : mode === 'remix' && seedCubes.length === 0
                 ? 'Select a seed assembly above'
-                : undefined
+                : 'Replaces this reading and proposal with a fresh one'
             }
             className="py-1.5 bg-transparent border border-ink-200 rounded-md text-ink-500 cursor-pointer text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isEncoding ? 'Re-encoding…' : 'Re-encode'}
+            {isEncoding ? 'Re-encoding…' : 'Re-encode (replaces this result)'}
           </button>
         </div>
       )}

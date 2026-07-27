@@ -64,7 +64,9 @@ interface CaptureProvenance {
   app: 'cuboid-studio';
   capturedAt: string;
   camera: CaptureCameraState | null;
-  sectionCut: { enabled: boolean; axis: 'x' | 'y' | 'z'; position: number };
+  /** `flipped` records which half the cut kept — without it the same axis and
+   *  position describe two different drawings. */
+  sectionCut: { enabled: boolean; axis: 'x' | 'y' | 'z'; position: number; flipped: boolean };
   /** Firestore path of the active composition, or null when uncommitted. */
   composition: { projectId: string; siteId: string; compositionId: string; name: string } | null;
 }
@@ -77,7 +79,12 @@ function buildProvenance(camera: CaptureCameraState | null): CaptureProvenance {
     app: 'cuboid-studio',
     capturedAt: new Date().toISOString(),
     camera,
-    sectionCut: { enabled: section.enabled, axis: section.axis, position: section.position },
+    sectionCut: {
+      enabled: section.enabled,
+      axis: section.axis,
+      position: section.position,
+      flipped: section.flipped,
+    },
     composition:
       comp && projects.activeProject && projects.activeSite
         ? {

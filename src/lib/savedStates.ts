@@ -81,3 +81,30 @@ export function savedStateToPlacedCubes(savedState: SavedState): PlacedCube[] {
     },
   }));
 }
+
+/**
+ * Rehydrates the save's per-cube operator history (the meme-driven cuts),
+ * keyed by cube id. A save carries these inside its AssemblyExport; loading
+ * only the cubes would silently drop every cut the assembly had.
+ */
+export function savedStateToOperators(
+  savedState: SavedState,
+): Record<string, OperatorRecord[]> {
+  const cubeOperators: Record<string, OperatorRecord[]> = {};
+  for (const cube of savedState.data.cubes) {
+    if (!cube.operators || cube.operators.length === 0) continue;
+    cubeOperators[cube.id] = cube.operators.map(op => ({
+      id: op.id,
+      source: 'meme' as const,
+      operator: op.operator as OperatorRecord['operator'],
+      targets: op.targets as OperatorRecord['targets'],
+      magnitude: op.magnitude,
+      decay: op.decay,
+      createdAt: op.createdAt,
+      memeDescription: op.memeDescription,
+      reasoning: op.reasoning,
+      cutter: op.cutter as OperatorRecord['cutter'],
+    }));
+  }
+  return cubeOperators;
+}

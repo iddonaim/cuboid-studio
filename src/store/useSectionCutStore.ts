@@ -7,6 +7,14 @@ interface SectionCutState {
   setAxis: (axis: 'x' | 'y' | 'z') => void;
   position: number;
   setPosition: (pos: number) => void;
+  /**
+   * Which half of the cut survives. False keeps the half below the plane on
+   * the chosen axis (the original behaviour); true keeps the half above it —
+   * same cut, viewed from the other side.
+   */
+  flipped: boolean;
+  setFlipped: (flipped: boolean) => void;
+  toggleFlipped: () => void;
 }
 
 export const useSectionCutStore = create<SectionCutState>((set) => ({
@@ -16,4 +24,7 @@ export const useSectionCutStore = create<SectionCutState>((set) => ({
   setAxis: (axis) => set({ axis }),
   position: 50,
   setPosition: (position) => set({ position }),
+  flipped: false,
+  setFlipped: (flipped) => set({ flipped }),
+  toggleFlipped: () => set((s) => ({ flipped: !s.flipped })),
 }));
