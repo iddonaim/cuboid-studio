@@ -56,7 +56,17 @@ interface DecodeState {
   canvasTiles: CanvasTile[];
   compositionsHistory: CompositionSnapshot[];
   freestyle: boolean;
-  canvasExpanded: boolean;
+  /**
+   * What the full-bleed stage shows in Decode. The notation sheet is the work
+   * here, so it leads; the 3D assembly is reference material one click away.
+   * (Every other mode puts its working surface on the stage — Decode used to
+   * be the exception, drawing into a ~320px box in the sidebar while the
+   * read-only 3D took the whole screen.)
+   */
+  stageView: 'draw' | 'model';
+  /** Bumped to ask the canvas to reframe. Lets the sidebar (auto-compose)
+   *  reveal what it just drew without owning a ref to the Konva stage. */
+  fitRequestId: number;
   selectedTileId: string | null;
   /** Mobile: variation picked in parts drawer, pending canvas tap. */
   pendingPlacementVariationId: string | null;
@@ -75,8 +85,9 @@ interface DecodeState {
   removeTile: (id: string) => void;
   clearCanvas: () => void;
   setFreestyle: (value: boolean) => void;
-  setCanvasExpanded: (value: boolean) => void;
-  toggleCanvasExpanded: () => void;
+  setStageView: (value: 'draw' | 'model') => void;
+  toggleStageView: () => void;
+  requestFit: () => void;
   setSelectedTileId: (id: string | null) => void;
   setPendingPlacementVariationId: (id: string | null) => void;
 }
@@ -85,7 +96,8 @@ export const useDecodeStore = create<DecodeState>((set, get) => ({
   canvasTiles: [],
   compositionsHistory: [],
   freestyle: false,
-  canvasExpanded: false,
+  stageView: 'draw',
+  fitRequestId: 0,
   selectedTileId: null,
   pendingPlacementVariationId: null,
   underlay: null,
@@ -159,8 +171,9 @@ export const useDecodeStore = create<DecodeState>((set, get) => ({
   },
 
   setFreestyle: (value) => set({ freestyle: value }),
-  setCanvasExpanded: (value) => set({ canvasExpanded: value }),
-  toggleCanvasExpanded: () => set(s => ({ canvasExpanded: !s.canvasExpanded })),
+  setStageView: (value) => set({ stageView: value }),
+  toggleStageView: () => set(s => ({ stageView: s.stageView === 'draw' ? 'model' : 'draw' })),
+  requestFit: () => set(s => ({ fitRequestId: s.fitRequestId + 1 })),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
   setPendingPlacementVariationId: (id) => set({ pendingPlacementVariationId: id }),
 }));
