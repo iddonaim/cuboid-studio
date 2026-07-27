@@ -29,6 +29,7 @@ import { DecodePanel } from './components/decode/DecodePanel';
 import { DecodeCanvas } from './components/decode/DecodeCanvas';
 import { useDecodeStore } from './store/useDecodeStore';
 import { DecodeStageToggle } from './components/decode/DecodeStageToggle';
+import { DecodeAssemblyPreview } from './components/decode/DecodeAssemblyPreview';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { SitesMapView } from './components/map/SitesMapView';
 import { MapChromeBar } from './components/map/MapChromeBar';
@@ -335,16 +336,18 @@ const AppInner: React.FC = () => {
           {showSitesMap && <SitesMapView />}
           {!showMapCanvas && (
             <>
-              <Viewport3D />
-              {/* The sheet covers the 3D rather than unmounting or hiding it:
-                  display:none collapses the WebGL canvas, and it comes back
-                  with a stale aspect and a badly framed camera. Decode already
-                  rendered the 3D full-screen before the sheet existed, so
-                  keeping it alive underneath costs nothing new. */}
-              {showDecodeSheet && (
+              {/* Sheet and 3D are alternatives, not layers: only one WebGL
+                  canvas is alive at a time, and the full viewport re-mounts
+                  (and so re-fits its camera) when you open it. Hiding it with
+                  display:none instead collapsed the canvas and brought it back
+                  framed for nothing. */}
+              {showDecodeSheet ? (
                 <div className="absolute inset-0 bg-white">
                   <DecodeCanvas isMobile />
+                  <DecodeAssemblyPreview />
                 </div>
+              ) : (
+                <Viewport3D />
               )}
               {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
                   otherwise the standard EncodingResultPanel */}
@@ -420,12 +423,14 @@ const AppInner: React.FC = () => {
             nothing floats over the map-context iframe's own toolbar. */}
         {!showMapCanvas && (
           <>
-            <Viewport3D />
-            {/* Covers the 3D rather than hiding it — see the mobile branch. */}
-            {showDecodeSheet && (
+            {/* One canvas at a time — see the mobile branch. */}
+            {showDecodeSheet ? (
               <div className="absolute inset-0 bg-white">
                 <DecodeCanvas />
+                <DecodeAssemblyPreview />
               </div>
+            ) : (
+              <Viewport3D />
             )}
             {/* Results dock into the right-side Inspector rail on desktop */}
             <Inspector>

@@ -4,6 +4,10 @@ import { RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
 import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
+import {
+  downloadDecodeSheetPng,
+  downloadDecodeSheetSvg,
+} from '../../lib/decode/decodeSheetExport';
 import { importPlanUnderlay } from '../../lib/decode/planUnderlay';
 import { TILE_SIZE, worldSnapPoints } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
@@ -214,11 +218,21 @@ const DecodeComposer: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [removeTile, rotateTile, selectedTileId]);
 
-  const handleExportDxf = async () => {
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const runExport = async (kind: 'dxf' | 'svg' | 'png') => {
     if (isEmpty || exporting) return;
     setExporting(true);
+    setExportError(null);
     try {
-      await downloadDecodeCompositionDxf(canvasTiles);
+      if (kind === 'dxf') await downloadDecodeCompositionDxf(canvasTiles);
+      else if (kind === 'svg') await downloadDecodeSheetSvg(canvasTiles);
+      else if (!downloadDecodeSheetPng()) {
+        // Only possible with the sheet unmounted — i.e. the 3D view is up.
+        setExportError('Switch back to the sheet to export a PNG.');
+      }
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setExporting(false);
     }
@@ -379,23 +393,47 @@ const DecodeComposer: React.FC = () => {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          disabled={isEmpty}
-          onClick={clearCanvas}
-          className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
-        >
-          Clear
-        </Button>
-        <Button
-          type="button"
-          disabled={isEmpty || exporting}
-          onClick={() => void handleExportDxf()}
-          className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
-        >
-          {exporting ? 'Exporting…' : 'Export DXF'}
-        </Button>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            disabled={isEmpty}
+            onClick={clearCanvas}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            Clear
+          </Button>
+          <Button
+            type="button"
+            disabled={isEmpty || exporting}
+            title="Vector drawing — one named group per tile, one symbol per variation"
+            onClick={() => void runExport('svg')}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            {exporting ? 'Exporting…' : 'Export SVG'}
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            disabled={isEmpty || exporting}
+            title="Transparent background, 3× resolution"
+            onClick={() => void runExport('png')}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            Export PNG
+          </Button>
+          <Button
+            type="button"
+            disabled={isEmpty || exporting}
+            title="Geometry only — DXF carries no layers or groups"
+            onClick={() => void runExport('dxf')}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            Export DXF
+          </Button>
+        </div>
+        {exportError && <p className="text-[11px] text-red-600">{exportError}</p>}
       </div>
     </div>
   );

@@ -11,6 +11,11 @@ import {
   TILE_SIZE,
 } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
+import {
+  registerSheetCapture,
+  sheetBounds,
+  unregisterSheetCapture,
+} from '../../lib/decode/decodeSheetExport';
 
 const imageCache = new Map<string, HTMLImageElement>();
 
@@ -205,6 +210,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = (props) => {
       )}
       {selected && (
         <Rect
+          name="sheet-chrome"
           width={TILE_SIZE}
           height={TILE_SIZE}
           stroke={accent}
@@ -215,6 +221,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = (props) => {
       {snapPoints.map((sp, index) => (
         <Circle
           key={index}
+          name="sheet-chrome"
           x={sp.x * TILE_SIZE}
           y={sp.y * TILE_SIZE}
           radius={SNAP_POINT_RADIUS}
@@ -508,6 +515,45 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size.width, size.height]);
 
+  /**
+   * Transparent PNG of the drawing itself: the drafting chrome is hidden, the
+   * stage is temporarily reset to 1:1 at the drawing's corner so the crop is
+   * in predictable coordinates, and everything is put back afterwards. Nothing
+   * paints the canvas background (the paper is CSS on the container), so what
+   * comes out is a cut-out.
+   */
+  useEffect(() => {
+    registerSheetCapture((options) => {
+      const stage = stageRef.current;
+      if (!stage) return null;
+      const tiles = useDecodeStore.getState().canvasTiles;
+      const bounds = sheetBounds(tiles);
+      if (!bounds) return null;
+
+      const prev = { pos: stage.position(), scale: stage.scaleX() };
+      const chrome = stage.find('.sheet-chrome');
+      chrome.forEach(node => node.visible(false));
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: -bounds.minX, y: -bounds.minY });
+      stage.draw();
+      try {
+        return stage.toDataURL({
+          x: 0,
+          y: 0,
+          width: bounds.width,
+          height: bounds.height,
+          pixelRatio: options?.pixelRatio ?? 3,
+        });
+      } finally {
+        chrome.forEach(node => node.visible(true));
+        stage.scale({ x: prev.scale, y: prev.scale });
+        stage.position(prev.pos);
+        stage.draw();
+      }
+    });
+    return () => unregisterSheetCapture();
+  }, []);
+
   const firstFitRequest = useRef(fitRequestId);
   useEffect(() => {
     if (fitRequestId === firstFitRequest.current) return;
@@ -594,11 +640,11 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         onTap={handleStageClick}
         style={{ cursor: panRef.current.active ? 'grabbing' : 'grab', background: '#ffffff' }}
       >
-        <Layer listening={false}>
+        <Layer name="sheet-chrome" listening={false}>
           <InfiniteGrid width={size.width} height={size.height} />
         </Layer>
         {underlay && (
-          <Layer listening={false}>
+          <Layer name="sheet-chrome" listening={false}>
             <UnderlayImage underlay={underlay} />
           </Layer>
         )}
