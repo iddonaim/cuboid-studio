@@ -73,9 +73,10 @@ export interface EncodeData {
    *  that replaces the seed on load (rather than overlaying it). Absent on
    *  older compositions and non-remix encodes. */
   remixResultReplacesSeed?: boolean;
-  /** Remix: operator records of the selected saved seed, keyed by cube id —
-   *  what keep/transplant inheritance re-applies on load. Absent when the
-   *  seed carried no operators. */
+  /** Legacy (pre-2026-07): operator records of a remix's saved-state seed.
+   *  Remix now seeds from the builder assembly, whose cuts are the live ones
+   *  already persisted as `pataphysical.cubeOperators` — so this is no longer
+   *  written. Kept so older compositions still parse. */
   seedOperators?: Record<string, OperatorRecord[]>;
 }
 

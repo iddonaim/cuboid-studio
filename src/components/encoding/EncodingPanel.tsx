@@ -7,10 +7,11 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
 import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
-import { listSavedStates, saveState, SavedState } from '../../lib/savedStates';
+import { saveState } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
 import { resizeImageToBase64 } from '../../lib/encoding/resizeImageToBase64';
 import { EncodingReadingPanel } from './EncodingReadingPanel';
+import { remixDecisions } from '../../lib/encoding/remixDecisions';
 import { EncodeModelComparisonPanel } from './EncodeModelComparisonPanel';
 import { isModelLabEnabled } from '../../lib/modelLab';
 import { Section } from '@/components/ui/section';
@@ -58,7 +59,6 @@ export const EncodingPanel: React.FC = () => {
   const mode = useEncodingStore(s => s.mode);
   const setMode = useEncodingStore(s => s.setMode);
   const setSeedFromBuilder = useEncodingStore(s => s.setSeedFromBuilder);
-  const setSeedFromSavedState = useEncodingStore(s => s.setSeedFromSavedState);
   const seedCubes = useEncodingStore(s => s.seedCubes);
   const seedCubeIds = useEncodingStore(s => s.seedCubeIds);
   const remixResultReplacesSeed = useEncodingStore(s => s.remixResultReplacesSeed);
@@ -70,6 +70,8 @@ export const EncodingPanel: React.FC = () => {
   const showPreviousProposal = useEncodingStore(s => s.showPreviousProposal);
   const setShowPreviousProposal = useEncodingStore(s => s.setShowPreviousProposal);
   const restorePreviousResult = useEncodingStore(s => s.restorePreviousResult);
+  const showDiscarded = useEncodingStore(s => s.showDiscarded);
+  const setShowDiscarded = useEncodingStore(s => s.setShowDiscarded);
   const discardPreviousResult = useEncodingStore(s => s.discardPreviousResult);
   const setActiveMode = useAppStore(s => s.setActiveMode);
   const setEvolutionSubMode = useEvolutionStore(s => s.setSubMode);
@@ -87,8 +89,6 @@ export const EncodingPanel: React.FC = () => {
   }, [activeLexiconId, lexicons]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [savedStates, setSavedStates] = React.useState<SavedState[]>([]);
-  const [selectedSeedId, setSelectedSeedId] = React.useState<string | null>(null);
   const hasImages = multiPhotoEnabled
     ? uploadedImages.length > 0
     : Boolean(uploadedImage);
@@ -142,20 +142,13 @@ export const EncodingPanel: React.FC = () => {
     }
   };
 
+  // Merge and remix both act on the assembly that's on screen — they differ in
+  // what they do to it, not in what they read.
   const handleModeSelect = (newMode: 'standalone' | 'merge' | 'remix') => {
     setMode(newMode);
-    setSelectedSeedId(null);
-    if (newMode === 'merge') {
+    if (newMode !== 'standalone') {
       setSeedFromBuilder();
     }
-    if (newMode === 'remix') {
-      setSavedStates(listSavedStates());
-    }
-  };
-
-  const handleSeedSelect = (s: SavedState) => {
-    setSelectedSeedId(s.id);
-    setSeedFromSavedState(s);
   };
 
   const encodeDisabled =
@@ -184,16 +177,26 @@ export const EncodingPanel: React.FC = () => {
     if (!encodedCubes || encodedCubes.length === 0) return false;
     return encodedCubes.every(c => !!c.id && placedCubeIds.has(c.id));
   }, [encodedCubes, placedCubeIds]);
+  // What the model decided per seed cube. Only meaningful for a remix result
+  // that stands in for the seed; the counts and the viewport read the same
+  // numbers from here.
+  const cubeOperators = useMemeStore(s => s.cubeOperators);
+  const decisions = React.useMemo(() => {
+    if (mode !== 'remix' || !remixResultReplacesSeed || !encodedCubes) return null;
+    return remixDecisions(encodedCubes, seedCubes, cubeOperators);
+  }, [mode, remixResultReplacesSeed, encodedCubes, seedCubes, cubeOperators]);
+
   const appliedAndLive = resultApplied && resultInAssembly;
   const appliedThenReplaced = resultApplied && !resultInAssembly;
 
-  // Applying in standalone replaces the whole assembly; merge adds to it and
-  // remix swaps the seed for the reinterpretation.
+  // Applying replaces the whole assembly in standalone (a fresh reading) and
+  // in remix (the reinterpretation stands in for what it was made from).
+  // Merge is the only additive one.
   const applyReplacesAssembly =
-    mode === 'standalone' && placedCubes.length > 0 && !resultInAssembly;
+    mode !== 'merge' && placedCubes.length > 0 && !resultInAssembly;
 
   const handleEncode = () => {
-    if (mode === 'merge') {
+    if (mode !== 'standalone') {
       setSeedFromBuilder();
     }
     encode();
@@ -235,10 +238,14 @@ export const EncodingPanel: React.FC = () => {
     setSavedBeforeReencode(saved.name);
   };
 
-  const MODE_LABELS: { value: 'standalone' | 'merge' | 'remix'; label: string }[] = [
-    { value: 'standalone', label: 'Standalone' },
-    { value: 'merge', label: 'Merge' },
-    { value: 'remix', label: 'Remix' },
+  const MODE_LABELS: {
+    value: 'standalone' | 'merge' | 'remix';
+    label: string;
+    hint: string;
+  }[] = [
+    { value: 'standalone', label: 'Standalone', hint: 'Read the photo on its own — a new assembly, ignoring what you have.' },
+    { value: 'merge', label: 'Merge', hint: 'Compose alongside what you have — the result is added to it.' },
+    { value: 'remix', label: 'Remix', hint: 'Reinterpret what you have — the photo rewrites it, and the result replaces it.' },
   ];
 
   return (
@@ -262,9 +269,10 @@ export const EncodingPanel: React.FC = () => {
 
       {/* Mode selector */}
       <div className="flex gap-1">
-        {MODE_LABELS.map(({ value, label }) => (
+        {MODE_LABELS.map(({ value, label, hint }) => (
           <button
             key={value}
+            title={hint}
             onClick={() => handleModeSelect(value)}
             className={`flex-1 py-1.5 px-1 rounded-md text-[11px] border cursor-pointer ${
               mode === value
@@ -277,54 +285,30 @@ export const EncodingPanel: React.FC = () => {
         ))}
       </div>
 
-      {/* Merge seed slot — build or edit the seed inline */}
-      {mode === 'merge' && (
+      {/* What merge and remix act on: the assembly that's on screen. Both read
+          it the same way — they differ in what they do to it. */}
+      {mode !== 'standalone' && (
         <div className="p-2 bg-ink-100 border border-ink-200 rounded flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2">
             <span className={`text-[12px] ${seedCubes.length > 0 ? 'text-ink-600' : 'text-amber-600'}`}>
               {seedCubes.length > 0
-                ? `Seed: ${seedCubes.length} cube${seedCubes.length !== 1 ? 's' : ''}`
-                : 'Seed is empty'}
+                ? `Your assembly: ${seedCubes.length} cube${seedCubes.length !== 1 ? 's' : ''}`
+                : 'Your assembly is empty'}
             </span>
             <Button
               onClick={() => { setSeedFromBuilder(); openSeedEdit(); }}
               className="h-auto py-1 px-2 text-[11px] bg-ink-200 hover:bg-ink-300 text-ink-900 border-0"
             >
-              {seedCubes.length > 0 ? 'Edit seed' : 'Build seed'}
+              {seedCubes.length > 0 ? 'Edit' : 'Build'}
             </Button>
           </div>
-        </div>
-      )}
-
-      {/* Remix seed picker — always visible in remix; hiding it once an
-          image was uploaded left Encode disabled with no way to pick a seed. */}
-      {mode === 'remix' && (
-        <div className="flex flex-col gap-1">
-          <div className="text-ink-500 text-[11px]">Select a seed assembly:</div>
-          {savedStates.length === 0 ? (
-            <div className="p-2 bg-ink-100 border border-ink-200 rounded text-ink-500 text-[12px] italic">
-              No saved states — save an assembly first.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-0.5 max-h-[140px] overflow-y-auto">
-              {savedStates.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => handleSeedSelect(s)}
-                  className={`py-1.5 px-2 rounded border text-[11px] text-left flex justify-between items-center cursor-pointer ${
-                    selectedSeedId === s.id
-                      ? 'bg-primary/10 border-primary text-primary'
-                      : 'bg-ink-100 border-ink-200 text-ink-600'
-                  }`}
-                >
-                  <span className="font-medium">{s.name}</span>
-                  <span className="text-ink-400 text-[10px]">
-                    {s.cubeCount}c · {new Date(s.savedAt).toLocaleDateString()}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="text-ink-500 text-[11px] leading-relaxed">
+            {mode === 'merge'
+              ? 'The photo composes with what you have — the result is cubes added around it.'
+              : seedCubes.length > 0
+              ? 'The photo acts on what you have — the result is this assembly rewritten: cubes kept, transformed, transplanted, discarded, added. Load a saved assembly first to remix that one instead.'
+              : 'Remix rewrites an assembly through a photo. Build one, or load a saved assembly, first.'}
+          </div>
         </div>
       )}
 
@@ -635,15 +619,45 @@ export const EncodingPanel: React.FC = () => {
           </div>
 
           {/* Remix v2 result — say what loading will do (replace, not add). */}
-          {mode === 'remix' && remixResultReplacesSeed && (() => {
-            const kept = encodedCubes.filter(c => c.id && seedCubeIds.has(c.id)).length;
-            return (
-              <div className="text-ink-500 text-[11px] leading-relaxed">
-                Remixed assembly: {kept} kept from the seed · {encodedCubes.length - kept} new
-                or transformed. Loading replaces the seed with this assembly.
+          {mode === 'remix' && remixResultReplacesSeed && decisions && (
+            <div className="p-2 bg-ink-100 border border-ink-200 rounded flex flex-col gap-1.5">
+              <div className="font-mono text-[9px] uppercase tracking-wider text-ink-400">
+                What the photo did to your assembly
               </div>
-            );
-          })()}
+              <ul className="text-ink-600 text-[11px] leading-relaxed m-0 pl-0 list-none flex flex-col gap-0.5">
+                <li>{decisions.carried.length} carried forward, cuts intact</li>
+                {decisions.transplanted.length > 0 && (
+                  <li>{decisions.transplanted.length} transplanted — new body, cuts kept</li>
+                )}
+                <li>{decisions.added.length} new or transformed</li>
+                <li className={decisions.discarded.length > 0 ? 'text-amber-700' : undefined}>
+                  {decisions.discarded.length} discarded
+                  {decisions.discardedOperatorCount > 0
+                    ? `, taking ${decisions.discardedOperatorCount} cut${
+                        decisions.discardedOperatorCount !== 1 ? 's' : ''
+                      } with them`
+                    : ''}
+                </li>
+              </ul>
+              {decisions.discarded.length > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-ink-600">
+                  <input
+                    type="checkbox"
+                    checked={showDiscarded}
+                    onChange={e => setShowDiscarded(e.target.checked)}
+                    className="rounded border-ink-300"
+                  />
+                  Show the discarded cubes in the viewport
+                </label>
+              )}
+              {decisions.discardedOperatorCount > 0 && (
+                <div className="text-amber-700 text-[11px] leading-relaxed">
+                  Discarded cuts can't be regenerated — save this assembly first
+                  if you want to keep them.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Before / after toggle — appears once the assembly has been edited
               in the builder and there are hand-added cubes to show or hide. */}

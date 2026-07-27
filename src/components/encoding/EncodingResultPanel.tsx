@@ -1,6 +1,7 @@
 import React from 'react';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { remixDecisions } from '../../lib/encoding/remixDecisions';
 
 interface EncodingResultPanelProps {
   /** Render as a card in the desktop Inspector rail instead of floating. */
@@ -14,6 +15,7 @@ export const EncodingResultPanel: React.FC<EncodingResultPanelProps> = ({ docked
   const seedCubes = useEncodingStore(s => s.seedCubes);
   const encodedCubes = useEncodingStore(s => s.encodedCubes);
   const mode = useEncodingStore(s => s.mode);
+  const remixResultReplacesSeed = useEncodingStore(s => s.remixResultReplacesSeed);
 
   const hasEncodeResult = encodedCubes !== null;
   const showPanel = isEncoding || hasEncodeResult;
@@ -44,9 +46,21 @@ export const EncodingResultPanel: React.FC<EncodingResultPanelProps> = ({ docked
       {encodingReasoning ? (
         <div className="p-2 bg-ink-100 border border-ink-200 rounded text-ink-700 text-[12px] leading-relaxed italic">
           {encodingReasoning}
-          {mode !== 'standalone' && seedCubes.length > 0 && (
+          {/* Merge adds to the seed, so "preserved · added" describes it. A
+              remix rewrites the seed — counting all of it as preserved and the
+              whole result as added is simply untrue, so it reports what the
+              model actually decided. */}
+          {mode === 'merge' && seedCubes.length > 0 && (
             <p className="text-ink-600 text-[12px] mt-1.5 mb-0 not-italic">
               {seedCubes.length} preserved · {encodedCubes?.length ?? 0} added
+            </p>
+          )}
+          {mode === 'remix' && remixResultReplacesSeed && encodedCubes && (
+            <p className="text-ink-600 text-[12px] mt-1.5 mb-0 not-italic">
+              {(() => {
+                const d = remixDecisions(encodedCubes, seedCubes);
+                return `${d.carried.length} carried · ${d.transplanted.length} transplanted · ${d.added.length} new · ${d.discarded.length} discarded`;
+              })()}
             </p>
           )}
         </div>

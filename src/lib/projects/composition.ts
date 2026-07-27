@@ -78,11 +78,9 @@ export function captureComposition(): CompositionData {
           mode: encoding.mode,
           seedCubes: encoding.seedCubes,
           // Remix state — how to interpret encodedCubes on load (replace vs
-          // overlay) and which operator records inheritance re-applies.
+          // overlay). The seed's operator records are the builder assembly's,
+          // already persisted under pataphysical, so nothing extra is written.
           ...(encoding.remixResultReplacesSeed ? { remixResultReplacesSeed: true } : {}),
-          ...(Object.keys(encoding.seedOperators).length > 0
-            ? { seedOperators: encoding.seedOperators }
-            : {}),
           // Thumbnails of the photo(s) that informed this encode — only
           // written when at least one is loaded.
           ...(imageThumbnails.length > 0 ? { images: imageThumbnails } : {}),
@@ -278,7 +276,6 @@ export async function restoreComposition(
       seedCubes: data.encode.seedCubes,
       seedCubeIds: new Set(data.encode.seedCubes.map(c => c.id)),
       remixResultReplacesSeed: data.encode.remixResultReplacesSeed ?? false,
-      seedOperators: data.encode.seedOperators ?? {},
       // Reading provenance — gracefully absent on pre-L3 compositions.
       encodingReading: data.encode.reading ?? null,
       encodingReadingOriginal: data.encode.readingOriginal ?? null,

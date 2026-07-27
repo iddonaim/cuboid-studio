@@ -22,6 +22,7 @@ import { CubeWithCuts } from './CubeWithCuts';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
+import { remixDecisions } from '../../lib/encoding/remixDecisions';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { createCutterFromLLMOutput } from '../../lib/operators/applyOperator';
 import { useCoarsePointer } from '../../hooks/useCoarsePointer';
@@ -324,6 +325,7 @@ const EncodingScene: React.FC = () => {
   const resultApplied = useEncodingStore(s => s.resultApplied);
   const previousResult = useEncodingStore(s => s.previousResult);
   const showPreviousProposal = useEncodingStore(s => s.showPreviousProposal);
+  const showDiscarded = useEncodingStore(s => s.showDiscarded);
   const placedCubes = useBuilderStore(s => s.placedCubes);
 
   // After a standalone load → edit → Done round-trip, `seedCubes` holds the
@@ -376,15 +378,15 @@ const EncodingScene: React.FC = () => {
   // still there to compare against, no longer pretending to be the composition.
   const proposalOrphaned = hasEncoded && resultApplied && !resultInAssembly;
 
-  // The seed gets its own layer only while it's context for a pending
-  // proposal, or in remix — where the seed is a saved state that isn't in the
-  // builder, so nothing else would draw it. In merge (seed == the builder
-  // assembly) the assembly layer covers it once nothing is pending.
+  // Merge and remix both seed from the builder assembly, so the seed only
+  // needs a layer of its own while a proposal is drawn over it — otherwise
+  // the assembly layer already draws exactly those cubes.
   const hasSeed =
     !editedStandalone &&
     !remixReplaced &&
-    seedCubes.length > 0 &&
-    (mode === 'remix' || (mode === 'merge' && proposalPending));
+    mode !== 'standalone' &&
+    proposalPending &&
+    seedCubes.length > 0;
 
   // Cells the seed (or edited assembly) occupies. Encoded cubes were filtered
   // against the seed at encode time, but the result now survives mode
@@ -403,12 +405,32 @@ const EncodingScene: React.FC = () => {
     return encodedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')));
   }, [encodedCubes, proposalPending, proposalOrphaned, remixReplaced, seedOccupiedKeys]);
 
+  // Remix: the seed cubes the model threw away. Ghosted on request so "2
+  // discarded, taking 5 cuts with them" is something you can actually look at.
+  // Claimed out of the assembly layer below rather than drawn on top of it —
+  // they're still in the assembly until you apply, and two ghosts in one cell
+  // would just z-fight.
+  const discardedCubes = useMemo(() => {
+    if (!showDiscarded || !remixReplaced || !encodedCubes) return [];
+    const { discarded } = remixDecisions(encodedCubes, seedCubes);
+    const drawn = new Set(proposalCubes.map(c => c.position.join(',')));
+    return discarded.filter(c => !drawn.has(c.position.join(',')));
+  }, [showDiscarded, remixReplaced, encodedCubes, seedCubes, proposalCubes]);
+
+  const discardedKeys = useMemo(
+    () => new Set(discardedCubes.map(c => c.position.join(','))),
+    [discardedCubes]
+  );
+
   // The builder assembly, minus whatever the seed layer already draws (merge's
-  // seed IS the builder assembly).
+  // seed IS the builder assembly) and minus anything the discarded layer claims.
   const assemblyBase = useMemo(() => {
-    if (!hasSeed) return placedCubes;
-    return placedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')));
-  }, [placedCubes, hasSeed, seedOccupiedKeys]);
+    const base = hasSeed
+      ? placedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')))
+      : placedCubes;
+    if (discardedKeys.size === 0) return base;
+    return base.filter(c => !discardedKeys.has(c.position.join(',')));
+  }, [placedCubes, hasSeed, seedOccupiedKeys, discardedKeys]);
 
   // Exactly one of these two is the solid layer; the other ghosts behind it and
   // yields any cell they share, so nothing ever z-fights. A pending proposal
@@ -453,6 +475,7 @@ const EncodingScene: React.FC = () => {
     if (hasSeed) for (const c of seedCubes) positions.push(c.position);
     for (const c of visibleEncoded) positions.push(c.position);
     for (const c of assemblyCubes) positions.push(c.position);
+    for (const c of discardedCubes) positions.push(c.position);
     for (const c of previousProposalCubes) positions.push(c.position);
     return positions;
   }, [
@@ -462,6 +485,7 @@ const EncodingScene: React.FC = () => {
     seedCubes,
     visibleEncoded,
     assemblyCubes,
+    discardedCubes,
     previousProposalCubes,
   ]);
 
@@ -470,6 +494,7 @@ const EncodingScene: React.FC = () => {
     !hasSeed &&
     visibleEncoded.length === 0 &&
     assemblyCubes.length === 0 &&
+    discardedCubes.length === 0 &&
     previousProposalCubes.length === 0
   ) {
     return <SpatialGrid extent={{ minCellX: -1, maxCellX: 1, minCellZ: -1, maxCellZ: 1, levels: 2 }} />;
@@ -559,6 +584,23 @@ const EncodingScene: React.FC = () => {
             isPreview={proposalPending}
             ghost={proposalPending}
             provenance={fromEncode ? (kept ? 'preserved' : 'added') : undefined}
+          />
+        );
+      })}
+
+      {/* Remix: what the model discarded, ghosted so it can be inspected */}
+      {discardedCubes.map(cube => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        return (
+          <CubeWithCuts
+            key={`discarded-${cube.id}`}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            opacity={0.4}
+            isPreview
+            ghost
           />
         );
       })}
