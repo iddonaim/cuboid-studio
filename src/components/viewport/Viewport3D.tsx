@@ -321,6 +321,9 @@ const EncodingScene: React.FC = () => {
   const mode = useEncodingStore(s => s.mode);
   const showAdditions = useEncodingStore(s => s.showAdditions);
   const remixResultReplacesSeed = useEncodingStore(s => s.remixResultReplacesSeed);
+  const resultApplied = useEncodingStore(s => s.resultApplied);
+  const previousResult = useEncodingStore(s => s.previousResult);
+  const showPreviousProposal = useEncodingStore(s => s.showPreviousProposal);
   const placedCubes = useBuilderStore(s => s.placedCubes);
 
   // After a standalone load → edit → Done round-trip, `seedCubes` holds the
@@ -351,9 +354,37 @@ const EncodingScene: React.FC = () => {
   const remixReplaced =
     mode === 'remix' && remixResultReplacesSeed && !!encodedCubes && encodedCubes.length > 0;
 
-  const hasSeed =
-    !editedStandalone && !remixReplaced && mode !== 'standalone' && seedCubes.length > 0;
   const hasEncoded = !editedStandalone && !!encodedCubes && encodedCubes.length > 0;
+
+  // Is the result still sitting in the assembly? Loading a saved state (or
+  // editing the cubes away) takes it back out, and the canvas has to follow.
+  const placedCubeIds = useMemo(() => new Set(placedCubes.map(c => c.id)), [placedCubes]);
+  const resultInAssembly = useMemo(() => {
+    if (!encodedCubes || encodedCubes.length === 0) return false;
+    return encodedCubes.every(c => !!c.id && placedCubeIds.has(c.id));
+  }, [encodedCubes, placedCubeIds]);
+
+  // An encode result is the primary (solid) layer only while it's an unapplied
+  // proposal. Once applied it lives in the assembly and stops being its own
+  // layer — otherwise loading a different assembly afterwards leaves the stale
+  // proposal dominating the canvas while the assembly you just loaded renders
+  // as a faint ghost underneath it.
+  const proposalPending = hasEncoded && !resultApplied;
+
+  // Applied, and then the assembly moved on. The assembly is the real thing,
+  // so it takes the solid layer and the encoding drops to a ghost over it —
+  // still there to compare against, no longer pretending to be the composition.
+  const proposalOrphaned = hasEncoded && resultApplied && !resultInAssembly;
+
+  // The seed gets its own layer only while it's context for a pending
+  // proposal, or in remix — where the seed is a saved state that isn't in the
+  // builder, so nothing else would draw it. In merge (seed == the builder
+  // assembly) the assembly layer covers it once nothing is pending.
+  const hasSeed =
+    !editedStandalone &&
+    !remixReplaced &&
+    seedCubes.length > 0 &&
+    (mode === 'remix' || (mode === 'merge' && proposalPending));
 
   // Cells the seed (or edited assembly) occupies. Encoded cubes were filtered
   // against the seed at encode time, but the result now survives mode
@@ -363,33 +394,84 @@ const EncodingScene: React.FC = () => {
     [seedCubes]
   );
 
-  const visibleEncoded = useMemo(() => {
-    if (!hasEncoded || !encodedCubes) return [];
+  // The encode result's own layer, filtered against the seed (the other layer
+  // that's solid at encode time). Empty once the result is living in the
+  // assembly, which draws it instead.
+  const proposalCubes = useMemo(() => {
+    if (!encodedCubes || (!proposalPending && !proposalOrphaned)) return [];
     if (remixReplaced) return encodedCubes;
     return encodedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')));
-  }, [hasEncoded, encodedCubes, remixReplaced, seedOccupiedKeys]);
+  }, [encodedCubes, proposalPending, proposalOrphaned, remixReplaced, seedOccupiedKeys]);
 
-  // Faint ghost of the current builder assembly in Standalone / Remix, so
-  // switching modes never looks like the composition vanished (it lives in
-  // the builder throughout). Merge already shows the builder as the seed.
-  // Cells already drawn by the seed or the encode result are skipped.
-  const ghostCubes = useMemo(() => {
-    if (mode === 'merge') return [];
-    const drawn = new Set(seedOccupiedKeys);
+  // The builder assembly, minus whatever the seed layer already draws (merge's
+  // seed IS the builder assembly).
+  const assemblyBase = useMemo(() => {
+    if (!hasSeed) return placedCubes;
+    return placedCubes.filter(c => !seedOccupiedKeys.has(c.position.join(',')));
+  }, [placedCubes, hasSeed, seedOccupiedKeys]);
+
+  // Exactly one of these two is the solid layer; the other ghosts behind it and
+  // yields any cell they share, so nothing ever z-fights. A pending proposal
+  // leads (it's the thing being judged); otherwise the assembly does — which is
+  // what makes a freshly-loaded saved assembly read as loaded rather than as a
+  // faint smudge under a stale preview.
+  const assemblyCubes = useMemo(() => {
+    if (!proposalPending) return assemblyBase;
+    const drawn = new Set(proposalCubes.map(c => c.position.join(',')));
+    return assemblyBase.filter(c => !drawn.has(c.position.join(',')));
+  }, [proposalPending, assemblyBase, proposalCubes]);
+
+  const visibleEncoded = useMemo(() => {
+    if (proposalPending) return proposalCubes;
+    const drawn = new Set(assemblyBase.map(c => c.position.join(',')));
+    return proposalCubes.filter(c => !drawn.has(c.position.join(',')));
+  }, [proposalPending, proposalCubes, assemblyBase]);
+
+  // Ids the current encode result contributed. Used to keep the "added" read
+  // on the assembly after Apply — and, just as usefully, to drop it the moment
+  // a different assembly is loaded, since none of its ids will match.
+  const encodedIds = useMemo(
+    () => new Set((encodedCubes ?? []).map(c => c.id).filter(Boolean) as string[]),
+    [encodedCubes]
+  );
+
+  // Before/after: the proposal a re-encode replaced, ghosted over the current
+  // one. Off unless explicitly toggled on in the Encode panel. Yields every
+  // cell another layer already draws.
+  const previousProposalCubes = useMemo(() => {
+    if (!showPreviousProposal || !previousResult) return [];
+    const drawn = new Set<string>();
+    if (hasSeed) for (const c of seedCubes) drawn.add(c.position.join(','));
+    for (const c of assemblyCubes) drawn.add(c.position.join(','));
     for (const c of visibleEncoded) drawn.add(c.position.join(','));
-    return placedCubes.filter(c => !drawn.has(c.position.join(',')));
-  }, [mode, placedCubes, seedOccupiedKeys, visibleEncoded]);
+    return previousResult.cubes.filter(c => !drawn.has(c.position.join(',')));
+  }, [showPreviousProposal, previousResult, hasSeed, seedCubes, assemblyCubes, visibleEncoded]);
 
   const allPositions = useMemo(() => {
     const positions: [number, number, number][] = [];
     if (editedStandalone) for (const c of editedVisibleCubes) positions.push(c.position);
     if (hasSeed) for (const c of seedCubes) positions.push(c.position);
     for (const c of visibleEncoded) positions.push(c.position);
-    for (const c of ghostCubes) positions.push(c.position);
+    for (const c of assemblyCubes) positions.push(c.position);
+    for (const c of previousProposalCubes) positions.push(c.position);
     return positions;
-  }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, visibleEncoded, ghostCubes]);
+  }, [
+    editedStandalone,
+    editedVisibleCubes,
+    hasSeed,
+    seedCubes,
+    visibleEncoded,
+    assemblyCubes,
+    previousProposalCubes,
+  ]);
 
-  if (!editedStandalone && !hasSeed && visibleEncoded.length === 0 && ghostCubes.length === 0) {
+  if (
+    !editedStandalone &&
+    !hasSeed &&
+    visibleEncoded.length === 0 &&
+    assemblyCubes.length === 0 &&
+    previousProposalCubes.length === 0
+  ) {
     return <SpatialGrid extent={{ minCellX: -1, maxCellX: 1, minCellZ: -1, maxCellZ: 1, levels: 2 }} />;
   }
 
@@ -431,7 +513,9 @@ const EncodingScene: React.FC = () => {
       })}
 
       {/* Encoded cubes. In a remix result, cubes that kept their seed
-          identity read as "preserved"; new/transformed ones as "added". */}
+          identity read as "preserved"; new/transformed ones as "added".
+          Ghosted instead of solid once the assembly has moved on from this
+          result — still comparable, no longer posing as the composition. */}
       {visibleEncoded.map((cube, i) => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
@@ -445,22 +529,52 @@ const EncodingScene: React.FC = () => {
               x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
               y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
             }}
+            opacity={proposalPending ? 1 : 0.3}
+            isPreview={!proposalPending}
             provenance={kept ? 'preserved' : 'added'}
           />
         );
       })}
 
-      {/* Builder-assembly ghost (Standalone / Remix) — non-interactive */}
-      {ghostCubes.map(cube => {
+      {/* The builder assembly. Ghosted behind a pending proposal (bumped from
+          0.15 — at that opacity a loaded assembly was easy to miss entirely);
+          solid once nothing is competing with it. */}
+      {assemblyCubes.map(cube => {
+        const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
+        if (!variation) return null;
+        // Post-apply, cubes the encode contributed keep their "added" read;
+        // in a remix result the ones that kept their seed identity read as
+        // preserved, matching the proposal layer above.
+        const fromEncode =
+          !proposalPending && !proposalOrphaned && !!cube.id && encodedIds.has(cube.id);
+        const kept = fromEncode && remixResultReplacesSeed && seedCubeIds.has(cube.id);
+        return (
+          <CubeWithCuts
+            key={`assembly-${cube.id}`}
+            variation={variation}
+            position={cube.position}
+            rotation={cube.rotation}
+            opacity={proposalPending ? 0.3 : 1}
+            isPreview={proposalPending}
+            provenance={fromEncode ? (kept ? 'preserved' : 'added') : undefined}
+          />
+        );
+      })}
+
+      {/* Before/after: the proposal this re-encode replaced, ghosted */}
+      {previousProposalCubes.map((cube, i) => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         return (
           <CubeWithCuts
-            key={`ghost-${cube.id}`}
+            key={`prev-${cube.id ?? i}`}
             variation={variation}
             position={cube.position}
-            rotation={cube.rotation}
-            opacity={0.15}
+            rotation={{
+              x: (cube.rotation.x as 0 | 1 | 2 | 3) || 0,
+              y: (cube.rotation.y as 0 | 1 | 2 | 3) || 0,
+            }}
+            opacity={0.22}
             isPreview
           />
         );

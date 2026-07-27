@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { encodeSpace, EncodedCube, SpatialReading, SeedAssemblyCube } from '../lib/api/encodeSpace';
 import { getActiveSiteContext } from '../lib/storage/siteContext';
 import { PlacedCube } from '../lib/cube/types';
-import { SavedState, savedStateToPlacedCubes } from '../lib/savedStates';
+import { SavedState, savedStateToPlacedCubes, savedStateToOperators } from '../lib/savedStates';
 import { GRID_STRIDE, CUBE_SIZE } from '../lib/cube/constants';
 import { useBuilderStore } from './useBuilderStore';
 import { useLexiconStore } from './useLexiconStore';
@@ -32,6 +32,9 @@ function clearReadingFields() {
     // only describe the current result — drop them alongside.
     remixResultReplacesSeed: false,
     resultApplied: false,
+    // The before/after snapshot only makes sense against a current result.
+    previousResult: null as PreviousEncodeResult | null,
+    showPreviousProposal: false,
   };
 }
 
@@ -157,6 +160,32 @@ export interface EncodeComparisonEntry {
   promptVersion?: string | null;
 }
 
+/**
+ * The encode result a re-encode replaced. A re-read is destructive — it throws
+ * away the reading (including any revisions the architect made to it), the
+ * reasoning and the proposed cubes — so the outgoing result is snapshotted
+ * here. That makes the replacement visible (compare the two readings, ghost
+ * the old proposal in the viewport) and reversible (restore it).
+ *
+ * Holds the result only. It never describes the builder assembly, which a
+ * re-encode does not touch.
+ */
+export interface PreviousEncodeResult {
+  cubes: EncodedCube[];
+  reading: SpatialReading | null;
+  readingOriginal: SpatialReading | null;
+  readingEdited: boolean;
+  reasoning: string | null;
+  lexicon: SpatialLexicon | null;
+  lexiconId: string | null;
+  model: string | null;
+  promptVersion: string | null;
+  remixResultReplacesSeed: boolean;
+  /** True if this result had been applied into the assembly before it was replaced. */
+  wasApplied: boolean;
+  replacedAt: string;
+}
+
 export interface UploadedEncodingImage {
   id: string;
   dataUrl: string;
@@ -210,6 +239,16 @@ interface EncodingState {
   encodingPromptVersion: string | null;
   lastError: string | null;
   updateEncodingReading: (reading: SpatialReading) => void;
+
+  /** The result the last re-encode replaced, kept for compare / restore. */
+  previousResult: PreviousEncodeResult | null;
+  /** Ghost the replaced proposal in the Encode viewport for a before/after. */
+  showPreviousProposal: boolean;
+  setShowPreviousProposal: (show: boolean) => void;
+  /** Puts the replaced result back as the current one and drops the snapshot. */
+  restorePreviousResult: () => void;
+  /** Drops the snapshot without restoring it. */
+  discardPreviousResult: () => void;
 
   // Mode & seed
   mode: EncodingMode;
@@ -404,6 +443,35 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     set({ encodingReading: reading, readingEdited });
   },
 
+  previousResult: null,
+  showPreviousProposal: false,
+  setShowPreviousProposal: (showPreviousProposal) => set({ showPreviousProposal }),
+
+  restorePreviousResult: () => {
+    const prev = get().previousResult;
+    if (!prev) return;
+    set({
+      encodedCubes: prev.cubes,
+      encodingReasoning: prev.reasoning,
+      encodingReading: prev.reading,
+      encodingReadingOriginal: prev.readingOriginal,
+      readingEdited: prev.readingEdited,
+      encodingLexicon: prev.lexicon,
+      encodingLexiconId: prev.lexiconId,
+      encodingModel: prev.model,
+      encodingPromptVersion: prev.promptVersion,
+      remixResultReplacesSeed: prev.remixResultReplacesSeed,
+      // Restoring only brings the result back into the panel — nothing is
+      // written to the assembly until Apply is pressed again.
+      resultApplied: false,
+      previousResult: null,
+      showPreviousProposal: false,
+      lastError: null,
+    });
+  },
+
+  discardPreviousResult: () => set({ previousResult: null, showPreviousProposal: false }),
+
   // Mode & seed
   mode: 'standalone',
   seedCubes: [],
@@ -439,22 +507,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     const cubes = savedStateToPlacedCubes(savedState);
     // Snapshot the save's operator records too — remix sends them to the
     // model and re-applies them to kept/transplanted cubes on load.
-    const seedOperators: Record<string, OperatorRecord[]> = {};
-    for (const cube of savedState.data.cubes) {
-      if (!cube.operators || cube.operators.length === 0) continue;
-      seedOperators[cube.id] = cube.operators.map((op) => ({
-        id: op.id,
-        source: 'meme' as const,
-        operator: op.operator as OperatorRecord['operator'],
-        targets: op.targets as OperatorRecord['targets'],
-        magnitude: op.magnitude,
-        decay: op.decay,
-        createdAt: op.createdAt,
-        memeDescription: op.memeDescription,
-        reasoning: op.reasoning,
-        cutter: op.cutter as OperatorRecord['cutter'],
-      }));
-    }
+    const seedOperators = savedStateToOperators(savedState);
     set({
       seedCubes: cubes,
       seedCubeIds: new Set(cubes.map(c => c.id)),
@@ -603,6 +656,10 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       encodingModel: entry.resolvedModel ?? entry.modelId,
       encodingPromptVersion: entry.promptVersion ?? null,
       resultApplied: false,
+      // Picking a compared entry replaces the shown result too — any snapshot
+      // from an earlier re-encode no longer describes what it replaced.
+      previousResult: null,
+      showPreviousProposal: false,
       lastError: null,
       ...clearStandaloneSeed,
     });
@@ -690,6 +747,28 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         ? processRemixResult(result.cubes, get().seedCubes)
         : processEncodedCubes(result.cubes, get().seedCubes);
 
+      // A successful re-encode overwrites the whole result — reading (and any
+      // revisions to it), reasoning, proposed cubes, provenance. Snapshot the
+      // outgoing one first so the replacement can be compared and undone.
+      const outgoing = get();
+      const previousResult: PreviousEncodeResult | null =
+        outgoing.encodedCubes && outgoing.encodedCubes.length > 0
+          ? {
+              cubes: outgoing.encodedCubes,
+              reading: outgoing.encodingReading,
+              readingOriginal: outgoing.encodingReadingOriginal,
+              readingEdited: outgoing.readingEdited,
+              reasoning: outgoing.encodingReasoning,
+              lexicon: outgoing.encodingLexicon,
+              lexiconId: outgoing.encodingLexiconId,
+              model: outgoing.encodingModel,
+              promptVersion: outgoing.encodingPromptVersion,
+              remixResultReplacesSeed: outgoing.remixResultReplacesSeed,
+              wasApplied: outgoing.resultApplied,
+              replacedAt: new Date().toISOString(),
+            }
+          : null;
+
       const modelReading = result.reading ?? null;
       set({
         encodedCubes: processed,
@@ -703,6 +782,8 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         encodingModel: result.model ?? null,
         encodingPromptVersion: result.promptVersion ?? null,
         resultApplied: false,
+        previousResult,
+        showPreviousProposal: false,
         isEncoding: false,
       });
     } catch (error) {

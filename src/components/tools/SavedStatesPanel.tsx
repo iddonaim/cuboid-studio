@@ -8,6 +8,7 @@ import {
   saveState,
   deleteSavedState,
   savedStateToPlacedCubes,
+  savedStateToOperators,
   SavedState,
 } from '../../lib/savedStates';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,8 @@ export const SavedStatesPanel: React.FC = () => {
   const [saveName, setSaveName] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmLoadId, setConfirmLoadId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const refresh = useCallback(() => setStates(listSavedStates()), []);
 
@@ -39,9 +42,31 @@ export const SavedStatesPanel: React.FC = () => {
     refresh();
   };
 
-  const handleLoad = (state: SavedState) => {
+  const handleLoad = async (state: SavedState) => {
+    setConfirmLoadId(null);
+    setLoadingId(state.id);
     const cubes = savedStateToPlacedCubes(state);
     setPlacedCubes(cubes);
+
+    // A save carries the per-cube meme cuts alongside the cubes. Loading only
+    // the cubes left those behind — the assembly came back uncut, and the
+    // previous assembly's operator records stayed in the meme store keyed to
+    // ids that no longer exist. Replace both, rebuilding the cut geometry the
+    // same way a composition load does.
+    const operators = savedStateToOperators(state);
+    const variations: Record<string, string> = {};
+    for (const cube of cubes) variations[cube.id] = cube.variationId;
+
+    const { rebuildAssemblyGeometry } = await import('../../lib/projects/composition');
+    const rebuilt = await rebuildAssemblyGeometry(variations, operators);
+    useMemeStore.setState({
+      cubeOperators: operators,
+      cubeGeometryOverrides: rebuilt.cubeGeometryOverrides,
+      cubeGeometryStacks: rebuilt.cubeGeometryStacks,
+      cubeTranslations: rebuilt.cubeTranslations,
+      targetCubeId: null,
+    });
+
     // Restore the decode canvas layer when the save carries one; older saves
     // don't, and for those the current canvas is left untouched.
     if (state.decode) {
@@ -52,6 +77,7 @@ export const SavedStatesPanel: React.FC = () => {
         pendingPlacementVariationId: null,
       });
     }
+    setLoadingId(null);
   };
 
   const handleDelete = (id: string) => {
@@ -118,34 +144,67 @@ export const SavedStatesPanel: React.FC = () => {
             states.map(state => (
               <div
                 key={state.id}
-                className="flex items-center gap-1 py-1.5 px-1.5 bg-ink-100 border border-ink-200 rounded"
+                className="flex flex-col gap-1 py-1.5 px-1.5 bg-ink-100 border border-ink-200 rounded"
               >
-                <div className="flex-1 overflow-hidden">
-                  <div className="text-ink-600 text-[11px] truncate">{state.name}</div>
-                  <div className="text-ink-400 text-[10px]">
-                    {state.cubeCount} cube{state.cubeCount !== 1 ? 's' : ''} · {fmtDate(state.savedAt)}
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 overflow-hidden">
+                    <div className="text-ink-600 text-[11px] truncate">{state.name}</div>
+                    <div className="text-ink-400 text-[10px]">
+                      {state.cubeCount} cube{state.cubeCount !== 1 ? 's' : ''} · {fmtDate(state.savedAt)}
+                    </div>
                   </div>
+
+                  <Button
+                    onClick={() => {
+                      setConfirmDeleteId(null);
+                      // Nothing to lose with an empty canvas — skip the confirm.
+                      if (!hasCubes) { void handleLoad(state); return; }
+                      setConfirmLoadId(id => (id === state.id ? null : state.id));
+                    }}
+                    disabled={loadingId !== null}
+                    title="Replace the current assembly with this saved one"
+                    className="h-auto py-px px-1.5 text-[10px] border border-ink-200 bg-ink-100 text-ink-600 hover:bg-ink-200 whitespace-nowrap"
+                  >
+                    {loadingId === state.id ? 'Loading…' : 'Load'}
+                  </Button>
+
+                  <button
+                    onClick={() => { setConfirmLoadId(null); handleDelete(state.id); }}
+                    title={confirmDeleteId === state.id ? 'Click again to confirm delete' : 'Delete'}
+                    className={`py-px px-1.5 rounded border-0 cursor-pointer text-[10px] ${
+                      confirmDeleteId === state.id
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-transparent text-ink-400 hover:text-destructive'
+                    }`}
+                  >
+                    <Trash2 size={10} />
+                  </button>
                 </div>
 
-                <Button
-                  onClick={() => handleLoad(state)}
-                  title="Load this state into builder"
-                  className="h-auto py-px px-1.5 text-[10px] border border-ink-200 bg-ink-100 text-ink-600 hover:bg-ink-200 whitespace-nowrap"
-                >
-                  Load
-                </Button>
-
-                <button
-                  onClick={() => handleDelete(state.id)}
-                  title={confirmDeleteId === state.id ? 'Click again to confirm delete' : 'Delete'}
-                  className={`py-px px-1.5 rounded border-0 cursor-pointer text-[10px] ${
-                    confirmDeleteId === state.id
-                      ? 'bg-destructive/10 text-destructive'
-                      : 'bg-transparent text-ink-400 hover:text-destructive'
-                  }`}
-                >
-                  <Trash2 size={10} />
-                </button>
+                {/* Loading is a full replacement, including the meme cuts — say
+                    so before it wipes unsaved work. */}
+                {confirmLoadId === state.id && (
+                  <div className="flex flex-col gap-1 pt-1 border-t border-ink-200">
+                    <div className="text-ink-500 text-[10px] leading-relaxed">
+                      Replaces your current {placedCubes.length}-cube assembly and its
+                      cuts. Save it first if you want to keep it.
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        onClick={() => void handleLoad(state)}
+                        className="flex-1 h-auto py-1 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary border-0"
+                      >
+                        Replace
+                      </Button>
+                      <Button
+                        onClick={() => setConfirmLoadId(null)}
+                        className="flex-1 h-auto py-1 text-[10px] bg-transparent hover:bg-ink-200 text-ink-500 border border-ink-200"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}
