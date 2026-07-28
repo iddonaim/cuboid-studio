@@ -8,6 +8,7 @@ import { GRID_STRIDE } from './constants';
 import {
   findConnectionViolations,
   toCheckableCubes,
+  summarizeConnections,
   violationsSignature,
   type CheckableCube,
 } from './connectionViolations';
@@ -230,5 +231,68 @@ describe('toCheckableCubes', () => {
       { variationId: 'v-01', position: [GRID_STRIDE, 21, 0], rotation: { x: 0, y: 0 } },
     ]);
     expect(new Set(cubes.map(c => c.id)).size).toBe(2);
+  });
+});
+
+describe('summarizeConnections', () => {
+  it('reports the denominator every refusal count needs', () => {
+    // Three cubes in a row: two adjacencies, whatever their verdicts.
+    const a = variationWithFace('X_POS', 'sphere');
+    const b = variationWithFace('X_NEG', 'cylinder');
+    const row: CheckableCube[] = [
+      { id: 'a', variationId: a, position: [0, 21, 0], rotation: NO_ROTATION },
+      { id: 'b', variationId: b, position: [GRID_STRIDE, 21, 0], rotation: NO_ROTATION },
+      { id: 'c', variationId: b, position: [GRID_STRIDE * 2, 21, 0], rotation: NO_ROTATION },
+    ];
+    expect(summarizeConnections(row).totalAdjacencies).toBe(2);
+  });
+
+  it('counts legal adjacencies in the total but not as violations', () => {
+    const a = variationWithFace('X_POS', 'sphere');
+    const b = variationWithFace('X_NEG', 'sphere');
+    const summary = summarizeConnections(pairAlongX(a, b));
+    expect(summary.totalAdjacencies).toBe(1);
+    expect(summary.violations).toHaveLength(0);
+  });
+
+  it('separates a blank wall from a door meeting a window', () => {
+    const wall = summarizeConnections(
+      pairAlongX(variationWithFace('X_POS', 'shell'), variationWithFace('X_NEG', 'sphere'))
+    );
+    expect(wall.blankWall).toBe(1);
+    expect(wall.mismatch).toBe(0);
+    expect(wall.violations[0].kind).toBe('blank-wall');
+
+    const crossed = summarizeConnections(
+      pairAlongX(variationWithFace('X_POS', 'sphere'), variationWithFace('X_NEG', 'cylinder'))
+    );
+    expect(crossed.blankWall).toBe(0);
+    expect(crossed.mismatch).toBe(1);
+    expect(crossed.violations[0].kind).toBe('mismatch');
+  });
+
+  it('names every cube taking part in a refusal, each once', () => {
+    // A middle cube refused on both sides is still one cube to outline.
+    const left = variationWithFace('X_POS', 'sphere');
+    const middle = variationWithFace('X_NEG', 'cylinder');
+    const row: CheckableCube[] = [
+      { id: 'a', variationId: left, position: [0, 21, 0], rotation: NO_ROTATION },
+      { id: 'b', variationId: middle, position: [GRID_STRIDE, 21, 0], rotation: NO_ROTATION },
+      { id: 'c', variationId: left, position: [GRID_STRIDE * 2, 21, 0], rotation: NO_ROTATION },
+    ];
+    const summary = summarizeConnections(row);
+    expect(summary.cubeIds.has('b')).toBe(true);
+    expect(summary.cubeIds.size).toBeLessThanOrEqual(3);
+  });
+
+  it('is empty and zeroed for an assembly too small to have adjacencies', () => {
+    const summary = summarizeConnections([]);
+    expect(summary).toMatchObject({
+      totalAdjacencies: 0,
+      blankWall: 0,
+      mismatch: 0,
+    });
+    expect(summary.violations).toEqual([]);
+    expect(summary.cubeIds.size).toBe(0);
   });
 });

@@ -50,16 +50,40 @@ export interface CheckableCube {
   rotation: Rotation;
 }
 
+/**
+ * Why an adjacency was refused. The two are different failures and read
+ * differently: a blank wall means growth ran into an uncut face (every
+ * unrotated depth adjacency is one of these, since no variation carries a cut
+ * on either depth face at rest), while a mismatch means two openings met that
+ * don't agree — a door against a window.
+ */
+export type ViolationKind = 'blank-wall' | 'mismatch';
+
 /** One refused adjacency, as data. Recomputed on display, never persisted. */
 export interface ConnectionViolation {
   /** Stable key for this pair, ordered so it doesn't depend on input order. */
   key: string;
   a: { id: string; variationId: string; face: Face; cutType: FaceCutType };
   b: { id: string; variationId: string; face: Face; cutType: FaceCutType };
-  /** Midpoint of the shared interface in world units — where a marker goes. */
+  /** Midpoint of the shared interface in world units. */
   interfacePosition: [number, number, number];
   /** Which axis the two cubes are separated along. */
   axis: 'x' | 'y' | 'z';
+  kind: ViolationKind;
+}
+
+/** Everything the UI needs about an assembly's adjacencies, in one pass. A
+ *  count of refusals means little without the total it is drawn from. */
+export interface ConnectionSummary {
+  violations: ConnectionViolation[];
+  /** Every adjacency in the assembly, legal or not — the denominator. */
+  totalAdjacencies: number;
+  /** Refusals where at least one face is an uncut wall. */
+  blankWall: number;
+  /** Refusals where a door met a window. */
+  mismatch: number;
+  /** Ids of every cube taking part in at least one refusal. */
+  cubeIds: Set<string>;
 }
 
 const AXIS_FOR_FACE: Record<Face, 'x' | 'y' | 'z'> = {
@@ -92,7 +116,28 @@ export function findConnectionViolations(
   cubes: CheckableCube[],
   gridStride: number = GRID_STRIDE
 ): ConnectionViolation[] {
-  if (cubes.length < 2) return [];
+  return summarizeConnections(cubes, gridStride).violations;
+}
+
+/**
+ * The same walk, reporting the total it drew from as well as the refusals.
+ *
+ * "25 adjacencies violate the law" says nothing without a denominator — 25 out
+ * of 30 is a different assembly from 25 out of 400. The breakdown separates the
+ * two kinds of refusal, which have different causes and different fixes.
+ */
+export function summarizeConnections(
+  cubes: CheckableCube[],
+  gridStride: number = GRID_STRIDE
+): ConnectionSummary {
+  const empty: ConnectionSummary = {
+    violations: [],
+    totalAdjacencies: 0,
+    blankWall: 0,
+    mismatch: 0,
+    cubeIds: new Set(),
+  };
+  if (cubes.length < 2) return empty;
 
   const byCell = new Map<string, CheckableCube>();
   for (const cube of cubes) {
@@ -100,6 +145,10 @@ export function findConnectionViolations(
   }
 
   const violations: ConnectionViolation[] = [];
+  const cubeIds = new Set<string>();
+  let totalAdjacencies = 0;
+  let blankWall = 0;
+  let mismatch = 0;
 
   // Walk only the +X, +Y and +Z neighbours so each pair is visited exactly once.
   const forwardSteps: [number, number, number][] = [
@@ -135,7 +184,19 @@ export function findConnectionViolations(
       const cutTypeA = getRotatedFaceCutType(faceTypesA, faceOnA, cube.rotation);
       const cutTypeB = getRotatedFaceCutType(faceTypesB, faceOnB, neighbour.rotation);
 
+      // Counted before the verdict: this is a real adjacency either way, and
+      // it is the denominator the refusal count is meaningless without.
+      totalAdjacencies += 1;
+
       if (canConnect(cutTypeA, cutTypeB)) continue;
+
+      const kind: ViolationKind =
+        cutTypeA === 'shell' || cutTypeB === 'shell' ? 'blank-wall' : 'mismatch';
+      if (kind === 'blank-wall') blankWall += 1;
+      else mismatch += 1;
+
+      cubeIds.add(cube.id);
+      cubeIds.add(neighbour.id);
 
       violations.push({
         key: [cube.id, neighbour.id].sort().join('::'),
@@ -152,11 +213,12 @@ export function findConnectionViolations(
           (cube.position[2] + neighbour.position[2]) / 2,
         ],
         axis: AXIS_FOR_FACE[faceOnA],
+        kind,
       });
     }
   }
 
-  return violations;
+  return { violations, totalAdjacencies, blankWall, mismatch, cubeIds };
 }
 
 /** Shape shared by every cube record in the app that this checker accepts —

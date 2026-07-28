@@ -1,19 +1,22 @@
 /**
- * Connection-law violation markers.
+ * Connection-law violation markers — the cubes, not the joints.
  *
- * Draws a quiet "refused joint" notation — a square with a cross through it —
- * at every adjacency the connection law refuses. Nothing here changes the
- * assembly: the markers are an annotation layer laid over the drawing, the way
- * a correction is laid over a plan.
+ * An earlier version drew a symbol at every refused interface. On a real
+ * assembly that is 20+ overlapping symbols drawn through each other, which
+ * reads as a scribble rather than a reading. What the architect needs to see is
+ * *which cubes sit where the law is broken*, so each of those gets a single
+ * outline around it and the panel names the specific pairs.
  *
- * They live in the 3D scene rather than the DOM on purpose, so a viewport
- * capture takes them along into the plate (`SceneCapture` renders the whole
- * scene). That is deliberate — a captured sheet showing where the engine broke
- * the law is evidence of the judgment, not a defect in the drawing.
+ * The outline lives in the 3D scene rather than the DOM on purpose, so a
+ * viewport capture takes it into the plate (`SceneCapture` renders the whole
+ * scene). A captured sheet showing where the engine broke the law is evidence
+ * of the judgment, not a defect in the drawing.
  *
- * Drawn over the geometry (`depthTest: false`) so a marker buried inside an
- * assembly is still legible; in ink rather than the accent or a warning red,
- * because this is information for judgment, not an error state.
+ * Depth-tested like everything else — an outline on a cube at the back should
+ * be hidden by the cubes in front of it, the same way the cube itself is.
+ * Drawn in a violet that no other state in the app uses, so it can't be
+ * confused with added-blue, carried-green, discarded-red or the accent, and
+ * doesn't read as an alarm.
  */
 
 import React, { useMemo } from 'react';
@@ -21,76 +24,51 @@ import * as THREE from 'three';
 import { CUBE_SIZE } from '../../lib/cube/constants';
 import {
   CheckableCube,
-  ConnectionViolation,
-  findConnectionViolations,
+  summarizeConnections,
 } from '../../lib/cube/connectionViolations';
 
-/** ink-600 from the drafting-instrument ramp — reads as annotation, not alarm. */
-const MARKER_COLOR = '#5D5A50';
+/** Distinct from every semantic colour already in use in the viewport. */
+const MARKER_COLOR = '#6b4c9a';
 
-/** Half-extent of the marker square: inside the 42mm face, so it reads as a
- *  marking on the joint rather than an outline of it. */
-const HALF = CUBE_SIZE * 0.42;
-
-/** Square + cross, in the XY plane (normal +Z). Rotated per axis at use. */
-const MARKER_GEOMETRY = (() => {
-  const s = HALF;
-  const points: number[] = [
-    // border
-    -s, -s, 0, s, -s, 0,
-    s, -s, 0, s, s, 0,
-    s, s, 0, -s, s, 0,
-    -s, s, 0, -s, -s, 0,
-    // cross
-    -s, -s, 0, s, s, 0,
-    -s, s, 0, s, -s, 0,
-  ];
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-  return geometry;
-})();
-
-/** Rotation that turns the XY-plane marker to face along each separation axis. */
-const AXIS_ROTATION: Record<ConnectionViolation['axis'], [number, number, number]> = {
-  x: [0, Math.PI / 2, 0],
-  y: [Math.PI / 2, 0, 0],
-  z: [0, 0, 0],
-};
+/** Just outside the cube's own edges, so the two don't z-fight. */
+const MARKER_GEOMETRY = new THREE.EdgesGeometry(
+  new THREE.BoxGeometry(CUBE_SIZE * 1.04, CUBE_SIZE * 1.04, CUBE_SIZE * 1.04)
+);
 
 const noRaycast = () => null;
 
 interface ConnectionViolationMarkersProps {
   /** The assembly to check. Violations are derived here and never stored. */
   cubes: CheckableCube[];
-  /** Dim the markers when the layer they annotate is itself ghosted. */
+  /** Dim the outlines when the layer they annotate is itself ghosted. */
   opacity?: number;
 }
 
 export const ConnectionViolationMarkers: React.FC<ConnectionViolationMarkersProps> = ({
   cubes,
-  opacity = 0.9,
+  opacity = 1,
 }) => {
-  const violations = useMemo(() => findConnectionViolations(cubes), [cubes]);
+  const flagged = useMemo(() => {
+    const { cubeIds } = summarizeConnections(cubes);
+    if (cubeIds.size === 0) return [];
+    return cubes.filter(cube => cubeIds.has(cube.id));
+  }, [cubes]);
 
-  if (violations.length === 0) return null;
+  if (flagged.length === 0) return null;
 
   return (
     <>
-      {violations.map(violation => (
+      {flagged.map(cube => (
         <lineSegments
-          key={violation.key}
+          key={cube.id}
           geometry={MARKER_GEOMETRY}
-          position={violation.interfacePosition}
-          rotation={AXIS_ROTATION[violation.axis]}
-          renderOrder={999}
+          position={cube.position}
           raycast={noRaycast}
         >
           <lineBasicMaterial
             color={MARKER_COLOR}
-            transparent
+            transparent={opacity < 1}
             opacity={opacity}
-            depthTest={false}
-            depthWrite={false}
           />
         </lineSegments>
       ))}
