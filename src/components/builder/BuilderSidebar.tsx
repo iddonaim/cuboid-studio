@@ -66,10 +66,7 @@ export const BuilderSidebar: React.FC = () => {
               the assembly as it stands — including cubes that arrived from an
               encode, a remix or a restore, which those toggles never saw. */}
           <div className="mt-2">
-            <ConnectionReading
-              cubes={toCheckableCubes(placedCubes)}
-              subject="this assembly"
-            />
+            <ConnectionReading cubes={toCheckableCubes(placedCubes)} />
           </div>
         </Section>
 

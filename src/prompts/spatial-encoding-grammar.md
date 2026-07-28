@@ -14,7 +14,10 @@
 # Last edited: 2026-07-28
 # Author: Iddo Naim
 # (v4 adds THE CONNECTION LAW section — drafted by an agent, pending Iddo's
-#  reword into his own voice. That reword is a further bump.)
+#  reword into his own voice. That reword is a further bump. Stated in cutter
+#  terms (sphere/cylinder/shell), never door/window/wall: the rule reads
+#  cutters, and the door/window gloss would collide with the anti-literalism
+#  rule in TRANSLATION RULES.)
 
 ---
 
@@ -176,52 +179,50 @@ automatically) and forbidden elsewhere.
 
 ## THE CONNECTION LAW
 
-Cubes meet where their cut faces agree. A face carries one of three conditions,
-decided by the variation's cutters: a sphere face reads as a **door**, a
-cylinder face as a **window**, an uncut face as a **blank wall**.
+Every face of a cube carries one of three conditions, decided by which cutters
+the variation uses: a **sphere** face, a **cylinder** face, or an uncut
+**shell** face.
 
-- Door meets door.
-- Window meets window.
-- A door does not meet a window — the cuts disagree, so nothing passes between
-  them.
-- A blank wall meets nothing. Growth stops at blank walls.
+- Sphere meets sphere.
+- Cylinder meets cylinder.
+- Sphere does not meet cylinder — the cutters disagree.
+- Shell meets nothing. Growth stops at an uncut face.
 
-Two cubes are in contact when they sit in adjacent grid cells. The touching
-faces are the pair that decides whether that contact is a connection or a
-closure. Prefer adjacencies where the faces agree, and let the law shape the
-assembly's growth: where a wall turns up, the assembly has found an edge.
+Two cubes are in contact when they sit in adjacent grid cells; the touching
+faces decide whether that contact is open or closed. Prefer contacts where the
+cutters agree, and let the law shape the assembly's growth: where a shell turns
+up, the assembly has found an edge.
+
+**This is about cutters, not about openings you saw in the photograph.** The
+atmosphere rule above tells you not to map a photographed window onto a cylinder
+or a photographed doorway onto a sphere — that stands. This section is not that
+mapping in reverse. It is a fact about the geometry: these are boolean cutters,
+and two of them either match or they don't.
 
 **The vocabulary is not the same in every direction.** Left–right (X) and
-up–down (Y) both have doors and windows available. Depth (Z) does not: at rest,
-every one of the 70 variations presents a blank wall on both of its depth faces.
-Two cubes placed one behind the other in an unrotated assembly are therefore
-always wall-to-wall.
+up–down (Y) both carry sphere and cylinder faces. Depth (Z) does not: at rest,
+every one of the 70 variations is shell on both of its depth faces. Two cubes
+placed one behind the other in an unrotated assembly are therefore always
+shell-to-shell.
 
-The way through is rotation. An X-rotation tips a cube so that a cut face comes
+The way through is rotation. An X-rotation tips a cube so a cut face comes
 around to meet its neighbour in depth. So:
 
-- An assembly that spreads left–right and stacks upward can connect throughout
+- An assembly that spreads left–right and stacks upward can open throughout
   without rotating anything.
 - An assembly with **depth** must tip the cubes that meet along Z, or accept
-  that it is a set of parallel walls standing near each other rather than one
+  that it is a set of parallel slabs standing near each other rather than one
   connected body.
 
 Both are legitimate readings of a space. Choose knowingly rather than by
 default — an unrotated deep assembly is a decision about closure, and if it
 isn't the one you mean, rotate.
 
-**This is not a rule about reading the photograph.** The atmosphere rule above
-tells you not to match a photographed window to a cylinder or a photographed
-doorway to a sphere — that stands, and it governs how you *read* a space. This
-section governs how the cubes you have chosen *sit together* once placed. The
-first is about interpretation; the second is about assembly. Do not let one
-contaminate the other.
-
 You are not bound by this law. A placement that breaks it is permitted, and it
-will arrive intact — nothing is deleted, moved, rotated or corrected. Refused
-adjacencies are marked in the architect's viewport as a reading for their
-judgment. Break the law when the space genuinely asks for it, and let the mark
-stand as part of what you proposed.
+will arrive intact — nothing is deleted, moved, rotated or corrected. Crossed
+contacts are marked in the architect's viewport as a reading for their judgment.
+Break the law when the space genuinely asks for it, and let the mark stand as
+part of what you proposed.
 
 ## MULTI-IMAGE SYNTHESIS
 
@@ -245,7 +246,7 @@ Use rotation to add visual variety and respond to directionality in the space.
 
 Rotation also decides what a cube can connect to — see THE CONNECTION LAW above.
 An X-rotation is what brings a cut face around to the depth axis, so any
-assembly meant to read as connected in depth needs it.
+assembly meant to read as open in depth needs it.
 
 ## OUTPUT FORMAT
 

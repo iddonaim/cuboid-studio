@@ -69,10 +69,10 @@ const BuilderScene: React.FC = () => {
     [placedCubes]
   );
 
-  // Cubes that put a door against a window somewhere. Blank-wall closures are
-  // deliberately not marked — see ConnectionSummary.mismatchCubeIds.
+  // Cubes where a sphere face meets a cylinder face. Shell closures are
+  // deliberately not marked — see ConnectionSummary.crossedCubeIds.
   const flaggedIds = useMemo(
-    () => summarizeConnections(toCheckableCubes(placedCubes)).mismatchCubeIds,
+    () => summarizeConnections(toCheckableCubes(placedCubes)).crossedCubeIds,
     [placedCubes]
   );
 
@@ -258,7 +258,7 @@ const AssemblyPataphysicalScene: React.FC = () => {
   // Find the targeted cube's position for the cutter overlay
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
   const flaggedIds = useMemo(
-    () => summarizeConnections(toCheckableCubes(placedCubes)).mismatchCubeIds,
+    () => summarizeConnections(toCheckableCubes(placedCubes)).crossedCubeIds,
     [placedCubes]
   );
 
@@ -515,7 +515,7 @@ const EncodingScene: React.FC = () => {
           ...visibleEncoded,
           ...assemblyCubes,
         ]);
-    return summarizeConnections(checkable).mismatchCubeIds;
+    return summarizeConnections(checkable).crossedCubeIds;
   }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, visibleEncoded, assemblyCubes]);
 
   if (
@@ -707,7 +707,7 @@ const EvolutionScene: React.FC = () => {
   }, [cutterPreview]);
 
   const flaggedIds = useMemo(
-    () => summarizeConnections(toCheckableCubes(placedCubes)).mismatchCubeIds,
+    () => summarizeConnections(toCheckableCubes(placedCubes)).crossedCubeIds,
     [placedCubes]
   );
 

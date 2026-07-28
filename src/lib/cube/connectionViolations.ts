@@ -1,6 +1,6 @@
 /**
- * Connection-law violations — find them, never fix them.
- * =====================================================
+ * Reading which contacts in an assembly are open — never changing any of them.
+ * ==========================================================================
  *
  * The connection law lives in `canConnect` (connectionRules.ts) and is enforced
  * interactively in the Builder. Nothing else in the app is subject to it: an
@@ -22,8 +22,8 @@
  * - **Cube-to-cube only.** The ground plane is not checked.
  *   `isGroundPlacementValid()` is an unconditional `true` — a deliberate
  *   carve-out ("ground acts as shell, accepts anything"). Treating the ground
- *   as a shell face here would flag nearly every ground-level cube and make the
- *   whole signal worthless.
+ *   as a shell face here would close nearly every ground-level cube and make
+ *   the whole reading worthless.
  * - **`canConnect` only**, never `canConnectStrict`. Strict alignment is a
  *   separate, optional Builder mode; a violation reported here means the
  *   connection law and nothing else.
@@ -51,13 +51,18 @@ export interface CheckableCube {
 }
 
 /**
- * Why an adjacency was refused. The two are different failures and read
- * differently: a blank wall means growth ran into an uncut face (every
- * unrotated depth adjacency is one of these, since no variation carries a cut
- * on either depth face at rest), while a mismatch means two openings met that
- * don't agree — a door against a window.
+ * Why a contact is closed. Two different conditions:
+ *
+ * - `shell` — at least one face is uncut. Every unrotated depth contact is one
+ *   of these, since no variation carries a cutter on either depth face.
+ * - `crossed` — a sphere face meets a cylinder face. Both are cut; the cutters
+ *   disagree.
+ *
+ * Named for the cutter geometry, which is what the rule actually reads. The
+ * door/window/wall gloss is an interpretation laid on top and does not belong
+ * in the mechanism.
  */
-export type ViolationKind = 'blank-wall' | 'mismatch';
+export type ContactKind = 'shell' | 'crossed';
 
 /** One refused adjacency, as data. Recomputed on display, never persisted. */
 export interface ConnectionViolation {
@@ -69,7 +74,7 @@ export interface ConnectionViolation {
   interfacePosition: [number, number, number];
   /** Which axis the two cubes are separated along. */
   axis: 'x' | 'y' | 'z';
-  kind: ViolationKind;
+  kind: ContactKind;
 }
 
 /** Everything the UI needs about an assembly's adjacencies, in one pass. A
@@ -78,23 +83,21 @@ export interface ConnectionSummary {
   violations: ConnectionViolation[];
   /** Every adjacency in the assembly, legal or not — the denominator. */
   totalAdjacencies: number;
-  /** Refusals where at least one face is an uncut wall. */
-  blankWall: number;
-  /** Refusals where a door met a window. */
-  mismatch: number;
+  /** Closed contacts where at least one face is an uncut shell. */
+  shell: number;
+  /** Closed contacts where a sphere face met a cylinder face. */
+  crossed: number;
   /** Ids of every cube taking part in at least one refusal. */
   cubeIds: Set<string>;
   /**
-   * Ids of cubes taking part in a *mismatch* specifically.
+   * Ids of cubes taking part in a *crossed* contact specifically.
    *
-   * This is the set worth marking in the viewport. A blank-wall refusal is
-   * usually structural rather than a choice — the vocabulary carries no cut on
-   * either depth face, so anything stacked front-to-back closes unless the
-   * cubes are tipped — and marking those lights up most of a three-dimensional
-   * assembly for something it could not have avoided. A mismatch is the model
-   * genuinely contradicting the law, and there are few enough of them to read.
+   * This is the set worth marking. A shell contact is structural rather than a
+   * choice — no variation is cut on its depth faces — so marking those lights
+   * up most of a three-dimensional assembly for something it could not have
+   * avoided. A crossed contact is two cutters genuinely disagreeing.
    */
-  mismatchCubeIds: Set<string>;
+  crossedCubeIds: Set<string>;
 }
 
 const AXIS_FOR_FACE: Record<Face, 'x' | 'y' | 'z'> = {
@@ -144,10 +147,10 @@ export function summarizeConnections(
   const empty: ConnectionSummary = {
     violations: [],
     totalAdjacencies: 0,
-    blankWall: 0,
-    mismatch: 0,
+    shell: 0,
+    crossed: 0,
     cubeIds: new Set(),
-    mismatchCubeIds: new Set(),
+    crossedCubeIds: new Set(),
   };
   if (cubes.length < 2) return empty;
 
@@ -158,10 +161,10 @@ export function summarizeConnections(
 
   const violations: ConnectionViolation[] = [];
   const cubeIds = new Set<string>();
-  const mismatchCubeIds = new Set<string>();
+  const crossedCubeIds = new Set<string>();
   let totalAdjacencies = 0;
-  let blankWall = 0;
-  let mismatch = 0;
+  let shell = 0;
+  let crossed = 0;
 
   // Walk only the +X, +Y and +Z neighbours so each pair is visited exactly once.
   const forwardSteps: [number, number, number][] = [
@@ -203,14 +206,14 @@ export function summarizeConnections(
 
       if (canConnect(cutTypeA, cutTypeB)) continue;
 
-      const kind: ViolationKind =
-        cutTypeA === 'shell' || cutTypeB === 'shell' ? 'blank-wall' : 'mismatch';
-      if (kind === 'blank-wall') {
-        blankWall += 1;
+      const kind: ContactKind =
+        cutTypeA === 'shell' || cutTypeB === 'shell' ? 'shell' : 'crossed';
+      if (kind === 'shell') {
+        shell += 1;
       } else {
-        mismatch += 1;
-        mismatchCubeIds.add(cube.id);
-        mismatchCubeIds.add(neighbour.id);
+        crossed += 1;
+        crossedCubeIds.add(cube.id);
+        crossedCubeIds.add(neighbour.id);
       }
 
       cubeIds.add(cube.id);
@@ -236,7 +239,7 @@ export function summarizeConnections(
     }
   }
 
-  return { violations, totalAdjacencies, blankWall, mismatch, cubeIds, mismatchCubeIds };
+  return { violations, totalAdjacencies, shell, crossed, cubeIds, crossedCubeIds };
 }
 
 /** Shape shared by every cube record in the app that this checker accepts —
@@ -279,9 +282,3 @@ export function violationsSignature(violations: ConnectionViolation[]): string {
     .join('|');
 }
 
-/** Plain-language name for a face's cut type, for the notice and the panel. */
-export function cutTypeLabel(type: FaceCutType): string {
-  if (type === 'sphere') return 'door';
-  if (type === 'cylinder') return 'window';
-  return 'blank wall';
-}

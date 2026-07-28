@@ -33,9 +33,9 @@ interface CubeWithCutsProps {
   overrideGeometry?: THREE.BufferGeometry | null;
   provenance?: 'preserved' | 'added';
   /**
-   * This cube puts a door against a window somewhere — the one case where a
-   * proposal actually contradicts the connection law rather than simply
-   * closing against a blank face. Tints the cube itself; interaction states
+   * A sphere face on this cube meets a cylinder face on a neighbour — the one
+   * case where two cutters genuinely disagree, rather than a contact simply
+   * closing against an uncut shell. Tints the cube itself; interaction states
    * (targeted, selected, placement preview) still win over it.
    */
   flagged?: boolean;
@@ -147,10 +147,9 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     edgeColor = '#2e6fb2';
   }
 
-  // A genuine contradiction of the connection law. Violet is used nowhere else
-  // in the viewport, so it can't be read as added-blue, selected, carried or
-  // discarded — and it isn't a warning red, because this is a reading rather
-  // than an error.
+  // Two cutters that disagree. Violet is used nowhere else in the viewport, so
+  // it can't be read as added-blue, selected, carried or discarded — and it
+  // isn't a warning red, because this is a reading rather than an error.
   if (flagged) {
     fillColor = '#ece5f3';
     edgeColor = '#6b4c9a';

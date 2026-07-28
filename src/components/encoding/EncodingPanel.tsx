@@ -620,14 +620,11 @@ export const EncodingPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* How much of the proposal actually connects. Closure against a
-              blank wall is a property of the composition; a door against a
-              window is the model contradicting the law, and only those are
-              marked. Nothing is repaired either way. */}
-          <ConnectionReading
-            cubes={toCheckableCubes(encodedCubes)}
-            subject="this proposal"
-          />
+          {/* How much of the proposal actually connects. A shell contact is a
+              property of the composition; a sphere meeting a cylinder is two
+              cutters disagreeing, and only those cubes are marked. Nothing is
+              repaired either way. */}
+          <ConnectionReading cubes={toCheckableCubes(encodedCubes)} />
 
           {/* Remix v2 result — say what loading will do (replace, not add). */}
           {mode === 'remix' && remixResultReplacesSeed && decisions && (

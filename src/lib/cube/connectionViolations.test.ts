@@ -63,7 +63,7 @@ describe('findConnectionViolations', () => {
     expect(v.interfacePosition).toEqual([GRID_STRIDE / 2, 21, 0]);
   });
 
-  it('reports a shell adjacency — growth stops at blank walls', () => {
+  it('reports a shell adjacency — growth stops at uncut faces', () => {
     const a = variationWithFace('X_POS', 'shell');
     const b = variationWithFace('X_NEG', 'sphere');
     const violations = findConnectionViolations(pairAlongX(a, b));
@@ -173,7 +173,7 @@ describe('vocabulary invariant — the depth axis is closed at rest', () => {
   // decides how the flag behaves in practice: an assembly that grows in depth
   // without tipping its cubes is refused at every one of those joints. Locked
   // down here so a regenerated variation table can't change it silently.
-  it('every variation is a blank wall on both depth faces at rest', () => {
+  it('every variation is shell on both depth faces at rest', () => {
     expect(VARIATION_FACE_TYPES.size).toBeGreaterThan(0);
     for (const [id, faces] of VARIATION_FACE_TYPES) {
       expect(faces.Z_NEG, `${id} Z_NEG`).toBe('shell');
@@ -259,16 +259,16 @@ describe('summarizeConnections', () => {
     const wall = summarizeConnections(
       pairAlongX(variationWithFace('X_POS', 'shell'), variationWithFace('X_NEG', 'sphere'))
     );
-    expect(wall.blankWall).toBe(1);
-    expect(wall.mismatch).toBe(0);
-    expect(wall.violations[0].kind).toBe('blank-wall');
+    expect(wall.shell).toBe(1);
+    expect(wall.crossed).toBe(0);
+    expect(wall.violations[0].kind).toBe('shell');
 
-    const crossed = summarizeConnections(
+    const crossedSummary = summarizeConnections(
       pairAlongX(variationWithFace('X_POS', 'sphere'), variationWithFace('X_NEG', 'cylinder'))
     );
-    expect(crossed.blankWall).toBe(0);
-    expect(crossed.mismatch).toBe(1);
-    expect(crossed.violations[0].kind).toBe('mismatch');
+    expect(crossedSummary.shell).toBe(0);
+    expect(crossedSummary.crossed).toBe(1);
+    expect(crossedSummary.violations[0].kind).toBe('crossed');
   });
 
   it('names every cube taking part in a refusal, each once', () => {
@@ -289,8 +289,8 @@ describe('summarizeConnections', () => {
     const summary = summarizeConnections([]);
     expect(summary).toMatchObject({
       totalAdjacencies: 0,
-      blankWall: 0,
-      mismatch: 0,
+      shell: 0,
+      crossed: 0,
     });
     expect(summary.violations).toEqual([]);
     expect(summary.cubeIds.size).toBe(0);
