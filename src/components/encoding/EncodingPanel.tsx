@@ -17,6 +17,8 @@ import { isModelLabEnabled } from '../../lib/modelLab';
 import { Section } from '@/components/ui/section';
 import { ActiveSiteChip } from '../layout/ActiveSiteChip';
 import { LexiconEditor } from './LexiconEditor';
+import { ConnectionViolationNotice } from '../viewport/ConnectionViolationNotice';
+import { toCheckableCubes } from '../../lib/cube/connectionViolations';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
   try {
@@ -617,6 +619,14 @@ export const EncodingPanel: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Refused adjacencies in the proposal. The grammar teaches the model
+              the connection law; this catches the times it doesn't follow it.
+              Nothing is repaired — the proposal arrives exactly as returned. */}
+          <ConnectionViolationNotice
+            cubes={toCheckableCubes(encodedCubes)}
+            subject="this proposal"
+          />
 
           {/* Remix v2 result — say what loading will do (replace, not add). */}
           {mode === 'remix' && remixResultReplacesSeed && decisions && (

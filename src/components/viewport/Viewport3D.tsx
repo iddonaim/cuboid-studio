@@ -19,6 +19,8 @@ import { SpatialGrid } from './SpatialGrid';
 import { Grid } from '@react-three/drei';
 import { gridExtentFromPositions } from '../../lib/viewport/spatialGridExtent';
 import { CubeWithCuts } from './CubeWithCuts';
+import { ConnectionViolationMarkers } from './ConnectionViolationMarkers';
+import { toCheckableCubes } from '../../lib/cube/connectionViolations';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
@@ -120,6 +122,11 @@ const BuilderScene: React.FC = () => {
           />
         );
       })}
+
+      {/* Refused adjacencies in the assembly as it stands. The Builder's own
+          rules only govern interactive placement, so an assembly that arrived
+          from an encode, a remix or a restore can still carry them. */}
+      <ConnectionViolationMarkers cubes={toCheckableCubes(placedCubes)} />
 
       {/* Hover / touch ghost preview */}
       {pickerActive && hoverPos && selectedCubeIds.length === 0 && (
@@ -276,6 +283,10 @@ const AssemblyPataphysicalScene: React.FC = () => {
           />
         );
       })}
+
+      {/* Refused adjacencies, checked against the cubes' variation faces as
+          built. Cuts a translation made on top are not tracked here. */}
+      <ConnectionViolationMarkers cubes={toCheckableCubes(placedCubes)} />
 
       {/* Cutter wireframe at targeted cube's position */}
       {targetCube && (
@@ -489,6 +500,18 @@ const EncodingScene: React.FC = () => {
     previousProposalCubes,
   ]);
 
+  // The build the connection law is checked against: whatever is currently
+  // solid on screen. The ghosted layers (discarded cubes, a previous proposal)
+  // are history being compared against, not a build to hold to the law.
+  const lawCheckedCubes = useMemo(() => {
+    if (editedStandalone) return toCheckableCubes(editedVisibleCubes);
+    return toCheckableCubes([
+      ...(hasSeed ? seedCubes : []),
+      ...visibleEncoded,
+      ...assemblyCubes,
+    ]);
+  }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, visibleEncoded, assemblyCubes]);
+
   if (
     !editedStandalone &&
     !hasSeed &&
@@ -503,6 +526,11 @@ const EncodingScene: React.FC = () => {
   return (
     <>
       <SpatialGrid extent={gridExtentFromPositions(allPositions)} />
+
+      {/* Refused adjacencies in the encoding build. The model is taught the
+          connection law in the grammar but is never held to it — a proposal it
+          breaks arrives intact and marked, for the architect to judge. */}
+      <ConnectionViolationMarkers cubes={lawCheckedCubes} />
 
       {/* Edited standalone assembly — original cubes plus builder additions.
           Additions are drawn with "added" provenance (blue) and can be hidden
@@ -702,6 +730,10 @@ const EvolutionScene: React.FC = () => {
           />
         );
       })}
+
+      {/* Refused adjacencies, from the cubes' variation faces as built. A
+          restored composition is checked the same as a fresh one. */}
+      <ConnectionViolationMarkers cubes={toCheckableCubes(placedCubes)} />
 
       {/* Stored cutter wireframe of the inspected cube's last change */}
       {inspectedCube && (

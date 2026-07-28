@@ -6,13 +6,15 @@
 # To change WHAT the model does: edit this file.
 # To change WHAT WORDS it uses: edit lexicon.default.ts (or the active Firestore lexicon in L3).
 #
-# version: 3
+# version: 4
 # (Provenance: bump this number whenever this file is edited. The API reads it
 #  and stamps it onto every encode result as `promptVersion`, so saved
 #  compositions record which grammar produced them.)
 #
-# Last edited: 2026-07-25
+# Last edited: 2026-07-28
 # Author: Iddo Naim
+# (v4 adds THE CONNECTION LAW section — drafted by an agent, pending Iddo's
+#  reword into his own voice. That reword is a further bump.)
 
 ---
 
@@ -172,6 +174,55 @@ valid only at a cell the seed occupied: it transplants that seed cube's
 operators onto your cube. It is meaningless on kept cubes (they inherit
 automatically) and forbidden elsewhere.
 
+## THE CONNECTION LAW
+
+Cubes meet where their cut faces agree. A face carries one of three conditions,
+decided by the variation's cutters: a sphere face reads as a **door**, a
+cylinder face as a **window**, an uncut face as a **blank wall**.
+
+- Door meets door.
+- Window meets window.
+- A door does not meet a window — the cuts disagree, so nothing passes between
+  them.
+- A blank wall meets nothing. Growth stops at blank walls.
+
+Two cubes are in contact when they sit in adjacent grid cells. The touching
+faces are the pair that decides whether that contact is a connection or a
+closure. Prefer adjacencies where the faces agree, and let the law shape the
+assembly's growth: where a wall turns up, the assembly has found an edge.
+
+**The vocabulary is not the same in every direction.** Left–right (X) and
+up–down (Y) both have doors and windows available. Depth (Z) does not: at rest,
+every one of the 70 variations presents a blank wall on both of its depth faces.
+Two cubes placed one behind the other in an unrotated assembly are therefore
+always wall-to-wall.
+
+The way through is rotation. An X-rotation tips a cube so that a cut face comes
+around to meet its neighbour in depth. So:
+
+- An assembly that spreads left–right and stacks upward can connect throughout
+  without rotating anything.
+- An assembly with **depth** must tip the cubes that meet along Z, or accept
+  that it is a set of parallel walls standing near each other rather than one
+  connected body.
+
+Both are legitimate readings of a space. Choose knowingly rather than by
+default — an unrotated deep assembly is a decision about closure, and if it
+isn't the one you mean, rotate.
+
+**This is not a rule about reading the photograph.** The atmosphere rule above
+tells you not to match a photographed window to a cylinder or a photographed
+doorway to a sphere — that stands, and it governs how you *read* a space. This
+section governs how the cubes you have chosen *sit together* once placed. The
+first is about interpretation; the second is about assembly. Do not let one
+contaminate the other.
+
+You are not bound by this law. A placement that breaks it is permitted, and it
+will arrive intact — nothing is deleted, moved, rotated or corrected. Refused
+adjacencies are marked in the architect's viewport as a reading for their
+judgment. Break the law when the space genuinely asks for it, and let the mark
+stand as part of what you proposed.
+
 ## MULTI-IMAGE SYNTHESIS
 
 When you receive more than one image, you are synthesizing multiple perspectives of a site (or intentionally cross-contaminated inputs) into a single assembly.
@@ -191,6 +242,10 @@ Each cube can be rotated on two axes:
 - X-rotation: 0, 1, 2, or 3 (representing 0°, 90°, 180°, 270° around horizontal axis)
 
 Use rotation to add visual variety and respond to directionality in the space.
+
+Rotation also decides what a cube can connect to — see THE CONNECTION LAW above.
+An X-rotation is what brings a cut face around to the depth axis, so any
+assembly meant to read as connected in depth needs it.
 
 ## OUTPUT FORMAT
 
