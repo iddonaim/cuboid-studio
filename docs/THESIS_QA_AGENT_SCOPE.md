@@ -35,9 +35,11 @@ inspectable, including the knowledge that the project is unfinished.
 | Privacy | **Solved by air-gap.** Nothing is connected to anything. Iddo hand-picks and copies in what belongs. No live reads from Notion, Firestore, Drive or the repos. |
 | Freshness | **Static-first.** The thesis freezes ~1 week before 2026-08-09 in order to produce everything; the corpus freezes with it. Update protocols are a later problem. |
 | Corpus scope | Repos, written thesis text, theory & references, drawings/plates/images, the live meme material, the Notion SoT, the slide deck, future products and diagrams. |
-| Out-of-scope questions | **Suggestion box.** Not an error state — a collection surface, and material for critique of the system. |
+| Out-of-scope questions | **Suggestion box.** Not an error state — a collection surface, and material for critique of the system. **Real and collecting on 2026-08-09**, not a declared gesture. |
 | Conflicts / unknowns | **Flag, never paper over.** Show both sides with their sources and dates. |
 | Home | This file for now. No new repo. |
+| **Deliverable date** | **2026-08-09.** This is thesis material, not a side project. Anything after gets its own scope and probably lands in the portfolio website. |
+| **Language** | **Hebrew.** English version later, out of scope for August 9. |
 
 ---
 
@@ -77,6 +79,17 @@ operator vocabulary to Krier's typologies" — is out of reach unless that quest
 was written and answered beforehand.
 
 This is a real limit and it should be **declared, not hidden** (see §5).
+
+### Interface: browsable, not a blank box
+
+**Decided 2026-07-27.** A blank chat box promises an infinite system and then
+fails in front of the person it disappointed. The answer set is finite, so it is
+**shown**: browsable by category, with search that narrows rather than
+interrogates, and the suggestion box at the visible end.
+
+This is the honest interface for a closed vocabulary, and it also removes the
+project's largest technical risk (see §4a — Hebrew matching). If a visitor can
+*see* the questions, no matching has to succeed for the thing to work.
 
 ### The design rhyme
 
@@ -131,6 +144,57 @@ instruments (theory docs, evidence map, handover, drift plan) → archival.
    at the end of the SoT (stale single-pass mentions, stale magnitude claims,
    `connectionRules.ts`'s contradictory header, GA vocabulary in the spec files)
    seeds this directly.
+
+---
+
+## 4a. Hebrew — two consequences
+
+**Decision: the answer set is Hebrew.** English is a later project.
+
+### Agents do not draft the Hebrew
+
+The SoT already sets this rule: *"agents no longer draft HE; final blessing stays
+Iddo's."* It stands here. The division of labour is therefore:
+
+| Work | Owner |
+|---|---|
+| Question list, ranking, provenance tags, tier + date stamps | Agent |
+| Answer *content* — what is true, what the sources say, where they conflict | Agent, in English, as working scaffold |
+| **The Hebrew that a jury reads** | **Iddo** |
+| Interface, matching, suggestion-box plumbing | Agent |
+
+**This is the schedule risk, and it is Iddo's time, not the agent's.** Every
+answer in the shipped set has to pass through him in Hebrew. That caps the
+realistic size of the set far below what the corpus could support — see §7.
+
+Mitigating fact: these are the same answers he has to be able to *say aloud* in
+the crit. Writing them is not additional work, it is crit preparation that
+happens to be written down.
+
+### Hebrew matching is genuinely hard
+
+Hebrew has no capitalisation, attaches prefixes directly to words (ה, ו, ב, ל, מ,
+ש, כ), writes without vowels, and inflects heavily. Naive keyword matching
+underperforms badly: a visitor typing `איך המערכת מתרגמת ממים` will not
+reliably reach an answer keyed on `תרגום ממים`.
+
+Three options were considered:
+
+1. **Build-time embeddings** (multilingual model, vectors shipped static — still
+   air-gapped at run time). Handles morphology well, adds a build dependency six
+   days before freeze.
+2. **Hebrew normalisation** — strip the prefix letters, fold final forms
+   (ם/ן/ץ/ף/ך), match loosely. Zero dependency, crude.
+3. **Hand-authored trigger phrases per answer.** Most reliable for a set of this
+   size, fully inspectable, and curated by the person who has to defend it.
+
+**Decision: 3 + 2, with the browsable interface carrying the real load.** Option
+1 stays available as a post-August upgrade. With a visible, finite, browsable set,
+matching is a convenience rather than a dependency — which is the whole point of
+not pretending the set is infinite.
+
+RTL layout has precedent to borrow from: `archthesis` is Hebrew-first RTL with
+i18next already.
 
 ---
 
@@ -206,40 +270,58 @@ half-drafted across existing documents:
 - §A's tiering → tells you what each answer's provenance tag should be.
 
 **Deliverable:** one document. Prints as a book appendix. Works as speech prep.
-Becomes the agent's entire content if a wrapper is ever built.
+Becomes the agent's entire content.
 
-**This is worth doing even if no code is ever written.**
+**Sizing.** The corpus could support 60+ questions. The Hebrew bottleneck (§4a)
+means the shipped set should be **20–30**, chosen for what a jury will actually
+ask, not for coverage. A small set of answers Iddo can defend beats a large set
+he has skimmed — and an answer he has not personally blessed is exactly the
+failure mode this whole design exists to prevent.
 
-### Phase 1 — thin static wrapper (only if Phase 0 finishes early)
+Ranked question list: `docs/THESIS_QA_QUESTION_LIST.md`.
 
-A single self-contained HTML page over the frozen answer set. Offline, no build
-step, no dependencies, opens from a USB stick. Matching by keyword plus
-pre-computed similarity; suggestion box writes to local storage or a plain form.
+### Phase 1 — the shipped surface (required for 2026-08-09)
 
-Only start this if Phase 0 is done and the wall and book are on track. It is a
-nice-to-have, not a thesis deliverable.
+**Confirmed as a thesis deliverable**, so this is no longer optional.
+
+A single self-contained HTML page over the frozen answer set. Hebrew, RTL,
+offline, no build step, no dependencies, opens from a USB stick or a laptop at
+the pin-up. Browsable by category (§3), search narrows, suggestion box at the end.
+
+**The suggestion box is real and collects.** Air-gapped, so it writes locally —
+to a file or browser storage on the machine at the pin-up — and gets read
+afterwards. It is not a form that posts somewhere.
+
+Open: where it physically lives on 2026-08-09 (§8).
 
 ### Phase 2 — after 2026-08-09
 
-Everything else: the fuller retrieval layer, the other three repos' reconciled
-context files, image captioning, live-code re-verification, update protocols, and
-the question of whether it becomes a real product.
+Its own scope, its own time. Expected home: **the portfolio website.** Includes
+the English set, the fuller retrieval layer, the other three repos' reconciled
+context files, image captioning, live-code re-verification, and update protocols.
 
 ---
 
 ## 8. Open questions for Iddo
 
-1. **Is this a thesis deliverable or a post-thesis project?** If the answer set
-   goes in the book, Phase 0 must start now. If the whole thing is post-August,
-   we do it properly in September and it costs nothing today.
-2. **Where does the Q&A document live** — book appendix, wall panel, spoken prep,
-   or all three? This decides its length and register.
-3. **Hebrew, English, or both?** The synopsis is canonical Hebrew; the jury is
-   Hebrew-speaking; visitors may not be. Doubling the answer set doubles the
-   proofreading.
-4. **Does the suggestion box need to actually collect** during the crit, or is it
-   a declared gesture? Collecting means storage and a plan for what happens to
-   the submissions.
+**Resolved 2026-07-27:** thesis deliverable for August 9 · Hebrew · suggestion box
+real and collecting · later work goes to the portfolio website.
+
+Still open:
+
+1. **Where does the thing physically live on 2026-08-09?** A laptop or tablet at
+   the pin-up, a QR to a local page, a page in the book with the answer set
+   printed, or more than one. This decides the interface work and how the
+   suggestion box collects.
+2. **Does the answer set also print?** If it goes in the book as an appendix, the
+   register changes — printed answers cannot say "tap for source."
+3. **Who writes the ~25 Hebrew answers, and when?** The agent produces content
+   scaffolds; the Hebrew is Iddo's, against a freeze around 2026-08-02. If that
+   is not realistic, the honest move is to cut the set further rather than ship
+   Hebrew he has not blessed.
+4. **Does the suggestion box ask for a name?** Anonymous matches the platform's
+   own ungated-entry posture; attributed makes the collected critique citable
+   afterwards.
 
 ---
 
