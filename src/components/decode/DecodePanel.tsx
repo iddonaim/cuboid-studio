@@ -1,18 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type Konva from 'konva';
 import type { CanvasTile, TileRotation } from '../../store/useDecodeStore';
-import { Expand, RotateCw, X } from 'lucide-react';
+import { RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
 import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
+import {
+  downloadDecodeSheetPng,
+  downloadDecodeSheetSvg,
+} from '../../lib/decode/decodeSheetExport';
 import { importPlanUnderlay } from '../../lib/decode/planUnderlay';
 import { TILE_SIZE, worldSnapPoints } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { DecodeCanvas } from './DecodeCanvas';
 import { ActiveSiteChip } from '../layout/ActiveSiteChip';
+import { SectionCutControls } from '../viewport/SectionCutControls';
 
 const ALL_VARIATIONS = Array.from({ length: 70 }, (_, i) =>
   `v-${String(i).padStart(2, '0')}`,
@@ -94,15 +97,8 @@ const DrawerTile: React.FC<{
   );
 };
 
-interface DecodeComposerProps {
-  expanded?: boolean;
-  onCloseExpanded?: () => void;
-}
-
-const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onCloseExpanded }) => {
+const DecodeComposer: React.FC = () => {
   const isMobile = useIsMobile();
-  const stageRef = useRef<Konva.Stage | null>(null);
-  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const freestyle = useDecodeStore(s => s.freestyle);
@@ -114,13 +110,13 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
   const setUnderlay = useDecodeStore(s => s.setUnderlay);
   const updateUnderlayRegistration = useDecodeStore(s => s.updateUnderlayRegistration);
   const setFreestyle = useDecodeStore(s => s.setFreestyle);
-  const toggleCanvasExpanded = useDecodeStore(s => s.toggleCanvasExpanded);
   const addTile = useDecodeStore(s => s.addTile);
   const rotateTile = useDecodeStore(s => s.rotateTile);
   const removeTile = useDecodeStore(s => s.removeTile);
   const clearCanvas = useDecodeStore(s => s.clearCanvas);
   const setSelectedTileId = useDecodeStore(s => s.setSelectedTileId);
   const setPendingPlacementVariationId = useDecodeStore(s => s.setPendingPlacementVariationId);
+  const requestFit = useDecodeStore(s => s.requestFit);
 
   const drawerVariations = useMemo(
     () => (freestyle ? ALL_VARIATIONS : dedupeVariationsFromAssembly(placedCubes)),
@@ -198,51 +194,11 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
         placed.push(next);
         addTile({ variationId: next.variationId, x: next.x, y: next.y, rotation: next.rotation });
       }
+      // Auto-composed tiles snap onto existing ones and can walk clear off the
+      // viewport — reframe so the composition you just asked for is on screen.
+      requestFit();
     },
-    [addTile, canvasTiles, drawerVariations],
-  );
-
-  const placePendingAt = useCallback(
-    (worldX: number, worldY: number) => {
-      if (!pendingPlacementVariationId) return;
-      addTile({
-        variationId: pendingPlacementVariationId,
-        x: worldX,
-        y: worldY,
-        rotation: 0,
-      });
-    },
-    [addTile, pendingPlacementVariationId],
-  );
-
-  const clientToWorld = useCallback((clientX: number, clientY: number) => {
-    const stage = stageRef.current;
-    const container = dropZoneRef.current;
-    if (!stage || !container) return null;
-
-    const rect = container.getBoundingClientRect();
-    const pointer = { x: clientX - rect.left, y: clientY - rect.top };
-    const transform = stage.getAbsoluteTransform().copy().invert();
-    return transform.point(pointer);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const variationId = e.dataTransfer.getData('text/variation-id');
-      if (!variationId) return;
-
-      const world = clientToWorld(e.clientX, e.clientY);
-      if (!world) return;
-
-      addTile({
-        variationId,
-        x: world.x - TILE_SIZE / 2,
-        y: world.y - TILE_SIZE / 2,
-        rotation: 0,
-      });
-    },
-    [addTile, clientToWorld],
+    [addTile, canvasTiles, drawerVariations, requestFit],
   );
 
   useEffect(() => {
@@ -263,21 +219,29 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [removeTile, rotateTile, selectedTileId]);
 
-  const handleExportDxf = async () => {
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const runExport = async (kind: 'dxf' | 'svg' | 'png') => {
     if (isEmpty || exporting) return;
     setExporting(true);
+    setExportError(null);
     try {
-      await downloadDecodeCompositionDxf(canvasTiles);
+      if (kind === 'dxf') await downloadDecodeCompositionDxf(canvasTiles);
+      else if (kind === 'svg') await downloadDecodeSheetSvg(canvasTiles);
+      else if (!downloadDecodeSheetPng()) {
+        // Only possible with the sheet unmounted — i.e. the 3D view is up.
+        setExportError('Switch back to the sheet to export a PNG.');
+      }
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setExporting(false);
     }
   };
 
-  const canvasHeightClass = expanded ? 'flex-1 min-h-0' : 'h-[320px] sm:h-[400px]';
-
   return (
-    <div className={`flex flex-col gap-2 ${expanded ? 'h-full' : ''}`}>
-      {!expanded && <ActiveSiteChip />}
+    <div className="flex flex-col gap-2">
+      <ActiveSiteChip />
       {/* Zone 1 — Toolbar */}
       <div className="flex items-center justify-between gap-2">
         <label className="flex items-center gap-2 text-[12px] text-ink-600">
@@ -300,29 +264,6 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
             </Button>
           )}
 
-          {expanded ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-ink-600 hover:text-ink-800"
-              onClick={onCloseExpanded}
-              aria-label="Close expanded canvas"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-ink-600 hover:text-ink-800"
-              onClick={toggleCanvasExpanded}
-              aria-label="Expand canvas"
-            >
-              <Expand className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
 
@@ -452,88 +393,55 @@ const DecodeComposer: React.FC<DecodeComposerProps> = ({ expanded = false, onClo
         {underlayError && <p className="mt-1 text-[11px] text-red-600">{underlayError}</p>}
       </div>
 
-      {/* Zone 3 — Canvas. In expanded mode this zone claims all remaining
-          height so the stage stretches vertically, not just horizontally. */}
-      <div className={expanded ? 'flex-1 min-h-0 flex flex-col' : undefined}>
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
-          Canvas
-        </p>
-        <div
-          ref={dropZoneRef}
-          className={canvasHeightClass}
-          onDragOver={e => e.preventDefault()}
-          onDrop={handleDrop}
-        >
-          <DecodeCanvas
-            isMobile={isMobile}
-            placePendingAt={placePendingAt}
-            onStageReady={stage => {
-              stageRef.current = stage;
-            }}
-          />
+      {/* Actions */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            disabled={isEmpty}
+            onClick={clearCanvas}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            Clear
+          </Button>
+          <Button
+            type="button"
+            disabled={isEmpty || exporting}
+            title="Vector drawing — one named group per tile, one symbol per variation"
+            onClick={() => void runExport('svg')}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            {exporting ? 'Exporting…' : 'Export SVG'}
+          </Button>
         </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            disabled={isEmpty || exporting}
+            title="Transparent background, 3× resolution"
+            onClick={() => void runExport('png')}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            Export PNG
+          </Button>
+          <Button
+            type="button"
+            disabled={isEmpty || exporting}
+            title="Geometry only — DXF carries no layers or groups"
+            onClick={() => void runExport('dxf')}
+            className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
+          >
+            Export DXF
+          </Button>
+        </div>
+        {exportError && <p className="text-[11px] text-red-600">{exportError}</p>}
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          disabled={isEmpty}
-          onClick={clearCanvas}
-          className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
-        >
-          Clear
-        </Button>
-        <Button
-          type="button"
-          disabled={isEmpty || exporting}
-          onClick={() => void handleExportDxf()}
-          className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
-        >
-          {exporting ? 'Exporting…' : 'Export DXF'}
-        </Button>
-      </div>
+      {/* Section cut — it drives the corner preview and the full 3D alike, so
+          the view you draw against can be set up without leaving Decode. */}
+      <SectionCutControls />
     </div>
   );
 };
 
-export const DecodePanel: React.FC = () => {
-  const canvasExpanded = useDecodeStore(s => s.canvasExpanded);
-  const setCanvasExpanded = useDecodeStore(s => s.setCanvasExpanded);
-
-  useEffect(() => {
-    if (!canvasExpanded) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCanvasExpanded(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canvasExpanded, setCanvasExpanded]);
-
-  return (
-    <>
-      {!canvasExpanded && <DecodeComposer />}
-
-      {canvasExpanded && (
-        // z-40 keeps the expanded canvas under the TopBar (z-50) so "Save to
-        // project" and the mode tabs stay reachable while working fullscreen;
-        // the backdrop starts below the bar for the same reason.
-        <div
-          className="fixed inset-x-0 top-[42px] bottom-0 z-40 flex items-center justify-center bg-black/70"
-          onClick={() => setCanvasExpanded(false)}
-        >
-          <div
-            className="flex w-[90vw] h-[82vh] flex-col overflow-hidden rounded-xl border border-ink-200 bg-ink-50 p-3 shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <DecodeComposer
-              expanded
-              onCloseExpanded={() => setCanvasExpanded(false)}
-            />
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
+export const DecodePanel: React.FC = () => <DecodeComposer />;

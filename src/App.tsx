@@ -26,6 +26,10 @@ import { EvolutionPanel } from './components/evolution/EvolutionPanel';
 import { CubeChangeCard } from './components/evolution/CubeChangeCard';
 import { ExportPanel } from './components/export/ExportPanel';
 import { DecodePanel } from './components/decode/DecodePanel';
+import { DecodeCanvas } from './components/decode/DecodeCanvas';
+import { useDecodeStore } from './store/useDecodeStore';
+import { DecodeStageToggle } from './components/decode/DecodeStageToggle';
+import { DecodeAssemblyPreview } from './components/decode/DecodeAssemblyPreview';
 import { MapContextCanvas } from './components/map/MapContextCanvas';
 import { SitesMapView } from './components/map/SitesMapView';
 import { MapChromeBar } from './components/map/MapChromeBar';
@@ -148,6 +152,7 @@ const AppInner: React.FC = () => {
   const floatingPanelOpen   = useAppStore(s => s.floatingPanelOpen);
   const seedEditOpen        = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode    = useEvolutionStore(s => s.subMode);
+  const decodeStageView     = useDecodeStore(s => s.stageView);
   const isMobile            = useIsMobile();
   const { user }            = useAuthContext();
   const setSiteAnalysisReady = useAppStore(s => s.setSiteAnalysisReady);
@@ -297,6 +302,10 @@ const AppInner: React.FC = () => {
   }, []);
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
+  // Decode's working surface is the notation sheet, so it takes the stage and
+  // the 3D assembly steps back behind a toggle.
+  const showDecodeSheet = activeMode === 'decode' && decodeStageView === 'draw';
+
   if (isMobile) {
     return (
       // mobile-root uses 100dvh (dynamic viewport height) for iOS Safari compatibility.
@@ -327,7 +336,19 @@ const AppInner: React.FC = () => {
           {showSitesMap && <SitesMapView />}
           {!showMapCanvas && (
             <>
-              <Viewport3D />
+              {/* Sheet and 3D are alternatives, not layers: only one WebGL
+                  canvas is alive at a time, and the full viewport re-mounts
+                  (and so re-fits its camera) when you open it. Hiding it with
+                  display:none instead collapsed the canvas and brought it back
+                  framed for nothing. */}
+              {showDecodeSheet ? (
+                <div className="absolute inset-0 bg-white">
+                  <DecodeCanvas isMobile />
+                  <DecodeAssemblyPreview />
+                </div>
+              ) : (
+                <Viewport3D />
+              )}
               {/* Encoding: BuilderScene overlay shows SelectedCubePanel;
                   otherwise the standard EncodingResultPanel */}
               {activeMode === 'encoding' && (
@@ -338,8 +359,11 @@ const AppInner: React.FC = () => {
               {showPataphysicalSurface && <OperatorResultPanel />}
               {activeMode === 'evolution' && evolutionSubMode === 'evolve' && <CubeChangeCard />}
               {/* Decode: read-only composition tags overlay on the 3D background */}
-              {activeMode === 'decode' && <DecodeTagsOverlay />}
-              <CaptureButton />
+              {activeMode === 'decode' && !showDecodeSheet && <DecodeTagsOverlay />}
+              {activeMode === 'decode' && <DecodeStageToggle />}
+              {/* CaptureButton photographs the 3D scene — hidden while the
+                  sheet is up, which exports through DXF instead. */}
+              {!showDecodeSheet && <CaptureButton />}
               <HelpBar />
             </>
           )}
@@ -399,7 +423,15 @@ const AppInner: React.FC = () => {
             nothing floats over the map-context iframe's own toolbar. */}
         {!showMapCanvas && (
           <>
-            <Viewport3D />
+            {/* One canvas at a time — see the mobile branch. */}
+            {showDecodeSheet ? (
+              <div className="absolute inset-0 bg-white">
+                <DecodeCanvas />
+                <DecodeAssemblyPreview />
+              </div>
+            ) : (
+              <Viewport3D />
+            )}
             {/* Results dock into the right-side Inspector rail on desktop */}
             <Inspector>
               {activeMode === 'encoding' && (
@@ -410,8 +442,11 @@ const AppInner: React.FC = () => {
                 <CubeChangeCard docked />
               )}
             </Inspector>
-            {activeMode === 'decode' && <DecodeTagsOverlay />}
-            <CaptureButton />
+            {activeMode === 'decode' && !showDecodeSheet && <DecodeTagsOverlay />}
+            {activeMode === 'decode' && <DecodeStageToggle />}
+            {/* CaptureButton photographs the 3D scene — hidden while the
+                sheet is up, which exports through DXF instead. */}
+            {!showDecodeSheet && <CaptureButton />}
             <HelpBar />
           </>
         )}

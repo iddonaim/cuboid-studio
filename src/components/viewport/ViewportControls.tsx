@@ -32,6 +32,7 @@ const OrbitTargetSync: React.FC<{ center: THREE.Vector3 }> = ({ center }) => {
  */
 export const ViewportControls: React.FC<SceneFlags> = (flags) => {
   const orthographic = useAppStore(s => s.orthographic);
+  const setLastViewpoint = useAppStore(s => s.setLastViewpoint);
   const camera = useThree(s => s.camera);
   const controls = useThree(s => s.controls) as OrbitControlsImpl | null;
   const bounds = useAssemblyBounds(flags);
@@ -45,6 +46,20 @@ export const ViewportControls: React.FC<SceneFlags> = (flags) => {
   useFrame(() => {
     orbitDistanceRef.current = camera.position.distanceTo(centerRef.current);
   });
+
+  /** Record where the viewport ended up, so secondary views (the Decode
+   *  corner preview) can adopt the angle rather than inventing their own.
+   *  Direction and target only — distance belongs to whoever renders it. */
+  const recordViewpoint = useCallback(() => {
+    const target = controlsRef.current?.target ?? centerRef.current;
+    const offset = camera.position.clone().sub(target);
+    if (offset.lengthSq() < 1e-6) return;
+    offset.normalize();
+    setLastViewpoint({
+      direction: [offset.x, offset.y, offset.z],
+      target: [target.x, target.y, target.z],
+    });
+  }, [camera, setLastViewpoint]);
 
   /** Correct gizmo snap radius + refresh controls (incl. ortho projection). */
   const handleGizmoUpdate = useCallback(() => {
@@ -62,7 +77,8 @@ export const ViewportControls: React.FC<SceneFlags> = (flags) => {
     }
 
     controlsRef.current?.update();
-  }, [camera]);
+    recordViewpoint();
+  }, [camera, recordViewpoint]);
 
   return (
     <>
@@ -80,6 +96,7 @@ export const ViewportControls: React.FC<SceneFlags> = (flags) => {
           ONE: THREE.TOUCH.ROTATE,
           TWO: THREE.TOUCH.DOLLY_PAN,
         }}
+        onEnd={recordViewpoint}
       />
       <OrbitTargetSync center={bounds.center} />
       <GizmoHelper

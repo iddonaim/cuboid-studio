@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccent } from '../../contexts/AccentContext';
-import { Circle, Group, Image, Layer, Line, Rect, Stage } from 'react-konva';
+import { Circle, Group, Image, Layer, Rect, Shape, Stage } from 'react-konva';
 import type Konva from 'konva';
 import { CanvasTile, DecodeUnderlay, useDecodeStore } from '../../store/useDecodeStore';
 import { getSnapPoints } from '../../lib/decode/snapPoints';
@@ -11,6 +11,11 @@ import {
   TILE_SIZE,
 } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
+import {
+  registerSheetCapture,
+  sheetBounds,
+  unregisterSheetCapture,
+} from '../../lib/decode/decodeSheetExport';
 
 const imageCache = new Map<string, HTMLImageElement>();
 
@@ -71,6 +76,59 @@ const UnderlayImage: React.FC<{ underlay: DecodeUnderlay }> = ({ underlay }) => 
     />
   );
 };
+
+
+/** Minor / major grid spacing, in canvas world units. */
+const GRID_MINOR = 24;
+const GRID_MAJOR = GRID_MINOR * 4;
+
+/**
+ * The drafting lattice, drawn from the *current view* rather than as a fixed
+ * patch of world. The old grid was a finite block of lines sized to the stage
+ * at mount, anchored at the world origin — pan a little and you sailed off its
+ * edge into blank white.
+ *
+ * One Konva Shape rather than a few hundred <Line> nodes: its sceneFunc reads
+ * the live stage transform and strokes only what the viewport can see, so
+ * panning and zooming redraw it for free without React re-reconciling a
+ * thousand children every mouse-move.
+ */
+const InfiniteGrid: React.FC<{ width: number; height: number }> = ({ width, height }) => (
+  <Shape
+    listening={false}
+    sceneFunc={(ctx, shape) => {
+      const stage = shape.getStage();
+      if (!stage) return;
+      const scale = stage.scaleX() || 1;
+      const left = -stage.x() / scale;
+      const top = -stage.y() / scale;
+      const right = left + width / scale;
+      const bottom = top + height / scale;
+
+      const rule = (step: number, color: string) => {
+        // Skip a tier once its lines would be closer than a few pixels apart —
+        // otherwise a zoomed-out sheet turns into mud.
+        if (step * scale < 5) return;
+        ctx.beginPath();
+        for (let x = Math.floor(left / step) * step; x <= right; x += step) {
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, bottom);
+        }
+        for (let y = Math.floor(top / step) * step; y <= bottom; y += step) {
+          ctx.moveTo(left, y);
+          ctx.lineTo(right, y);
+        }
+        ctx.strokeStyle = color;
+        // Divide by scale so rules stay hairlines on screen at any zoom.
+        ctx.lineWidth = 1 / scale;
+        ctx.stroke();
+      };
+
+      rule(GRID_MINOR, '#ece9df');
+      rule(GRID_MAJOR, '#d6d2c4');
+    }}
+  />
+);
 
 function isSnapPointActive(
   activeSnap: ActiveSnap | null,
@@ -152,6 +210,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = (props) => {
       )}
       {selected && (
         <Rect
+          name="sheet-chrome"
           width={TILE_SIZE}
           height={TILE_SIZE}
           stroke={accent}
@@ -162,6 +221,7 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = (props) => {
       {snapPoints.map((sp, index) => (
         <Circle
           key={index}
+          name="sheet-chrome"
           x={sp.x * TILE_SIZE}
           y={sp.y * TILE_SIZE}
           radius={SNAP_POINT_RADIUS}
@@ -178,18 +238,26 @@ const CanvasTileNode: React.FC<CanvasTileNodeProps> = (props) => {
 
 export interface DecodeCanvasProps {
   onStageReady?: (stage: Konva.Stage | null) => void;
-  placePendingAt?: (worldX: number, worldY: number) => void;
   isMobile?: boolean;
 }
 
+/**
+ * The notation sheet. Self-contained: it owns its own drop target, tap-to-place
+ * and view controls, and talks to the decode store directly — so it can mount
+ * as the full-bleed stage without the sidebar having to thread a stage ref and
+ * drop handler through to it.
+ */
 export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   onStageReady,
-  placePendingAt,
   isMobile = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  // `measured` guards the first framing: the placeholder size below is a
+  // stand-in until the ResizeObserver reports, and framing against it puts the
+  // drawing somewhere off in the corner of the real canvas.
   const [size, setSize] = useState({ width: 300, height: 240 });
+  const [measured, setMeasured] = useState(false);
   const [activeSnap, setActiveSnap] = useState<ActiveSnap | null>(null);
 
   const canvasTiles = useDecodeStore(s => s.canvasTiles);
@@ -198,6 +266,8 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const pendingPlacementVariationId = useDecodeStore(s => s.pendingPlacementVariationId);
   const moveTile = useDecodeStore(s => s.moveTile);
   const setSelectedTileId = useDecodeStore(s => s.setSelectedTileId);
+  const addTile = useDecodeStore(s => s.addTile);
+  const fitRequestId = useDecodeStore(s => s.fitRequestId);
 
   const panRef = useRef<{ active: boolean; lastX: number; lastY: number }>({
     active: false,
@@ -222,6 +292,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         width: Math.max(1, entry.contentRect.width),
         height: Math.max(1, entry.contentRect.height),
       });
+      setMeasured(true);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -231,6 +302,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     onStageReady?.(stageRef.current);
     return () => onStageReady?.(null);
   }, [onStageReady, size.width, size.height]);
+
 
   const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -362,13 +434,144 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     return transform.point(pointer);
   }, []);
 
+  /** Screen point → canvas world point, through the live stage transform. */
+  const clientToWorld = useCallback((clientX: number, clientY: number) => {
+    const stage = stageRef.current;
+    const container = containerRef.current;
+    if (!stage || !container) return null;
+    const rect = container.getBoundingClientRect();
+    const transform = stage.getAbsoluteTransform().copy().invert();
+    return transform.point({ x: clientX - rect.left, y: clientY - rect.top });
+  }, []);
+
+  const placePendingAt = useCallback(
+    (worldX: number, worldY: number) => {
+      if (!pendingPlacementVariationId) return;
+      addTile({ variationId: pendingPlacementVariationId, x: worldX, y: worldY, rotation: 0 });
+    },
+    [addTile, pendingPlacementVariationId],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const variationId = e.dataTransfer.getData('text/variation-id');
+      if (!variationId) return;
+      const world = clientToWorld(e.clientX, e.clientY);
+      if (!world) return;
+      addTile({
+        variationId,
+        x: world.x - TILE_SIZE / 2,
+        y: world.y - TILE_SIZE / 2,
+        rotation: 0,
+      });
+    },
+    [addTile, clientToWorld],
+  );
+
+  /** Frame the drawing (or return to the origin when there's nothing yet).
+   *  With an unbounded sheet it's the way back from having panned into
+   *  nowhere. */
+  const fitView = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const tiles = useDecodeStore.getState().canvasTiles;
+    if (tiles.length === 0) {
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: 0, y: 0 });
+      stage.batchDraw();
+      return;
+    }
+    const minX = Math.min(...tiles.map(t => t.x));
+    const minY = Math.min(...tiles.map(t => t.y));
+    const maxX = Math.max(...tiles.map(t => t.x)) + TILE_SIZE;
+    const maxY = Math.max(...tiles.map(t => t.y)) + TILE_SIZE;
+    const pad = TILE_SIZE * 0.5;
+    const scale = Math.max(
+      0.3,
+      Math.min(3, Math.min(
+        size.width / (maxX - minX + pad * 2),
+        size.height / (maxY - minY + pad * 2),
+      )),
+    );
+    stage.scale({ x: scale, y: scale });
+    stage.position({
+      x: size.width / 2 - ((minX + maxX) / 2) * scale,
+      y: size.height / 2 - ((minY + maxY) / 2) * scale,
+    });
+    stage.batchDraw();
+  }, [size.width, size.height]);
+
+  // The sheet is unbounded in every direction, and tiles routinely sit at
+  // negative coordinates (a snap can grow the composition up and to the left).
+  // Parking the world origin in the middle of the viewport rather than its
+  // top-left corner means new work lands in view instead of off the edge.
+  const framedRef = useRef(false);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || framedRef.current || !measured) return;
+    framedRef.current = true;
+    if (useDecodeStore.getState().canvasTiles.length > 0) {
+      fitView();
+    } else {
+      stage.position({ x: size.width / 2, y: size.height / 2 });
+      stage.batchDraw();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measured, size.width, size.height]);
+
+  /**
+   * Transparent PNG of the drawing itself: the drafting chrome is hidden, the
+   * stage is temporarily reset to 1:1 at the drawing's corner so the crop is
+   * in predictable coordinates, and everything is put back afterwards. Nothing
+   * paints the canvas background (the paper is CSS on the container), so what
+   * comes out is a cut-out.
+   */
+  useEffect(() => {
+    registerSheetCapture((options) => {
+      const stage = stageRef.current;
+      if (!stage) return null;
+      const tiles = useDecodeStore.getState().canvasTiles;
+      const bounds = sheetBounds(tiles);
+      if (!bounds) return null;
+
+      const prev = { pos: stage.position(), scale: stage.scaleX() };
+      const chrome = stage.find('.sheet-chrome');
+      chrome.forEach(node => node.visible(false));
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: -bounds.minX, y: -bounds.minY });
+      stage.draw();
+      try {
+        return stage.toDataURL({
+          x: 0,
+          y: 0,
+          width: bounds.width,
+          height: bounds.height,
+          pixelRatio: options?.pixelRatio ?? 3,
+        });
+      } finally {
+        chrome.forEach(node => node.visible(true));
+        stage.scale({ x: prev.scale, y: prev.scale });
+        stage.position(prev.pos);
+        stage.draw();
+      }
+    });
+    return () => unregisterSheetCapture();
+  }, []);
+
+  const firstFitRequest = useRef(fitRequestId);
+  useEffect(() => {
+    if (fitRequestId === firstFitRequest.current) return;
+    fitView();
+  }, [fitRequestId, fitView]);
+
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (e.target !== e.target.getStage()) return;
       // A drag-pan that ended on the stage is not a click
       if (pannedRef.current) { pannedRef.current = false; return; }
 
-      if (isMobile && pendingPlacementVariationId && placePendingAt) {
+      if (isMobile && pendingPlacementVariationId) {
         const stage = stageRef.current;
         if (!stage) return;
         const world = pointerToWorld(stage);
@@ -406,8 +609,18 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full min-h-[180px] overflow-hidden rounded-md border border-ink-400 bg-white shadow-inner"
+      onDragOver={e => e.preventDefault()}
+      onDrop={handleDrop}
+      className="relative h-full w-full min-h-[180px] overflow-hidden bg-white"
     >
+      <button
+        type="button"
+        onClick={fitView}
+        title={canvasTiles.length > 0 ? 'Frame the drawing' : 'Back to the origin'}
+        className="absolute bottom-3 right-3 z-10 h-7 px-2.5 rounded-full border border-ink-200 bg-ink-100 font-mono text-[11px] uppercase tracking-wide text-ink-600 shadow-[0_2px_8px_rgba(35,33,24,0.18)] hover:text-ink-800"
+      >
+        Fit
+      </button>
       {canvasTiles.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4 text-center">
           <p className="text-[12px] text-ink-500">
@@ -432,27 +645,11 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         onTap={handleStageClick}
         style={{ cursor: panRef.current.active ? 'grabbing' : 'grab', background: '#ffffff' }}
       >
-        <Layer listening={false}>
-          <Rect x={0} y={0} width={size.width} height={size.height} fill="#ffffff" />
-          {Array.from({ length: Math.ceil(size.width / 24) + 1 }, (_, i) => (
-            <Line
-              key={`v-${i}`}
-              points={[i * 24, 0, i * 24, size.height]}
-              stroke="#e6e3d9"
-              strokeWidth={1}
-            />
-          ))}
-          {Array.from({ length: Math.ceil(size.height / 24) + 1 }, (_, i) => (
-            <Line
-              key={`h-${i}`}
-              points={[0, i * 24, size.width, i * 24]}
-              stroke="#e6e3d9"
-              strokeWidth={1}
-            />
-          ))}
+        <Layer name="sheet-chrome" listening={false}>
+          <InfiniteGrid width={size.width} height={size.height} />
         </Layer>
         {underlay && (
-          <Layer listening={false}>
+          <Layer name="sheet-chrome" listening={false}>
             <UnderlayImage underlay={underlay} />
           </Layer>
         )}

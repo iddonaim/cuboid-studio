@@ -65,6 +65,20 @@ interface AppState {
   setSidebarWidth: (width: number) => void;
   /** True orthographic projection in the main 3D viewport. */
   orthographic: boolean;
+  /**
+   * Where the 3D viewport was last looking, recorded whenever an orbit, pan,
+   * zoom or view-cube snap settles. Lets a secondary view — the Decode corner
+   * preview — adopt the angle you set up in the real viewport instead of
+   * offering its own camera controls to get lost in.
+   *
+   * Direction (unit, from target toward the camera) and target only: distance
+   * is left to whoever renders it, since a framing chosen for a full-bleed
+   * canvas means nothing in a 224px thumbnail.
+   */
+  lastViewpoint: { direction: [number, number, number]; target: [number, number, number] } | null;
+  setLastViewpoint: (
+    viewpoint: { direction: [number, number, number]; target: [number, number, number] },
+  ) => void;
   setOrthographic: (value: boolean) => void;
   toggleOrthographic: () => void;
 }
@@ -125,6 +139,8 @@ export const useAppStore = create<AppState>((set) => ({
     set({ sidebarWidth: clamped });
   },
   orthographic: false,
+  lastViewpoint: null,
+  setLastViewpoint: (lastViewpoint) => set({ lastViewpoint }),
   setOrthographic: (value) => set({ orthographic: value }),
   toggleOrthographic: () => set(s => ({ orthographic: !s.orthographic })),
 }));
