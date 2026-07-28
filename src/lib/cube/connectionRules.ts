@@ -6,10 +6,11 @@
  * - Door (z=0 opening) → Sphere cutter
  * - Window (z≠0 opening) → Cylinder cutter
  *
- * Connection rules:
+ * Connection rules (see `canConnect` below — it is the authority):
  * - Sphere face ↔ Sphere face ✓
  * - Cylinder face ↔ Cylinder face ✓
- * - Shell face ↔ Any face ✓
+ * - Sphere face ↔ Cylinder face ✗ (cutter types must match)
+ * - Shell face ↔ Any face ✗ (growth stops at blank walls)
  */
 
 import {

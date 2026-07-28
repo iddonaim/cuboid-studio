@@ -43,7 +43,7 @@ editing them is the intended way to change behavior:
 | `spatial-encoding-grammar.md` | Encode template with `{{slots}}` — the IF/THEN grammar (atmosphere→variation band, rhythm→assembly shape, light→mixing, emotion→density with melancholic override), multi-image synthesis rules ("do not average"), reading-before-geometry contract |
 | `lexicon.default.ts` | `DEFAULT_LEXICON` — the words injected into the grammar slots |
 | `spatial-encoding.md` | Pre-L1 standalone artifact, superseded, kept as history |
-| `pataphysical-translation.md` | v1 single-pass: meme's *visual form* → geometry. Still the engine behind Evolve candidates |
+| `pataphysical-translation.md` | v1 single-pass: meme's *visual form* → geometry. **Archival** — repudiated by v2 and no longer the engine behind Evolution candidates (two-pass since PR #59, 2026-06-08). Reachable only via the pass-mode toggle |
 | `pataphysical-translation-v2.md` | v2 two-pass skeleton with `{{slots}}`: Pass 1 cultural extraction, Pass 2 geometric translation. Explicitly repudiates v1's form-to-form rule (geometry from content+affect+site, not the image's composition) |
 | `translationLexicon.default.ts` | `DEFAULT_TRANSLATION_LEXICON` — 10 rhetorical moves→operator mappings, 6 edge defs, 6 affect→geometry rules, decay rules, 4 confidence-axis definitions |
 
@@ -175,8 +175,10 @@ off), selected variation, preview rotation.
    (localStorage `cuboid:activeSiteContext` + same-tab `cuboid:siteContextChanged`
    event). Written by: Map analysis-complete (currently broken upstream),
    SiteContextCurator (manual), My-sites "set as active". Read by: Encode
-   (flattened summary), two-pass translate (full JSON). v1/Evolve single-pass does
-   NOT send site context.
+   (flattened summary), two-pass translate (full JSON) — **including Evolution**,
+   which runs two-pass and therefore does send site context. Only a manual v1
+   single-pass request (`translateMeme()`, no shipping caller) omits it.
+   *(Verified at origin/main 2026-07-28.)*
 2. **Assembly** — single source of truth `useBuilderStore.placedCubes`. Encode
    writes into it (`loadIntoBuilder`: standalone replaces, merge/remix append,
    with grid-snap + collision drop). Pataphysical/Evolve store per-cube results in

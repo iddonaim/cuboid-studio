@@ -127,7 +127,7 @@ Compression progress (interestingness) = score_after − score_before. A sparkli
 
 Translates a meme into a spatial operator that re-cuts a target cube. **Both v1 (single-pass) and v2 (two-pass) are implemented and wired to the UI.**
 
-**Pass mode:** per-request, set by the client. `passMode` defaults to `'single'` (`useMemeStore`); the user can toggle to `'two_pass'` in `MemeInputPanel`. `translateMeme()` always sends `single` (used by Evolve); `translateMemeTwoPass()` always sends `two_pass` and auto-injects active site context. The `TRANSLATION_PASS_MODE` env var is only the server-side default / rollback switch.
+**Pass mode:** per-request, set by the client. `passMode` defaults to **`'two_pass'`** (`useMemeStore.ts:204`); the user can toggle to `'single'` in `MemeInputPanel`. `translateMemeTwoPass()` always sends `two_pass` and auto-injects active site context (`translateMeme.ts:73–75`, unless `skipSiteContext`). `translateMeme()` still exists and always sends `single`, but **nothing in the shipping UI calls it** — Evolution imports `translateMemeTwoPass` only (`useEvolutionStore.ts:6,259`). The `TRANSLATION_PASS_MODE` env var is **dead** — nothing reads it. *(Verified at origin/main 2026-07-28.)*
 
 **Two-pass structure (v2):**
 - Pass 1 — cultural extraction: rhetorical moves, cultural tensions, functional affects, site resonance, meme summary.
@@ -306,9 +306,15 @@ A three-way audit (code inventory, spec reconciliation, map-context audit)
 verified this file against the live code. The body above is accurate on all
 load-bearing claims **except** the following, which this section overrides:
 
-1. **Pataphysical `passMode` defaults to `'two_pass'`** (`useMemeStore.ts`),
-   not `'single'` as stated in the Pataphysical section. Evolve still always
-   sends single-pass.
+1. **Pataphysical `passMode` defaults to `'two_pass'`** (`useMemeStore.ts`).
+   The body above has been corrected; this item is now redundant.
+   ⚠ **This item's second sentence used to read "Evolve still always sends
+   single-pass." That was false when it was written** — Evolution has called
+   `translateMemeTwoPass` since PR #59 (2026-06-08), six weeks before the
+   2026-07-12 audit that stamped it verified. Corrected 2026-07-28. The
+   lesson is recorded in the SoT: a code-verified label carries its date and
+   no more, and every outgoing use of a mechanism claim re-verifies against
+   `origin/main` at answer time.
 2. **`TRANSLATION_PASS_MODE` env var is dead** — nothing reads it
    (`resolvePassMode` in `api/translate-meme.ts` only honors the request's
    `pass_mode`). Remove from env tables when next edited.

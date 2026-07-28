@@ -100,9 +100,16 @@ Building real graph mechanics is the natural "future work" chapter. What you
 must NOT do is present operator names as if they have distinct geometric
 behavior.
 
-### P2-2 · `magnitude` and `decay` are inert at runtime
+### P2-2 · `magnitude` and `decay` do not shape geometry
 Both are validated, stored and displayed; neither scales or fades the actual
 cut, and decay has no generational mechanism anywhere. Same family as P2-1.
+
+⚠ **"Inert" is too strong for `magnitude`, and the distinction is load-bearing.**
+It feeds the compressibility fingerprint (`compressibility.ts:573`), so it does
+affect which candidate Evolution ranks highest — the geometry ignores the meme's
+intensity, but the system's *taste* does not. `decay` is the fully inert one.
+Say "magnitude is geometrically inert but scored"; do not say both are inert.
+*(Verified at origin/main 2026-07-28.)*
 **Option:** wiring magnitude → cutter scale is a genuinely small change
 (multiply proportions in `applyOperator.ts`) if you want one honest "the number
 does something" demo; decay should stay future work.

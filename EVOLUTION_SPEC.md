@@ -12,10 +12,27 @@
 
 ## Theoretical Foundation
 
-This mode implements Jürgen Schmidhuber's **compression progress drive** (2008) as the fitness function for interactive evolutionary computation on cuboid assemblies. The core principle:
+This mode takes Jürgen Schmidhuber's **compression progress drive** (2008) as the scaffolding for its fitness function. The core principle:
 
 > **Interestingness ≈ first derivative of compressibility.**
 > Reward configurations that yield the steepest learning curve — not the most beautiful (static) or most random (noise), but the most *learnable*.
+
+> ⚠ **Two honesty notes on this whole document** *(added 2026-07-28, verified at
+> origin/main):*
+>
+> 1. **Schmidhuber is re-interpreted here, not implemented.** The shipping
+>    compressor is a **static four-sub-score signature** (geometric clustering
+>    0.3, spatial regularity 0.3, operator-sequence n-grams 0.2, meme coherence
+>    0.2), and "compression progress" is the delta between two such scores. There
+>    is no learning compressor. Claim the re-interpretation — it is stronger than
+>    pretending, and the delta really is computed.
+> 2. **This is not a genetic algorithm and never became one.** No population, no
+>    crossover, no mutation, no inheritance. The shipped loop is a
+>    **single-lineage guided search with the architect in the loop**. Crossover
+>    was refused deliberately: single lineage keeps a human answerable for each
+>    step. `generation` and `populationSize` below are real identifiers in the
+>    live code (`populationSize` default 6) and are *not* GA residue — the
+>    banned vocabulary is anything implying crossover or inheritance.
 
 ### Key Equations (from Schmidhuber 2008)
 
@@ -47,7 +64,7 @@ The difference in compression performance between old and new compressor on the 
 | **Data D** | Current assembly state (cube positions + geometry overrides) |
 | **Compressor p(t)** | A function measuring structural regularity across the assembly |
 | **Compression progress r_int** | Change in compressibility score after a meme operation |
-| **Observer O** | The user (their selections provide additional fitness signal) |
+| **Observer O** | The architect. ⚠ Their selections decide *what is applied*, but no longer feed a fitness score — `userScore` / `combinedFitness` / `selectionPressure` were computed and never read, and were removed (PR #115). Returns only if selection spans generations; see the FUTURE WORK block below. *(Verified at origin/main 2026-07-28.)* |
 | **Action selector** | The evolution engine proposing candidate operations |
 
 ### The Two Failure Modes to Avoid

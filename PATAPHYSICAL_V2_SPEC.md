@@ -47,7 +47,7 @@ The meme does not become a building. The meme becomes a **spatial heuristic** �
 | Builder | Complete | Place, rotate, delete cubes on 3D grid. Connection rules, auto-fill, section cuts, undo/redo |
 | Pataphysical | Complete | Browse memes, translate via Claude into boolean cuts on cubes. Sliders, cutter visualization, revert |
 | Encoding | Built | Upload/capture photo of a space → Claude translates to cuboid assembly |
-| Evolution | Stubbed | Genetic algorithm driven by compression progress. Not yet implemented |
+| Evolution | Complete | Single-lineage guided search driven by compression progress, architect in the loop. **Not** a genetic algorithm — no population, crossover, mutation or inheritance |
 
 ### The relational graph
 Cubes in an assembly are connected by a relational graph with the following edge types:
@@ -369,7 +369,7 @@ For anyone needing to understand *why* this system works the way it does:
 
 - **Meme corpus bootstrapping**: The system requires a participatory meme ecology at each site. How to seed this remains an open problem being addressed separately.
 
-- **Evolution mode**: The genetic algorithm (compression-progress-driven, interactive) is specified but not implemented. It depends on the translation pipeline being stable first.
+- **Evolution mode**: ⚠ **Superseded — this line was wrong twice.** It said the genetic algorithm was "specified but not implemented." Evolution *is* implemented, and it is **not a genetic algorithm**: there is no population, no crossover, no mutation and no inheritance. What ships is a **single-lineage guided search with a human in the loop** — sample memes × target cubes, translate each candidate in parallel, score by compression progress against the current baseline, rank, let the architect pick, apply, shift the baseline. Crossover was refused deliberately (single lineage keeps a human answerable for each step). Do not use GA vocabulary for this mode outside a dated archival exhibit. *(Corrected 2026-07-28 against origin/main.)*
 
 - **LLM opacity**: Unlike Anthropic's interpretability research, we cannot see inside the model during translation. We can argue by analogy to the functional emotions paper that abstract representations are doing the work, but we cannot prove it. For a B.Arch thesis, demonstrating consistent and site-responsive output variation is sufficient.
 
