@@ -84,6 +84,17 @@ export interface ConnectionSummary {
   mismatch: number;
   /** Ids of every cube taking part in at least one refusal. */
   cubeIds: Set<string>;
+  /**
+   * Ids of cubes taking part in a *mismatch* specifically.
+   *
+   * This is the set worth marking in the viewport. A blank-wall refusal is
+   * usually structural rather than a choice — the vocabulary carries no cut on
+   * either depth face, so anything stacked front-to-back closes unless the
+   * cubes are tipped — and marking those lights up most of a three-dimensional
+   * assembly for something it could not have avoided. A mismatch is the model
+   * genuinely contradicting the law, and there are few enough of them to read.
+   */
+  mismatchCubeIds: Set<string>;
 }
 
 const AXIS_FOR_FACE: Record<Face, 'x' | 'y' | 'z'> = {
@@ -136,6 +147,7 @@ export function summarizeConnections(
     blankWall: 0,
     mismatch: 0,
     cubeIds: new Set(),
+    mismatchCubeIds: new Set(),
   };
   if (cubes.length < 2) return empty;
 
@@ -146,6 +158,7 @@ export function summarizeConnections(
 
   const violations: ConnectionViolation[] = [];
   const cubeIds = new Set<string>();
+  const mismatchCubeIds = new Set<string>();
   let totalAdjacencies = 0;
   let blankWall = 0;
   let mismatch = 0;
@@ -192,8 +205,13 @@ export function summarizeConnections(
 
       const kind: ViolationKind =
         cutTypeA === 'shell' || cutTypeB === 'shell' ? 'blank-wall' : 'mismatch';
-      if (kind === 'blank-wall') blankWall += 1;
-      else mismatch += 1;
+      if (kind === 'blank-wall') {
+        blankWall += 1;
+      } else {
+        mismatch += 1;
+        mismatchCubeIds.add(cube.id);
+        mismatchCubeIds.add(neighbour.id);
+      }
 
       cubeIds.add(cube.id);
       cubeIds.add(neighbour.id);
@@ -218,7 +236,7 @@ export function summarizeConnections(
     }
   }
 
-  return { violations, totalAdjacencies, blankWall, mismatch, cubeIds };
+  return { violations, totalAdjacencies, blankWall, mismatch, cubeIds, mismatchCubeIds };
 }
 
 /** Shape shared by every cube record in the app that this checker accepts —
@@ -239,9 +257,13 @@ interface CubeLike {
  * producer writes quarter-turn indices, and `getRotatedFaceCutType` reduces
  * modulo 4 regardless.
  */
+export function checkableId(cube: CubeLike): string {
+  return cube.id ?? `@${cube.position.join(',')}`;
+}
+
 export function toCheckableCubes(cubes: CubeLike[]): CheckableCube[] {
   return cubes.map(cube => ({
-    id: cube.id ?? `@${cube.position.join(',')}`,
+    id: checkableId(cube),
     variationId: cube.variationId,
     position: cube.position,
     rotation: cube.rotation as Rotation,

@@ -19,8 +19,7 @@ import { SpatialGrid } from './SpatialGrid';
 import { Grid } from '@react-three/drei';
 import { gridExtentFromPositions } from '../../lib/viewport/spatialGridExtent';
 import { CubeWithCuts } from './CubeWithCuts';
-import { ConnectionViolationMarkers } from './ConnectionViolationMarkers';
-import { toCheckableCubes } from '../../lib/cube/connectionViolations';
+import { checkableId, summarizeConnections, toCheckableCubes } from '../../lib/cube/connectionViolations';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
@@ -70,6 +69,13 @@ const BuilderScene: React.FC = () => {
     [placedCubes]
   );
 
+  // Cubes that put a door against a window somewhere. Blank-wall closures are
+  // deliberately not marked — see ConnectionSummary.mismatchCubeIds.
+  const flaggedIds = useMemo(
+    () => summarizeConnections(toCheckableCubes(placedCubes)).mismatchCubeIds,
+    [placedCubes]
+  );
+
   return (
     <>
       <SpatialGrid extent={gridExtent} />
@@ -85,6 +91,7 @@ const BuilderScene: React.FC = () => {
             position={cube.position}
             rotation={cube.rotation}
             selected={selectedCubeIds.includes(cube.id)}
+            flagged={flaggedIds.has(cube.id)}
             clippingPlanes={clippingPlanes}
             onClick={(nativeEvent) => {
               const isShift = nativeEvent.shiftKey;
@@ -122,11 +129,6 @@ const BuilderScene: React.FC = () => {
           />
         );
       })}
-
-      {/* Refused adjacencies in the assembly as it stands. The Builder's own
-          rules only govern interactive placement, so an assembly that arrived
-          from an encode, a remix or a restore can still carry them. */}
-      <ConnectionViolationMarkers cubes={toCheckableCubes(placedCubes)} />
 
       {/* Hover / touch ghost preview */}
       {pickerActive && hoverPos && selectedCubeIds.length === 0 && (
@@ -255,6 +257,11 @@ const AssemblyPataphysicalScene: React.FC = () => {
 
   // Find the targeted cube's position for the cutter overlay
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
+  const flaggedIds = useMemo(
+    () => summarizeConnections(toCheckableCubes(placedCubes)).mismatchCubeIds,
+    [placedCubes]
+  );
+
   const gridExtent = useMemo(
     () => gridExtentFromPositions(placedCubes.map(c => c.position)),
     [placedCubes]
@@ -277,16 +284,13 @@ const AssemblyPataphysicalScene: React.FC = () => {
             rotation={cube.rotation}
             overrideGeometry={override}
             targeted={cube.id === targetCubeId}
+            flagged={flaggedIds.has(cube.id)}
             onClick={() => {
               setTargetCubeId(cube.id === targetCubeId ? null : cube.id);
             }}
           />
         );
       })}
-
-      {/* Refused adjacencies, checked against the cubes' variation faces as
-          built. Cuts a translation made on top are not tracked here. */}
-      <ConnectionViolationMarkers cubes={toCheckableCubes(placedCubes)} />
 
       {/* Cutter wireframe at targeted cube's position */}
       {targetCube && (
@@ -503,13 +507,15 @@ const EncodingScene: React.FC = () => {
   // The build the connection law is checked against: whatever is currently
   // solid on screen. The ghosted layers (discarded cubes, a previous proposal)
   // are history being compared against, not a build to hold to the law.
-  const lawCheckedCubes = useMemo(() => {
-    if (editedStandalone) return toCheckableCubes(editedVisibleCubes);
-    return toCheckableCubes([
-      ...(hasSeed ? seedCubes : []),
-      ...visibleEncoded,
-      ...assemblyCubes,
-    ]);
+  const flaggedIds = useMemo(() => {
+    const checkable = editedStandalone
+      ? toCheckableCubes(editedVisibleCubes)
+      : toCheckableCubes([
+          ...(hasSeed ? seedCubes : []),
+          ...visibleEncoded,
+          ...assemblyCubes,
+        ]);
+    return summarizeConnections(checkable).mismatchCubeIds;
   }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, visibleEncoded, assemblyCubes]);
 
   if (
@@ -527,11 +533,6 @@ const EncodingScene: React.FC = () => {
     <>
       <SpatialGrid extent={gridExtentFromPositions(allPositions)} />
 
-      {/* Refused adjacencies in the encoding build. The model is taught the
-          connection law in the grammar but is never held to it — a proposal it
-          breaks arrives intact and marked, for the architect to judge. */}
-      <ConnectionViolationMarkers cubes={lawCheckedCubes} />
-
       {/* Edited standalone assembly — original cubes plus builder additions.
           Additions are drawn with "added" provenance (blue) and can be hidden
           via the show-additions toggle. */}
@@ -542,6 +543,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`edited-${cube.id ?? i}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
@@ -557,6 +559,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`seed-${i}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
@@ -576,6 +579,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`enc-${i}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={{
@@ -605,6 +609,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`assembly-${cube.id}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
@@ -701,6 +706,11 @@ const EvolutionScene: React.FC = () => {
     return new THREE.EdgesGeometry(cutterPreview, 1);
   }, [cutterPreview]);
 
+  const flaggedIds = useMemo(
+    () => summarizeConnections(toCheckableCubes(placedCubes)).mismatchCubeIds,
+    [placedCubes]
+  );
+
   const gridExtent = useMemo(
     () => gridExtentFromPositions(placedCubes.map(c => c.position)),
     [placedCubes]
@@ -723,6 +733,7 @@ const EvolutionScene: React.FC = () => {
             overrideGeometry={override}
             targeted={cube.id === highlightCubeId}
             selected={inspectable && cube.id === targetCubeId}
+            flagged={flaggedIds.has(cube.id)}
             clippingPlanes={clippingPlanes}
             onClick={inspectable
               ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)
@@ -730,10 +741,6 @@ const EvolutionScene: React.FC = () => {
           />
         );
       })}
-
-      {/* Refused adjacencies, from the cubes' variation faces as built. A
-          restored composition is checked the same as a fresh one. */}
-      <ConnectionViolationMarkers cubes={toCheckableCubes(placedCubes)} />
 
       {/* Stored cutter wireframe of the inspected cube's last change */}
       {inspectedCube && (

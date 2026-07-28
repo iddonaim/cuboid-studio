@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SectionCutControls } from '../viewport/SectionCutControls';
-import { ConnectionViolationNotice } from '../viewport/ConnectionViolationNotice';
+import { ConnectionReading } from '../viewport/ConnectionReading';
 import { toCheckableCubes } from '../../lib/cube/connectionViolations';
 import { Section } from '@/components/ui/section';
 
@@ -62,11 +62,11 @@ export const BuilderSidebar: React.FC = () => {
             onChange={setStrictRulesEnabled}
             disabled={!rulesEnabled}
           />
-          {/* The toggles above govern interactive placement only. This reports
-              refusals already in the assembly — from an encode, a remix or a
-              restore — which those toggles never saw. */}
+          {/* The toggles above govern interactive placement only. This reads
+              the assembly as it stands — including cubes that arrived from an
+              encode, a remix or a restore, which those toggles never saw. */}
           <div className="mt-2">
-            <ConnectionViolationNotice
+            <ConnectionReading
               cubes={toCheckableCubes(placedCubes)}
               subject="this assembly"
             />
