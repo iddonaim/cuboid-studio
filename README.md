@@ -32,7 +32,7 @@ The translation pipeline treats memes as a participatory data layer that traditi
 The system prompts that mediate this translation are committed to the repo as first-class artifacts:
 
 - [`src/prompts/pataphysical-translation-v2.md`](src/prompts/pataphysical-translation-v2.md) — two-pass meme → operator translator
-- [`src/prompts/pataphysical-translation.md`](src/prompts/pataphysical-translation.md) — v1 single-pass translator (still used by Evolve)
+- [`src/prompts/pataphysical-translation.md`](src/prompts/pataphysical-translation.md) — v1 single-pass translator (archival; Evolution runs on v2 two-pass)
 - [`src/prompts/spatial-encoding-grammar.md`](src/prompts/spatial-encoding-grammar.md) — Encode vision prompt template, composed at runtime with the lexicon
 - [`src/prompts/lexicon.default.ts`](src/prompts/lexicon.default.ts) — the built-in baseline spatial vocabulary injected into the Encode grammar (signed-in users can author and save their own editable lexicons on top of this default)
 - [`src/prompts/spatial-encoding.md`](src/prompts/spatial-encoding.md) — earlier standalone Encode vision prompt
