@@ -90,7 +90,26 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   // Hover state
   hoverPos: null,
-  setHoverPos: (pos) => set({ hoverPos: pos }),
+  setHoverPos: (pos) => {
+    const previous = get().hoverPos;
+    const sameCell =
+      !!previous && !!pos &&
+      previous[0] === pos[0] && previous[1] === pos[1] && previous[2] === pos[2];
+
+    set({ hoverPos: pos });
+    if (!pos || sameCell) return;
+
+    // Arriving at a new cell, offer a rotation that fits it — so the common
+    // path stays one click, without lying about a rotation the user then
+    // chooses deliberately. Within a cell the choice is left alone.
+    const state = get();
+    if (!state.rulesEnabled) return;
+    const validRotations = state.getValidRotations();
+    if (validRotations.length === 0) return;
+    if (findRotationIndex(validRotations, state.previewRotation) === -1) {
+      set({ previewRotation: validRotations[0] });
+    }
+  },
   hoverInfo: null,
   setHoverInfo: (info) => set({ hoverInfo: info }),
 
@@ -186,19 +205,29 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     );
   },
 
+  /**
+   * Whether the rotation the user has actually chosen fits this cell.
+   *
+   * This used to substitute a different rotation whenever the chosen one
+   * didn't fit — returning `valid: true` with `validRotations[0]` — so the
+   * preview went red only when *no* rotation worked anywhere, and turning the
+   * cube could never change the verdict. Rotations stopped being real options:
+   * the user was shown a legal orientation they hadn't picked and never learned
+   * which ones the rules allow.
+   *
+   * It now answers honestly about the chosen rotation. A helpful default still
+   * exists, but it happens on arriving at a cell (see `setHoverPos`), where it
+   * is a suggestion rather than a silent override of a deliberate choice.
+   */
   getPlacementValidity: () => {
     const { hoverPos, previewRotation } = get();
     if (!hoverPos) return { valid: true, rotation: previewRotation };
 
     const validRotations = get().getValidRotations();
-    const isCurrentValid = findRotationIndex(validRotations, previewRotation) !== -1;
-    if (isCurrentValid) {
-      return { valid: true, rotation: previewRotation };
-    }
-    if (validRotations.length > 0) {
-      return { valid: true, rotation: validRotations[0] };
-    }
-    return { valid: false, rotation: previewRotation };
+    return {
+      valid: findRotationIndex(validRotations, previewRotation) !== -1,
+      rotation: previewRotation,
+    };
   },
 
   // Actions

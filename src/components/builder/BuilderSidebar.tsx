@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SectionCutControls } from '../viewport/SectionCutControls';
 import { ConnectionReading } from '../viewport/ConnectionReading';
 import { findPlacementBlockers, toCheckableCubes } from '../../lib/cube/connectionViolations';
+import { getAllRotations } from '../../lib/cube/connectionRules';
 import { Section } from '@/components/ui/section';
 
 export const BuilderSidebar: React.FC = () => {
@@ -39,15 +40,20 @@ export const BuilderSidebar: React.FC = () => {
   const setShowInstallButton = useBuilderStore(s => s.setShowInstallButton);
   const previewRotation = useBuilderStore(s => s.previewRotation);
 
-  // When the placement preview goes red, say what is refusing it. The preview
-  // still draws the cube in the rotation the user picked, so the face they are
-  // looking at can look perfectly compatible while an unseen neighbour is the
-  // one saying no — most often a shell, which refuses every cutter and so can
-  // never be satisfied by rotating.
-  const blockers = React.useMemo(() => {
+  // What the rules allow at the hovered cell, stated as options rather than a
+  // verdict: the point of the connection law is that different rotations are
+  // real, distinguishable choices, so the count of fitting rotations is the
+  // useful number — and when none fit, which neighbour is refusing.
+  const rotationFit = React.useMemo(() => {
     if (!rulesEnabled || !hoverPos) return null;
-    if (useBuilderStore.getState().getPlacementValidity().valid) return null;
-    return findPlacementBlockers(hoverPos, toCheckableCubes(placedCubes));
+    const store = useBuilderStore.getState();
+    const fitting = store.getValidRotations().length;
+    return {
+      fitting,
+      total: getAllRotations().length,
+      currentFits: store.getPlacementValidity().valid,
+      blockers: fitting === 0 ? findPlacementBlockers(hoverPos, toCheckableCubes(placedCubes)) : [],
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rulesEnabled, hoverPos, placedCubes, strictRulesEnabled, selectedIdx, previewRotation]);
 
@@ -79,18 +85,27 @@ export const BuilderSidebar: React.FC = () => {
               the assembly as it stands — including cubes that arrived from an
               encode, a remix or a restore, which those toggles never saw. */}
           <div className="mt-2 flex flex-col gap-2">
-            {blockers && (
+            {rotationFit && (
               <div className="border border-ink-200 bg-ink-50/80 rounded-md px-2.5 py-1.5 text-[11px] text-ink-500">
-                {blockers.length > 0 ? (
+                {rotationFit.fitting === 0 ? (
                   <>
                     <span className="text-ink-700">No rotation fits here.</span>{' '}
-                    {blockers.map(b => `${b.neighbourVariationId} presents a shell (${b.axis})`).join(' · ')}
-                    {' '}— a shell refuses every cutter, so turning the cube can't help.
+                    {rotationFit.blockers.length > 0
+                      ? `${rotationFit.blockers
+                          .map(b => `${b.neighbourVariationId} presents a shell (${b.axis})`)
+                          .join(' · ')} — a shell refuses every cutter, so turning the cube can't help.`
+                      : 'No single rotation satisfies every neighbour of this cell.'}
                   </>
                 ) : (
-                  <span className="text-ink-700">
-                    No single rotation satisfies every neighbour of this cell.
-                  </span>
+                  <>
+                    <span className={rotationFit.currentFits ? 'text-ink-700' : 'text-primary'}>
+                      {rotationFit.currentFits
+                        ? 'This rotation fits.'
+                        : "This rotation doesn't fit."}
+                    </span>{' '}
+                    {rotationFit.fitting} of {rotationFit.total} rotations do — Space cycles
+                    them.
+                  </>
                 )}
               </div>
             )}
