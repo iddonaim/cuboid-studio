@@ -199,25 +199,6 @@ or a photographed doorway onto a sphere — that stands. This section is not tha
 mapping in reverse. It is a fact about the geometry: these are boolean cutters,
 and two of them either match or they don't.
 
-**The vocabulary is not the same in every direction.** Left–right (X) and
-up–down (Y) both carry sphere and cylinder faces. Depth (Z) does not: at rest,
-every one of the 70 variations is shell on both of its depth faces. Two cubes
-placed one behind the other in an unrotated assembly are therefore always
-shell-to-shell.
-
-The way through is rotation. An X-rotation tips a cube so a cut face comes
-around to meet its neighbour in depth. So:
-
-- An assembly that spreads left–right and stacks upward can open throughout
-  without rotating anything.
-- An assembly with **depth** must tip the cubes that meet along Z, or accept
-  that it is a set of parallel slabs standing near each other rather than one
-  connected body.
-
-Both are legitimate readings of a space. Choose knowingly rather than by
-default — an unrotated deep assembly is a decision about closure, and if it
-isn't the one you mean, rotate.
-
 You are not bound by this law. A placement that breaks it is permitted, and it
 will arrive intact — nothing is deleted, moved, rotated or corrected. Crossed
 contacts are marked in the architect's viewport as a reading for their judgment.
@@ -245,8 +226,7 @@ Each cube can be rotated on two axes:
 Use rotation to add visual variety and respond to directionality in the space.
 
 Rotation also decides what a cube can connect to — see THE CONNECTION LAW above.
-An X-rotation is what brings a cut face around to the depth axis, so any
-assembly meant to read as open in depth needs it.
+Turning a cube changes which cut faces meet its neighbours.
 
 ## OUTPUT FORMAT
 

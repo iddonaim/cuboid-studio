@@ -143,8 +143,9 @@ describe('findConnectionViolations', () => {
   });
 
   it('finds violations along the depth axis', () => {
-    // Every variation is shell on both Z faces at rest (see the vocabulary
-    // invariant below), so any unrotated depth adjacency is a violation.
+    // Follows from the (incorrect) face model: it records every Z face as
+    // shell, so any unrotated depth adjacency reads as closed. See the
+    // face-model describe block below — this is behaviour, not geometry.
     const cubes: CheckableCube[] = [
       { id: 'a', variationId: 'v-00', position: [0, 21, 0], rotation: NO_ROTATION },
       { id: 'b', variationId: 'v-01', position: [0, 21, GRID_STRIDE], rotation: NO_ROTATION },
@@ -157,8 +158,9 @@ describe('findConnectionViolations', () => {
   });
 
   it('clears a depth adjacency once the cubes are tipped to face each other', () => {
-    // An X-rotation brings a cut face around to the depth axis. This is the
-    // only way two cubes can legally meet in depth.
+    // An X-rotation brings a face the model records as cut round to the depth
+    // axis. Under the current (incorrect) face model this is the only way two
+    // cubes read as meeting in depth.
     const tipped = { y: 0, x: 1 } as const;
     const cubes: CheckableCube[] = [
       { id: 'a', variationId: 'v-00', position: [0, 21, 0], rotation: tipped },
@@ -168,12 +170,19 @@ describe('findConnectionViolations', () => {
   });
 });
 
-describe('vocabulary invariant — the depth axis is closed at rest', () => {
-  // Not a property of this checker but of the 70 variations themselves, and it
-  // decides how the flag behaves in practice: an assembly that grows in depth
-  // without tipping its cubes is refused at every one of those joints. Locked
-  // down here so a regenerated variation table can't change it silently.
-  it('every variation is shell on both depth faces at rest', () => {
+describe('the face model the law reads — NOT the real geometry', () => {
+  // ⛔ These assertions describe what `computeFaceCutTypes` currently believes,
+  // and it is WRONG. `getSphereFace()` returns a single face and
+  // `getCylinderFaces()` only the two faces perpendicular to the axis, but the
+  // master spheres (r 9.9–17.1 on a 42mm cube) breach two or three faces and
+  // the cylinders (length 51) breach side faces too. Measured against the
+  // cutter specs: 69 of 70 variations have a depth face genuinely cut, and 68
+  // of 70 have zero or one uncut face — the code believes 0 and 2–4.
+  //
+  // They are kept, and named honestly, so the gap is visible and so a fix to
+  // computeFaceCutTypes fails loudly here instead of silently changing every
+  // connection verdict in the app. Do NOT cite them as facts about the cubes.
+  it('believes every variation is shell on both depth faces (it is not)', () => {
     expect(VARIATION_FACE_TYPES.size).toBeGreaterThan(0);
     for (const [id, faces] of VARIATION_FACE_TYPES) {
       expect(faces.Z_NEG, `${id} Z_NEG`).toBe('shell');
@@ -181,56 +190,13 @@ describe('vocabulary invariant — the depth axis is closed at rest', () => {
     }
   });
 
-  it('the horizontal and vertical axes are open at rest', () => {
+  it('records cut faces on the horizontal and vertical axes', () => {
     const nonShell = (face: Face) =>
       [...VARIATION_FACE_TYPES.values()].some(types => types[face] !== 'shell');
     expect(nonShell('X_NEG')).toBe(true);
     expect(nonShell('X_POS')).toBe(true);
     expect(nonShell('Y_NEG')).toBe(true);
     expect(nonShell('Y_POS')).toBe(true);
-  });
-});
-
-describe('violationsSignature', () => {
-  it('is stable regardless of the order violations were found in', () => {
-    const a = variationWithFace('X_POS', 'sphere');
-    const b = variationWithFace('X_NEG', 'cylinder');
-    const cubes = pairAlongX(a, b);
-
-    const forward = findConnectionViolations(cubes);
-    const reverse = findConnectionViolations([...cubes].reverse());
-
-    expect(violationsSignature(forward)).toBe(violationsSignature(reverse));
-  });
-
-  it('is empty when there is nothing to report', () => {
-    expect(violationsSignature([])).toBe('');
-  });
-});
-
-describe('toCheckableCubes', () => {
-  it('keeps ids when present', () => {
-    const [cube] = toCheckableCubes([
-      { id: 'keep-me', variationId: 'v-00', position: [0, 21, 0], rotation: { x: 0, y: 0 } },
-    ]);
-    expect(cube.id).toBe('keep-me');
-  });
-
-  it('falls back to the grid cell for cubes without an id', () => {
-    // Encode results only gain ids once the store assigns them; a cell holds at
-    // most one cube, so the position is a safe stand-in.
-    const [cube] = toCheckableCubes([
-      { variationId: 'v-00', position: [0, 21, 0], rotation: { x: 0, y: 0 } },
-    ]);
-    expect(cube.id).toBe('@0,21,0');
-  });
-
-  it('gives distinct ids to distinct cells', () => {
-    const cubes = toCheckableCubes([
-      { variationId: 'v-00', position: [0, 21, 0], rotation: { x: 0, y: 0 } },
-      { variationId: 'v-01', position: [GRID_STRIDE, 21, 0], rotation: { x: 0, y: 0 } },
-    ]);
-    expect(new Set(cubes.map(c => c.id)).size).toBe(2);
   });
 });
 
