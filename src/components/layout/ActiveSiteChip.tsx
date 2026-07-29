@@ -110,8 +110,7 @@ export const ActiveSiteChip: React.FC = () => {
         <div className="mt-1 p-2 bg-ink-50 border border-ink-300 rounded-md text-[11px] text-ink-600 flex flex-col gap-1.5">
           <span>
             Detach <span className="text-ink-800">{site.site_name}</span>? Encode and
-            translation stop receiving it, and anything typed into the site reading here is
-            discarded. The site itself stays in Map.
+            translation stop receiving it. The site itself stays in Map.
           </span>
           <div className="flex gap-1.5">
             <button
