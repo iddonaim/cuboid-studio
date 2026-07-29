@@ -8,9 +8,9 @@
  *
  * Two closed conditions, and only one of them is worth marking:
  *
- * - **shell** — a face is uncut. Structural: no variation carries a cutter on
- *   either depth face, so anything front-to-back closes unless a cube is
- *   tipped. Counted, not marked; on a 3D assembly it is most of the cubes.
+ * - **shell** — a face the model records as uncut. ⚠ Over-reported: the face
+ *   model under-counts cuts (see connectionViolations.ts), so shell contacts
+ *   read as far more common than the geometry warrants. Counted, not marked.
  * - **crossed** — a sphere face meets a cylinder face. Two cutters that
  *   genuinely disagree. Those cubes are tinted amber.
  *

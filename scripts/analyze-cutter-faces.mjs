@@ -100,3 +100,27 @@ console.log('CODE model    :', JSON.stringify(codeShellCounts));
 console.log('\nvariations with at least one DEPTH (Z) face cut:');
 console.log('  real:', zCutReal, '/ 70      code:', zCutCode, '/ 70');
 console.log('variations where the two models disagree on shell count:', disagree, '/ 70');
+
+// ---- Does the finding depend on where the cutters sit? ----
+// A cutter of radius r centred on (or running through) a 42mm cube avoids
+// breaching a NEIGHBOURING face only if it stays r clear of all four edges.
+// Verified against FieldModel_v515_Presentation.ghx: cube = 42 (slider 10–60),
+// cylinder extrusions = 51 ×3, radii computed from a Golden Ratio component
+// (slider 10 → 10φ) and a π component (3.14π), C(8,4) from sliders 8 and 4.
+{
+  const S = 42;
+  const RADII = [
+    ['10φ  spheres 01 / cyl 05', 16.180339887498949],
+    ['3.14π sphere 02 / cyl 06', 3.14 * Math.PI],
+    ['13 prime sphere 03 / cyl 07', 13],
+    ['17.086 spheres 04 / 08', 17.085938],
+  ];
+  console.log('\n=== safe (single-face) region per radius, 42mm cube ===');
+  for (const [name, r] of RADII) {
+    const strip = Math.max(0, S - 2 * r);
+    const pct = (100 * strip * strip) / (S * S);
+    console.log('  ' + name.padEnd(30) + `r=${r.toFixed(3)}  safe ${pct.toFixed(1)}% of the face`);
+  }
+  console.log('  → for the two largest radii, 94.7% and 96.5% of positions force a');
+  console.log('    multi-face breach. Multi-face cutting is the norm for this set.');
+}
