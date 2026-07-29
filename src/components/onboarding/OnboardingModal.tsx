@@ -74,7 +74,7 @@ const PrimitivesDiagram: React.FC = () => (
 const TOOLKIT: Array<{ icon: React.ReactNode; label: string }> = [
   { icon: <Rotate3d size={20} strokeWidth={1.5} />, label: 'Orbit · ortho' },
   { icon: <Slice size={20} strokeWidth={1.5} />, label: 'Section cut' },
-  { icon: <Boxes size={20} strokeWidth={1.5} />, label: 'Builder' },
+  { icon: <Boxes size={20} strokeWidth={1.5} />, label: 'Edit assembly' },
   { icon: <Camera size={20} strokeWidth={1.5} />, label: 'Save states' },
   { icon: <PanelLeft size={20} strokeWidth={1.5} />, label: '⌘B sidebar' },
   { icon: <Link size={20} strokeWidth={1.5} />, label: 'Grasshopper · GitHub' },
@@ -218,7 +218,7 @@ const FRAMES: Frame[] = [
     bullets: [
       'Navigate the 3D cube — orbit, pan, ortho mode',
       'Section-cut to look inside an assembly',
-      'Hand-edit seed assemblies in Builder',
+      'Hand-edit a seed assembly inside Encode',
       'Save screenshots / states as you go',
       'Sidebar hides with Cmd/Ctrl+B for a full-bleed view',
       'Live round-trip to Grasshopper · code on GitHub',

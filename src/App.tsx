@@ -52,7 +52,7 @@ import { DemoExportButton } from './components/demo/DemoExportButton';
 /**
  * Banner rendered above the BuilderSidebar when the user has opened the
  * seed-edit overlay from Encode → Merge. "Done" closes the overlay and
- * re-snapshots the current Builder placedCubes into the merge seed.
+ * re-snapshots the current placedCubes into the merge seed.
  */
 const SeedEditBanner: React.FC = () => {
   const closeSeedEdit = useEncodingStore(s => s.closeSeedEdit);

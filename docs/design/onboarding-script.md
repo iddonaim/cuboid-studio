@@ -53,7 +53,7 @@ Lead: The result is a notation diagram — the rules of engagement for the site.
 **Tools that run throughout**
 - Navigate the 3D cube — orbit, pan, ortho mode
 - Section-cut to look inside an assembly
-- Hand-edit seed assemblies in Builder
+- Hand-edit a seed assembly inside Encode
 - Save screenshots / states as you go
 - Live round-trip to Grasshopper · code on GitHub
 - ◆ Sidebar hides with Cmd/Ctrl+B for a full-bleed view

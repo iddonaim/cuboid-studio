@@ -32,6 +32,13 @@ interface CubeWithCutsProps {
   clippingPlanes?: THREE.Plane[];
   overrideGeometry?: THREE.BufferGeometry | null;
   provenance?: 'preserved' | 'added';
+  /**
+   * A sphere face on this cube meets a cylinder face on a neighbour — the one
+   * case where two cutters genuinely disagree, rather than a contact simply
+   * closing against an uncut shell. Tints the cube itself; interaction states
+   * (targeted, selected, placement preview) still win over it.
+   */
+  flagged?: boolean;
 }
 
 export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
@@ -49,6 +56,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   clippingPlanes,
   overrideGeometry,
   provenance,
+  flagged = false,
 }) => {
   const { accent } = useAccent();
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
@@ -137,6 +145,15 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   if (provenance === 'added') {
     fillColor = '#e3edf8';
     edgeColor = '#2e6fb2';
+  }
+
+  // Two cutters that disagree. Amber: warm enough to carry against the paper
+  // ground and the cool blues, far enough from the vermilion accent and the
+  // discarded red not to be mistaken for either, and not a warning colour —
+  // this is a reading rather than an error.
+  if (flagged) {
+    fillColor = '#faf0d4';
+    edgeColor = '#a8760a';
   }
 
   if (targeted) {

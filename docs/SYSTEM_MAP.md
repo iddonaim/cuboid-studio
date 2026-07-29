@@ -81,7 +81,7 @@ Map → Encode → Evolution → Decode.
 |---|---|
 | **Input** | 1–7 photos (1 primary anchors character, up to 6 supplementary) — user; mode standalone/merge/remix — user; active site context — auto (flattened to a one-line prompt prefix, not the full JSON); active lexicon — user |
 | **Output** | Five-axis reading (atmosphere/light/emotion continuous + rhythm/placement categorical) → reasoning → proposed cuboid assembly |
-| **Interaction** | Edit the reading (L2 — model original preserved + `readingEdited` flag); author/select lexicons (L3, Firestore, signed-in); merge mode opens the inline Builder seed editor; re-encode; save |
+| **Interaction** | Edit the reading (L2 — model original preserved + `readingEdited` flag); author/select lexicons (L3, Firestore, signed-in); merge mode opens the inline assembly seed editor; re-encode; save |
 
 - API: `api/encode-space.ts` — **Anthropic-native only** (`claude-sonnet-4-6`
   hardcoded; does NOT go through OpenRouter). Reading is sanitised but never
@@ -142,7 +142,7 @@ Map → Encode → Evolution → Decode.
 
 | | |
 |---|---|
-| **Input** | Current assembly — auto; composition tags from the Builder — auto (overlay); optional raster plan image as a locked underlay — user |
+| **Input** | Current assembly — auto; composition tags from the assembly editor — auto (overlay); optional raster plan image as a locked underlay — user |
 | **Output** | 2D notation composition (Konva canvas, per-variation tile glyphs, snap grid); SVG + DXF export |
 | **Interaction** | Drag/tap-place, rotate 90°, snap; palette freestyle (all 70) vs assembly-only (default) — user; undo (5 steps); expand canvas; import/register/remove the plan underlay (offset, rotation, scale — numeric fields; underlay itself is non-interactive) |
 
@@ -156,7 +156,7 @@ Map → Encode → Evolution → Decode.
 
 ---
 
-## Builder (inline, not a tab)
+## Assembly editor (inline, not a tab)
 
 Surfaces: Encode merge seed editor (`seedEditOpen` swaps the panel), and as the
 substrate Pataphysical re-cuts. Full editor: variation picker (70), hover
@@ -187,7 +187,7 @@ off), selected variation, preview rotation.
 3. **Lexicon** — active encode lexicon → grammar slots server-side → also
    captured by-value into the encode result, so reading labels stay faithful to
    the vocabulary that produced them.
-4. **Tags** — Builder `useTagStore` → Decode overlay (composition tags only).
+4. **Tags** — `useTagStore` → Decode overlay (composition tags only).
    Ephemeral: not serialized.
 5. **Memes** — archthesis Firestore → `api/fetch-memes` / `fetch-meme-by-id`
    (log-scaled likes→engagement) → Evolve pool and Pataphysical browser.

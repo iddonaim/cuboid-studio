@@ -35,7 +35,7 @@ outlines — like the app's viewport.
   (spheres + cylinders), resolving into a grid of 70 small variation glyphs.
   Cutters in vermilion; cube in white/ink.
 - `frame6-toolkit.svg` — a 5-icon set (one consistent style): orbit/ortho
-  navigation, section-cut, edit-seed (Builder), save state/screenshot,
+  navigation, section-cut, edit-seed (assembly editor), save state/screenshot,
   Grasshopper/GitHub link. Ink strokes, vermilion for the active detail.
 - `frame7-pipeline.svg` — a horizontal pipeline Map → Encode → Evolution →
   Decode, caption "ground → space → culture → drawing". The lit/active stage

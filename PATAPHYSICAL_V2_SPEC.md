@@ -9,7 +9,7 @@
 > **Status note (2026-07):** this spec is a snapshot from April 2026. The app has
 > moved on in a few places it describes — most notably, **Evolution mode is now
 > implemented** (the "Stubbed / not yet implemented" entries below are out of date),
-> and Builder/Pataphysical are no longer top-level tabs. The translation pipeline
+> and assembly editing / Pataphysical are no longer top-level tabs. The translation pipeline
 > itself (§3 onward) is still accurate. For the current, reconciled state of the
 > app, see [`CONTEXT.md`](CONTEXT.md).
 
@@ -38,13 +38,13 @@ The meme does not become a building. The meme becomes a **spatial heuristic** �
 ### The cube system
 - ~70 cube variations generated through boolean operations (CSG cutters applied to unit cubes)
 - 8 master cutters, variations are C(8,4) boolean cuts
-- Cubes are assembled in a 3D grid in the Builder mode
+- Cubes are assembled in a 3D grid in the assembly editor
 - Cubes are manipulated by meme-driven operators in the Pataphysical mode
 
 ### The four modes
 | Mode | Status | Function |
 |------|--------|----------|
-| Builder | Complete | Place, rotate, delete cubes on 3D grid. Connection rules, auto-fill, section cuts, undo/redo |
+| Assembly editor | Complete | Place, rotate, delete cubes on 3D grid. Connection rules, auto-fill, section cuts, undo/redo |
 | Pataphysical | Complete | Browse memes, translate via Claude into boolean cuts on cubes. Sliders, cutter visualization, revert |
 | Encoding | Built | Upload/capture photo of a space → Claude translates to cuboid assembly |
 | Evolution | Complete | Single-lineage guided search driven by compression progress, architect in the loop. **Not** a genetic algorithm — no population, crossover, mutation or inheritance |
@@ -239,7 +239,7 @@ These are additions to existing operators (inversion, amplification, drift, reas
 
 ### 4.4 Site Context Curator (standalone webapp)
 
-**Current state:** React JSX artifact with four tabs (Quantitative, Programmatic, Architect's Reading, Export). Outputs JSON. Includes embedded SunCalc for automatic sun exposure and daylight computation when lat/lng are provided. Includes a GEOCODE button that currently calls Nominatim directly — this does not work reliably from browser due to CORS and User-Agent restrictions (see §4.5).
+**Current state:** three tabs (Quantitative, Programmatic, Save) — the Architect's Reading tab was retired 2026-07-28. Outputs JSON. Includes embedded SunCalc for automatic sun exposure and daylight computation when lat/lng are provided. Includes a GEOCODE button that currently calls Nominatim directly — this does not work reliably from browser due to CORS and User-Agent restrictions (see §4.5).
 
 **Integration options (in order of independence):**
 1. **Fully standalone:** Architect uses the webapp, downloads JSON, manually places it in the project directory. API route reads from file.

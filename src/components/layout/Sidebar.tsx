@@ -38,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mode, isOpen, children, export
 
   const contextLabel =
     mode === 'encoding' && seedEditOpen
-      ? 'Encode → Builder'
+      ? 'Encode → Edit assembly'
       : mode === 'evolution' && evolutionSubMode === 'pataphysical'
         ? 'Evolution → Pataphysical'
         : MODE_LABELS[mode];

@@ -20,7 +20,7 @@ import type { EvolutionCandidate } from '../../store/useEvolutionStore';
  *
  * How it works (plain english):
  *
- *   1. The user builds an assembly of cubes in Builder mode.
+ *   1. The user builds an assembly of cubes.
  *   2. They switch to Evolution mode.  The panel pre-fetches a batch of memes
  *      from the archthesis database to sample from.
  *   3. They click "Generate" — the engine picks target cubes (preferring

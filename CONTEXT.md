@@ -53,14 +53,14 @@ The app has **four** primary nav modes, all mounted and live: **Map**, **Encode*
 | Tab | Status | What it does |
 |------|--------|--------------|
 | **Map** | Live | Site picker. Leaflet map + an embedded iframe to a separate "map-context" app (`VITE_MAP_CONTEXT_URL`, Railway-hosted). Geocode via Nominatim proxy, radius selector, Overpass POI enrichment. Writes active site context to `localStorage`, feeds Encode + Pataphysical. |
-| **Encode** | Live | Upload/capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading and proposes a cuboid assembly. Builder is reachable inline here (Merge mode). |
+| **Encode** | Live | Upload/capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading and proposes a cuboid assembly. The assembly editor is reachable inline here (Merge mode). |
 | **Evolution** | Live | Two sub-modes toggled in-panel: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (meme → operator translation). |
 | **Decode** | Live | 2D notation sheet (Konva) as the full-bleed stage, on an unbounded lattice. Drag/place/rotate tile glyphs of variations, snap-to-grid, export as vector SVG, transparent PNG or DXF. The assembly sits alongside as a live 3D corner preview; clicking it opens the full 3D view. |
 
 **Desktop layout (since the 2026-07 design overhaul):** a **docked left sidebar** (`src/components/layout/Sidebar.tsx`) holds each mode's controls — width-resizable via its right edge (persisted), hidden/shown with the TopBar panel button or **Cmd/Ctrl+B**. Panel contents are organized into **collapsible sections** (`src/components/ui/section.tsx`) whose open/closed state persists per user in `localStorage`; secondary tools (Export & Grasshopper, Saved States, vocabulary editors, Evolve settings) are collapsed by default. Model outputs (encoding result, operator result, selected cube) dock as cards in a right-edge **Inspector rail** (`src/components/layout/Inspector.tsx`) instead of floating loose. The old draggable `FloatingPanel` is gone. Visual language: light "drafting instrument" theme — paper surfaces, warm-gray `ink` Tailwind ramp, single vermilion accent (`--primary`), Geist/Geist Mono, tokens in `src/index.css`.
 
-**Builder is not a top-level tab.** It surfaces inline:
-- Inside **Encode** when Merge mode opens the seed editor (`seedEditOpen` → BuilderSidebar replaces the EncodingPanel).
+**The assembly editor is not a top-level tab.** (It was called "the Builder" until 2026-07-28; the name is retired, though the code identifiers still carry it — see Key files below.) It surfaces inline:
+- Inside **Encode** when Merge mode opens the seed editor (`seedEditOpen` → `BuilderSidebar` replaces the EncodingPanel).
 - The built assembly is the substrate that **Pataphysical** re-cuts (you select a target cube from it).
 
 **Pataphysical is a sub-mode of Evolution**, not a top-level tab. `EvolutionSubMode = 'evolve' | 'pataphysical'`, toggled by the sub-mode switch in the Evolution panel.
@@ -75,7 +75,7 @@ The app has **four** primary nav modes, all mounted and live: **Map**, **Encode*
 - **`src/components/map/MapPanel.tsx`** (Leaflet site picker: click-to-pin, address search, radius slider, POI fetch) is currently **not mounted anywhere** — orphaned since the map-context iframe took over the Map canvas. Kept in-tree; its `buildSiteContextFromMap` path is still the model for manual pinning.
 - **Geocoding:** `api/geocode.ts` — Nominatim proxy (browser can't hit Nominatim directly due to CORS / User-Agent).
 - **POIs:** `api/fetch-context-pois.ts` — Overpass query, categorizes ~22 element types (transit, education, healthcare, civic, green space, markets, major roads).
-- **Persistence:** `src/lib/storage/siteContext.ts` (`getActiveSiteContext()` / `setActiveSiteContext()`), built via `src/lib/siteContext/mapSiteContext.ts`. The site context (location + quantitative + programmatic + architect's reading) is injected into both Encode and Pataphysical requests.
+- **Persistence:** `src/lib/storage/siteContext.ts` (`getActiveSiteContext()` / `setActiveSiteContext()`), built via `src/lib/siteContext/mapSiteContext.ts`. The site context (location + quantitative + programmatic) is injected into Pataphysical requests as full JSON, and into Encode as a flattened one-line prefix built from `quantitative` + `nearby_pois` only. The **architect's reading was retired 2026-07-28** — the tab is gone from the curator and `architects_reading` is off the type.
 
 ---
 
@@ -164,18 +164,25 @@ A 2D notational view of the assembly — **implemented**, not a placeholder.
   - **It has no camera controls, by design: it mirrors the real viewport.** `ViewportControls` records `lastViewpoint` (direction + orbit target) into `useAppStore` whenever an orbit, pan, zoom or view-cube snap settles; the preview adopts that angle, the `orthographic` projection, and the section cut (`localClippingEnabled`, poché and all). Set the view up once in the viewport built for it, then draw against it. Distance is always the preview's own — a framing chosen on a full-bleed canvas puts the assembly outside a thumbnail's frustum. The ortho frustum is fitted locally rather than through `fitOrthoFrustum`, whose empty-scene floor would shrink a real assembly to a speck at this size.
   - `SectionCutControls` is mounted in the Decode sidebar too, so the sectioned view you draw against can be set up without leaving the mode.
 - **Plan underlay:** a raster plan image can be imported as a locked, non-interactive underlay beneath the tiles, with an editable registration (offset / rotation / scale). Saved compositions persist thumbnail + fingerprint + registration only (same no-full-res policy as encode photos); after restore it renders from the thumbnail until re-imported.
-- Tags assigned in the Builder show as an overlay on the canvas.
+- Tags assigned while editing the assembly show as an overlay on the canvas.
 
 ---
 
-## Builder (inline)
+## Assembly editor (inline)
 
 Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly substrate for Pataphysical).
 
 - Variation picker (all 70), hover preview, click-to-place on a 3D grid.
 - **Connection rules** (`rulesEnabled`) + **strict alignment** (`strictRulesEnabled`) — `src/lib/cube/connectionRules.ts`.
+  - ⚠ **Known defect (2026-07-28): the face model under-reports cuts.**
+    `computeFaceCutTypes` records one face per sphere and two per cylinder, but
+    the master cutters breach two or three faces each. 69 of 70 variations have
+    a depth face genuinely cut while the code says none do; the two models
+    disagree on 69 of 70. So `canConnect` refuses connections the geometry
+    permits. The law is sound, the face data feeding it is not. Full write-up
+    and reproduction: `docs/GAPS_AND_HOLES.md` P0-6. Fix scheduled after #127.
 - Rotate (Space = Y / preview cycles valid rotations, R = X), delete, undo/redo (Ctrl/Cmd+Z, +Shift to redo), auto-fill, section cuts.
-- **Section cut** (`useSectionCutStore`, `SectionCutControls.tsx`, shared by Builder and Evolution): axis + position + a **Flip** that swaps which half of the assembly the plane keeps. `buildClippingPlanes()` (`src/hooks/useClippingPlanes.ts`) is the pure sign convention — Three discards `normal·p + constant < 0`, so flipping negates both and leaves the plane in place. Cut surfaces are painted in the accent (poché) via a back-face mesh, mounted only on cubes the plane genuinely slices. `flipped` is stamped into captured PNGs' provenance, since axis + position alone describe two different drawings.
+- **Section cut** (`useSectionCutStore`, `SectionCutControls.tsx`, shared by the assembly editor and Evolution): axis + position + a **Flip** that swaps which half of the assembly the plane keeps. `buildClippingPlanes()` (`src/hooks/useClippingPlanes.ts`) is the pure sign convention — Three discards `normal·p + constant < 0`, so flipping negates both and leaves the plane in place. Cut surfaces are painted in the accent (poché) via a back-face mesh, mounted only on cubes the plane genuinely slices. `flipped` is stamped into captured PNGs' provenance, since axis + position alone describe two different drawings.
 - Tagging (`TaggingPanel.tsx`): word + intensity per cube.
 
 **Key files:** `src/components/builder/*`, `src/store/useBuilderStore.ts`, `src/lib/cube/*` (constants `CUBE_SIZE = 42`, `GRID_STRIDE = 42.6`).
@@ -188,7 +195,7 @@ Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly s
 
 - **Auth:** Firebase email/password (`src/contexts/AuthContext.tsx`, `src/hooks/useAuth.ts`, `src/components/auth/AuthControls.tsx` in the TopBar).
 - **Data model:** Projects → Sites → Compositions (`src/lib/projects/types.ts`, CRUD in `src/lib/projects/firestore.ts`, UI in `src/components/projects/ProjectsPanel.tsx`).
-- **Capture/restore:** `captureComposition()` serialises the full Builder + meme state, plus the Encode **reading + lexicon provenance** (model-original reading, edited flag, and a by-value lexicon snapshot so the record is self-describing even if the lexicon later changes); `restoreComposition()` loads it back (`src/lib/projects/composition.ts`). "Save to project" button is `SaveCompositionButton.tsx`.
+- **Capture/restore:** `captureComposition()` serialises the full assembly + meme state, plus the Encode **reading + lexicon provenance** (model-original reading, edited flag, and a by-value lexicon snapshot so the record is self-describing even if the lexicon later changes); `restoreComposition()` loads it back (`src/lib/projects/composition.ts`). "Save to project" button is `SaveCompositionButton.tsx`.
 - **Lexicons:** a separate top-level `lexicons` collection (L3, `lexiconFirestore.ts`), scoped per `ownerId` — the editable Encode vocabularies (see Encode Mode). The built-in `DEFAULT_LEXICON` is never stored.
 - **Config:** `VITE_FIREBASE_*` env vars, pointing at the **same Firebase project as archthesis** (`adaptivememeticarchitect-2776f`). Firestore access rules in `firestore.rules` (covers `projects/**` and `lexicons/**`) — **reference copy only**: the deployed source of truth is `archthesis/firestore.rules`, which archthesis's deploy workflow ships (replacing the live ruleset) on every merge to its main. Rule edits here must be mirrored there.
 - When `isFirebaseConfigured` is false, none of the auth/projects UI mounts and the app behaves exactly as the local-only version.

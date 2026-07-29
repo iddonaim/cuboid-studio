@@ -3,7 +3,7 @@
 Live app: https://cuboidstudio.vercel.app · Repo: https://github.com/iddonaim/cuboid-studio
 Companion projects: https://github.com/iddonaim/archthesis (meme platform) · https://github.com/iddonaim/map-context (site analysis)
 
-Cuboid Studio is a web-based design system built on a specific claim: the cultural conversation around a place — the frustrations, jokes, and shared readings that circulate as memes — is legitimate design input, and its translation into geometry can be made measurable and inspectable rather than metaphorical. The workflow spine is four tabs: **Map → Encode → Evolution → Decode**, with an inline **Builder** as the modelling substrate. Each step below pairs *what you do* with *why it is built that way*, because the design decisions are the argument.
+Cuboid Studio is a web-based design system built on a specific claim: the cultural conversation around a place — the frustrations, jokes, and shared readings that circulate as memes — is legitimate design input, and its translation into geometry can be made measurable and inspectable rather than metaphorical. The workflow spine is four tabs: **Map → Encode → Evolution → Decode**, with an inline **assembly editor** as the modelling substrate. Each step below pairs *what you do* with *why it is built that way*, because the design decisions are the argument.
 
 ## Step 1 — Map: the site as a first-class input
 
@@ -19,9 +19,9 @@ You can edit this reading. The model's original is preserved untouched alongside
 
 *Why:* this is the system's answer to the hardest critique of any culture-to-form pipeline — unfalsifiability. By forcing the interpretation into a typed intermediate representation that appears *before* geometry, the reading becomes something you can inspect, contest, and overrule. Authorship stays auditable: the record always shows what the machine read and what the architect changed.
 
-## Step 3 — The vocabulary and the Builder
+## Step 3 — The vocabulary and the assembly editor
 
-Every form in the system derives from seventy cube variations: choose four active cutters from a fixed set of eight (five spheres, three cylinders) and subtract them from a common base cube. The Builder — surfaced inline within Encode — places these on a 3D grid with connection rules, rotation, undo/redo, and per-cube tagging.
+Every form in the system derives from seventy cube variations: choose four active cutters from a fixed set of eight (five spheres, three cylinders) and subtract them from a common base cube. The assembly editor — surfaced inline within Encode — places these on a 3D grid with connection rules, rotation, undo/redo, and per-cube tagging.
 
 *Why two decisions matter here.* First, the vocabulary is finite and fixed: with eight primitives, every relation is unambiguous — two cubes either share a cutter or they don't, and assembly, matching, and mutation all follow from that. Second, saving a composition stores the cutting conditions — the boolean operators — not the resulting mesh. The form regenerates from its forces on every load. The stored object is the set of conditions that produce the form, not the form itself.
 
@@ -41,7 +41,7 @@ The Evolve sub-mode generates a pool of candidate translations in parallel and s
 
 ## Step 6 — Decode: back into notation
 
-The Decode tab flattens the work into two-dimensional architectural notation on a canvas: each variation has a tile glyph; you place, rotate in 90° steps, and snap to grid, then export SVG or DXF directly into a documentation pipeline. Tags assigned in the Builder appear as an overlay.
+The Decode tab flattens the work into two-dimensional architectural notation on a canvas: each variation has a tile glyph; you place, rotate in 90° steps, and snap to grid, then export SVG or DXF directly into a documentation pipeline. Tags assigned while editing the assembly appear as an overlay.
 
 *Why manual:* the return to drawing convention is deliberately an act of composition rather than an automatic flattening. Decoding is authorship too — the notation is where the work re-enters the discourse the profession already reads.
 
@@ -55,6 +55,6 @@ Cuboid Studio does not remove the architect. Every automated step publishes an e
 |---|---|---|
 | Map (geocode, POIs, map-context iframe) | Yes | Pre-baked site context / restored state |
 | Encode (vision reading) | Yes | Restore a saved composition with its reading |
-| Builder | No | Fully deterministic, safe live |
+| Assembly editor | No | Fully deterministic, safe live |
 | Pataphysical / Evolve generation | Yes | Restore applied results; scoring itself is client-side |
 | Decode + SVG/DXF export | No | Fully deterministic, safe live |

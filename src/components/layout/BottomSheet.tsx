@@ -76,12 +76,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
   const effectiveHeightState = forceCollapsed ? 'collapsed' : heightState;
 
-  // Context-aware label that reflects the current sub-mode (e.g. Encode → Builder
+  // Context-aware label that reflects the current sub-mode (e.g. Encode → Edit assembly
   // while editing the merge seed, Evolution → Pataphysical while the sub-mode is
   // active). Falls back to the mode's own label.
   const contextLabel =
     activeMode === 'encoding' && seedEditOpen
-      ? 'Encode → Builder'
+      ? 'Encode → Edit assembly'
       : activeMode === 'evolution' && evolutionSubMode === 'pataphysical'
         ? 'Evolution → Pataphysical'
         : MODE_LABELS[activeMode] ?? activeMode;

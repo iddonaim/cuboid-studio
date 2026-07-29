@@ -17,6 +17,8 @@ import { isModelLabEnabled } from '../../lib/modelLab';
 import { Section } from '@/components/ui/section';
 import { ActiveSiteChip } from '../layout/ActiveSiteChip';
 import { LexiconEditor } from './LexiconEditor';
+import { ConnectionReading } from '../viewport/ConnectionReading';
+import { toCheckableCubes } from '../../lib/cube/connectionViolations';
 
 async function readImageFile(file: File): Promise<UploadedEncodingImage | null> {
   try {
@@ -94,7 +96,7 @@ export const EncodingPanel: React.FC = () => {
     : Boolean(uploadedImage);
 
   // In standalone mode, once the encoded result has been loaded into the
-  // builder and edited (Done), `seedCubes` holds the edited assembly. Cubes
+  // assembly and edited (Done), `seedCubes` holds the edited assembly. Cubes
   // whose grid position isn't in the original encoded set were added by hand.
   const encodedPositionKeys = React.useMemo(
     () => new Set((encodedCubes ?? []).map(c => c.position.join(','))),
@@ -125,11 +127,10 @@ export const EncodingPanel: React.FC = () => {
 
   // Post-encode destinations.
   //
-  // The old IA had two "Load into ..." buttons that jumped to the top-level
-  // Builder or Pataphysical modes. Those modes no longer exist as primary
-  // nav, so we redirect:
+  // The old IA had two "Load into ..." buttons that jumped to top-level tabs
+  // that no longer exist as primary nav, so we redirect:
   //   - 'edit'   : load the encoded result into the assembly and open the
-  //                seed-edit view inside Encode (formerly the Builder tab).
+  //                seed-edit view inside Encode.
   //   - 'memes'  : load the result, then jump to Evolution → Pataphysical
   //                sub-mode (formerly the Pataphysical tab).
   const handleLoadAndSwitch = (target: 'edit' | 'memes') => {
@@ -475,7 +476,7 @@ export const EncodingPanel: React.FC = () => {
           disabled={encodeDisabled}
           title={
             mode === 'merge' && seedCubes.length === 0
-              ? 'Add cubes to the Builder first'
+              ? 'Add cubes to the assembly first'
               : mode === 'remix' && seedCubes.length === 0
               ? 'Select a seed assembly above'
               : undefined
@@ -617,6 +618,12 @@ export const EncodingPanel: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* How much of the proposal actually connects. A shell contact is a
+              property of the composition; a sphere meeting a cylinder is two
+              cutters disagreeing, and only those cubes are marked. Nothing is
+              repaired either way. */}
+          <ConnectionReading cubes={toCheckableCubes(encodedCubes)} />
 
           {/* Remix v2 result — say what loading will do (replace, not add). */}
           {mode === 'remix' && remixResultReplacesSeed && decisions && (
@@ -834,7 +841,7 @@ export const EncodingPanel: React.FC = () => {
               imagesRestoredOnly
                 ? 'Re-upload the photo(s) first'
                 : mode === 'merge' && seedCubes.length === 0
-                ? 'Add cubes to the Builder first'
+                ? 'Add cubes to the assembly first'
                 : mode === 'remix' && seedCubes.length === 0
                 ? 'Select a seed assembly above'
                 : 'Replaces this reading and proposal with a fresh one'

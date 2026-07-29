@@ -7,7 +7,7 @@
  *   projects/{projectId}/sites/{siteId}/compositions/{compositionId}
  *
  * A "composition" is the complete serialisable working state across all modes
- * (Builder, Encode, Pataphysical, Evolution, Decode) plus the active site
+ * (assembly, Encode, Pataphysical, Evolution, Decode) plus the active site
  * context at save time. Live THREE.BufferGeometry objects are NOT stored —
  * they're reproducible by re-applying the saved operator records on load.
  */

@@ -57,7 +57,7 @@ then **Save to project** — showing the photo thumbnail landing in the saved co
 **Narration:** "Before the system commits to any geometry, it publishes its reading…"
 
 ### Clip 4 — Vocabulary + section cuts · slot 1:41–2:16 (~35 s)
-**Screen:** Builder with the proposed/loaded assembly.
+**Screen:** assembly editor with the proposed/loaded assembly.
 **Do:** Open the variation picker briefly (the 70-cube vocabulary), place or nudge a
 cube, then run a **section cut** slowly through the assembly and back. End on a short orbit.
 **Narration:** "Everything is built from one vocabulary: seventy cube variations…"

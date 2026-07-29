@@ -15,11 +15,11 @@ The studio is built around a single primitive — a 42 mm cube cut by combinatio
 | Mode | Status | What it does |
 |------|--------|--------------|
 | **Map** | Live | Site picker. Leaflet map plus an embedded site-analysis app; geocode an address, set a radius, fetch nearby POIs, and store the resulting site context for the other modes. |
-| **Encode** | Live | Upload or capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading (which the architect can lightly edit, with the model's original preserved) and proposes a cuboid assembly that mirrors its logic. The reading vocabulary is driven by an **editable lexicon** — author named lexicons, save them to a cloud library, and pick which one is active. The cube Builder is reachable inline here. |
+| **Encode** | Live | Upload or capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading (which the architect can lightly edit, with the model's original preserved) and proposes a cuboid assembly that mirrors its logic. The reading vocabulary is driven by an **editable lexicon** — author named lexicons, save them to a cloud library, and pick which one is active. The cube assembly editor is reachable inline here. |
 | **Evolution** | Live | Two sub-modes: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (browse memes from the archmeme database; an LLM translates each meme into a spatial operator — inversion, drift, erosion, etc. — that re-cuts cubes). |
 | **Decode** | Live | A 2D notation canvas. Place and rotate glyph tiles of the variations on a snap grid and export the composition as SVG or DXF. |
 
-The **Builder** (place/rotate/delete cubes on a 3D grid, connection rules, strict alignment, auto-fill, section cuts, undo/redo) is not a separate tab — it surfaces inline inside Encode (seed editing) and underpins Evolution.
+The **assembly editor** (place/rotate/delete cubes on a 3D grid, connection rules, strict alignment, auto-fill, section cuts, undo/redo) is not a separate tab — it surfaces inline inside Encode (seed editing) and underpins Evolution.
 
 Assemblies can be exported as JSON, GLB, SVG, or DXF, viewed in AR, saved to a Firebase-backed project (optional), or round-tripped into Grasshopper. A small Python bridge in [`grasshopper/`](grasshopper/) supports live linking from the browser to a running Grasshopper definition.
 

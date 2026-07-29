@@ -19,6 +19,7 @@ import { SpatialGrid } from './SpatialGrid';
 import { Grid } from '@react-three/drei';
 import { gridExtentFromPositions } from '../../lib/viewport/spatialGridExtent';
 import { CubeWithCuts } from './CubeWithCuts';
+import { checkableId, summarizeConnections, toCheckableCubes } from '../../lib/cube/connectionViolations';
 import { FaceHoverInfo } from '../../lib/cube/types';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
@@ -33,7 +34,7 @@ function snapGroundHoverPos(point: { x: number; z: number }): [number, number, n
   return [x, CUBE_SIZE / 2, z];
 }
 
-/** Builder mode scene contents */
+/** Assembly-editing scene contents (Encode's seed-edit surface) */
 const BuilderScene: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const selectedCubeIds = useBuilderStore(s => s.selectedCubeIds);
@@ -68,6 +69,13 @@ const BuilderScene: React.FC = () => {
     [placedCubes]
   );
 
+  // Cubes where a sphere face meets a cylinder face. Shell closures are
+  // deliberately not marked — see ConnectionSummary.crossedCubeIds.
+  const flaggedIds = useMemo(
+    () => summarizeConnections(toCheckableCubes(placedCubes)).crossedCubeIds,
+    [placedCubes]
+  );
+
   return (
     <>
       <SpatialGrid extent={gridExtent} />
@@ -83,6 +91,7 @@ const BuilderScene: React.FC = () => {
             position={cube.position}
             rotation={cube.rotation}
             selected={selectedCubeIds.includes(cube.id)}
+            flagged={flaggedIds.has(cube.id)}
             clippingPlanes={clippingPlanes}
             onClick={(nativeEvent) => {
               const isShift = nativeEvent.shiftKey;
@@ -248,6 +257,11 @@ const AssemblyPataphysicalScene: React.FC = () => {
 
   // Find the targeted cube's position for the cutter overlay
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
+  const flaggedIds = useMemo(
+    () => summarizeConnections(toCheckableCubes(placedCubes)).crossedCubeIds,
+    [placedCubes]
+  );
+
   const gridExtent = useMemo(
     () => gridExtentFromPositions(placedCubes.map(c => c.position)),
     [placedCubes]
@@ -270,6 +284,7 @@ const AssemblyPataphysicalScene: React.FC = () => {
             rotation={cube.rotation}
             overrideGeometry={override}
             targeted={cube.id === targetCubeId}
+            flagged={flaggedIds.has(cube.id)}
             onClick={() => {
               setTargetCubeId(cube.id === targetCubeId ? null : cube.id);
             }}
@@ -460,13 +475,23 @@ const EncodingScene: React.FC = () => {
   // Before/after: the proposal a re-encode replaced, ghosted over the current
   // one. Off unless explicitly toggled on in the Encode panel. Yields every
   // cell another layer already draws.
+  //
+  // Cells the old proposal shares with the new one are the comparison, not a
+  // conflict: two readings of the same photograph land on mostly the same
+  // cells, and what changed there is the whole point of looking. Only a cell
+  // holding the *identical* cube — same variation, same rotation — is dropped,
+  // because there is nothing to see and it would z-fight.
   const previousProposalCubes = useMemo(() => {
     if (!showPreviousProposal || !previousResult) return [];
-    const drawn = new Set<string>();
-    if (hasSeed) for (const c of seedCubes) drawn.add(c.position.join(','));
-    for (const c of assemblyCubes) drawn.add(c.position.join(','));
-    for (const c of visibleEncoded) drawn.add(c.position.join(','));
-    return previousResult.cubes.filter(c => !drawn.has(c.position.join(',')));
+    const identical = new Map<string, string>();
+    const stamp = (c: { variationId: string; rotation: { x: number; y: number } }) =>
+      `${c.variationId}@${c.rotation.x},${c.rotation.y}`;
+    if (hasSeed) for (const c of seedCubes) identical.set(c.position.join(','), stamp(c));
+    for (const c of assemblyCubes) identical.set(c.position.join(','), stamp(c));
+    for (const c of visibleEncoded) identical.set(c.position.join(','), stamp(c));
+    return previousResult.cubes.filter(
+      c => identical.get(c.position.join(',')) !== stamp(c)
+    );
   }, [showPreviousProposal, previousResult, hasSeed, seedCubes, assemblyCubes, visibleEncoded]);
 
   const allPositions = useMemo(() => {
@@ -488,6 +513,20 @@ const EncodingScene: React.FC = () => {
     discardedCubes,
     previousProposalCubes,
   ]);
+
+  // The build the connection law is checked against: whatever is currently
+  // solid on screen. The ghosted layers (discarded cubes, a previous proposal)
+  // are history being compared against, not a build to hold to the law.
+  const flaggedIds = useMemo(() => {
+    const checkable = editedStandalone
+      ? toCheckableCubes(editedVisibleCubes)
+      : toCheckableCubes([
+          ...(hasSeed ? seedCubes : []),
+          ...visibleEncoded,
+          ...assemblyCubes,
+        ]);
+    return summarizeConnections(checkable).crossedCubeIds;
+  }, [editedStandalone, editedVisibleCubes, hasSeed, seedCubes, visibleEncoded, assemblyCubes]);
 
   if (
     !editedStandalone &&
@@ -514,6 +553,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`edited-${cube.id ?? i}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
@@ -529,6 +569,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`seed-${i}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
@@ -548,6 +589,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`enc-${i}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={{
@@ -577,6 +619,7 @@ const EncodingScene: React.FC = () => {
         return (
           <CubeWithCuts
             key={`assembly-${cube.id}`}
+            flagged={flaggedIds.has(checkableId(cube))}
             variation={variation}
             position={cube.position}
             rotation={cube.rotation}
@@ -673,6 +716,11 @@ const EvolutionScene: React.FC = () => {
     return new THREE.EdgesGeometry(cutterPreview, 1);
   }, [cutterPreview]);
 
+  const flaggedIds = useMemo(
+    () => summarizeConnections(toCheckableCubes(placedCubes)).crossedCubeIds,
+    [placedCubes]
+  );
+
   const gridExtent = useMemo(
     () => gridExtentFromPositions(placedCubes.map(c => c.position)),
     [placedCubes]
@@ -695,6 +743,7 @@ const EvolutionScene: React.FC = () => {
             overrideGeometry={override}
             targeted={cube.id === highlightCubeId}
             selected={inspectable && cube.id === targetCubeId}
+            flagged={flaggedIds.has(cube.id)}
             clippingPlanes={clippingPlanes}
             onClick={inspectable
               ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)
@@ -803,7 +852,7 @@ export const Viewport3D: React.FC = () => {
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
 
-  // Encoding: Builder takes over the scene when the seed-edit overlay is open.
+  // Encoding: the assembly editor takes over the scene while seed-edit is open.
   // Evolution: Pataphysical takes over the scene when its sub-mode is active.
   const showBuilderScene       = activeMode === 'encoding' && seedEditOpen;
   const showEncodingScene      = activeMode === 'encoding' && !seedEditOpen;

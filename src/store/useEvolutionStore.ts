@@ -221,7 +221,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     const cubeOperators = useMemeStore.getState().cubeOperators;
 
     if (placedCubes.length === 0) {
-      set({ lastError: 'Place some cubes in Builder mode first' });
+      set({ lastError: 'Place some cubes in the assembly first' });
       return;
     }
 

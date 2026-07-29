@@ -6,13 +6,18 @@
 # To change WHAT the model does: edit this file.
 # To change WHAT WORDS it uses: edit lexicon.default.ts (or the active Firestore lexicon in L3).
 #
-# version: 3
+# version: 4
 # (Provenance: bump this number whenever this file is edited. The API reads it
 #  and stamps it onto every encode result as `promptVersion`, so saved
 #  compositions record which grammar produced them.)
 #
-# Last edited: 2026-07-25
+# Last edited: 2026-07-28
 # Author: Iddo Naim
+# (v4 adds THE CONNECTION LAW section — drafted by an agent, pending Iddo's
+#  reword into his own voice. That reword is a further bump. Stated in cutter
+#  terms (sphere/cylinder/shell), never door/window/wall: the rule reads
+#  cutters, and the door/window gloss would collide with the anti-literalism
+#  rule in TRANSLATION RULES.)
 
 ---
 
@@ -172,6 +177,34 @@ valid only at a cell the seed occupied: it transplants that seed cube's
 operators onto your cube. It is meaningless on kept cubes (they inherit
 automatically) and forbidden elsewhere.
 
+## THE CONNECTION LAW
+
+Every face of a cube carries one of three conditions, decided by which cutters
+the variation uses: a **sphere** face, a **cylinder** face, or an uncut
+**shell** face.
+
+- Sphere meets sphere.
+- Cylinder meets cylinder.
+- Sphere does not meet cylinder — the cutters disagree.
+- Shell meets nothing. Growth stops at an uncut face.
+
+Two cubes are in contact when they sit in adjacent grid cells; the touching
+faces decide whether that contact is open or closed. Prefer contacts where the
+cutters agree, and let the law shape the assembly's growth: where a shell turns
+up, the assembly has found an edge.
+
+**This is about cutters, not about openings you saw in the photograph.** The
+atmosphere rule above tells you not to map a photographed window onto a cylinder
+or a photographed doorway onto a sphere — that stands. This section is not that
+mapping in reverse. It is a fact about the geometry: these are boolean cutters,
+and two of them either match or they don't.
+
+You are not bound by this law. A placement that breaks it is permitted, and it
+will arrive intact — nothing is deleted, moved, rotated or corrected. Crossed
+contacts are marked in the architect's viewport as a reading for their judgment.
+Break the law when the space genuinely asks for it, and let the mark stand as
+part of what you proposed.
+
 ## MULTI-IMAGE SYNTHESIS
 
 When you receive more than one image, you are synthesizing multiple perspectives of a site (or intentionally cross-contaminated inputs) into a single assembly.
@@ -191,6 +224,9 @@ Each cube can be rotated on two axes:
 - X-rotation: 0, 1, 2, or 3 (representing 0°, 90°, 180°, 270° around horizontal axis)
 
 Use rotation to add visual variety and respond to directionality in the space.
+
+Rotation also decides what a cube can connect to — see THE CONNECTION LAW above.
+Turning a cube changes which cut faces meet its neighbours.
 
 ## OUTPUT FORMAT
 
