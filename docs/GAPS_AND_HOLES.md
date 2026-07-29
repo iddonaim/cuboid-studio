@@ -58,7 +58,32 @@ The Overpass query requests bus route relations but the parser only handles
 nodes/ways, so `busLines` is always empty and the layer toggle never appears.
 Fix the parser or remove the dead query.
 
-### P0-6 · The connection law reads a face model that is wrong for 69 of 70 variations
+### P0-6 · ~~The connection law reads a face model that is wrong for 69 of 70 variations~~ — FIXED 2026-07-28
+
+Fixed in `src/lib/cube/faceCuts.ts`. The derivation now computes, per cutter,
+every face its solid actually crosses, and a face carries a **set** of cut types
+rather than one — because 38.6% of variation faces carry both a sphere and a
+cylinder cut. `canConnect` became a set intersection, which is the
+closed-vocabulary claim stated as an operation: two faces join when they share a
+cut type, and a shell is the empty set that intersects nothing.
+
+**The change is monotone: 5,479 of 14,700 verdicts (37.3%) went from refused to
+open, and none went the other way.** That is structural rather than lucky — the
+old model could only ever under-report cuts, so supplying the missing ones can
+only make faces agree more often. Consequences: no assembly that was placeable
+becomes unplaceable, no saved composition gains a violation it did not have, and
+placement and auto-fill only gain options. Measure it with
+`node scripts/connection-verdict-delta.mjs`.
+
+Also renamed for honesty: `VARIATION_FACE_TYPES` → `VARIATION_FACE_CUTS`,
+`getRotatedFaceCutType` → `getRotatedFaceCuts`, `getRotatedFaceCutter` →
+`getRotatedFaceCutters` (plural — a face has several), and the dead
+`FaceCutType` union is gone. Strict alignment now asks whether *any* matching
+pair of cutters lines up, where before it tested one arbitrarily-chosen pair.
+
+Original finding kept below for the record.
+
+### P0-6 (original finding) · The connection law reads a face model that is wrong for 69 of 70 variations
 
 `computeFaceCutTypes` (`connectionRules.ts`) derives each face's cut type from
 two helpers that **cannot express the geometry they claim to read**:
@@ -105,11 +130,12 @@ closed-vocabulary claim survives in principle — the cutter set really is close
 and finite — but the implementation of "which faces agree" does not match the
 geometry.
 
-**Fix cost and risk.** Correcting the derivation changes every connection
-verdict in the app: interactive placement, auto-fill, valid-rotation sets, the
-encode connection reading, and the reading of every already-saved assembly. It
-is the right fix and it is not a small behavioural change. Scheduled *after*
-PR #127 merges so the geometry lands as its own revertible diff.
+**Fix cost and risk (as assessed before the fix).** Correcting the derivation
+changes every connection verdict in the app: interactive placement, auto-fill,
+valid-rotation sets, the encode connection reading, and the reading of every
+already-saved assembly. Scheduled *after* PR #127 merged so the geometry landed
+as its own revertible diff. In the event the change proved monotone — see the
+FIXED note above — so the risk was lower than feared.
 
 **Verification still open:** analytic, from `specifications.ts`. The Grasshopper
 file supplied (v515 Presentation) confirms cube 42, the three 51 mm extrusions

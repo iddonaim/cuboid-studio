@@ -44,25 +44,44 @@ describe('face geometry invariants', () => {
   });
 });
 
-describe('canConnect — wall blocks growth, like cutters join', () => {
-  it('connects two doors (sphere ↔ sphere)', () => {
-    expect(canConnect('sphere', 'sphere')).toBe(true);
+describe('canConnect — an uncut face blocks growth, shared cut types join', () => {
+  const cuts = (...types: ('sphere' | 'cylinder')[]) => new Set(types);
+  const SHELL = new Set<'sphere' | 'cylinder'>();
+
+  it('connects two sphere faces', () => {
+    expect(canConnect(cuts('sphere'), cuts('sphere'))).toBe(true);
   });
 
-  it('connects two windows (cylinder ↔ cylinder)', () => {
-    expect(canConnect('cylinder', 'cylinder')).toBe(true);
+  it('connects two cylinder faces', () => {
+    expect(canConnect(cuts('cylinder'), cuts('cylinder'))).toBe(true);
   });
 
-  it('does not connect unlike cutters (sphere ↔ cylinder)', () => {
-    expect(canConnect('sphere', 'cylinder')).toBe(false);
-    expect(canConnect('cylinder', 'sphere')).toBe(false);
+  it('does not connect a sphere face to a cylinder face', () => {
+    expect(canConnect(cuts('sphere'), cuts('cylinder'))).toBe(false);
+    expect(canConnect(cuts('cylinder'), cuts('sphere'))).toBe(false);
   });
 
-  it('a shell (blank wall) blocks every connection', () => {
-    const types = ['sphere', 'cylinder', 'shell'] as const;
-    for (const t of types) {
-      expect(canConnect('shell', t)).toBe(false);
-      expect(canConnect(t, 'shell')).toBe(false);
+  it('an uncut face blocks every connection', () => {
+    for (const other of [cuts('sphere'), cuts('cylinder'), SHELL]) {
+      expect(canConnect(SHELL, other)).toBe(false);
+      expect(canConnect(other, SHELL)).toBe(false);
+    }
+  });
+
+  // A face opened by both a sphere and a cylinder is the common case, not an
+  // edge case — 38.6% of variation faces. It joins either kind.
+  it('a face carrying both cut types connects to either', () => {
+    const both = cuts('sphere', 'cylinder');
+    expect(canConnect(both, cuts('sphere'))).toBe(true);
+    expect(canConnect(both, cuts('cylinder'))).toBe(true);
+    expect(canConnect(both, both)).toBe(true);
+    expect(canConnect(both, SHELL)).toBe(false);
+  });
+
+  it('is symmetric', () => {
+    const all = [SHELL, cuts('sphere'), cuts('cylinder'), cuts('sphere', 'cylinder')];
+    for (const a of all) for (const b of all) {
+      expect(canConnect(a, b)).toBe(canConnect(b, a));
     }
   });
 });

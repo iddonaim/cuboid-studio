@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useBuilderStore } from './useBuilderStore';
 import {
-  VARIATION_FACE_TYPES,
-  getRotatedFaceCutType,
+  VARIATION_FACE_CUTS,
+  getRotatedFaceCuts,
   getAllRotations,
+  canConnect,
   type Rotation,
 } from '../lib/cube/connectionRules';
 import { CUBE_VARIATIONS } from '../lib/cube/specifications';
@@ -13,17 +14,17 @@ import { GRID_STRIDE } from '../lib/cube/constants';
  *  some are not — the case where rotating should visibly matter. */
 function findMixedCase() {
   for (const neighbour of CUBE_VARIATIONS) {
-    const nFaces = VARIATION_FACE_TYPES.get(neighbour.id)!;
+    const nFaces = VARIATION_FACE_CUTS.get(neighbour.id)!;
     const neighbourXPos = nFaces.X_POS;
-    if (neighbourXPos === 'shell') continue;
+    if (neighbourXPos.size === 0) continue;
 
     for (const picked of CUBE_VARIATIONS) {
-      const pFaces = VARIATION_FACE_TYPES.get(picked.id)!;
+      const pFaces = VARIATION_FACE_CUTS.get(picked.id)!;
       const legal: Rotation[] = [];
       const illegal: Rotation[] = [];
       for (const r of getAllRotations()) {
-        const t = getRotatedFaceCutType(pFaces, 'X_NEG', r);
-        (t === neighbourXPos ? legal : illegal).push(r);
+        const cuts = getRotatedFaceCuts(pFaces, 'X_NEG', r);
+        (canConnect(cuts, neighbourXPos) ? legal : illegal).push(r);
       }
       if (legal.length > 0 && illegal.length > 0) {
         return { neighbour, picked, legal, illegal };

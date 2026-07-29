@@ -13,7 +13,7 @@
  *
  * WHAT IT CHECKS — and what it deliberately does not:
  *
- * - Face cut types come from the **base variation** (`VARIATION_FACE_TYPES`,
+ * - Face cut types come from the **base variation** (`VARIATION_FACE_CUTS`,
  *   computed once at module load from each variation's cutter spec). Operators
  *   applied on top by a meme translation do not feed back into them. That is
  *   correct for this checker's purpose: the law governs the *encoding build*.
@@ -31,14 +31,14 @@
 
 import {
   Face,
-  FaceCutType,
   Rotation,
   OPPOSITE_FACE,
-  VARIATION_FACE_TYPES,
-  getRotatedFaceCutType,
+  VARIATION_FACE_CUTS,
+  getRotatedFaceCuts,
   canConnect,
   getAdjacentFace,
 } from './connectionRules';
+import { FaceCuts, faceCutLabel, isShell } from './faceCuts';
 import { GRID_STRIDE } from './constants';
 
 /** The minimum a cube needs to expose to be checkable. `PlacedCube` satisfies
@@ -53,10 +53,9 @@ export interface CheckableCube {
 /**
  * Why a contact is closed. Two different conditions:
  *
- * - `shell` — at least one face is uncut. Every unrotated depth contact is one
- *   of these, since no variation carries a cutter on either depth face.
- * - `crossed` — a sphere face meets a cylinder face. Both are cut; the cutters
- *   disagree.
+ * - `shell` — at least one face is uncut, so nothing passes.
+ * - `crossed` — both faces are cut but share no cut type: a sphere opening
+ *   against a cylinder opening.
  *
  * Named for the cutter geometry, which is what the rule actually reads. The
  * door/window/wall gloss is an interpretation laid on top and does not belong
@@ -68,8 +67,8 @@ export type ContactKind = 'shell' | 'crossed';
 export interface ConnectionViolation {
   /** Stable key for this pair, ordered so it doesn't depend on input order. */
   key: string;
-  a: { id: string; variationId: string; face: Face; cutType: FaceCutType };
-  b: { id: string; variationId: string; face: Face; cutType: FaceCutType };
+  a: { id: string; variationId: string; face: Face; cuts: FaceCuts; cutLabel: string };
+  b: { id: string; variationId: string; face: Face; cuts: FaceCuts; cutLabel: string };
   /** Midpoint of the shared interface in world units. */
   interfacePosition: [number, number, number];
   /** Which axis the two cubes are separated along. */
@@ -92,10 +91,9 @@ export interface ConnectionSummary {
   /**
    * Ids of cubes taking part in a *crossed* contact specifically.
    *
-   * This is the set worth marking. A shell contact is structural rather than a
-   * choice — no variation is cut on its depth faces — so marking those lights
-   * up most of a three-dimensional assembly for something it could not have
-   * avoided. A crossed contact is two cutters genuinely disagreeing.
+   * This is the set worth marking. A shell contact is a property of the two
+   * variations meeting there; a crossed contact is two cut faces that genuinely
+   * disagree, which is the case an architect can act on.
    */
   crossedCubeIds: Set<string>;
 }
@@ -174,8 +172,8 @@ export function summarizeConnections(
   ];
 
   for (const cube of cubes) {
-    const faceTypesA = VARIATION_FACE_TYPES.get(cube.variationId);
-    if (!faceTypesA) continue;
+    const faceCutsA = VARIATION_FACE_CUTS.get(cube.variationId);
+    if (!faceCutsA) continue;
 
     const cell = [
       Math.round(cube.position[0] / gridStride),
@@ -188,8 +186,8 @@ export function summarizeConnections(
       const neighbour = byCell.get(neighbourKey);
       if (!neighbour) continue;
 
-      const faceTypesB = VARIATION_FACE_TYPES.get(neighbour.variationId);
-      if (!faceTypesB) continue;
+      const faceCutsB = VARIATION_FACE_CUTS.get(neighbour.variationId);
+      if (!faceCutsB) continue;
 
       // `getAdjacentFace` is the single authority on the position→face
       // convention; deriving it here by hand would be a second copy of the rule.
@@ -197,17 +195,16 @@ export function summarizeConnections(
       if (!faceOnA) continue;
       const faceOnB = OPPOSITE_FACE[faceOnA];
 
-      const cutTypeA = getRotatedFaceCutType(faceTypesA, faceOnA, cube.rotation);
-      const cutTypeB = getRotatedFaceCutType(faceTypesB, faceOnB, neighbour.rotation);
+      const cutsA = getRotatedFaceCuts(faceCutsA, faceOnA, cube.rotation);
+      const cutsB = getRotatedFaceCuts(faceCutsB, faceOnB, neighbour.rotation);
 
       // Counted before the verdict: this is a real adjacency either way, and
       // it is the denominator the refusal count is meaningless without.
       totalAdjacencies += 1;
 
-      if (canConnect(cutTypeA, cutTypeB)) continue;
+      if (canConnect(cutsA, cutsB)) continue;
 
-      const kind: ContactKind =
-        cutTypeA === 'shell' || cutTypeB === 'shell' ? 'shell' : 'crossed';
+      const kind: ContactKind = isShell(cutsA) || isShell(cutsB) ? 'shell' : 'crossed';
       if (kind === 'shell') {
         shell += 1;
       } else {
@@ -221,12 +218,19 @@ export function summarizeConnections(
 
       violations.push({
         key: [cube.id, neighbour.id].sort().join('::'),
-        a: { id: cube.id, variationId: cube.variationId, face: faceOnA, cutType: cutTypeA },
+        a: {
+          id: cube.id,
+          variationId: cube.variationId,
+          face: faceOnA,
+          cuts: cutsA,
+          cutLabel: faceCutLabel(cutsA),
+        },
         b: {
           id: neighbour.id,
           variationId: neighbour.variationId,
           face: faceOnB,
-          cutType: cutTypeB,
+          cuts: cutsB,
+          cutLabel: faceCutLabel(cutsB),
         },
         interfacePosition: [
           (cube.position[0] + neighbour.position[0]) / 2,
@@ -257,7 +261,7 @@ interface CubeLike {
  * An encode result's cubes only carry ids once the encoding store assigns them,
  * so a cube without one falls back to its grid cell — unique by construction,
  * since a cell holds at most one cube. The rotation cast is safe: every
- * producer writes quarter-turn indices, and `getRotatedFaceCutType` reduces
+ * producer writes quarter-turn indices, and `getRotatedFaceCuts` reduces
  * modulo 4 regardless.
  */
 export function checkableId(cube: CubeLike): string {
@@ -289,8 +293,8 @@ export interface PlacementBlocker {
   neighbourVariationId: string;
   /** The neighbour's face that meets the hovered cell. */
   face: Face;
-  /** What that face carries. `shell` blocks unconditionally. */
-  cutType: FaceCutType;
+  /** What that face carries. An empty set (shell) blocks unconditionally. */
+  cuts: FaceCuts;
   axis: 'x' | 'y' | 'z';
 }
 
@@ -317,20 +321,20 @@ export function findPlacementBlockers(
   const blockers: PlacementBlocker[] = [];
 
   for (const neighbour of neighbours) {
-    const faceTypes = VARIATION_FACE_TYPES.get(neighbour.variationId);
-    if (!faceTypes) continue;
+    const faceCuts = VARIATION_FACE_CUTS.get(neighbour.variationId);
+    if (!faceCuts) continue;
 
     const faceOnNeighbour = getAdjacentFace(neighbour.position, cellPosition, gridStride);
     if (!faceOnNeighbour) continue;
 
-    const cutType = getRotatedFaceCutType(faceTypes, faceOnNeighbour, neighbour.rotation);
-    if (cutType !== 'shell') continue; // only unconditional blockers
+    const cuts = getRotatedFaceCuts(faceCuts, faceOnNeighbour, neighbour.rotation);
+    if (!isShell(cuts)) continue; // only unconditional blockers
 
     blockers.push({
       neighbourId: neighbour.id,
       neighbourVariationId: neighbour.variationId,
       face: faceOnNeighbour,
-      cutType,
+      cuts,
       axis: AXIS_FOR_FACE[faceOnNeighbour],
     });
   }
