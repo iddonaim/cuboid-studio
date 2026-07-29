@@ -58,6 +58,66 @@ The Overpass query requests bus route relations but the parser only handles
 nodes/ways, so `busLines` is always empty and the layer toggle never appears.
 Fix the parser or remove the dead query.
 
+### P0-6 · The connection law reads a face model that is wrong for 69 of 70 variations
+
+`computeFaceCutTypes` (`connectionRules.ts`) derives each face's cut type from
+two helpers that **cannot express the geometry they claim to read**:
+
+- `getSphereFace()` returns **a single `Face`** — the one whose plane the
+  sphere's centre sits on. The master spheres are r 9.9–17.1 mm on a 42 mm cube
+  and routinely breach two or three faces. `SPHERE_01` opens X_NEG 19.4%,
+  Y_NEG 32.8% and Z_NEG 6.6%; only Y_NEG is recorded.
+- `getCylinderFaces()` returns **only the two faces perpendicular to the axis**.
+  All three cylinders are `length 51` through a 42 mm cube (confirmed in the
+  Grasshopper definition — three sliders, all 51), so they pierce fully, and
+  their radii breach side faces too. `CYLINDER_05` opens Z_NEG 50.0% and
+  X_NEG 33.8% beyond its two Y faces; neither is recorded.
+
+Structural, not numerical: a return type of `Face | null` cannot represent a
+cutter that opens three faces. **6 of the 8 master cutters are under-reported.**
+
+| Uncut ("shell") faces per variation | Real geometry | Code model |
+|---|---|---|
+| 0 | 35 / 70 | 0 |
+| 1 | 33 / 70 | 0 |
+| 2 | 2 / 70 | 42 / 70 |
+| 3 | 0 | 26 / 70 |
+| 4 | 0 | 2 / 70 |
+
+**69 of 70 variations have at least one depth (Z) face genuinely cut. The code
+says 0 of 70.** The two models disagree on 69 of 70 variations, and the missed
+openings run 6.6%–50% of a face — real holes, not slivers.
+
+**It does not depend on the transcribed cutter centres.** A cutter of radius `r`
+centred on a 42 mm face avoids breaching a neighbouring face only if it stays
+`r` clear of all four edges, leaving `(42-2r)²` of safe area: **5.3%** for 10φ,
+28.1% for 3.14π, 14.5% for r=13, **3.5%** for r=17.086. For the two largest
+cutters, 94.7% and 96.5% of all possible positions force a multi-face breach.
+Multi-face cutting is what this cutter set *does* on a cube this size.
+
+Reproduce: `node scripts/analyze-cutter-faces.mjs` and
+`node scripts/analyze-cutter-face-area.mjs`.
+
+**Consequences.** `canConnect` refuses connections the geometry permits. The
+assembly editor's placement preview refusing every rotation at a cell was
+largely this. The ConnectionReading panel's shell counts are inflated. The
+closed-vocabulary claim survives in principle — the cutter set really is closed
+and finite — but the implementation of "which faces agree" does not match the
+geometry.
+
+**Fix cost and risk.** Correcting the derivation changes every connection
+verdict in the app: interactive placement, auto-fill, valid-rotation sets, the
+encode connection reading, and the reading of every already-saved assembly. It
+is the right fix and it is not a small behavioural change. Scheduled *after*
+PR #127 merges so the geometry lands as its own revertible diff.
+
+**Verification still open:** analytic, from `specifications.ts`. The Grasshopper
+file supplied (v515 Presentation) confirms cube 42, the three 51 mm extrusions
+and the radii (Golden Ratio component ×10 → 10φ; 3.14π), but its sphere centres
+are live graph output rather than stored literals and it is a different version
+from whatever exported `public/models`. The shipped GLBs remain the untouched
+ground truth for the per-variation counts.
+
 ---
 
 ## P1 — Documentation drift (addressed by this audit)
