@@ -30,7 +30,6 @@ function makeContext(loc: Partial<SiteContextData['quantitative']['location']>):
       },
     },
     programmatic: { existing_uses: [], historical_uses: [] },
-    architects_reading: {},
   };
 }
 

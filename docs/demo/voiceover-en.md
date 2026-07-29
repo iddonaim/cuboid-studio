@@ -22,7 +22,7 @@ We start with a site. [SITE CONTEXT — one or two sentences on the chosen site.
 Next, photographs of an inhabited space — one primary, up to six supplementary. Before the system commits to any geometry, it publishes its reading of the space on five explicit axes: atmosphere, light, and emotion as continuous scales; rhythm and placement as categories. This is deliberate. The reading is a typed intermediate representation — you can inspect it, contest it, and edit it, and the system preserves both the model's original and your revision. If you disagree with the machine's judgment, you overrule it before a single cube is placed. Only then does the reading propose an assembly.
 
 **2:15 — Step 3: The vocabulary**
-[SCREEN: Builder, variation picker, placing cubes]
+[SCREEN: assembly editor, variation picker, placing cubes]
 
 Everything is built from one vocabulary: seventy cube variations, each produced by choosing four of eight fixed cutters — five spheres, three cylinders — subtracted from the same base cube. Eight primitives, no more. Because the vocabulary is finite and fixed, every relationship is unambiguous: two cubes either share a cutter or they don't, and connection follows from that. And when you save, the system stores the cutting conditions, not the mesh — the form regenerates from its forces every time it loads.
 

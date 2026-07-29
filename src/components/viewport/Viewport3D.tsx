@@ -34,7 +34,7 @@ function snapGroundHoverPos(point: { x: number; z: number }): [number, number, n
   return [x, CUBE_SIZE / 2, z];
 }
 
-/** Builder mode scene contents */
+/** Assembly-editing scene contents (Encode's seed-edit surface) */
 const BuilderScene: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const selectedCubeIds = useBuilderStore(s => s.selectedCubeIds);
@@ -852,7 +852,7 @@ export const Viewport3D: React.FC = () => {
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
 
-  // Encoding: Builder takes over the scene when the seed-edit overlay is open.
+  // Encoding: the assembly editor takes over the scene while seed-edit is open.
   // Evolution: Pataphysical takes over the scene when its sub-mode is active.
   const showBuilderScene       = activeMode === 'encoding' && seedEditOpen;
   const showEncodingScene      = activeMode === 'encoding' && !seedEditOpen;

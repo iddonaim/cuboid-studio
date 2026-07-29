@@ -6,7 +6,7 @@ import { useDecodeStore } from '../../store/useDecodeStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 // Help text is keyed by the *effective* surface (mode + sub-mode), not just
-// the top-level AppMode. Builder and Pataphysical hints still apply when those
+// the top-level AppMode. Assembly-editing and Pataphysical hints still apply when those
 // surfaces are mounted as contextual sub-modes inside Encode and Evolution.
 type HelpKey = 'encoding' | 'encoding-builder' | 'evolution-evolve' | 'evolution-pataphysical' | 'decode' | 'decode-sheet';
 

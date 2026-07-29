@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// v1 types — used by Evolution mode, Builder, and v1 Pataphysical mode.
+// v1 types — used by Evolution mode, assembly editing, and v1 Pataphysical.
 // DO NOT modify these; add new types below instead.
 // ---------------------------------------------------------------------------
 

@@ -11,18 +11,18 @@ SITE CONTEXT for this run:
 {SITE_CONTEXT: 1–3 sentences on the anchor site, or "site-agnostic — keep [SITE] slots"}
 
 STEPS TO COVER (default: full spine):
-{FOCUS: Map → Encode → Builder/vocabulary → Pataphysical → Evolve → Decode | subset}
+{FOCUS: Map → Encode → assembly/vocabulary → Pataphysical → Evolve → Decode | subset}
 
 ## Canonical facts — every claim must be consistent with these
 
-1. Cuboid Studio is a web app (React/Three.js, cuboidstudio.vercel.app). Workflow spine: Map → Encode → Evolution → Decode; the Builder is inline, not a tab. Pataphysical is a sub-mode of Evolution.
+1. Cuboid Studio is a web app (React/Three.js, cuboidstudio.vercel.app). Workflow spine: Map → Encode → Evolution → Decode; the assembly editor is inline, not a tab. Pataphysical is a sub-mode of Evolution.
 2. Map: address geocoding + POI harvest (~22 categories, 50 m–2 km radius) into a persistent structured site context that is injected into both Encode and Pataphysical. Deeper analysis runs in the embedded map-context app.
 3. Encode: 1–7 photos (1 primary). The system emits a five-axis reading BEFORE any geometry — atmosphere, light, emotion (continuous) + rhythm, placement (categorical). The reading is editable; the model's original is always preserved with an edited flag. Axis vocabulary comes from architect-authored lexicons.
 4. Vocabulary: 70 cube variations = choose 4 of 8 fixed cutters (5 spheres + 3 cylinders) subtracted from a base cube. Finite fixed vocabulary → unambiguous relations (share a cutter or not). Saving stores boolean cutting conditions, not meshes — form regenerates on load.
 5. Pataphysical translation is two-pass: (1) cultural extraction — rhetorical move, tensions, affects, site resonance; (2) geometric translation — a NAMED operator (inversion, amplification, drift, reassignment, preservation, shuffle, consolidation, erosion, reinforcement) with targets, magnitude/decay, a cutter, written reasoning, and a 4-axis confidence vector (rhetorical clarity, site resonance, affective coherence, operational specificity). Parameters are tweakable before apply. The prompt is the design artifact.
 6. Evolve: generates candidate translations in parallel, scored by compression progress (interestingness, after Schmidhuber) over four weighted sub-scores — geometric clustering, spatial regularity, operator-sequence repetition, meme coherence. Candidates are ranked; the architect previews, applies, or discards.
 7. Decode: a MANUAL 2D notation canvas — tile glyphs per variation, 90° rotation, snap-to-grid, SVG/DXF export. Not automatic.
-8. Memes come from the archthesis platform (memes.iddonaim.com); site analysis from map-context. Network-dependent steps: Map services, Encode vision call, Pataphysical/Evolve generation. Deterministic/offline-safe: Builder, Decode, scoring, saved-state restore.
+8. Memes come from the archthesis platform (memes.iddonaim.com); site analysis from map-context. Network-dependent steps: Map services, Encode vision call, Pataphysical/Evolve generation. Deterministic/offline-safe: assembly editing, Decode, scoring, saved-state restore.
 
 ## Prohibited claims — never say or imply
 

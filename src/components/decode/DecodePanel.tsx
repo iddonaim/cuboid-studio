@@ -145,7 +145,7 @@ const DecodeComposer: React.FC = () => {
     [setUnderlay],
   );
 
-  // Auto-composition: grow the notation like the Builder's +N buttons grow
+  // Auto-composition: grow the notation like the assembly's +N buttons grow
   // the assembly. The notation rule is that elements connect through their
   // red snap dots, so each new tile is constructed onto the composition:
   // a random snap dot of a placed tile and a random snap dot of the new

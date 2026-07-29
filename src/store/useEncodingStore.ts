@@ -269,7 +269,7 @@ interface EncodingState {
   setSeedFromBuilder: () => void;
 
   // Seed-edit overlay: when true, the Encoding surface temporarily mounts the
-  // Builder UI so the user can build / edit the merge seed inline.
+  // assembly-editing UI so the user can build / edit the merge seed inline.
   // Closing the overlay re-snapshots `placedCubes` into `seedCubes`.
   seedEditOpen: boolean;
   openSeedEdit: () => void;

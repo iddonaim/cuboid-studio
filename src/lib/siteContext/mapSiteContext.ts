@@ -47,7 +47,6 @@ export function buildSiteContextAt(
     generated: new Date().toISOString(),
     quantitative: emptyQuantitative(),
     programmatic: { existing_uses: [], historical_uses: [] },
-    architects_reading: {},
   };
 
   return {

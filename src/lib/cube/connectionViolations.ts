@@ -3,7 +3,7 @@
  * ==========================================================================
  *
  * The connection law lives in `canConnect` (connectionRules.ts) and is enforced
- * interactively in the Builder. Nothing else in the app is subject to it: an
+ * during interactive placement only. Nothing else in the app is subject to it: an
  * encode result, a merge, a remix or a restored composition can all place cubes
  * whose touching faces the law would refuse.
  *
@@ -25,7 +25,7 @@
  *   as a shell face here would close nearly every ground-level cube and make
  *   the whole reading worthless.
  * - **`canConnect` only**, never `canConnectStrict`. Strict alignment is a
- *   separate, optional Builder mode; a violation reported here means the
+ *   separate, optional placement mode; a violation reported here means the
  *   connection law and nothing else.
  */
 
@@ -297,7 +297,7 @@ export interface PlacementBlocker {
 /**
  * Why a hovered cell refuses every rotation.
  *
- * The Builder's placement preview goes red when *no* rotation of the picked
+ * The placement preview goes red when *no* rotation of the picked
  * variation satisfies all of the cell's neighbours at once, but it still draws
  * the cube in the rotation the user chose — so the face they happen to be
  * looking at can look perfectly compatible while an unseen neighbour is the one

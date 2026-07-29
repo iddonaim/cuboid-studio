@@ -57,10 +57,6 @@ function emptyProgrammatic() {
   };
 }
 
-function emptyReading() {
-  return { tensions: '', spatial_qualities: '', social_dynamics: '', notes: '' };
-}
-
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -75,7 +71,6 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
   const [siteName, setSiteName] = useState('');
   const [q, setQ] = useState(emptyQuantitative);
   const [p, setP] = useState(emptyProgrammatic);
-  const [r, setR] = useState(emptyReading);
   const [autoSun, setAutoSun] = useState(true);
   const [sunOk, setSunOk] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -89,7 +84,6 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
       setSiteName(existing.site_name || '');
       setQ(existing.quantitative as any || emptyQuantitative());
       setP(existing.programmatic as any || emptyProgrammatic());
-      setR(existing.architects_reading as any || emptyReading());
     }
   }, [open]);
 
@@ -145,11 +139,8 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
         existing_uses: p.existing_uses.filter(u => u.use.trim()),
         historical_uses: p.historical_uses.filter(u => u.use.trim()),
       },
-      architects_reading: Object.fromEntries(
-        Object.entries(r).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])
-      ),
     };
-  }, [siteName, q, p, r]);
+  }, [siteName, q, p]);
 
   const handleSave = () => {
     const data = buildExport();
@@ -163,7 +154,6 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
     setSiteName('');
     setQ(emptyQuantitative());
     setP(emptyProgrammatic());
-    setR(emptyReading());
   };
 
   if (!open) return null;
@@ -216,7 +206,6 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
             {[
               { id: 'quantitative', label: 'Quantitative' },
               { id: 'programmatic', label: 'Programmatic' },
-              { id: 'reading', label: "Architect's Reading" },
               { id: 'export', label: 'Save' },
             ].map(t => (
               <TabsTrigger
@@ -417,29 +406,6 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
                   + Add historical use
                 </button>
               </Section>
-            </TabsContent>
-
-            {/* ── ARCHITECT'S READING ── */}
-            <TabsContent value="reading" className="mt-0">
-              <div className="bg-ink-100 border border-ink-200 rounded-md p-2.5 mb-4 text-[11px] text-amber-600 leading-relaxed">
-                This section is explicitly your subjective reading. It is labeled as such in the translation pipeline.
-              </div>
-              <div className="mb-3">
-                <Label text="Tensions" sub="What's in conflict?" />
-                <textarea value={r.tensions} onChange={e => setR(prev => ({ ...prev, tensions: e.target.value }))} placeholder="Write freely." className={textareaCls} />
-              </div>
-              <div className="mb-3">
-                <Label text="Spatial qualities" sub="Compression, openness, rhythm, noise, light, smell" />
-                <textarea value={r.spatial_qualities} onChange={e => setR(prev => ({ ...prev, spatial_qualities: e.target.value }))} placeholder="Describe the embodied experience." className={textareaCls} />
-              </div>
-              <div className="mb-3">
-                <Label text="Social dynamics" sub="Who is there, when, doing what? Who is absent?" />
-                <textarea value={r.social_dynamics} onChange={e => setR(prev => ({ ...prev, social_dynamics: e.target.value }))} placeholder="Describe human patterns." className={textareaCls} />
-              </div>
-              <div>
-                <Label text="Additional notes" sub="Hunches, questions, contradictions" />
-                <textarea value={r.notes} onChange={e => setR(prev => ({ ...prev, notes: e.target.value }))} placeholder="Open field." className={textareaCls} />
-              </div>
             </TabsContent>
 
             {/* ── SAVE ── */}

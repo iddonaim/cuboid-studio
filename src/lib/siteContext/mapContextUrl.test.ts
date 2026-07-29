@@ -28,7 +28,6 @@ function contextAt(
       },
     },
     programmatic: { existing_uses: [], historical_uses: [] },
-    architects_reading: {},
   };
 }
 

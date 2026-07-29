@@ -79,7 +79,6 @@ export interface SiteContextData {
     existing_uses: Array<{ use: string; formal: boolean; notes: string }>;
     historical_uses: Array<{ use: string; period: string; notes: string }>;
   };
-  architects_reading: Record<string, string>;
 }
 
 /** Returns the active site context, or null if none is saved. */

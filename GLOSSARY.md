@@ -38,7 +38,7 @@
 - **CSG (Constructive Solid Geometry)** — The boolean-subtraction technique (via `three-bvh-csg`) that produces cut geometry. Runtime CSG exists as a fallback; the shipped variations are pre-computed.
 - **Base cube / grid constants** — The 42×42×42 mm starting cube. `CUBE_SIZE = 42`, gap 0.6, `GRID_STRIDE = 42.6`, shell thickness 1.6. All hardcoded.
 - **Shell** — A hollowed-out cube treatment. ⚠ Not implemented at runtime — real shells only exist via Grasshopper export, and in the shipped connection rules a shell blocks all connections.
-- **Assembly** — The multi-cube arrangement on the 3D grid; the working state of the model. Single source of truth is the Builder's placed-cubes list.
+- **Assembly** — The multi-cube arrangement on the 3D grid; the working state of the model. Single source of truth is the placed-cubes list (`useBuilderStore.placedCubes`).
 - **Composition** — The saved, named record of an assembly plus everything that produced it (readings, translations, provenance). ⚠ Also the mandated *product* noun in marketing copy — say "composition," not "assembly" or "building," when talking about the thing a user keeps.
 - **Connection rules** — The logic deciding which cube faces may join: door faces map to spheres, window faces to cylinders; sphere↔sphere and cylinder↔cylinder connect, mixed types don't, shell blocks everything. Marketing tagline: "They only connect where their cuts agree."
 - **Strict alignment** — An optional stricter mode on top of connection rules: cutters must line up within 10% of the cutter radius.
@@ -46,14 +46,14 @@
 
 ---
 
-## 3. The four modes (and the Builder)
+## 3. The four modes (and the assembly editor)
 
 - **AppMode / the workflow spine** — The four top-level tabs: **Map → Encode → Evolution → Decode**. That order is the intended narrative: pick a site, read a space, evolve it with culture, notate the result. (The app actually lands on Encode by default, not Map.)
 - **Map (mode)** — Site picker. Hosts the embedded map-context app in an iframe; produces the *active site context* that feeds Encode and Pataphysical. Includes the signed-in "My sites" layer (all saved sites on one Leaflet map).
 - **Encode (mode)** — Photograph-to-assembly. Upload 1–7 photos of an inhabited space; the model emits a five-axis reading first, then proposes a cuboid assembly that mirrors the space's logic.
 - **Evolution (mode)** — Container for two sub-modes: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (meme → operator translation).
 - **Decode (mode)** — 2D notation canvas (Konva): each variation has a tile glyph; drag/rotate/snap them into a plan-like drawing; export SVG or DXF.
-- **Builder** — The full cube editor (place, rotate, delete, auto-fill, section cuts, tagging). ⚠ Not a tab — it surfaces inline: as the seed editor inside Encode's merge mode, and as the substrate that Pataphysical re-cuts.
+- **Assembly editor** — The full cube editor (place, rotate, delete, auto-fill, section cuts, tagging). ⚠ Not a tab — it surfaces inline: as the seed editor inside Encode's merge mode, and as the substrate that Pataphysical re-cuts. ⚠ **Formerly "the Builder"** — that name is retired as of 2026-07-28 and should not be used in writing or speech. The code still uses it (`useBuilderStore`, `BuilderSidebar`, `src/components/builder/`), deliberately: renaming those is a large mechanical change with no user-visible benefit.
 
 ---
 
@@ -68,8 +68,8 @@
 - **Melancholic override** — A named rule in the grammar: the "melancholic" emotion pole overrides the usual emotion→density mapping. Quoted in the book as a prompt-artifact example.
 - **"Do not average"** — The grammar's multi-image rule: with several photos, synthesize a reading rather than averaging them; the primary photo anchors the character.
 - **Primary / supplementary images** — Of the 1–7 photos, one is primary (anchors the assembly's character) and up to 6 are supplementary.
-- **Encode modes: standalone / merge / remix** — Image only; image + seed cubes from the Builder (opens the inline seed editor); image + a saved state as the seed.
-- **Seed / seed editor** — The starting cubes an encode builds on in merge mode; edited in the inline Builder (`seedEditOpen`).
+- **Encode modes: standalone / merge / remix** — Image only; image + seed cubes from the current assembly (opens the inline seed editor); image + a saved state as the seed.
+- **Seed / seed editor** — The starting cubes an encode builds on in merge mode; edited in the inline assembly editor (`seedEditOpen`).
 - **Reading provenance** — What gets saved with a composition so the record is self-describing: the model's untouched original reading, the edited flag, and a by-value snapshot of the lexicon that produced it.
 
 ---
@@ -125,7 +125,7 @@
 
 ## 7. Site & map vocabulary (Map mode + map-context)
 
-- **Site context** — The structured JSON describing a real place: location, quantitative data, programmatic data, and the architect's reading. The ground-truth layer injected into translations (full JSON in two-pass) and encodes (flattened one-line prefix).
+- **Site context** — The structured JSON describing a real place: location, quantitative data and programmatic data. The ground-truth layer injected into translations (full JSON in two-pass) and encodes (flattened one-line prefix built from quantitative + POIs only). ⚠ **The architect's reading was retired 2026-07-28** — a free-text subjective layer (tensions, spatial qualities, social dynamics, notes) authored in the site-context curator. The tab and the `architects_reading` field are both gone. `src/prompts/pataphysical-translation-v2.md` still describes it and is Iddo's to edit.
 - **Active site context** — The one currently in effect, stored in the browser (`cuboid:activeSiteContext`). Set by Map's analysis, by the curator, or from a saved site.
 - **Site Context Curator** — The manual panel for setting/clearing the active site context — the fallback path when the automatic Map handoff isn't used.
 - **analysis-complete / the relay** — The message the finished map-context dashboard posts up to Cuboid Studio to hand over the site context. ⚠ Was broken end-to-end (the launcher page swallowed it); fixed 2026-07-12 with a relay in map-context's launcher.
@@ -157,8 +157,8 @@
 - **GLB export** — The merged 3D mesh of the assembly, downloadable and feeding the AR viewer.
 - **AR viewer** — View the assembly at real-world scale through a phone (Scene Viewer on Android, Quick Look on iOS), with a scale slider.
 - **Live-link / the Grasshopper bridge** — A small local Python server (port 9876) that receives the assembly state and round-trips it into a running Rhino/Grasshopper definition.
-- **Section cuts** — Builder feature slicing the assembly along a plane for interior views. ⚠ Session-only, not saved.
-- **Tags** — Word + intensity labels on cubes or the whole composition (Builder), overlaid on Decode. ⚠ Session-only — not saved with compositions; only composition-level tags render.
+- **Section cuts** — Assembly-editor feature slicing the assembly along a plane for interior views. ⚠ Session-only, not saved.
+- **Tags** — Word + intensity labels on cubes or the whole composition (assembly editor), overlaid on Decode. ⚠ Session-only — not saved with compositions; only composition-level tags render.
 
 ---
 
