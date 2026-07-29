@@ -475,13 +475,23 @@ const EncodingScene: React.FC = () => {
   // Before/after: the proposal a re-encode replaced, ghosted over the current
   // one. Off unless explicitly toggled on in the Encode panel. Yields every
   // cell another layer already draws.
+  //
+  // Cells the old proposal shares with the new one are the comparison, not a
+  // conflict: two readings of the same photograph land on mostly the same
+  // cells, and what changed there is the whole point of looking. Only a cell
+  // holding the *identical* cube — same variation, same rotation — is dropped,
+  // because there is nothing to see and it would z-fight.
   const previousProposalCubes = useMemo(() => {
     if (!showPreviousProposal || !previousResult) return [];
-    const drawn = new Set<string>();
-    if (hasSeed) for (const c of seedCubes) drawn.add(c.position.join(','));
-    for (const c of assemblyCubes) drawn.add(c.position.join(','));
-    for (const c of visibleEncoded) drawn.add(c.position.join(','));
-    return previousResult.cubes.filter(c => !drawn.has(c.position.join(',')));
+    const identical = new Map<string, string>();
+    const stamp = (c: { variationId: string; rotation: { x: number; y: number } }) =>
+      `${c.variationId}@${c.rotation.x},${c.rotation.y}`;
+    if (hasSeed) for (const c of seedCubes) identical.set(c.position.join(','), stamp(c));
+    for (const c of assemblyCubes) identical.set(c.position.join(','), stamp(c));
+    for (const c of visibleEncoded) identical.set(c.position.join(','), stamp(c));
+    return previousResult.cubes.filter(
+      c => identical.get(c.position.join(',')) !== stamp(c)
+    );
   }, [showPreviousProposal, previousResult, hasSeed, seedCubes, assemblyCubes, visibleEncoded]);
 
   const allPositions = useMemo(() => {

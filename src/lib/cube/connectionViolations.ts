@@ -282,3 +282,58 @@ export function violationsSignature(violations: ConnectionViolation[]): string {
     .join('|');
 }
 
+
+/** One neighbour standing in the way of a placement, and why. */
+export interface PlacementBlocker {
+  neighbourId: string;
+  neighbourVariationId: string;
+  /** The neighbour's face that meets the hovered cell. */
+  face: Face;
+  /** What that face carries. `shell` blocks unconditionally. */
+  cutType: FaceCutType;
+  axis: 'x' | 'y' | 'z';
+}
+
+/**
+ * Why a hovered cell refuses every rotation.
+ *
+ * The Builder's placement preview goes red when *no* rotation of the picked
+ * variation satisfies all of the cell's neighbours at once, but it still draws
+ * the cube in the rotation the user chose — so the face they happen to be
+ * looking at can look perfectly compatible while an unseen neighbour is the one
+ * saying no. This names the neighbours that do.
+ *
+ * A `shell` face is the interesting case: it refuses every cutter, so no
+ * rotation of any variation can ever satisfy it. Since no variation carries a
+ * cutter on either depth face at rest, an unrotated neighbour in depth blocks
+ * its cell permanently — which is the usual reason a cell looks unplaceable for
+ * no visible reason.
+ */
+export function findPlacementBlockers(
+  cellPosition: [number, number, number],
+  neighbours: CheckableCube[],
+  gridStride: number = GRID_STRIDE
+): PlacementBlocker[] {
+  const blockers: PlacementBlocker[] = [];
+
+  for (const neighbour of neighbours) {
+    const faceTypes = VARIATION_FACE_TYPES.get(neighbour.variationId);
+    if (!faceTypes) continue;
+
+    const faceOnNeighbour = getAdjacentFace(neighbour.position, cellPosition, gridStride);
+    if (!faceOnNeighbour) continue;
+
+    const cutType = getRotatedFaceCutType(faceTypes, faceOnNeighbour, neighbour.rotation);
+    if (cutType !== 'shell') continue; // only unconditional blockers
+
+    blockers.push({
+      neighbourId: neighbour.id,
+      neighbourVariationId: neighbour.variationId,
+      face: faceOnNeighbour,
+      cutType,
+      axis: AXIS_FOR_FACE[faceOnNeighbour],
+    });
+  }
+
+  return blockers;
+}

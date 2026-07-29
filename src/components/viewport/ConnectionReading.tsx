@@ -12,7 +12,7 @@
  *   either depth face, so anything front-to-back closes unless a cube is
  *   tipped. Counted, not marked; on a 3D assembly it is most of the cubes.
  * - **crossed** — a sphere face meets a cylinder face. Two cutters that
- *   genuinely disagree. Those cubes are tinted.
+ *   genuinely disagree. Those cubes are tinted amber.
  *
  * Nothing here repairs anything, and nothing offers to.
  */

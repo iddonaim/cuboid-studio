@@ -147,12 +147,13 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     edgeColor = '#2e6fb2';
   }
 
-  // Two cutters that disagree. Violet is used nowhere else in the viewport, so
-  // it can't be read as added-blue, selected, carried or discarded — and it
-  // isn't a warning red, because this is a reading rather than an error.
+  // Two cutters that disagree. Amber: warm enough to carry against the paper
+  // ground and the cool blues, far enough from the vermilion accent and the
+  // discarded red not to be mistaken for either, and not a warning colour —
+  // this is a reading rather than an error.
   if (flagged) {
-    fillColor = '#ece5f3';
-    edgeColor = '#6b4c9a';
+    fillColor = '#faf0d4';
+    edgeColor = '#a8760a';
   }
 
   if (targeted) {
