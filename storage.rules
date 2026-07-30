@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Security rules for Cuboid Studio's full-resolution encode photos.
+//
+// Layout:
+//   compositionPhotos/{ownerId}/{fileName}
+//
+// A composition document (Firestore) keeps a 240px thumbnail inline and points
+// at the original here by path. Only the authenticated owner may read or write
+// their own photographs; everyone else — signed out or signed in as somebody
+// else — gets nothing.
+//
+// NOTE: this bucket belongs to the shared `archthesis` Firebase project. Unlike
+// firestore.rules (whose deployed source of truth lives in archthesis and is
+// republished by its deploy workflow), Storage rules are deployed separately
+// and are NOT touched by that workflow — so this file must be published by
+// hand (Firebase console → Storage → Rules, or `firebase deploy --only
+// storage`). Until it is, uploads are refused and the app quietly falls back
+// to saving thumbnails alone.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /compositionPhotos/{ownerId}/{fileName} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == ownerId;
+    }
+  }
+}

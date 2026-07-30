@@ -186,6 +186,9 @@ export interface UploadedEncodingImage {
   mediaType: string;
   /** Small JPEG (~240px) persisted with saved compositions. */
   thumbnailDataUrl: string;
+  /** Path of the full-resolution original in Firebase Storage, once saved.
+   *  Present => a re-save reuses the stored file instead of uploading again. */
+  storagePath?: string;
 }
 
 interface EncodingState {
@@ -194,12 +197,17 @@ interface EncodingState {
   imageBase64: string | null;
   imageMediaType: string | null;
   imageThumbnail: string | null;
+  /** Storage path of the full-resolution photo (single-photo mode), once saved. */
+  imageStoragePath: string | null;
   setImage: (dataUrl: string, base64: string, mediaType: string, thumbnailDataUrl: string) => void;
   clearImage: () => void;
   /** True after a composition load restored thumbnails only (no full-res
    *  photo data, by design — keeps saves small). Encoding is disabled until
    *  the architect re-uploads the real photo(s). */
   imagesRestoredOnly: boolean;
+  /** Record where each photo was stored after a save, so the next save of the
+   *  same composition reuses the upload. Key 'single' is single-photo mode. */
+  recordPhotoStoragePaths: (paths: Record<string, string>) => void;
 
 
   // Multi-photo mode
@@ -301,12 +309,15 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   imageBase64: null,
   imageMediaType: null,
   imageThumbnail: null,
+  imageStoragePath: null,
   imagesRestoredOnly: false,
   setImage: (dataUrl, base64, mediaType, thumbnailDataUrl) => set({
     uploadedImage: dataUrl,
     imageBase64: base64,
     imageMediaType: mediaType,
     imageThumbnail: thumbnailDataUrl,
+    // A freshly picked photo has not been uploaded yet.
+    imageStoragePath: null,
     imagesRestoredOnly: false,
     encodedCubes: null,
     encodingReasoning: null,
@@ -318,6 +329,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     imageBase64: null,
     imageMediaType: null,
     imageThumbnail: null,
+    imageStoragePath: null,
     imagesRestoredOnly: false,
     encodedCubes: null,
     encodingReasoning: null,
@@ -341,12 +353,14 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
           base64: state.imageBase64,
           mediaType: state.imageMediaType || 'image/jpeg',
           thumbnailDataUrl: state.imageThumbnail || state.uploadedImage,
+          ...(state.imageStoragePath ? { storagePath: state.imageStoragePath } : {}),
         }],
         primaryImageId: id,
         uploadedImage: null,
         imageBase64: null,
         imageMediaType: null,
         imageThumbnail: null,
+        imageStoragePath: null,
       });
       return;
     }
@@ -359,6 +373,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         imageBase64: primary.base64,
         imageMediaType: primary.mediaType,
         imageThumbnail: primary.thumbnailDataUrl,
+        imageStoragePath: primary.storagePath ?? null,
         uploadedImages: [],
         primaryImageId: null,
       });
@@ -397,6 +412,13 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     };
   }),
 
+  recordPhotoStoragePaths: (paths) => set((state) => ({
+    imageStoragePath: paths.single ?? state.imageStoragePath,
+    uploadedImages: state.uploadedImages.map(img =>
+      paths[img.id] ? { ...img, storagePath: paths[img.id] } : img
+    ),
+  })),
+
   setPrimaryImage: (id) => set({ primaryImageId: id }),
 
   clearAllImages: () => set({
@@ -404,6 +426,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
     imageBase64: null,
     imageMediaType: null,
     imageThumbnail: null,
+    imageStoragePath: null,
     imagesRestoredOnly: false,
     uploadedImages: [],
     primaryImageId: null,

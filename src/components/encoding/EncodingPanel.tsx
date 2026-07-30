@@ -315,8 +315,10 @@ export const EncodingPanel: React.FC = () => {
 
       {imagesRestoredOnly && (
         <div className="p-2 bg-amber-50 border border-amber-300 rounded text-amber-700 text-[11px] leading-relaxed">
-          Loaded from a saved composition — these are small preview thumbnails only.
-          Re-upload the photo(s) to encode or re-encode.
+          The original photo(s) couldn't be loaded back — this is a preview
+          thumbnail only. That happens with compositions saved before photos
+          were stored at full resolution. Re-upload to encode or re-encode;
+          saving afterwards keeps the originals.
         </div>
       )}
 

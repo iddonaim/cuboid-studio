@@ -8,7 +8,13 @@ import {
   listSites, createSite, deleteSite, renameSite, updateSite,
   listCompositions, createComposition, deleteComposition, renameComposition,
 } from '../../lib/projects/firestore';
-import { captureComposition, restoreComposition } from '../../lib/projects/composition';
+import {
+  captureComposition,
+  restoreComposition,
+  persistCompositionPhotos,
+  compositionPhotoPaths,
+} from '../../lib/projects/composition';
+import { deletePhotos } from '../../lib/projects/photoStorage';
 import { getActiveSiteContext } from '../../lib/storage/siteContext';
 import { shortSiteName } from '../../lib/siteContext/siteName';
 import type { ProjectDoc, SiteDoc, CompositionDoc } from '../../lib/projects/types';
@@ -261,7 +267,8 @@ export const ProjectsPanel: React.FC = () => {
 
   const handleSaveComposition = async (name: string) => {
     if (!activeProject || !activeSite) return;
-    const data = captureComposition();
+    // Photos upload first so the stored record points at them.
+    const data = await persistCompositionPhotos(user.uid, captureComposition());
     const c = await createComposition(activeProject.id, activeSite.id, name, data);
     setCompositions(prev => [c, ...prev]);
     setActiveComposition(c);
@@ -278,6 +285,10 @@ export const ProjectsPanel: React.FC = () => {
     if (!activeProject || !activeSite) return;
     await deleteComposition(activeProject.id, activeSite.id, c.id);
     setCompositions(prev => prev.filter(x => x.id !== c.id));
+    // Best-effort: drop the stored photographs too, so deleting a composition
+    // doesn't leave its originals paying rent in Storage forever. Never
+    // throws — the composition itself is already gone either way.
+    void deletePhotos(compositionPhotoPaths(c.data));
   };
   const handleRenameComposition = async (c: CompositionDoc, name: string) => {
     if (!activeProject || !activeSite) return;
