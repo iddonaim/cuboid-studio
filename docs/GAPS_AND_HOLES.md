@@ -122,12 +122,22 @@ unaffected). Saved compositions will read differently — some contacts that
 showed open close, and vice versa. That is the point: the previous readings
 described a world nobody was looking at.
 
-### P0-8 · Green preview when placing from below — field report, OPEN
+### P0-8 · ~~Green preview when placing from below~~ — RESOLVED 2026-07-30, the verdict was honest
 
-Reported 2026-07-30, twice, after every fix below was pushed: approaching a
-composition from underneath, the placement ghost can still show green where
-the reporter expected a refusal. Parked deliberately — deadline pressure —
-not because it is understood.
+Field-confirmed the same day it was parked: zooming in on the face in
+question showed a cutter's curved bite through its edge. The face reads as a
+shell to the eye but carries a real opening, so the law rightly called it
+compatible — candidate 2 below, verified by the reporter's own screenshot.
+Every placement fix on PR #128 stands; nothing further is broken here.
+
+What remains is a **design decision, owner Iddo**: should a small edge nick
+count as a place two cubes connect? Today any real opening connects, however
+small (the smallest across all 70 variations is ~6.5% of a face). If the
+answer is no, the change is a minimum-opening threshold in `faceCuts.ts` —
+one line plus choosing the number — and the threshold number is a grammar
+statement, not an implementation detail.
+
+Original report kept below for the record.
 
 **What is already fixed and verified upstream of this report** (all on PR
 #128): hover targeting reads the ray's entry into the cell box, not the hit
