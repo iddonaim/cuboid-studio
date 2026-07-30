@@ -292,6 +292,11 @@ const AssemblyPataphysicalScene: React.FC = () => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
+        // While a cube is targeted the rest of the composition recedes by the
+        // shared context-fade setting — using the ghost treatment (outline
+        // -forward, no depth-write): plain translucency on these open-cut
+        // solids reads as hollow trays, not as a receded layer.
+        const faded = !!targetCubeId && cube.id !== targetCubeId && contextOpacity < 1;
         return (
           <CubeWithCuts
             key={cube.id}
@@ -301,9 +306,8 @@ const AssemblyPataphysicalScene: React.FC = () => {
             overrideGeometry={override}
             targeted={cube.id === targetCubeId}
             flagged={flaggedIds.has(cube.id)}
-            // While a cube is targeted the rest of the composition recedes
-            // by the shared context-transparency setting.
-            opacity={targetCubeId && cube.id !== targetCubeId ? contextOpacity : 1}
+            opacity={faded ? contextOpacity : 1}
+            ghost={faded}
             onClick={() => {
               setTargetCubeId(cube.id === targetCubeId ? null : cube.id);
             }}
@@ -759,6 +763,8 @@ const EvolutionScene: React.FC = () => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
+        // Same ghost treatment as the Pataphysical scene — see comment there.
+        const faded = !!focusCubeId && cube.id !== focusCubeId && contextOpacity < 1;
         return (
           <CubeWithCuts
             key={cube.id}
@@ -769,7 +775,8 @@ const EvolutionScene: React.FC = () => {
             targeted={cube.id === highlightCubeId}
             selected={inspectable && cube.id === targetCubeId}
             flagged={flaggedIds.has(cube.id)}
-            opacity={focusCubeId && cube.id !== focusCubeId ? contextOpacity : 1}
+            opacity={faded ? contextOpacity : 1}
+            ghost={faded}
             clippingPlanes={clippingPlanes}
             onClick={inspectable
               ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)
