@@ -81,6 +81,12 @@ interface MemeState {
   cutterVisible: boolean;
   setCutterVisible: (visible: boolean) => void;
 
+  /** Opacity of the non-focused cubes while a cube+meme is being viewed
+   *  (Pataphysical target, Evolve inspect/preview). 1 = solid; the default
+   *  0.7 reads as "30% transparent". */
+  contextOpacity: number;
+  setContextOpacity: (opacity: number) => void;
+
   // Translation state
   isTranslating: boolean;
   /** Cosmetic two-phase loading label during v2 translation */
@@ -202,6 +208,9 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   lastCutterGeometry: null,
   cutterVisible: true,
   setCutterVisible: (visible) => set({ cutterVisible: visible }),
+
+  contextOpacity: 0.7,
+  setContextOpacity: (opacity) => set({ contextOpacity: Math.max(0, Math.min(1, opacity)) }),
 
   // Translation state
   isTranslating: false,

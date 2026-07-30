@@ -4,6 +4,7 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useRecordViewerStore } from '../../store/useRecordViewerStore';
 import { viewFromOperatorRecord } from '../../lib/operators/recordView';
 import type { OperatorRecord } from '../../lib/operators/types';
+import { ContextOpacitySlider } from '../meme/ContextOpacitySlider';
 
 const floatingCls =
   'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto';
@@ -71,6 +72,11 @@ export const CubeChangeCard: React.FC<{ docked?: boolean }> = ({ docked = false 
         >
           ×
         </button>
+      </div>
+
+      {/* Fade the rest of the composition while this cube is the subject */}
+      <div className="mb-2">
+        <ContextOpacitySlider />
       </div>
 
       {records.length === 0 ? (

@@ -9,6 +9,15 @@ import { useBuilderStore } from '../../store/useBuilderStore';
 import { useRecordViewerStore } from '../../store/useRecordViewerStore';
 import type { OperatorRecord } from '../../lib/operators/types';
 
+// jsdom has no ResizeObserver; the card's context-transparency slider (Radix)
+// needs one to mount.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= ResizeObserverStub;
+
 const CUBE_ID = 'cube-under-test';
 
 function makeRecord(overrides: Partial<OperatorRecord> = {}): OperatorRecord {

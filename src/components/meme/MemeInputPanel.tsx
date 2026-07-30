@@ -12,6 +12,7 @@ import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
 import { Section } from '@/components/ui/section';
 import { ActiveSiteChip } from '../layout/ActiveSiteChip';
+import { ContextOpacitySlider } from './ContextOpacitySlider';
 
 /** What pass-1 reads when an external meme arrives with no caption: the image
  *  itself is the meme, so the model is pointed at it rather than at prose. */
@@ -141,6 +142,7 @@ export const MemeInputPanel: React.FC = () => {
               <div className="text-ink-500 text-[10px]">
                 pos ({targetCube.position.map(p => p.toFixed(0)).join(', ')})
               </div>
+              <ContextOpacitySlider />
             </div>
           ) : (
             <div className="text-ink-500 text-[12px]">
