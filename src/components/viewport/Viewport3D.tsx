@@ -45,17 +45,29 @@ const BuilderScene: React.FC = () => {
   const pickerActive = useBuilderStore(s => s.pickerActive);
   const setPickerActive = useBuilderStore(s => s.setPickerActive);
   const rulesEnabled = useBuilderStore(s => s.rulesEnabled);
+  const strictRulesEnabled = useBuilderStore(s => s.strictRulesEnabled);
   const handlePlace = useBuilderStore(s => s.handlePlace);
   const selectedIdx = useBuilderStore(s => s.selectedIdx);
   const previewRotation = useBuilderStore(s => s.previewRotation);
 
-  // Compute these outside of Zustand selectors to avoid infinite re-render loops
-  // (getSelectedVariation/getPlacementValidity return new objects each call)
+  // Computed outside Zustand selectors to avoid infinite re-render loops
+  // (getSelectedVariation/getPlacementValidity return new objects each call).
   const selectedVariation = useMemo(() => CUBE_VARIATIONS[selectedIdx], [selectedIdx]);
+
+  // The dep list must name EVERY input `getValidRotations` reads, because the
+  // memo calls into the store imperatively and React cannot see those reads.
+  // It previously omitted `selectedIdx` and `strictRulesEnabled`, which meant
+  // picking a different variation from the palette without moving the mouse
+  // swapped the preview mesh — `selectedVariation` has its own memo — while
+  // leaving the verdict behind. The new cube was then drawn in the *previous*
+  // cube's colour, so a cube that does not fit could appear green on a face
+  // that refuses it. `handlePlace` re-derives from live state, so the click was
+  // always correctly refused; only the preview lied, which is worse than either
+  // being wrong consistently.
   const placementValidity = useMemo(
     () => useBuilderStore.getState().getPlacementValidity(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hoverPos, previewRotation, placedCubes, rulesEnabled]
+    [hoverPos, previewRotation, placedCubes, rulesEnabled, strictRulesEnabled, selectedIdx]
   );
 
   // Track pointer-down position so we can distinguish a tap from an orbit drag.
