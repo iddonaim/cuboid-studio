@@ -11,19 +11,19 @@ import { test, expect } from '@playwright/test';
 const markOnboardingSeen = (page: import('@playwright/test').Page) =>
   page.addInitScript(() => localStorage.setItem('cs-onboarding-seen', '1'));
 
-test('boots with Encode as the default mode', async ({ page }) => {
+test('boots with Map as the default mode', async ({ page }) => {
   await markOnboardingSeen(page);
   await page.goto('/');
-  await expect(page.getByText('Upload or capture a photo')).toBeVisible();
+  await expect(page.locator('iframe[title="Map context analysis"]')).toBeAttached();
   // Active tab renders in ink-900 (#24221C) under the drafting theme
-  await expect(page.getByRole('button', { name: 'Encode' })).toHaveCSS('color', 'rgb(36, 34, 28)');
+  await expect(page.getByRole('button', { name: 'Map' })).toHaveCSS('color', 'rgb(36, 34, 28)');
 });
 
 test('each nav tab mounts its panel', async ({ page }) => {
   await markOnboardingSeen(page);
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Map' }).click();
+  // Map is the landing tab
   await expect(page.locator('iframe[title="Map context analysis"]')).toBeAttached();
 
   await page.getByRole('button', { name: 'Evolution' }).click();
@@ -53,7 +53,7 @@ test('onboarding shows on first visit, steps through, and stays dismissed', asyn
 
   // Dismissal persists across reloads
   await page.reload();
-  await expect(page.getByText('Upload or capture a photo')).toBeVisible();
+  await expect(page.locator('iframe[title="Map context analysis"]')).toBeAttached();
   await expect(dialog).not.toBeVisible();
 
   // And it reopens from the TopBar help button

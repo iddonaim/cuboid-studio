@@ -4,9 +4,9 @@ import { useAppStore } from '../../store/useAppStore';
 import { useProjectsStore } from '../../store/useProjectsStore';
 import { useToastStore } from '../../store/useToastStore';
 import {
-  listProjects, createProject, deleteProject,
-  listSites, createSite, deleteSite, updateSite,
-  listCompositions, createComposition, deleteComposition,
+  listProjects, createProject, deleteProject, renameProject,
+  listSites, createSite, deleteSite, renameSite, updateSite,
+  listCompositions, createComposition, deleteComposition, renameComposition,
 } from '../../lib/projects/firestore';
 import { captureComposition, restoreComposition } from '../../lib/projects/composition';
 import { getActiveSiteContext } from '../../lib/storage/siteContext';
@@ -59,26 +59,77 @@ const RowButton: React.FC<{
   subtitle?: string;
   onClick?: () => void;
   onDelete: () => void;
+  /** When provided, a hover pencil turns the title into an inline rename input. */
+  onRename?: (name: string) => Promise<void>;
   rightSlot?: React.ReactNode;
-}> = ({ title, subtitle, onClick, onDelete, rightSlot }) => (
-  <div className="group flex items-center gap-2 rounded-md border border-ink-200/70 hover:border-ink-300 px-2.5 py-2 bg-ink-100/40">
-    <button
-      onClick={onClick}
-      className="flex-1 text-left cursor-pointer bg-transparent border-0 min-w-0"
-    >
-      <div className="text-[12px] text-ink-800 truncate">{title}</div>
-      {subtitle && <div className="text-[11px] text-ink-500 truncate">{subtitle}</div>}
-    </button>
-    {rightSlot}
-    <button
-      onClick={onDelete}
-      title="Delete"
-      className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-destructive text-[12px] cursor-pointer bg-transparent border-0 px-1"
-    >
-      ✕
-    </button>
-  </div>
-);
+}> = ({ title, subtitle, onClick, onDelete, onRename, rightSlot }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const [busy, setBusy] = useState(false);
+
+  const startEdit = () => {
+    setDraft(title);
+    setEditing(true);
+  };
+  const commit = async () => {
+    const name = draft.trim();
+    if (!name || name === title) {
+      setEditing(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      await onRename!(name);
+      setEditing(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="group flex items-center gap-2 rounded-md border border-ink-200/70 hover:border-ink-300 px-2.5 py-2 bg-ink-100/40">
+      {editing ? (
+        <input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') void commit();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          onBlur={() => void commit()}
+          disabled={busy}
+          autoFocus
+          className="flex-1 min-w-0 bg-ink-100 border border-ink-300 rounded px-1.5 py-1 text-[12px] text-ink-800 outline-none focus:border-ink-400"
+        />
+      ) : (
+        <button
+          onClick={onClick}
+          className="flex-1 text-left cursor-pointer bg-transparent border-0 min-w-0"
+        >
+          <div className="text-[12px] text-ink-800 truncate">{title}</div>
+          {subtitle && <div className="text-[11px] text-ink-500 truncate">{subtitle}</div>}
+        </button>
+      )}
+      {rightSlot}
+      {onRename && !editing && (
+        <button
+          onClick={startEdit}
+          title="Rename"
+          className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-ink-800 text-[12px] cursor-pointer bg-transparent border-0 px-1"
+        >
+          ✎
+        </button>
+      )}
+      <button
+        onClick={onDelete}
+        title="Delete"
+        className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-destructive text-[12px] cursor-pointer bg-transparent border-0 px-1"
+      >
+        ✕
+      </button>
+    </div>
+  );
+};
 
 /**
  * Right-side slide-over listing projects → sites → compositions with
@@ -163,6 +214,16 @@ export const ProjectsPanel: React.FC = () => {
     setProjects(prev => prev.filter(x => x.id !== p.id));
     if (activeProject?.id === p.id) setActiveProject(null);
   };
+  const handleRenameProject = async (p: ProjectDoc, name: string) => {
+    try {
+      await renameProject(p.id, name);
+      setProjects(prev => prev.map(x => (x.id === p.id ? { ...x, name } : x)));
+      if (activeProject?.id === p.id) setActiveProject({ ...p, name });
+    } catch (err) {
+      console.error(err);
+      showToast('Rename failed', 'error');
+    }
+  };
 
   const handleCreateSite = async (name: string) => {
     if (!activeProject) return;
@@ -176,6 +237,17 @@ export const ProjectsPanel: React.FC = () => {
     await deleteSite(activeProject.id, s.id);
     setSites(prev => prev.filter(x => x.id !== s.id));
     if (activeSite?.id === s.id) setActiveSite(null);
+  };
+  const handleRenameSite = async (s: SiteDoc, name: string) => {
+    if (!activeProject) return;
+    try {
+      await renameSite(activeProject.id, s.id, name);
+      setSites(prev => prev.map(x => (x.id === s.id ? { ...x, name } : x)));
+      if (activeSite?.id === s.id) setActiveSite({ ...s, name });
+    } catch (err) {
+      console.error(err);
+      showToast('Rename failed', 'error');
+    }
   };
 
   const handleSaveComposition = async (name: string) => {
@@ -197,6 +269,16 @@ export const ProjectsPanel: React.FC = () => {
     if (!activeProject || !activeSite) return;
     await deleteComposition(activeProject.id, activeSite.id, c.id);
     setCompositions(prev => prev.filter(x => x.id !== c.id));
+  };
+  const handleRenameComposition = async (c: CompositionDoc, name: string) => {
+    if (!activeProject || !activeSite) return;
+    try {
+      await renameComposition(activeProject.id, activeSite.id, c.id, name);
+      setCompositions(prev => prev.map(x => (x.id === c.id ? { ...x, name } : x)));
+    } catch (err) {
+      console.error(err);
+      showToast('Rename failed', 'error');
+    }
   };
   const handleLoadComposition = async (c: CompositionDoc) => {
     try {
@@ -271,6 +353,7 @@ export const ProjectsPanel: React.FC = () => {
                     subtitle={`Updated ${fmtDate(p.updatedAt)}`}
                     onClick={() => setActiveProject(p)}
                     onDelete={() => handleDeleteProject(p)}
+                    onRename={name => handleRenameProject(p, name)}
                   />
                 ))}
                 {!loading && projects.length === 0 && (
@@ -292,6 +375,7 @@ export const ProjectsPanel: React.FC = () => {
                     subtitle={`Created ${fmtDate(s.createdAt)}`}
                     onClick={() => setActiveSite(s)}
                     onDelete={() => handleDeleteSite(s)}
+                    onRename={name => handleRenameSite(s, name)}
                   />
                 ))}
                 {!loading && sites.length === 0 && (
@@ -312,6 +396,7 @@ export const ProjectsPanel: React.FC = () => {
                     title={c.name}
                     subtitle={`Saved ${fmtDate(c.updatedAt)}`}
                     onDelete={() => handleDeleteComposition(c)}
+                    onRename={name => handleRenameComposition(c, name)}
                     rightSlot={
                       <button
                         onClick={() => handleLoadComposition(c)}

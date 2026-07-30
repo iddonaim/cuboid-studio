@@ -109,6 +109,8 @@ let demoEvolveRoundIndex = 0;
 
 const DEFAULT_CONFIG: EvolutionConfig = {
   populationSize: 6,
+  // Fixed — the strategy selector was retired from the Settings UI; the other
+  // strategies ('random', 'adaptive') remain implemented below for code use.
   targetCubeStrategy: 'least-compressed',
   memePoolFilter: null,
 };

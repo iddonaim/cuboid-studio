@@ -89,6 +89,9 @@ test('offline gate: save-and-restore works with all external network dead', asyn
 
   // 1 — Boot fully offline.
   await page.goto('/');
+  // Map is the landing tab; the Encode sidebar (with Saved States / Export)
+  // needs the Encode tab active.
+  await page.getByRole('button', { name: 'Encode' }).click();
   await expect(page.getByText('Upload or capture a photo')).toBeVisible({ timeout: 15_000 });
 
   // 2 — Restore the fixture through the real UI.
@@ -109,6 +112,7 @@ test('offline gate: save-and-restore works with all external network dead', asyn
 
   // 4 — Reload (network still dead): persistence + restore-again.
   await page.reload();
+  await page.getByRole('button', { name: 'Encode' }).click();
   await expect(page.getByText('Upload or capture a photo')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Saved States' }).click();
   await expect(page.getByText('offline-gate-fixture')).toBeVisible();

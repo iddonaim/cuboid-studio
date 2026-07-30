@@ -328,7 +328,10 @@ export async function restoreComposition(
     selectedMemeTitle: p.selectedMemeTitle,
     baseVariationId: p.baseVariationId,
     targetCubeId: p.targetCubeId,
-    passMode: p.passMode,
+    // The single/two-pass toggle is retired from the UI (two-pass is the
+    // committed reading), so a composition saved in single-pass mode must not
+    // silently re-enter it — there would be no visible way back.
+    passMode: 'two_pass',
     operators: p.operators,
     cubeOperators: p.cubeOperators,
     workingGeometry: standalone.workingGeometry,

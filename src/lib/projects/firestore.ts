@@ -54,6 +54,10 @@ export async function deleteProject(projectId: string): Promise<void> {
   await deleteDoc(doc(requireDb(), 'projects', projectId));
 }
 
+export async function renameProject(projectId: string, name: string): Promise<void> {
+  await updateDoc(doc(requireDb(), 'projects', projectId), { name, updatedAt: Date.now() });
+}
+
 /** Bump a project's updatedAt — call after writing within it. */
 export async function touchProject(projectId: string): Promise<void> {
   await updateDoc(doc(requireDb(), 'projects', projectId), { updatedAt: Date.now() });
@@ -86,6 +90,15 @@ export async function createSite(
 
 export async function deleteSite(projectId: string, siteId: string): Promise<void> {
   await deleteDoc(doc(requireDb(), 'projects', projectId, 'sites', siteId));
+}
+
+export async function renameSite(
+  projectId: string,
+  siteId: string,
+  name: string,
+): Promise<void> {
+  await updateDoc(doc(requireDb(), 'projects', projectId, 'sites', siteId), { name });
+  await touchProject(projectId);
 }
 
 /**
@@ -143,6 +156,19 @@ export async function updateComposition(
     doc(requireDb(), 'projects', projectId, 'sites', siteId, 'compositions', compositionId),
     { updatedAt: Date.now(), data },
     { merge: true },
+  );
+  await touchProject(projectId);
+}
+
+export async function renameComposition(
+  projectId: string,
+  siteId: string,
+  compositionId: string,
+  name: string,
+): Promise<void> {
+  await updateDoc(
+    doc(requireDb(), 'projects', projectId, 'sites', siteId, 'compositions', compositionId),
+    { name, updatedAt: Date.now() },
   );
   await touchProject(projectId);
 }

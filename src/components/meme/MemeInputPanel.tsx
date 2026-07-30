@@ -10,7 +10,6 @@ import { isModelLabEnabled } from '../../lib/modelLab';
 import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/storage/siteContext';
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Section } from '@/components/ui/section';
 
 export const MemeInputPanel: React.FC = () => {
@@ -18,10 +17,7 @@ export const MemeInputPanel: React.FC = () => {
   const setMemeDescription = useMemeStore(s => s.setMemeDescription);
   const locationTag = useMemeStore(s => s.locationTag);
   const setLocationTag = useMemeStore(s => s.setLocationTag);
-  const engagementLevel = useMemeStore(s => s.engagementLevel);
   const setEngagementLevel = useMemeStore(s => s.setEngagementLevel);
-  const passMode = useMemeStore(s => s.passMode);
-  const setPassMode = useMemeStore(s => s.setPassMode);
   const isTranslating = useMemeStore(s => s.isTranslating);
   const lastError = useMemeStore(s => s.lastError);
   const translate = useMemeStore(s => s.translate);
@@ -61,8 +57,19 @@ export const MemeInputPanel: React.FC = () => {
   const handleArchthesisSelect = (input: CuboidMemeInput, meme: ArchthesisMeme) => {
     setMemeDescription(input.memeDescription);
     setLocationTag(input.locationTag || '');
+    // Engagement rides along invisibly: derived from the meme's likes, it
+    // scales cut magnitude in the prompt but is no longer user-editable.
     setEngagementLevel(input.engagementLevel);
     setSelectedMeme(meme.imageUrl, meme.topText || meme.description?.slice(0, 50) || meme.id);
+  };
+
+  // Dropping the archthesis selection returns to manual entry: the description
+  // stays (now editable in the textarea), but the meme-derived location and
+  // engagement are cleared so they can't silently ride along with edited text.
+  const handleClearSelectedMeme = () => {
+    setSelectedMeme(null, null);
+    setLocationTag('');
+    setEngagementLevel(50);
   };
 
   // Init working cube on mount
@@ -119,78 +126,66 @@ export const MemeInputPanel: React.FC = () => {
         {activeSiteContext ? `Site: ${activeSiteContext.site_name}` : 'Set site context...'}
       </Button>
 
-      {/* Selected meme thumbnail */}
-      {selectedMemeImageUrl && (
-        <div className="flex items-center gap-2 p-1.5 bg-ink-100 border border-ink-200 rounded-md">
-          <img
-            src={selectedMemeImageUrl}
-            alt={selectedMemeTitle || 'selected meme'}
-            className="w-12 h-12 rounded object-contain bg-ink-50 flex-shrink-0"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-ink-900 text-[11px] font-medium truncate">{selectedMemeTitle}</div>
-            <div className="text-ink-500 text-[10px]">from archthesis</div>
+      {selectedMemeImageUrl ? (
+        /* Archthesis meme selected — everything the translation reads comes
+           from the meme itself (description, location, engagement), so it
+           shows as one compact read-only card instead of editable fields. */
+        <div className="flex flex-col gap-1.5 p-2 bg-ink-100 border border-ink-200 rounded-md">
+          <div className="flex items-center gap-2">
+            <img
+              src={selectedMemeImageUrl}
+              alt={selectedMemeTitle || 'selected meme'}
+              className="w-12 h-12 rounded object-contain bg-ink-50 flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-ink-900 text-[11px] font-medium truncate">{selectedMemeTitle}</div>
+              <div className="text-ink-500 text-[10px]">from archthesis</div>
+              {locationTag && (
+                <div className="text-ink-500 text-[10px] truncate">{locationTag}</div>
+              )}
+            </div>
+            <button
+              onClick={handleClearSelectedMeme}
+              title="Clear selection (keeps the text for manual editing)"
+              className="text-ink-500 hover:text-ink-700 text-sm leading-none px-0.5 bg-transparent border-0 cursor-pointer self-start"
+            >
+              &times;
+            </button>
           </div>
-          <button
-            onClick={() => setSelectedMeme(null, null)}
-            className="text-ink-500 hover:text-ink-700 text-sm leading-none px-0.5 bg-transparent border-0 cursor-pointer"
-          >
-            &times;
-          </button>
+          {memeDescription && (
+            <div className="text-ink-600 text-[11px] leading-relaxed line-clamp-3">
+              {memeDescription}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Manual entry — the textarea is the input for memes that aren't in
+           archthesis. */
+        <div>
+          <label className="text-ink-600 text-[12px] block mb-1">
+            Describe the meme or paste its content
+          </label>
+          <textarea
+            value={memeDescription}
+            onChange={(e) => setMemeDescription(e.target.value)}
+            placeholder="A viral meme about gentrification in south Tel Aviv..."
+            rows={4}
+            className="w-full px-2 py-2 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[13px] resize-y font-[inherit] box-border"
+          />
         </div>
       )}
-
-      {/* Meme description */}
-      <div>
-        <label className="text-ink-600 text-[12px] block mb-1">
-          Describe the meme or paste its content
-        </label>
-        <textarea
-          value={memeDescription}
-          onChange={(e) => setMemeDescription(e.target.value)}
-          placeholder="A viral meme about gentrification in south Tel Aviv..."
-          rows={4}
-          className="w-full px-2 py-2 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[13px] resize-y font-[inherit] box-border"
-        />
-      </div>
-
-      {/* Location tag */}
-      <div>
-        <label className="text-ink-600 text-[12px] block mb-1">Location tag (optional)</label>
-        <input
-          type="text"
-          value={locationTag}
-          onChange={(e) => setLocationTag(e.target.value)}
-          placeholder="e.g., Dizengoff Center, Tel Aviv"
-          className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[13px] box-border"
-        />
-      </div>
-
-      {/* Engagement level */}
-      <div>
-        <label className="text-ink-600 text-[12px] block mb-1">
-          Engagement level: {engagementLevel}
-        </label>
-        <Slider
-          min={0}
-          max={100}
-          value={[engagementLevel]}
-          onValueChange={([v]) => setEngagementLevel(v)}
-        />
-        <div className="flex justify-between text-ink-400 text-[10px] mt-0.5">
-          <span>Low</span>
-          <span>High</span>
-        </div>
-      </div>
       </div>
       </Section>
 
-      {/* Secondary: how the translation runs — collapsed by default */}
-      <Section id="pata-settings" title="Translation settings">
-      <div className="flex flex-col gap-2.5">
+      {/* The vocabulary the translation reasons with — first-class, not a
+          buried setting, since two-pass is now the only shipping path. */}
+      <Section id="pata-vocabulary" title="Translation vocabulary">
+        <TranslationLexiconEditor />
+      </Section>
+
+      {/* Standalone mode only: which variation the cuts start from */}
       {!hasAssembly && (
-        <div>
-          <label className="text-ink-600 text-[12px] block mb-1">Base Variation</label>
+        <Section id="pata-base" title="Base variation">
           <select
             value={baseVariationId}
             onChange={(e) => setBaseVariation(e.target.value)}
@@ -200,43 +195,12 @@ export const MemeInputPanel: React.FC = () => {
               <option key={v.id} value={v.id}>{v.id} — {v.name}</option>
             ))}
           </select>
-        </div>
+        </Section>
       )}
 
-      {/* Pass mode: v1 single-pass vs v2 two-pass */}
-      <div>
-        <label className="text-ink-600 text-[12px] block mb-1">Translation mode</label>
-        <div className="flex border border-ink-200 rounded-md overflow-hidden">
-          <button
-            onClick={() => setPassMode('single')}
-            disabled={isTranslating}
-            className={`flex-1 py-1.5 px-2 text-[12px] border-0 disabled:cursor-not-allowed ${
-              passMode === 'single' ? 'bg-ink-300 text-ink-900 font-semibold' : 'bg-ink-50 text-ink-500'
-            }`}
-          >
-            Single pass
-          </button>
-          <button
-            onClick={() => setPassMode('two_pass')}
-            disabled={isTranslating}
-            className={`flex-1 py-1.5 px-2 text-[12px] border-0 border-l border-ink-200 disabled:cursor-not-allowed ${
-              passMode === 'two_pass' ? 'bg-ink-300 text-ink-900 font-semibold' : 'bg-ink-50 text-ink-500'
-            }`}
-          >
-            Two-pass (v2)
-          </button>
-        </div>
-      </div>
-
-      {/* Editable translation vocabulary — only affects two-pass translation */}
-      {passMode === 'two_pass' && <TranslationLexiconEditor />}
-      </div>
-      </Section>
-
-      {/* Model lab — cross-model comparison, two-pass only (the comparison
-          runs the v2 pipeline so confidence vectors are always present).
+      {/* Model lab — cross-model comparison, runs the v2 pipeline.
           Archived: hidden unless re-enabled (src/lib/modelLab.ts). */}
-      {passMode === 'two_pass' && isModelLabEnabled() && <ModelComparisonPanel />}
+      {isModelLabEnabled() && <ModelComparisonPanel />}
 
       <div className="flex flex-col gap-2.5 pt-2.5 border-t border-ink-200">
       {/* Translate button */}

@@ -34,10 +34,6 @@ export const BuilderSidebar: React.FC = () => {
   const hoverPos = useBuilderStore(s => s.hoverPos);
   const pickerActive = useBuilderStore(s => s.pickerActive);
   const confirmPlacement = useBuilderStore(s => s.confirmPlacement);
-  const showInstallButton = useBuilderStore(s => s.showInstallButton);
-  const deferredPrompt = useBuilderStore(s => s.deferredPrompt);
-  const setDeferredPrompt = useBuilderStore(s => s.setDeferredPrompt);
-  const setShowInstallButton = useBuilderStore(s => s.setShowInstallButton);
   const previewRotation = useBuilderStore(s => s.previewRotation);
 
   // What the rules allow at the hovered cell, stated as options rather than a
@@ -56,15 +52,6 @@ export const BuilderSidebar: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rulesEnabled, hoverPos, placedCubes, strictRulesEnabled, selectedIdx, previewRotation]);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to install prompt: ${outcome}`);
-    setDeferredPrompt(null);
-    setShowInstallButton(false);
-  };
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -113,30 +100,6 @@ export const BuilderSidebar: React.FC = () => {
           </div>
         </Section>
 
-        {/* Install PWA section */}
-        <Section id="builder-install" title="Install app">
-        <div className={`mb-3 p-2.5 rounded-md border ${
-          showInstallButton
-            ? 'bg-gradient-to-br from-primary to-primary border-primary/40'
-            : 'bg-card border-ink-200'
-        }`}>
-          {showInstallButton ? (
-            <Button
-              onClick={handleInstallClick}
-              className="w-full h-auto p-0 text-[13px] font-semibold text-ink-900 bg-transparent hover:bg-transparent border-0 flex items-center justify-center gap-1.5"
-            >
-              Install App
-            </Button>
-          ) : (
-            <div className="text-[12px] text-muted-foreground leading-[1.5]">
-              <div className="font-semibold mb-1 text-ink-800">Install as App</div>
-              <div className="text-[11px]">
-                Chrome: Menu {'\u22EE'} {'\u2192'} <span className="text-primary">Install Cuboid Studio</span>
-              </div>
-            </div>
-          )}
-        </div>
-        </Section>
       </div>
 
       {/* Pinned actions — always above the variation grid */}
