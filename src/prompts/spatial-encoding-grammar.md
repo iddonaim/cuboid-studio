@@ -187,6 +187,8 @@ the variation uses: a **sphere** face, a **cylinder** face, or an uncut
 - Cylinder meets cylinder.
 - Sphere does not meet cylinder — the cutters disagree.
 - Shell meets nothing. Growth stops at an uncut face.
+- A single face is often opened by more than one cutter, and can carry both a
+  sphere and a cylinder cut. Such a face meets either kind.
 
 Two cubes are in contact when they sit in adjacent grid cells; the touching
 faces decide whether that contact is open or closed. Prefer contacts where the

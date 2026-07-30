@@ -8,11 +8,13 @@
  *
  * Two closed conditions, and only one of them is worth marking:
  *
- * - **shell** — a face the model records as uncut. ⚠ Over-reported: the face
- *   model under-counts cuts (see connectionViolations.ts), so shell contacts
- *   read as far more common than the geometry warrants. Counted, not marked.
- * - **crossed** — a sphere face meets a cylinder face. Two cutters that
- *   genuinely disagree. Those cubes are tinted amber.
+ * - **shell** — an uncut face. Counted, not marked: it is a property of the
+ *   composition rather than something to act on.
+ * - **crossed** — the two faces are both cut but share no cut type, so a sphere
+ *   opening meets a cylinder opening. Those cubes are tinted amber.
+ *
+ * A face can carry both a sphere and a cylinder cut, and then it connects to
+ * either — see `faceCuts.ts`.
  *
  * Nothing here repairs anything, and nothing offers to.
  */
@@ -82,14 +84,14 @@ export const ConnectionReading: React.FC<ConnectionReadingProps> = ({ cubes }) =
               <ul className="mt-1 space-y-0.5 font-mono text-[10px] text-ink-500">
                 {violations.map(v => (
                   <li key={v.key}>
-                    {v.a.variationId} {v.a.cutType} ↔ {v.b.cutType} {v.b.variationId} ·{' '}
+                    {v.a.variationId} {v.a.cutLabel} ↔ {v.b.cutLabel} {v.b.variationId} ·{' '}
                     {AXIS_LABEL[v.axis]}
                   </li>
                 ))}
               </ul>
               <div className="mt-1 text-ink-400 text-[10px]">
-                Variation faces as built; later meme cuts aren't tracked. No depth face
-                carries a cutter, so depth contacts close unless a cube is tipped.
+                Read from each cube's variation faces as built; a cut made later by a meme
+                translation isn't tracked here.
               </div>
             </>
           )}

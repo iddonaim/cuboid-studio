@@ -58,7 +58,124 @@ The Overpass query requests bus route relations but the parser only handles
 nodes/ways, so `busLines` is always empty and the layer toggle never appears.
 Fix the parser or remove the dead query.
 
-### P0-6 · The connection law reads a face model that is wrong for 69 of 70 variations
+### P0-6 · ~~The connection law reads a face model that is wrong for 69 of 70 variations~~ — FIXED 2026-07-28
+
+Fixed in `src/lib/cube/faceCuts.ts`. The derivation now computes, per cutter,
+every face its solid actually crosses, and a face carries a **set** of cut types
+rather than one — because 38.6% of variation faces carry both a sphere and a
+cylinder cut. `canConnect` became a set intersection, which is the
+closed-vocabulary claim stated as an operation: two faces join when they share a
+cut type, and a shell is the empty set that intersects nothing.
+
+**The change is monotone: 5,479 of 14,700 verdicts (37.3%) went from refused to
+open, and none went the other way.** That is structural rather than lucky — the
+old model could only ever under-report cuts, so supplying the missing ones can
+only make faces agree more often. Consequences: no assembly that was placeable
+becomes unplaceable, no saved composition gains a violation it did not have, and
+placement and auto-fill only gain options. Measure it with
+`node scripts/connection-verdict-delta.mjs`.
+
+Also renamed for honesty: `VARIATION_FACE_TYPES` → `VARIATION_FACE_CUTS`,
+`getRotatedFaceCutType` → `getRotatedFaceCuts`, `getRotatedFaceCutter` →
+`getRotatedFaceCutters` (plural — a face has several), and the dead
+`FaceCutType` union is gone. Strict alignment now asks whether *any* matching
+pair of cutters lines up, where before it tested one arbitrarily-chosen pair.
+
+Original finding kept below for the record.
+
+### P0-7 · ~~The spec and the shipped models disagree about which way is up~~ — FIXED 2026-07-30
+
+Found while chasing a field report P0-6's fix did not cure: a green placement
+preview directly on a face the viewer could see is a shell (v-33, twice).
+
+The cutter constants in `specifications.ts` are authored in the Grasshopper
+document's frame, where **Z is up**. The GLB models the app renders went
+through the standard Rhino→glTF export conversion, which rotates everything
+−90° about X so **Y is up**. Nothing ever converted the spec to match — so the
+connection law, face cuts, strict alignment and the CSG fallback all reasoned
+about a rotated twin of every cube on screen. A shell the viewer saw on top
+was, to the law, a cut face on the depth side; the law's verdicts were
+internally consistent and wrong about the visible world.
+
+**Measured, not inferred**: `scripts/measure-glb-face-solidity.cjs` decodes all
+70 shipped GLBs (the app's own Draco decoder) and reports per-face solidity.
+38 of 70 models disagreed with the spec-frame prediction about which faces are
+uncut, every disagreement fitting the one rotation. The hollow shell faces
+pin the frame beyond argument: their fabrication rims measure **14.7%** solid,
+exactly what the 1.6 wall thickness predicts, and they sit on Y faces where
+the spec put them on Z. After conversion, all 37 spec-uncut faces across all
+70 models land on a measured rim or full panel — zero contradictions
+(`scripts/glb-face-solidity.json` holds the measurements;
+`src/lib/cube/renderFrame.test.ts` locks witnesses in all six directions).
+
+Fixed at one choke point: `MASTER_CUTTERS` is now expressed in the render
+frame (`toRenderFrame` in `specifications.ts`), so everything downstream —
+`faceCuts`, `canConnect`, strict alignment, CSG fallback geometry — agrees
+with the models. Bonus fix included: the CSG fallback previously built
+geometry in the unconverted frame, silently disagreeing with the GLBs it
+stands in for.
+
+**This change is NOT monotone, unlike P0-6's.** 201 of 420 face readings
+(47.9%) change; 62 faces change shell status. Verdicts flip in both
+directions wherever cubes meet vertically or in depth (lateral X contacts are
+unaffected). Saved compositions will read differently — some contacts that
+showed open close, and vice versa. That is the point: the previous readings
+described a world nobody was looking at.
+
+### P0-8 · ~~Green preview when placing from below~~ — RESOLVED 2026-07-30, the verdict was honest
+
+Field-confirmed the same day it was parked: zooming in on the face in
+question showed a cutter's curved bite through its edge. The face reads as a
+shell to the eye but carries a real opening, so the law rightly called it
+compatible — candidate 2 below, verified by the reporter's own screenshot.
+Every placement fix on PR #128 stands; nothing further is broken here.
+
+What remains is a **design decision, owner Iddo**: should a small edge nick
+count as a place two cubes connect? Today any real opening connects, however
+small (the smallest across all 70 variations is ~6.5% of a face). If the
+answer is no, the change is a minimum-opening threshold in `faceCuts.ts` —
+one line plus choosing the number — and the threshold number is a grammar
+statement, not an implementation detail.
+
+Original report kept below for the record.
+
+**What is already fixed and verified upstream of this report** (all on PR
+#128): hover targeting reads the ray's entry into the cell box, not the hit
+triangle's normal (212k-ray sweep, 0 wrong cells); the placement verdict memo
+tracks every input; the verdict answers about the chosen rotation, not a
+substituted one; an occupied hover cell refuses before the rules are asked;
+and the cutter spec was converted into the shipped models' frame (P0-7), which
+was the actual cause of the earlier green-on-shell sightings.
+
+**Candidate explanations, in the order to check them:**
+
+1. **Stale deployment.** The two post-fix sightings came minutes after the
+   pushes; if the Vercel preview predates commit `a482b77` (the frame
+   conversion), the main cause was still live in the tested build. First step
+   of any follow-up: confirm the deployed commit, then reproduce.
+2. **The verdict may be right.** After the frame fix, shells live mostly on
+   top/bottom faces — but 12 faces across the 70 variations are 93% solid
+   (a cutter nicks one corner) and read as closed to the eye while the law
+   counts the nick as a real cut. Green there is the law being honest about
+   a hole the viewer cannot see. Needs the specific cube id + rotation from
+   a reproduction to confirm or rule out.
+3. **Edge-tie in `getHoveredFaceFromRay`.** When the ray enters the cell box
+   almost exactly along an edge, the dominant-component tie-break can pick
+   the side face instead of the bottom, targeting a side cell that is empty →
+   all rotations valid → green. Steep from-below angles make edge entries
+   more likely. Testable in isolation with rays at grazing angles.
+4. **Hollow-model raycast path.** The models are hollow with one open rim
+   face; from below, a ray through the opening can hit interior walls or
+   pass through entirely, changing which cube (if any) receives the hover.
+   The targeting math is cell-based so a *received* hover is still resolved
+   correctly, but a hover received by an unexpected cube targets that cube's
+   neighbourhood.
+
+**To make this actionable:** a reproduction with the composition saved, the
+cube id + rotation hovered, and the deployed commit hash. Without those,
+anything further is guesswork — which is what this entry exists to prevent.
+
+### P0-6 (original finding) · The connection law reads a face model that is wrong for 69 of 70 variations
 
 `computeFaceCutTypes` (`connectionRules.ts`) derives each face's cut type from
 two helpers that **cannot express the geometry they claim to read**:
@@ -105,11 +222,12 @@ closed-vocabulary claim survives in principle — the cutter set really is close
 and finite — but the implementation of "which faces agree" does not match the
 geometry.
 
-**Fix cost and risk.** Correcting the derivation changes every connection
-verdict in the app: interactive placement, auto-fill, valid-rotation sets, the
-encode connection reading, and the reading of every already-saved assembly. It
-is the right fix and it is not a small behavioural change. Scheduled *after*
-PR #127 merges so the geometry lands as its own revertible diff.
+**Fix cost and risk (as assessed before the fix).** Correcting the derivation
+changes every connection verdict in the app: interactive placement, auto-fill,
+valid-rotation sets, the encode connection reading, and the reading of every
+already-saved assembly. Scheduled *after* PR #127 merged so the geometry landed
+as its own revertible diff. In the event the change proved monotone — see the
+FIXED note above — so the risk was lower than feared.
 
 **Verification still open:** analytic, from `specifications.ts`. The Grasshopper
 file supplied (v515 Presentation) confirms cube 42, the three 51 mm extrusions
@@ -117,6 +235,11 @@ and the radii (Golden Ratio component ×10 → 10φ; 3.14π), but its sphere cen
 are live graph output rather than stored literals and it is a different version
 from whatever exported `public/models`. The shipped GLBs remain the untouched
 ground truth for the per-variation counts.
+
+*RESOLVED 2026-07-30 while fixing P0-7: the shipped GLBs were decoded and
+measured directly (`scripts/measure-glb-face-solidity.cjs`). After the frame
+conversion, the spec's uncut faces match the models 37/37 — the transcribed
+cutter geometry is confirmed against the ground truth it was transcribed from.*
 
 ---
 

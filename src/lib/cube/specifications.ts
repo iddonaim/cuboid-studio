@@ -36,6 +36,7 @@
 // =============================================================================
 
 export { CUBE_SIZE, CUBE_GAP, GRID_STRIDE, SHELL_THICKNESS, PHI, PHI_TIMES_10 } from './constants';
+import { CUBE_SIZE as CUBE_SIZE_INTERNAL } from './constants';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -181,8 +182,79 @@ export const CYLINDER_07: CylinderSpec = {
 // COMBINED MASTER CUTTERS ARRAY
 // =============================================================================
 
+// =============================================================================
+// FRAME CONVERSION — Grasshopper (Z-up) → shipped models (Y-up)
+// =============================================================================
+
 /**
- * All 8 cutters in order (0-7), matching the Grasshopper script indexing.
+ * The cutter constants above are authored in the Grasshopper document's frame,
+ * where Z is up. The GLB models the app actually renders were exported through
+ * the standard Rhino→glTF axis conversion, which rotates everything −90° about
+ * X so that glTF's Y points up. Nothing ever translated the spec to match.
+ *
+ * The consequence was measured, not guessed: decoding all 70 shipped GLBs and
+ * checking which face of each model is really uncut
+ * (`scripts/measure-glb-face-solidity.cjs`), 38 of 70 disagreed with the
+ * spec-frame prediction — and every disagreement fit this one rotation. The
+ * connection law was judging a rotated twin of every cube on screen: a shell
+ * the viewer saw on top was, to the law, a cut face on the depth side. The
+ * hollow shell faces make the frame unmistakable: their fabrication rims
+ * measure 14.7% solid, exactly what the 1.6 wall thickness predicts, and they
+ * sit on Y faces in the models where the spec put them on Z.
+ *
+ * So the spec is converted here, once, at the array everything downstream
+ * reads — face cuts, the connection law, strict alignment, and the CSG
+ * fallback geometry (which previously built models in the unconverted frame,
+ * silently disagreeing with the GLBs it stands in for). The point map, about
+ * the cube's own [0,42]³ box, is (x, y, z) → (x, z, 42 − y).
+ */
+
+function pointToRenderFrame(p: [number, number, number]): [number, number, number] {
+  return [p[0], p[2], CUBE_SIZE_INTERNAL - p[1]];
+}
+
+function vectorToRenderFrame(v: [number, number, number]): [number, number, number] {
+  return [v[0], v[2], -v[1]];
+}
+
+const FACE_TO_RENDER: Record<SphereSpec['face'], SphereSpec['face']> = {
+  X0: 'X0', X42: 'X42',
+  Y0: 'Z42', Y42: 'Z0',
+  Z0: 'Y0', Z42: 'Y42',
+};
+
+const AXIS_TO_RENDER: Record<CylinderSpec['axis'], CylinderSpec['axis']> = {
+  X: 'X', Y: 'Z', Z: 'Y',
+};
+
+function toRenderFrame(cutter: CutterSpec): CutterSpec {
+  if (cutter.type === 'sphere') {
+    return {
+      ...cutter,
+      center: pointToRenderFrame(cutter.center),
+      face: FACE_TO_RENDER[cutter.face],
+    };
+  }
+  const axis = AXIS_TO_RENDER[cutter.axis];
+  const planeOrigin = pointToRenderFrame(cutter.planeOrigin);
+  // axisPosition is the plane origin's two coordinates perpendicular to the
+  // axis (X-axis → [Y,Z], Y-axis → [X,Z], Z-axis → [X,Y]) — re-derived rather
+  // than permuted by hand, so it cannot drift from planeOrigin. The same
+  // derivation reproduces the authored values in the original frame.
+  const axisIndex = { X: 0, Y: 1, Z: 2 }[axis];
+  const [u, v] = ([0, 1, 2] as const).filter(i => i !== axisIndex);
+  return {
+    ...cutter,
+    axis,
+    planeOrigin,
+    extrusionVector: vectorToRenderFrame(cutter.extrusionVector),
+    axisPosition: [planeOrigin[u], planeOrigin[v]],
+  };
+}
+
+/**
+ * All 8 cutters in order (0-7), matching the Grasshopper script indexing —
+ * expressed in the RENDER frame, the one the shipped models occupy.
  * This order determines the variation numbering:
  * - v-00: cutters [0,1,2,3]
  * - v-01: cutters [0,1,2,4]
@@ -198,7 +270,7 @@ export const MASTER_CUTTERS: CutterSpec[] = [
   CYLINDER_06,  // Index 5
   CYLINDER_07,  // Index 6
   SPHERE_08,    // Index 7
-];
+].map(toRenderFrame);
 
 // =============================================================================
 // VARIATION GENERATION

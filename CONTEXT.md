@@ -174,13 +174,15 @@ Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly s
 
 - Variation picker (all 70), hover preview, click-to-place on a 3D grid.
 - **Connection rules** (`rulesEnabled`) + **strict alignment** (`strictRulesEnabled`) — `src/lib/cube/connectionRules.ts`.
-  - ⚠ **Known defect (2026-07-28): the face model under-reports cuts.**
-    `computeFaceCutTypes` records one face per sphere and two per cylinder, but
-    the master cutters breach two or three faces each. 69 of 70 variations have
-    a depth face genuinely cut while the code says none do; the two models
-    disagree on 69 of 70. So `canConnect` refuses connections the geometry
-    permits. The law is sound, the face data feeding it is not. Full write-up
-    and reproduction: `docs/GAPS_AND_HOLES.md` P0-6. Fix scheduled after #127.
+  - **Face cuts come from `src/lib/cube/faceCuts.ts`** (rewritten 2026-07-28).
+    Each cutter's solid is tested against all six faces, so a sphere that opens
+    three faces records three; and a face carries a **set** of cut types, since
+    38.6% of variation faces carry both a sphere and a cylinder cut.
+    `canConnect` is a set intersection — two faces join when they share a cut
+    type; a shell is the empty set. This replaced a derivation that recorded one
+    face per sphere and two per cylinder and so disagreed with the geometry on
+    69 of 70 variations; the correction opened 37.3% of previously-refused
+    adjacencies and closed none. History: `docs/GAPS_AND_HOLES.md` P0-6.
 - Rotate (Space = Y / preview cycles valid rotations, R = X), delete, undo/redo (Ctrl/Cmd+Z, +Shift to redo), auto-fill, section cuts.
 - **Section cut** (`useSectionCutStore`, `SectionCutControls.tsx`, shared by the assembly editor and Evolution): axis + position + a **Flip** that swaps which half of the assembly the plane keeps. `buildClippingPlanes()` (`src/hooks/useClippingPlanes.ts`) is the pure sign convention — Three discards `normal·p + constant < 0`, so flipping negates both and leaves the plane in place. Cut surfaces are painted in the accent (poché) via a back-face mesh, mounted only on cubes the plane genuinely slices. `flipped` is stamped into captured PNGs' provenance, since axis + position alone describe two different drawings.
 - Tagging (`TaggingPanel.tsx`): word + intensity per cube.
