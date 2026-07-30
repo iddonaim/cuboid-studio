@@ -2,7 +2,7 @@
 
 > This file is the always-on context for the Cuboid Studio Claude Project.
 > Read it in full before responding to any message in this project.
-> Last updated: 2026-07-22
+> Last updated: 2026-07-30
 >
 > This is a factual map of what is **actually in the repo and usable today**,
 > reconciled against the live code (not aspirational spec). Where a feature is
@@ -52,7 +52,7 @@ The app has **four** primary nav modes, all mounted and live: **Map**, **Encode*
 
 | Tab | Status | What it does |
 |------|--------|--------------|
-| **Map** | Live | Site picker. Leaflet map + an embedded iframe to a separate "map-context" app (`VITE_MAP_CONTEXT_URL`, Railway-hosted). Geocode via Nominatim proxy, radius selector, Overpass POI enrichment. Writes active site context to `localStorage`, feeds Encode + Pataphysical. |
+| **Map** | Live | **Landing tab** (the app boots here since 2026-07-30 — it's the start of the workflow spine). Site picker. Leaflet map + an embedded iframe to a separate "map-context" app (`VITE_MAP_CONTEXT_URL`, Railway-hosted). Geocode via Nominatim proxy, radius selector, Overpass POI enrichment. Writes active site context to `localStorage`, feeds Encode + Pataphysical. |
 | **Encode** | Live | Upload/capture 1–7 photos of an inhabited space. Claude's vision model emits a five-axis spatial reading and proposes a cuboid assembly. The assembly editor is reachable inline here (Merge mode). |
 | **Evolution** | Live | Two sub-modes toggled in-panel: **Evolve** (compressibility-driven candidate generation) and **Pataphysical** (meme → operator translation). |
 | **Decode** | Live | 2D notation sheet (Konva) as the full-bleed stage, on an unbounded lattice. Drag/place/rotate tile glyphs of variations, snap-to-grid, export as vector SVG, transparent PNG or DXF. The assembly sits alongside as a live 3D corner preview; clicking it opens the full 3D view. |
@@ -121,13 +121,17 @@ Compression progress (interestingness) = score_after − score_before. A sparkli
 
 **Loop:** pre-fetch a meme pool from archthesis (`/api/fetch-memes`) → generate N candidates in parallel (`translateMemeTwoPass()`), each scored by compression progress → rank → preview a candidate (target cube highlighted amber in the viewport) → Apply or Undo.
 
+**Target strategy is fixed** at `'least-compressed'` — the Settings selector was retired 2026-07-30 (too much to explain for its value); `'random'` and `'adaptive'` remain implemented in `pickTargetCubes` for code use.
+
 ---
 
 ## Evolution Mode — Pataphysical sub-mode (meme translation)
 
 Translates a meme into a spatial operator that re-cuts a target cube. **Both v1 (single-pass) and v2 (two-pass) are implemented and wired to the UI.**
 
-**Pass mode:** per-request, set by the client. `passMode` defaults to **`'two_pass'`** (`useMemeStore.ts:204`); the user can toggle to `'single'` in `MemeInputPanel`. `translateMemeTwoPass()` always sends `two_pass` and auto-injects active site context (`translateMeme.ts:73–75`, unless `skipSiteContext`). `translateMeme()` still exists and always sends `single`, but **nothing in the shipping UI calls it** — Evolution imports `translateMemeTwoPass` only (`useEvolutionStore.ts:6,259`). The `TRANSLATION_PASS_MODE` env var is **dead** — nothing reads it. *(Verified at origin/main 2026-07-28.)*
+**Pass mode:** two-pass only in the UI. The single/two-pass toggle was **retired from `MemeInputPanel` 2026-07-30** — `passMode` stays in the store (default `'two_pass'`) and `translateMeme()` (v1 single-pass) is kept in code for debugging, but no shipping UI can switch to it; `restoreComposition()` coerces `passMode` to `'two_pass'` so old single-pass saves can't silently re-enter a mode with no visible way out. `translateMemeTwoPass()` always sends `two_pass`, auto-injects active site context, and attaches the active **translation lexicon** — which is why the vocabulary governs both Pataphysical and Evolve (both call it). The `TRANSLATION_PASS_MODE` env var is **dead** — nothing reads it.
+
+**Retired inputs (2026-07-30/31):** the **Engagement level slider**, the editable **Location tag** field, the **free-text meme textarea**, and the in-panel **"Set site context…" curator button** are all gone from `MemeInputPanel`. Engagement and location still exist and still reach the prompt (engagement scales cut magnitude — "higher engagement = stronger mutation" in the prompt files; location biases cutter position): auto-derived from the selected archthesis meme (likes → engagement via `meme-mapper.ts`, `location.display_name` → tag), shown read-only on the compact meme card. There are now exactly **two meme inputs**: *Browse from archthesis*, and an **External meme** section (collapsed) taking a public https **image URL** + optional caption — the API forwards the image to the model as a vision block on both gateway paths, so the meme is read from the picture itself (captionless external memes send a stock description pointing the model at the image; external memes use engagement 50, no location). `selectedMemeSource` (`'archthesis' | 'external'`) labels the card and persists with compositions. Site context is set in **Map** (the landing tab); the panel shows `ActiveSiteChip` — or a "pick one in Map" hint — instead of the curator. `SiteContextCurator.tsx` is kept in-tree but unmounted.
 
 **Two-pass structure (v2):**
 - Pass 1 — cultural extraction: rhetorical moves, cultural tensions, functional affects, site resonance, meme summary.
@@ -141,7 +145,7 @@ Translates a meme into a spatial operator that re-cuts a target cube. **Both v1 
 
 **Prompts:** `src/prompts/pataphysical-translation-v2.md` (two-pass), `src/prompts/pataphysical-translation.md` (v1). **Editing the prompt is how you change behavior; code rarely needs to change.**
 
-**UI:** `MemeInputPanel`, `OperatorResultPanel`, `CutterTweakPanel` (tweak parameters before apply), `OperatorHistoryList`, `ArchthesisBrowser` (browse memes from archthesis), `SiteContextCurator` (set/clear active site context).
+**UI:** `MemeInputPanel`, `OperatorResultPanel`, `CutterTweakPanel` (tweak parameters before apply), `OperatorHistoryList`, `ArchthesisBrowser` (browse memes from archthesis), `ActiveSiteChip` (read-only active-site card; context is set in Map). `TranslationLexiconEditor` sits in its own always-visible "Translation vocabulary" section of the panel (no longer buried in Translation settings).
 
 ---
 
@@ -196,7 +200,7 @@ Full-featured cube editor, surfaced inline (Encode Merge seed editor; assembly s
 **This is a real, shipping feature** — opt-in via env vars, invisible when unconfigured.
 
 - **Auth:** Firebase email/password (`src/contexts/AuthContext.tsx`, `src/hooks/useAuth.ts`, `src/components/auth/AuthControls.tsx` in the TopBar).
-- **Data model:** Projects → Sites → Compositions (`src/lib/projects/types.ts`, CRUD in `src/lib/projects/firestore.ts`, UI in `src/components/projects/ProjectsPanel.tsx`).
+- **Data model:** Projects → Sites → Compositions (`src/lib/projects/types.ts`, CRUD in `src/lib/projects/firestore.ts`, UI in `src/components/projects/ProjectsPanel.tsx`). All three levels are **renameable inline** (hover pencil → edit in place; Enter saves, Esc cancels) since 2026-07-30. **New sites auto-name themselves** from the active site context's address in short format — street + number, locality (`src/lib/siteContext/siteName.ts`) — prefilled into the create input, still editable.
 - **Capture/restore:** `captureComposition()` serialises the full assembly + meme state, plus the Encode **reading + lexicon provenance** (model-original reading, edited flag, and a by-value lexicon snapshot so the record is self-describing even if the lexicon later changes); `restoreComposition()` loads it back (`src/lib/projects/composition.ts`). "Save to project" button is `SaveCompositionButton.tsx`.
 - **Lexicons:** a separate top-level `lexicons` collection (L3, `lexiconFirestore.ts`), scoped per `ownerId` — the editable Encode vocabularies (see Encode Mode). The built-in `DEFAULT_LEXICON` is never stored.
 - **Config:** `VITE_FIREBASE_*` env vars, pointing at the **same Firebase project as archthesis** (`adaptivememeticarchitect-2776f`). Firestore access rules in `firestore.rules` (covers `projects/**` and `lexicons/**`) — **reference copy only**: the deployed source of truth is `archthesis/firestore.rules`, which archthesis's deploy workflow ships (replacing the live ruleset) on every merge to its main. Rule edits here must be mirrored there.

@@ -1,23 +1,17 @@
 import { create } from 'zustand';
 
 /**
- * Primary nav modes that have a mounted UI today.
- *
- * The wider workflow spine is Map -> Encode -> Evolution -> Decode (see
- * NAV_SLOTS below). Map and Decode are reserved as future tabs and are not
- * mounted yet; Map is still reserved.
+ * Primary nav modes. All four are mounted and live; the workflow spine is
+ * Map -> Encode -> Evolution -> Decode (see NAV_SLOTS below).
  */
 export type AppMode = 'map' | 'encoding' | 'evolution' | 'decode';
 
 /**
  * Ordered named-slot config for the primary navigation.
  *
- * Each slot has a fixed position in the workflow spine. Slots with
- * `mounted: false` are reserved positions whose components don't exist yet;
- * they are filtered out at render time so the user only sees built tabs.
- *
- * Adding Map or Decode later = flip `mounted: true` for that slot and wire
- * its content in App.tsx / Viewport3D.tsx. No reorder, no nav restructure.
+ * Each slot has a fixed position in the workflow spine. `mounted: false`
+ * would reserve a position without rendering a tab; today every slot is
+ * mounted, so VISIBLE_NAV_SLOTS equals NAV_SLOTS.
  */
 export interface NavSlot {
   key: 'map' | 'encoding' | 'evolution' | 'decode';
@@ -111,7 +105,8 @@ function onboardingSeen(): boolean {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  activeMode: 'encoding',
+  // Map is the starting point of the workflow spine, so it's the landing tab.
+  activeMode: 'map',
   setActiveMode: (mode) => set({ activeMode: mode }),
   mapView: 'analyze',
   setMapView: (view) => set({ mapView: view }),

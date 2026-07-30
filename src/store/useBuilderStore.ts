@@ -52,12 +52,6 @@ interface BuilderState {
   isGenerating: boolean;
   setIsGenerating: (generating: boolean) => void;
 
-  // PWA
-  deferredPrompt: any;
-  setDeferredPrompt: (prompt: any) => void;
-  showInstallButton: boolean;
-  setShowInstallButton: (show: boolean) => void;
-
   // History (undo/redo)
   history: PlacedCube[][];
   historyIndex: number;
@@ -140,12 +134,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   // Generation
   isGenerating: true,
   setIsGenerating: (generating) => set({ isGenerating: generating }),
-
-  // PWA
-  deferredPrompt: null,
-  setDeferredPrompt: (prompt) => set({ deferredPrompt: prompt }),
-  showInstallButton: false,
-  setShowInstallButton: (show) => set({ showInstallButton: show }),
 
   // History
   history: [[]],

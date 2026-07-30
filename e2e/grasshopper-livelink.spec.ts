@@ -95,6 +95,9 @@ test.describe('Grasshopper live-link (bridge running)', () => {
     }, fixtureState);
 
     await page.goto('/');
+    // Map is the landing tab; the Encode sidebar (with Saved States / Export)
+    // needs the Encode tab active.
+    await page.getByRole('button', { name: 'Encode' }).click();
     await expect(page.getByText('Upload or capture a photo')).toBeVisible({ timeout: 15_000 });
 
     // Load the two-cube fixture through the real Saved States panel
@@ -151,6 +154,9 @@ test.describe('Grasshopper setup guide', () => {
       window.localStorage.setItem('cs-onboarding-seen', '1');
     });
     await page.goto('/');
+    // Map is the landing tab; the Encode sidebar (with Saved States / Export)
+    // needs the Encode tab active.
+    await page.getByRole('button', { name: 'Encode' }).click();
     await expect(page.getByText('Upload or capture a photo')).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: 'Export & Grasshopper' }).click();
@@ -221,6 +227,9 @@ test.describe('Grasshopper live-link (bridge down)', () => {
       window.localStorage.setItem('cs-onboarding-seen', '1');
     });
     await page.goto('/');
+    // Map is the landing tab; the Encode sidebar (with Saved States / Export)
+    // needs the Encode tab active.
+    await page.getByRole('button', { name: 'Encode' }).click();
     await expect(page.getByText('Upload or capture a photo')).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: 'Export & Grasshopper' }).click();

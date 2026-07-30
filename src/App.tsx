@@ -214,25 +214,6 @@ const AppInner: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // PWA install prompt handler
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      useBuilderStore.getState().setDeferredPrompt(e);
-      useBuilderStore.getState().setShowInstallButton(true);
-    };
-    const handleAppInstalled = () => {
-      useBuilderStore.getState().setShowInstallButton(false);
-      useBuilderStore.getState().setDeferredPrompt(null);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

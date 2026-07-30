@@ -29,6 +29,20 @@ interface CubeWithCutsProps {
    * so it hides the solid layer behind it and looks like the thing in front.
    */
   ghost?: boolean;
+  /**
+   * Receded context layer: the composition surrounding a focused cube.
+   *
+   * Unlike `ghost`, this keeps normal depth behaviour — a receded cube still
+   * hides what sits behind it — so the layer reads as translucent volumes
+   * rather than every edge in the assembly drawn over every other one. Its
+   * outlines fade faster than its fill, which is what makes it read as
+   * *behind* the focused cube rather than merely paler.
+   *
+   * The focused cube stays fully opaque, so it renders in Three's opaque pass
+   * before any receded cube blends over it — it can never be hidden by the
+   * context, only tinted by it.
+   */
+  receded?: boolean;
   clippingPlanes?: THREE.Plane[];
   overrideGeometry?: THREE.BufferGeometry | null;
   provenance?: 'preserved' | 'added';
@@ -53,6 +67,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   onFaceHover,
   isPreview = false,
   ghost = false,
+  receded = false,
   clippingPlanes,
   overrideGeometry,
   provenance,
@@ -191,6 +206,12 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
 
   if (!geometry || !edgesGeometry) return null;
 
+  // Three caches a material's program against its `transparent` flag, so
+  // flipping that flag on a live material leaves it rendering opaque — the
+  // cube would take the new opacity value and ignore it. Keying the materials
+  // on the flag rebuilds them on the transition (focus on/off) instead.
+  const isTransparent = ghost || opacity < 1;
+
   return (
     <group
       position={position}
@@ -201,11 +222,16 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     >
       <mesh geometry={geometry} position={geometryOffset} raycast={noRaycast}>
         <meshBasicMaterial
+          key={`fill-${isTransparent}`}
           color={fillColor}
-          transparent={ghost || opacity < 1}
+          transparent={isTransparent}
           // A ghost's fill is a hint of volume, not a surface — the outline
           // carries it. depthWrite off so it can never hide the solid layer.
-          opacity={ghost ? opacity * 0.22 : opacity}
+          //
+          // A receded fill is pushed well past its nominal alpha: paint at the
+          // literal slider value still covers what's behind it, which reads as
+          // a paler solid rather than as something seen through.
+          opacity={ghost ? opacity * 0.22 : receded ? opacity * 0.4 : opacity}
           depthWrite={!ghost}
           side={THREE.FrontSide}
           clippingPlanes={clippingPlanes || []}
@@ -222,10 +248,14 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
       )}
       <lineSegments geometry={edgesGeometry} position={geometryOffset} raycast={noRaycast}>
         <lineBasicMaterial
+          key={`edge-${isTransparent}`}
           color={edgeColor}
           linewidth={2}
-          transparent={ghost || opacity < 1}
-          opacity={opacity}
+          transparent={isTransparent}
+          // Linework carries a receded cube once its fill is mostly gone, so
+          // the outlines hold more of their alpha than the surface does —
+          // enough to read the form, light enough to sit behind the subject.
+          opacity={receded ? opacity * 0.7 : opacity}
           depthWrite={!ghost}
           clippingPlanes={clippingPlanes || []}
         />

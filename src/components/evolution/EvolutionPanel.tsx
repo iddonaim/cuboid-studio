@@ -365,20 +365,6 @@ export const EvolutionPanel: React.FC = () => {
       <Section id="evolve-settings" title="Settings">
       <div className="pb-2 pt-1">
 
-        {/* Target strategy */}
-        <div className="mb-2">
-          <label className="text-ink-600 text-[11px] block mb-1">Target strategy</label>
-          <select
-            value={config.targetCubeStrategy}
-            onChange={(e) => setConfig({ targetCubeStrategy: e.target.value as 'random' | 'least-compressed' | 'adaptive' })}
-            className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] box-border"
-          >
-            <option value="least-compressed">Least compressed (focus on untouched cubes)</option>
-            <option value="adaptive">Adaptive (mix of focused + random)</option>
-            <option value="random">Random</option>
-          </select>
-        </div>
-
         {/* Population size */}
         <div className="mb-2">
           <div className="flex justify-between mb-1">

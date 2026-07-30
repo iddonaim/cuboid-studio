@@ -14,6 +14,9 @@ import { CUBE_VARIATIONS } from '../lib/cube/specifications';
 
 export type PassMode = 'single' | 'two_pass';
 
+/** Where the selected meme came from — labels the sidebar card. */
+export type MemeSource = 'archthesis' | 'external';
+
 /** A finished translation handed to translate() instead of calling the LLM —
  *  used by the model-comparison panel to apply a chosen candidate through the
  *  exact same geometry/record pipeline as a live translation. */
@@ -54,10 +57,11 @@ interface MemeState {
   engagementLevel: number;
   setEngagementLevel: (level: number) => void;
 
-  // Selected archthesis meme (for sidebar thumbnail)
+  // Selected meme (for sidebar thumbnail) — from archthesis or an external URL
   selectedMemeImageUrl: string | null;
   selectedMemeTitle: string | null;
-  setSelectedMeme: (imageUrl: string | null, title: string | null) => void;
+  selectedMemeSource: MemeSource | null;
+  setSelectedMeme: (imageUrl: string | null, title: string | null, source?: MemeSource) => void;
 
   // Standalone working cube (used when no assembly exists)
   baseVariationId: string;
@@ -76,6 +80,12 @@ interface MemeState {
   lastCutterGeometry: THREE.BufferGeometry | null;
   cutterVisible: boolean;
   setCutterVisible: (visible: boolean) => void;
+
+  /** Opacity of the non-focused cubes while a cube+meme is being viewed
+   *  (Pataphysical target, Evolve inspect/preview). 1 = solid; the default
+   *  0.7 reads as "30% transparent". */
+  contextOpacity: number;
+  setContextOpacity: (opacity: number) => void;
 
   // Translation state
   isTranslating: boolean;
@@ -153,10 +163,15 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   engagementLevel: 50,
   setEngagementLevel: (level) => set({ engagementLevel: level }),
 
-  // Selected archthesis meme
+  // Selected meme
   selectedMemeImageUrl: null,
   selectedMemeTitle: null,
-  setSelectedMeme: (imageUrl, title) => set({ selectedMemeImageUrl: imageUrl, selectedMemeTitle: title }),
+  selectedMemeSource: null,
+  setSelectedMeme: (imageUrl, title, source) => set({
+    selectedMemeImageUrl: imageUrl,
+    selectedMemeTitle: title,
+    selectedMemeSource: imageUrl ? (source ?? 'archthesis') : null,
+  }),
 
   // Standalone working cube
   baseVariationId: 'v-00',
@@ -193,6 +208,11 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   lastCutterGeometry: null,
   cutterVisible: true,
   setCutterVisible: (visible) => set({ cutterVisible: visible }),
+
+  // 50% out of the box: at a shallower fade the context still covers the
+  // subject and reads as solid rather than as something seen through.
+  contextOpacity: 0.5,
+  setContextOpacity: (opacity) => set({ contextOpacity: Math.max(0, Math.min(1, opacity)) }),
 
   // Translation state
   isTranslating: false,

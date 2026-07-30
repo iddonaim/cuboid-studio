@@ -116,6 +116,7 @@ export function captureComposition(): CompositionData {
       engagementLevel: meme.engagementLevel,
       selectedMemeImageUrl: meme.selectedMemeImageUrl,
       selectedMemeTitle: meme.selectedMemeTitle,
+      selectedMemeSource: meme.selectedMemeSource ?? null,
       baseVariationId: meme.baseVariationId,
       targetCubeId: meme.targetCubeId,
       passMode: meme.passMode,
@@ -326,9 +327,16 @@ export async function restoreComposition(
     engagementLevel: p.engagementLevel,
     selectedMemeImageUrl: p.selectedMemeImageUrl,
     selectedMemeTitle: p.selectedMemeTitle,
+    // Older snapshots predate the source field — a selected meme back then
+    // could only have come from archthesis.
+    selectedMemeSource: p.selectedMemeSource
+      ?? (p.selectedMemeImageUrl ? 'archthesis' : null),
     baseVariationId: p.baseVariationId,
     targetCubeId: p.targetCubeId,
-    passMode: p.passMode,
+    // The single/two-pass toggle is retired from the UI (two-pass is the
+    // committed reading), so a composition saved in single-pass mode must not
+    // silently re-enter it — there would be no visible way back.
+    passMode: 'two_pass',
     operators: p.operators,
     cubeOperators: p.cubeOperators,
     workingGeometry: standalone.workingGeometry,

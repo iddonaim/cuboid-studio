@@ -96,6 +96,15 @@ export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise
 
   if (!response.ok) {
     const body = await response.text();
+    // The provider's raw error for a non-image meme URL is an unreadable
+    // nested-JSON blob — say what actually went wrong instead. (The panel
+    // probes URLs before accepting them, so this is the fallback net.)
+    if (/did not return an image|file format is invalid or unsupported/i.test(body)) {
+      throw new Error(
+        'The meme URL did not resolve to a readable image. Use a direct link to ' +
+        'the image itself (right-click the meme → "Copy image address"), then try again.',
+      );
+    }
     throw new Error(`API error (${response.status}): ${body}`);
   }
 

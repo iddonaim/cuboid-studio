@@ -269,6 +269,7 @@ const AssemblyPataphysicalScene: React.FC = () => {
   const targetCubeId = useMemeStore(s => s.targetCubeId);
   const setTargetCubeId = useMemeStore(s => s.setTargetCubeId);
   const cubeGeometryOverrides = useMemeStore(s => s.cubeGeometryOverrides);
+  const contextOpacity = useMemeStore(s => s.contextOpacity);
 
   // Find the targeted cube's position for the cutter overlay
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
@@ -291,6 +292,12 @@ const AssemblyPataphysicalScene: React.FC = () => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
+        // While a cube is targeted the rest of the composition recedes by the
+        // shared context-fade setting. `receded`, not `ghost`: ghost drops
+        // depth-writing, so every edge in the assembly drew through every
+        // other one and the context read as a wireframe rather than as
+        // translucent volumes.
+        const faded = !!targetCubeId && cube.id !== targetCubeId && contextOpacity < 1;
         return (
           <CubeWithCuts
             key={cube.id}
@@ -300,6 +307,8 @@ const AssemblyPataphysicalScene: React.FC = () => {
             overrideGeometry={override}
             targeted={cube.id === targetCubeId}
             flagged={flaggedIds.has(cube.id)}
+            opacity={faded ? contextOpacity : 1}
+            receded={faded}
             onClick={() => {
               setTargetCubeId(cube.id === targetCubeId ? null : cube.id);
             }}
@@ -716,6 +725,12 @@ const EvolutionScene: React.FC = () => {
   const highlightCubeId = previewedCandidate?.targetCubeId ?? null;
   const previewTargetCube = placedCubes.find(c => c.id === highlightCubeId);
 
+  // While one cube is the subject — a previewed candidate's target, or an
+  // inspected cube's change record — the rest recede by the shared
+  // context-transparency setting (same knob as Pataphysical).
+  const contextOpacity = useMemeStore(s => s.contextOpacity);
+  const focusCubeId = highlightCubeId ?? inspectedCube?.id ?? null;
+
   // Generate a cutter wireframe preview for the selected candidate
   const cutterPreview = useMemo(() => {
     if (!previewedCandidate || !previewTargetCube) return null;
@@ -749,6 +764,8 @@ const EvolutionScene: React.FC = () => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
+        // Same receded-context treatment as the Pataphysical scene above.
+        const faded = !!focusCubeId && cube.id !== focusCubeId && contextOpacity < 1;
         return (
           <CubeWithCuts
             key={cube.id}
@@ -759,6 +776,8 @@ const EvolutionScene: React.FC = () => {
             targeted={cube.id === highlightCubeId}
             selected={inspectable && cube.id === targetCubeId}
             flagged={flaggedIds.has(cube.id)}
+            opacity={faded ? contextOpacity : 1}
+            receded={faded}
             clippingPlanes={clippingPlanes}
             onClick={inspectable
               ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)

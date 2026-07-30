@@ -114,20 +114,20 @@ export const SavedStatesPanel: React.FC = () => {
         <div className="flex flex-col gap-1.5">
 
           {/* Save row */}
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             <input
               type="text"
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && hasCubes && handleSave()}
               placeholder={`Assembly ${states.length + 1}`}
-              className="flex-1 px-1.5 py-1 text-[11px] bg-ink-100 border border-ink-200 rounded text-ink-600 outline-none"
+              className="flex-1 px-2 py-1.5 text-[12px] bg-ink-100 border border-ink-200 rounded text-ink-600 outline-none"
             />
             <Button
               onClick={handleSave}
               disabled={!hasCubes}
               title={hasCubes ? 'Save current assembly' : 'No cubes to save'}
-              className={`h-auto py-1 px-2 text-[11px] border-0 whitespace-nowrap ${
+              className={`h-auto py-1.5 px-2.5 text-[12px] border-0 whitespace-nowrap ${
                 hasCubes
                   ? 'bg-primary/10 hover:bg-primary/20 text-primary'
                   : 'bg-ink-100 text-ink-400 cursor-default'
@@ -139,17 +139,17 @@ export const SavedStatesPanel: React.FC = () => {
 
           {/* State list */}
           {states.length === 0 ? (
-            <div className="text-ink-400 text-[10px] italic pl-0.5">No saved states yet</div>
+            <div className="text-ink-400 text-[11px] italic pl-0.5">No saved states yet</div>
           ) : (
             states.map(state => (
               <div
                 key={state.id}
-                className="flex flex-col gap-1 py-1.5 px-1.5 bg-ink-100 border border-ink-200 rounded"
+                className="flex flex-col gap-1 py-2 px-2 bg-ink-100 border border-ink-200 rounded"
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <div className="flex-1 overflow-hidden">
-                    <div className="text-ink-600 text-[11px] truncate">{state.name}</div>
-                    <div className="text-ink-400 text-[10px]">
+                    <div className="text-ink-700 text-[12px] truncate">{state.name}</div>
+                    <div className="text-ink-400 text-[11px]">
                       {state.cubeCount} cube{state.cubeCount !== 1 ? 's' : ''} · {fmtDate(state.savedAt)}
                     </div>
                   </div>
@@ -163,7 +163,7 @@ export const SavedStatesPanel: React.FC = () => {
                     }}
                     disabled={loadingId !== null}
                     title="Replace the current assembly with this saved one"
-                    className="h-auto py-px px-1.5 text-[10px] border border-ink-200 bg-ink-100 text-ink-600 hover:bg-ink-200 whitespace-nowrap"
+                    className="h-auto py-1 px-2 text-[11px] border border-ink-200 bg-ink-100 text-ink-600 hover:bg-ink-200 whitespace-nowrap"
                   >
                     {loadingId === state.id ? 'Loading…' : 'Load'}
                   </Button>
@@ -171,13 +171,13 @@ export const SavedStatesPanel: React.FC = () => {
                   <button
                     onClick={() => { setConfirmLoadId(null); handleDelete(state.id); }}
                     title={confirmDeleteId === state.id ? 'Click again to confirm delete' : 'Delete'}
-                    className={`py-px px-1.5 rounded border-0 cursor-pointer text-[10px] ${
+                    className={`py-1 px-1.5 rounded border-0 cursor-pointer text-[11px] ${
                       confirmDeleteId === state.id
                         ? 'bg-destructive/10 text-destructive'
                         : 'bg-transparent text-ink-400 hover:text-destructive'
                     }`}
                   >
-                    <Trash2 size={10} />
+                    <Trash2 size={12} />
                   </button>
                 </div>
 
@@ -185,20 +185,20 @@ export const SavedStatesPanel: React.FC = () => {
                     so before it wipes unsaved work. */}
                 {confirmLoadId === state.id && (
                   <div className="flex flex-col gap-1 pt-1 border-t border-ink-200">
-                    <div className="text-ink-500 text-[10px] leading-relaxed">
+                    <div className="text-ink-500 text-[11px] leading-relaxed">
                       Replaces your current {placedCubes.length}-cube assembly and its
                       cuts. Save it first if you want to keep it.
                     </div>
                     <div className="flex gap-1">
                       <Button
                         onClick={() => void handleLoad(state)}
-                        className="flex-1 h-auto py-1 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary border-0"
+                        className="flex-1 h-auto py-1 text-[11px] bg-primary/10 hover:bg-primary/20 text-primary border-0"
                       >
                         Replace
                       </Button>
                       <Button
                         onClick={() => setConfirmLoadId(null)}
-                        className="flex-1 h-auto py-1 text-[10px] bg-transparent hover:bg-ink-200 text-ink-500 border border-ink-200"
+                        className="flex-1 h-auto py-1 text-[11px] bg-transparent hover:bg-ink-200 text-ink-500 border border-ink-200"
                       >
                         Cancel
                       </Button>
