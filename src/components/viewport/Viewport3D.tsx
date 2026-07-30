@@ -293,9 +293,10 @@ const AssemblyPataphysicalScene: React.FC = () => {
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
         // While a cube is targeted the rest of the composition recedes by the
-        // shared context-fade setting — using the ghost treatment (outline
-        // -forward, no depth-write): plain translucency on these open-cut
-        // solids reads as hollow trays, not as a receded layer.
+        // shared context-fade setting. `receded`, not `ghost`: ghost drops
+        // depth-writing, so every edge in the assembly drew through every
+        // other one and the context read as a wireframe rather than as
+        // translucent volumes.
         const faded = !!targetCubeId && cube.id !== targetCubeId && contextOpacity < 1;
         return (
           <CubeWithCuts
@@ -307,7 +308,7 @@ const AssemblyPataphysicalScene: React.FC = () => {
             targeted={cube.id === targetCubeId}
             flagged={flaggedIds.has(cube.id)}
             opacity={faded ? contextOpacity : 1}
-            ghost={faded}
+            receded={faded}
             onClick={() => {
               setTargetCubeId(cube.id === targetCubeId ? null : cube.id);
             }}
@@ -763,7 +764,7 @@ const EvolutionScene: React.FC = () => {
         const variation = CUBE_VARIATIONS.find(v => v.id === cube.variationId);
         if (!variation) return null;
         const override = cubeGeometryOverrides[cube.id] || null;
-        // Same ghost treatment as the Pataphysical scene — see comment there.
+        // Same receded-context treatment as the Pataphysical scene above.
         const faded = !!focusCubeId && cube.id !== focusCubeId && contextOpacity < 1;
         return (
           <CubeWithCuts
@@ -776,7 +777,7 @@ const EvolutionScene: React.FC = () => {
             selected={inspectable && cube.id === targetCubeId}
             flagged={flaggedIds.has(cube.id)}
             opacity={faded ? contextOpacity : 1}
-            ghost={faded}
+            receded={faded}
             clippingPlanes={clippingPlanes}
             onClick={inspectable
               ? () => setTargetCubeId(cube.id === targetCubeId ? null : cube.id)

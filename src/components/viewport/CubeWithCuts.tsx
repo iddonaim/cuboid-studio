@@ -29,6 +29,20 @@ interface CubeWithCutsProps {
    * so it hides the solid layer behind it and looks like the thing in front.
    */
   ghost?: boolean;
+  /**
+   * Receded context layer: the composition surrounding a focused cube.
+   *
+   * Unlike `ghost`, this keeps normal depth behaviour — a receded cube still
+   * hides what sits behind it — so the layer reads as translucent volumes
+   * rather than every edge in the assembly drawn over every other one. Its
+   * outlines fade faster than its fill, which is what makes it read as
+   * *behind* the focused cube rather than merely paler.
+   *
+   * The focused cube stays fully opaque, so it renders in Three's opaque pass
+   * before any receded cube blends over it — it can never be hidden by the
+   * context, only tinted by it.
+   */
+  receded?: boolean;
   clippingPlanes?: THREE.Plane[];
   overrideGeometry?: THREE.BufferGeometry | null;
   provenance?: 'preserved' | 'added';
@@ -53,6 +67,7 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   onFaceHover,
   isPreview = false,
   ghost = false,
+  receded = false,
   clippingPlanes,
   overrideGeometry,
   provenance,
@@ -225,7 +240,9 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
           color={edgeColor}
           linewidth={2}
           transparent={ghost || opacity < 1}
-          opacity={opacity}
+          // Receded outlines drop faster than the fill they sit on: at equal
+          // alpha the linework still reads as the foreground drawing.
+          opacity={receded ? opacity * 0.55 : opacity}
           depthWrite={!ghost}
           clippingPlanes={clippingPlanes || []}
         />
