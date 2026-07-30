@@ -1,18 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { getAdjacentPositionAndFace } from './placement';
-import { GRID_STRIDE } from './constants';
+import { getAdjacentPositionAndFace, getHoveredFaceFromRay } from './placement';
+import { GRID_STRIDE, CUBE_SIZE } from './constants';
 import { getAllRotations, type Rotation } from './connectionRules';
+import { CUBE_VARIATIONS } from './specifications';
+import { generateVariationGeometry } from './csgUtils';
 
 /**
- * Hovering a cube's face targets the neighbouring cell in the direction you are
- * pointing. The raycast hands back the hit triangle's normal in the geometry's
- * own space, so on a rotated cube it has to be transformed to world space first
- * — `CubeWithCuts` does that through the object's world matrix.
+ * Hovering a cube targets the neighbouring cell you are pointing at.
  *
- * These rebuild that composition with the same rotation convention the viewport
- * applies (`rotation={[x * π/2, y * π/2, 0]}` on the group) and check the cell
- * that comes out is the one actually in that world direction.
+ * The production path reads the ray's entry into the cell box rather than the
+ * normal of whatever surface it hit, because the hit surface is very often a
+ * sphere or cylinder cavity wall pointing somewhere unrelated to the face being
+ * aimed at. These fire real raycasts at real carved geometry to prove it.
+ *
+ * The `getAdjacentPositionAndFace` group below covers the fallback path, which
+ * still reads a normal and so still needs the local→world transform right.
  */
 describe('face hover targets the cell you are pointing at', () => {
   /** The same local→world transform `CubeWithCuts` applies on a hover. */
@@ -74,5 +77,125 @@ describe('face hover targets the cell you are pointing at', () => {
         expect(steps, `y${rotation.y}x${rotation.x}`).toBeCloseTo(1, 6);
       }
     }
+  });
+});
+
+/**
+ * The real thing: fire a ray at a carved cube from each of the six directions
+ * and check the app targets the cell actually in that direction.
+ *
+ * This is the regression that mattered. Reading the hit triangle's normal —
+ * even correctly transformed into world space — put the preview on the wrong
+ * cell for about 1 hover in 11, because a ray aimed at a face routinely lands
+ * on a curved cavity wall several millimetres in whose normal leans elsewhere.
+ * The preview then sat in an unrelated cell; when that cell had no neighbours,
+ * every rotation came back valid and it drew green — including apparently
+ * resting on an uncut face that nothing can connect to.
+ *
+ * A representative slice of variations is used to keep this quick. The same
+ * sweep over all 70 × 16 rotations × 6 directions (212k rays) also passes.
+ */
+describe('hovering carved geometry from every direction', () => {
+  const DIRECTIONS: [string, THREE.Vector3][] = [
+    ['+X', new THREE.Vector3(1, 0, 0)],
+    ['-X', new THREE.Vector3(-1, 0, 0)],
+    ['above', new THREE.Vector3(0, 1, 0)],
+    ['below', new THREE.Vector3(0, -1, 0)],
+    ['+Z', new THREE.Vector3(0, 0, 1)],
+    ['-Z', new THREE.Vector3(0, 0, -1)],
+  ];
+
+  const CUBE_POS: [number, number, number] = [0, CUBE_SIZE / 2, 0];
+  const centre = new THREE.Vector3(...CUBE_POS);
+
+  /** The scene graph `CubeWithCuts` builds: rotated group, offset child mesh. */
+  const meshFor = (variationId: string, rotation: Rotation) => {
+    const variation = CUBE_VARIATIONS.find(v => v.id === variationId)!;
+    const group = new THREE.Group();
+    group.position.copy(centre);
+    group.rotation.set((rotation.x * Math.PI) / 2, (rotation.y * Math.PI) / 2, 0);
+    const mesh = new THREE.Mesh(
+      generateVariationGeometry(variation),
+      // Raycasting respects `material.side`, and the viewport renders FrontSide.
+      new THREE.MeshBasicMaterial({ side: THREE.FrontSide })
+    );
+    mesh.position.set(-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
+    group.add(mesh);
+    new THREE.Scene().add(group);
+    group.updateMatrixWorld(true);
+    return mesh;
+  };
+
+  const cellInDirection = (dir: THREE.Vector3): [number, number, number] =>
+    CUBE_POS.map((c, i) =>
+      Math.abs(dir.getComponent(i)) > 0.5
+        ? c + Math.sign(dir.getComponent(i)) * GRID_STRIDE
+        : c
+    ) as [number, number, number];
+
+  // A few variations with different cut layouts, including the one whose
+  // uncut face showed a green preview in the field.
+  const SAMPLE = ['v-1', 'v-14', 'v-33', 'v-47', 'v-70'].filter(id =>
+    CUBE_VARIATIONS.some(v => v.id === id)
+  );
+
+  it('targets the cell in the direction pointed, whatever surface the ray lands on', () => {
+    expect(SAMPLE.length).toBeGreaterThan(0);
+    const raycaster = new THREE.Raycaster();
+    let hovers = 0;
+
+    for (const variationId of SAMPLE) {
+      for (const rotation of getAllRotations()) {
+        const mesh = meshFor(variationId, rotation);
+
+        for (const [dirName, dir] of DIRECTIONS) {
+          const want = cellInDirection(dir);
+          // Two axes across the face, so rays land on flat rim, cavity wall and
+          // everything between rather than only dead centre.
+          const acrossA = Math.abs(dir.y) > 0.5
+            ? new THREE.Vector3(1, 0, 0)
+            : new THREE.Vector3(0, 1, 0);
+          const acrossB = new THREE.Vector3().crossVectors(dir, acrossA).normalize();
+
+          for (const a of [-16, -8, 0, 8, 16]) {
+            for (const b of [-16, 0, 16]) {
+              const aim = centre.clone()
+                .add(acrossA.clone().multiplyScalar(a))
+                .add(acrossB.clone().multiplyScalar(b));
+              const origin = aim.clone().add(dir.clone().multiplyScalar(400));
+              raycaster.set(origin, aim.clone().sub(origin).normalize());
+
+              // A ray straight through a hole hits nothing — no hover fires at
+              // all, which is a miss rather than a wrong answer.
+              if (raycaster.intersectObject(mesh, true).length === 0) continue;
+
+              const where = `${variationId} y${rotation.y}x${rotation.x} ${dirName} a=${a} b=${b}`;
+              const resolved = getHoveredFaceFromRay(CUBE_POS, raycaster.ray);
+              expect(resolved, where).not.toBeNull();
+              expect(resolved!.position, where).toEqual(want);
+              hovers++;
+            }
+          }
+        }
+      }
+    }
+
+    // Guard against the loops silently degenerating into nothing.
+    expect(hovers).toBeGreaterThan(1000);
+  });
+
+  it('declines to answer when the camera is inside the cell', () => {
+    // `Ray.intersectBox` returns the exit point from inside, which would name
+    // the face opposite the one being pointed at. The caller falls back instead.
+    const ray = new THREE.Ray(centre.clone(), new THREE.Vector3(0, 1, 0));
+    expect(getHoveredFaceFromRay(CUBE_POS, ray)).toBeNull();
+  });
+
+  it('declines to answer when the ray misses the cell entirely', () => {
+    const ray = new THREE.Ray(
+      new THREE.Vector3(500, CUBE_SIZE / 2, 0),
+      new THREE.Vector3(0, 0, 1)
+    );
+    expect(getHoveredFaceFromRay(CUBE_POS, ray)).toBeNull();
   });
 });

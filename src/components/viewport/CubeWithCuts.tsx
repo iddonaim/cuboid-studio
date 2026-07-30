@@ -7,7 +7,7 @@ import { CubeVariation } from '../../lib/cube/specifications';
 import { Rotation, DEFAULT_ROTATION } from '../../lib/cube/connectionRules';
 import { getVariationGeometryAsync } from '../../lib/cube/csgUtils';
 import { FaceHoverInfo } from '../../lib/cube/types';
-import { getAdjacentPositionAndFace } from '../../lib/cube/placement';
+import { getAdjacentPositionAndFace, getHoveredFaceFromRay } from '../../lib/cube/placement';
 
 interface CubeWithCutsProps {
   variation: CubeVariation;
@@ -102,25 +102,31 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
   const handlePointerMove = (e: any) => {
     if (isPreview || !onFaceHover) return;
     e.stopPropagation();
-    if (e.face?.normal) {
-      // `face.normal` is the hit triangle's normal in the GEOMETRY's own space,
-      // not the world's. On a rotated cube the two differ, and treating the
-      // local one as a world direction picks the wrong neighbouring cell — the
-      // cube visually on top of another was being targeted behind it, so the
-      // preview landed in an empty cell, found no neighbour, and reported every
-      // rotation valid. Transforming through the object's world matrix keeps
-      // this correct for any rotation without restating the rotation convention.
+
+    // Which face of this cell the pointer is aiming through — read from the
+    // ray's entry into the cell box, not from the surface it landed on. The hit
+    // surface is usually a sphere or cylinder cavity wall whose normal points
+    // somewhere unrelated to the face being pointed at. See `placement.ts`.
+    let resolved = e.ray ? getHoveredFaceFromRay(position, e.ray) : null;
+
+    // Fallback for the cases the box can't answer (camera inside this cell, or
+    // no ray on the event): the hit triangle's normal, transformed out of the
+    // geometry's own space into the world's. Skipping that transform targeted
+    // the wrong cell on any rotated cube.
+    if (!resolved && e.face?.normal) {
       const worldNormal = e.face.normal
         .clone()
         .applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(e.object.matrixWorld));
-      const { position: adjPos, face } = getAdjacentPositionAndFace(position, worldNormal);
-      onFaceHover({
-        adjacentPosition: adjPos,
-        existingCubeFace: face,
-        existingVariationId: variation.id,
-        existingRotation: rotation,
-      });
+      resolved = getAdjacentPositionAndFace(position, worldNormal);
     }
+    if (!resolved) return;
+
+    onFaceHover({
+      adjacentPosition: resolved.position,
+      existingCubeFace: resolved.face,
+      existingVariationId: variation.id,
+      existingRotation: rotation,
+    });
   };
 
   const edgesGeometry = useMemo(() => {
