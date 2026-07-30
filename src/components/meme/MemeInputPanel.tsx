@@ -44,6 +44,7 @@ export const MemeInputPanel: React.FC = () => {
   const [showBrowser, setShowBrowser] = useState(false);
   // External meme entry (image URL), local until "Use".
   const [externalUrl, setExternalUrl] = useState('');
+  const [externalChecking, setExternalChecking] = useState(false);
   const [externalError, setExternalError] = useState<string | null>(null);
   // Mirror the active site context so the "no site" hint tracks the Map tab.
   const [activeSiteContext, setActiveSiteContextState] = useState(() => getActiveSiteContext());
@@ -70,13 +71,37 @@ export const MemeInputPanel: React.FC = () => {
   // the model as a vision block, so the meme is read entirely from the
   // picture; the stock description just points the model at it. Only https
   // URLs — the server rejects anything else.
-  const handleUseExternalMeme = () => {
+  //
+  // The URL is probed through an <img> before being accepted: the common
+  // mistake is pasting the *page* a meme sits on, which the provider only
+  // rejects at translate time with an unreadable 415/500. An HTML page never
+  // loads as an image, so the probe catches it up front.
+  const probeImage = (url: string) =>
+    new Promise<boolean>(resolve => {
+      const img = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      img.onload = () => { clearTimeout(timer); resolve(true); };
+      img.onerror = () => { clearTimeout(timer); resolve(false); };
+      img.src = url;
+    });
+
+  const handleUseExternalMeme = async () => {
     const url = externalUrl.trim();
     if (!/^https:\/\/.+/i.test(url)) {
       setExternalError('Needs a public https:// image URL.');
       return;
     }
     setExternalError(null);
+    setExternalChecking(true);
+    const isImage = await probeImage(url);
+    setExternalChecking(false);
+    if (!isImage) {
+      setExternalError(
+        "That link doesn't lead to an image — it's probably the page the meme sits on. " +
+        'Right-click the meme itself and choose "Copy image address" (the link usually ends in .jpg, .png or .webp).',
+      );
+      return;
+    }
     setMemeDescription(EXTERNAL_MEME_DESCRIPTION);
     setLocationTag('');
     setEngagementLevel(50);
@@ -205,16 +230,19 @@ export const MemeInputPanel: React.FC = () => {
               placeholder="https://…/meme.jpg"
               className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] box-border"
             />
+            <div className="text-ink-400 text-[10px] mt-1">
+              A direct link to the image itself, not the page it appears on.
+            </div>
           </div>
           {externalError && (
-            <div className="text-destructive text-[11px]">{externalError}</div>
+            <div className="text-destructive text-[11px] leading-relaxed">{externalError}</div>
           )}
           <Button
-            onClick={handleUseExternalMeme}
-            disabled={!externalUrl.trim()}
+            onClick={() => void handleUseExternalMeme()}
+            disabled={!externalUrl.trim() || externalChecking}
             className="w-full h-auto py-2 text-[12px] bg-ink-100 border border-ink-200 text-ink-600 hover:bg-ink-200 disabled:opacity-50"
           >
-            Use this meme
+            {externalChecking ? 'Checking image…' : 'Use this meme'}
           </Button>
         </div>
       </Section>
