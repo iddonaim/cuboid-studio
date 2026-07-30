@@ -103,7 +103,17 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
     if (isPreview || !onFaceHover) return;
     e.stopPropagation();
     if (e.face?.normal) {
-      const { position: adjPos, face } = getAdjacentPositionAndFace(position, e.face.normal);
+      // `face.normal` is the hit triangle's normal in the GEOMETRY's own space,
+      // not the world's. On a rotated cube the two differ, and treating the
+      // local one as a world direction picks the wrong neighbouring cell — the
+      // cube visually on top of another was being targeted behind it, so the
+      // preview landed in an empty cell, found no neighbour, and reported every
+      // rotation valid. Transforming through the object's world matrix keeps
+      // this correct for any rotation without restating the rotation convention.
+      const worldNormal = e.face.normal
+        .clone()
+        .applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(e.object.matrixWorld));
+      const { position: adjPos, face } = getAdjacentPositionAndFace(position, worldNormal);
       onFaceHover({
         adjacentPosition: adjPos,
         existingCubeFace: face,
