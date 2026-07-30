@@ -42,9 +42,8 @@ export const MemeInputPanel: React.FC = () => {
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
 
   const [showBrowser, setShowBrowser] = useState(false);
-  // External meme entry (URL + optional caption), local until "Use".
+  // External meme entry (image URL), local until "Use".
   const [externalUrl, setExternalUrl] = useState('');
-  const [externalCaption, setExternalCaption] = useState('');
   const [externalError, setExternalError] = useState<string | null>(null);
   // Mirror the active site context so the "no site" hint tracks the Map tab.
   const [activeSiteContext, setActiveSiteContextState] = useState(() => getActiveSiteContext());
@@ -67,10 +66,10 @@ export const MemeInputPanel: React.FC = () => {
     );
   };
 
-  // An external meme is an image URL: the API forwards it to the model as a
-  // vision block, so the meme is read from the picture itself. The optional
-  // caption becomes the description; without one, a stock line points the
-  // model at the image. Only https URLs — the server rejects anything else.
+  // An external meme is an image URL and nothing else: the API forwards it to
+  // the model as a vision block, so the meme is read entirely from the
+  // picture; the stock description just points the model at it. Only https
+  // URLs — the server rejects anything else.
   const handleUseExternalMeme = () => {
     const url = externalUrl.trim();
     if (!/^https:\/\/.+/i.test(url)) {
@@ -78,13 +77,11 @@ export const MemeInputPanel: React.FC = () => {
       return;
     }
     setExternalError(null);
-    const caption = externalCaption.trim();
-    setMemeDescription(caption || EXTERNAL_MEME_DESCRIPTION);
+    setMemeDescription(EXTERNAL_MEME_DESCRIPTION);
     setLocationTag('');
     setEngagementLevel(50);
-    setSelectedMeme(url, caption ? caption.slice(0, 50) : 'External meme', 'external');
+    setSelectedMeme(url, 'External meme', 'external');
     setExternalUrl('');
-    setExternalCaption('');
   };
 
   // Clearing the selection empties the whole meme input — with no free-text
@@ -195,8 +192,8 @@ export const MemeInputPanel: React.FC = () => {
       </div>
       </Section>
 
-      {/* Memes from outside archthesis, by image URL. The model reads the
-          picture itself; the caption is optional framing. */}
+      {/* Memes from outside archthesis, by image URL only — the model reads
+          the picture itself. */}
       <Section id="pata-external" title="External meme">
         <div className="flex flex-col gap-2">
           <div>
@@ -207,16 +204,6 @@ export const MemeInputPanel: React.FC = () => {
               onChange={(e) => setExternalUrl(e.target.value)}
               placeholder="https://…/meme.jpg"
               className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] box-border"
-            />
-          </div>
-          <div>
-            <label className="text-ink-600 text-[12px] block mb-1">Caption (optional)</label>
-            <textarea
-              value={externalCaption}
-              onChange={(e) => setExternalCaption(e.target.value)}
-              placeholder="Anything the image alone doesn't say"
-              rows={2}
-              className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] resize-y font-[inherit] box-border"
             />
           </div>
           {externalError && (
