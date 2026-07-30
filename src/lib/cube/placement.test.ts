@@ -134,10 +134,14 @@ describe('hovering carved geometry from every direction', () => {
     ) as [number, number, number];
 
   // A few variations with different cut layouts, including the one whose
-  // uncut face showed a green preview in the field.
-  const SAMPLE = ['v-1', 'v-14', 'v-33', 'v-47', 'v-70'].filter(id =>
-    CUBE_VARIATIONS.some(v => v.id === id)
-  );
+  // uncut face showed a green preview in the field. Ids are zero-padded
+  // (v-00 … v-69); the guard below keeps a typo from silently shrinking this.
+  const SAMPLE = ['v-01', 'v-14', 'v-33', 'v-47', 'v-69'];
+  it('samples real variation ids', () => {
+    for (const id of SAMPLE) {
+      expect(CUBE_VARIATIONS.some(v => v.id === id), id).toBe(true);
+    }
+  });
 
   it('targets the cell in the direction pointed, whatever surface the ray lands on', () => {
     expect(SAMPLE.length).toBeGreaterThan(0);

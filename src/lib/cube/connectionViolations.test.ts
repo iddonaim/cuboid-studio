@@ -153,7 +153,7 @@ describe('findConnectionViolations', () => {
   it('allows unrotated depth contacts, which the old face model made impossible', () => {
     // Regression guard for GAPS P0-6. The previous derivation recorded every
     // depth face as uncut, so ANY unrotated front-to-back contact was refused.
-    // Depth faces are genuinely cut on 69 of 70 variations.
+    // Depth faces are genuinely cut on all 70 variations (render frame).
     const a = variationWithFace('Z_POS', 'sphere');
     const b = variationWithFace('Z_NEG', 'sphere');
     const violations = findConnectionViolations([
@@ -185,12 +185,20 @@ describe('the corrected face model (GAPS P0-6)', () => {
     expect(histogram.get(4)).toBeUndefined();
   });
 
-  it('cuts a depth face on 69 of the 70 variations', () => {
-    let withDepthCut = 0;
+  it('cuts a depth face on all 70 variations, a vertical face on 69', () => {
+    // In the RENDER frame — the frame of the shipped models, which the spec is
+    // converted into at MASTER_CUTTERS. The uncut faces live mostly on top and
+    // bottom (15 each), where the fabricated models carry their hollowing rims;
+    // the spec-frame version of this fact put them on the depth faces, which is
+    // exactly the mismatch the conversion corrects.
+    let depth = 0;
+    let vertical = 0;
     for (const [, faces] of VARIATION_FACE_CUTS) {
-      if (faces.Z_NEG.size > 0 || faces.Z_POS.size > 0) withDepthCut += 1;
+      if (faces.Z_NEG.size > 0 || faces.Z_POS.size > 0) depth += 1;
+      if (faces.Y_NEG.size > 0 || faces.Y_POS.size > 0) vertical += 1;
     }
-    expect(withDepthCut).toBe(69);
+    expect(depth).toBe(70);
+    expect(vertical).toBe(69);
   });
 
   it('records both cut types on 38.6% of faces', () => {

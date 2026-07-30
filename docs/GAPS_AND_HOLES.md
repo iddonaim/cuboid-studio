@@ -83,6 +83,45 @@ pair of cutters lines up, where before it tested one arbitrarily-chosen pair.
 
 Original finding kept below for the record.
 
+### P0-7 · ~~The spec and the shipped models disagree about which way is up~~ — FIXED 2026-07-30
+
+Found while chasing a field report P0-6's fix did not cure: a green placement
+preview directly on a face the viewer could see is a shell (v-33, twice).
+
+The cutter constants in `specifications.ts` are authored in the Grasshopper
+document's frame, where **Z is up**. The GLB models the app renders went
+through the standard Rhino→glTF export conversion, which rotates everything
+−90° about X so **Y is up**. Nothing ever converted the spec to match — so the
+connection law, face cuts, strict alignment and the CSG fallback all reasoned
+about a rotated twin of every cube on screen. A shell the viewer saw on top
+was, to the law, a cut face on the depth side; the law's verdicts were
+internally consistent and wrong about the visible world.
+
+**Measured, not inferred**: `scripts/measure-glb-face-solidity.cjs` decodes all
+70 shipped GLBs (the app's own Draco decoder) and reports per-face solidity.
+38 of 70 models disagreed with the spec-frame prediction about which faces are
+uncut, every disagreement fitting the one rotation. The hollow shell faces
+pin the frame beyond argument: their fabrication rims measure **14.7%** solid,
+exactly what the 1.6 wall thickness predicts, and they sit on Y faces where
+the spec put them on Z. After conversion, all 37 spec-uncut faces across all
+70 models land on a measured rim or full panel — zero contradictions
+(`scripts/glb-face-solidity.json` holds the measurements;
+`src/lib/cube/renderFrame.test.ts` locks witnesses in all six directions).
+
+Fixed at one choke point: `MASTER_CUTTERS` is now expressed in the render
+frame (`toRenderFrame` in `specifications.ts`), so everything downstream —
+`faceCuts`, `canConnect`, strict alignment, CSG fallback geometry — agrees
+with the models. Bonus fix included: the CSG fallback previously built
+geometry in the unconverted frame, silently disagreeing with the GLBs it
+stands in for.
+
+**This change is NOT monotone, unlike P0-6's.** 201 of 420 face readings
+(47.9%) change; 62 faces change shell status. Verdicts flip in both
+directions wherever cubes meet vertically or in depth (lateral X contacts are
+unaffected). Saved compositions will read differently — some contacts that
+showed open close, and vice versa. That is the point: the previous readings
+described a world nobody was looking at.
+
 ### P0-6 (original finding) · The connection law reads a face model that is wrong for 69 of 70 variations
 
 `computeFaceCutTypes` (`connectionRules.ts`) derives each face's cut type from
@@ -143,6 +182,11 @@ and the radii (Golden Ratio component ×10 → 10φ; 3.14π), but its sphere cen
 are live graph output rather than stored literals and it is a different version
 from whatever exported `public/models`. The shipped GLBs remain the untouched
 ground truth for the per-variation counts.
+
+*RESOLVED 2026-07-30 while fixing P0-7: the shipped GLBs were decoded and
+measured directly (`scripts/measure-glb-face-solidity.cjs`). After the frame
+conversion, the spec's uncut faces match the models 37/37 — the transcribed
+cutter geometry is confirmed against the ground truth it was transcribed from.*
 
 ---
 

@@ -9,9 +9,12 @@
  * cube: spheres of r 9.9–17.1 mm on a 42 mm cube, cylinders 51 mm long. Six of
  * the eight breach two or three faces.
  *
- * The consequence was not cosmetic. 69 of 70 variations have a depth face
- * genuinely cut while the old model said none did, and the two disagreed on 69
- * of 70 variations — so `canConnect` refused connections the geometry permits.
+ * The consequence was not cosmetic: the old and new derivations disagreed on
+ * 69 of 70 variations — so `canConnect` refused connections the geometry
+ * permits. (Faces here are in the RENDER frame: `MASTER_CUTTERS` arrives
+ * already converted from the Grasshopper frame to the frame the shipped
+ * models occupy — see specifications.ts. The uncut faces sit mostly on top
+ * and bottom, where the fabricated models carry their hollowing rims.)
  *
  * A face is treated as opened by a cutter when the cutter's solid crosses that
  * face's plane *within the face's bounds*. No area threshold: measured across
