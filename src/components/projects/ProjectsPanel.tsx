@@ -108,6 +108,8 @@ const RowButton: React.FC<{
       ) : (
         <button
           onClick={onClick}
+          onDoubleClick={onRename ? startEdit : undefined}
+          title={onRename ? 'Double-click to rename' : undefined}
           className="flex-1 text-left cursor-pointer bg-transparent border-0 min-w-0"
         >
           <div className="text-[12px] text-ink-800 truncate">{title}</div>
@@ -115,11 +117,14 @@ const RowButton: React.FC<{
         </button>
       )}
       {rightSlot}
+      {/* Always visible, unlike the destructive delete beside it: a rename
+          affordance nobody can find is the same as no rename at all. */}
       {onRename && !editing && (
         <button
           onClick={startEdit}
           title="Rename"
-          className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-ink-800 text-[12px] cursor-pointer bg-transparent border-0 px-1"
+          aria-label={`Rename ${title}`}
+          className="text-ink-400 hover:text-ink-800 text-[12px] cursor-pointer bg-transparent border-0 px-1"
         >
           ✎
         </button>
