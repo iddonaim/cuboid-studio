@@ -10,6 +10,7 @@ import {
 } from '../../lib/projects/firestore';
 import { captureComposition, restoreComposition } from '../../lib/projects/composition';
 import { getActiveSiteContext } from '../../lib/storage/siteContext';
+import { shortSiteName } from '../../lib/siteContext/siteName';
 import type { ProjectDoc, SiteDoc, CompositionDoc } from '../../lib/projects/types';
 
 function fmtDate(ms: number): string {
@@ -19,10 +20,13 @@ function fmtDate(ms: number): string {
 }
 
 /** Inline "create new" row with a text input + add button. */
-const NewItemRow: React.FC<{ placeholder: string; onCreate: (name: string) => Promise<void> }> = ({
-  placeholder, onCreate,
-}) => {
-  const [name, setName] = useState('');
+const NewItemRow: React.FC<{
+  placeholder: string;
+  /** Prefill for the input (still fully editable). Applied on mount only. */
+  defaultValue?: string;
+  onCreate: (name: string) => Promise<void>;
+}> = ({ placeholder, defaultValue, onCreate }) => {
+  const [name, setName] = useState(defaultValue ?? '');
   const [busy, setBusy] = useState(false);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -382,7 +386,15 @@ export const ProjectsPanel: React.FC = () => {
                   <div className="text-[12px] text-ink-500">No sites yet.</div>
                 )}
               </div>
-              <NewItemRow placeholder="New site name" onCreate={handleCreateSite} />
+              {/* Sites name themselves after the active site's address (short
+                  format) — the input stays editable for overrides. Keyed so
+                  picking a different active site refreshes the prefill. */}
+              <NewItemRow
+                key={shortSiteName(getActiveSiteContext()) || 'no-context'}
+                placeholder="New site name"
+                defaultValue={shortSiteName(getActiveSiteContext())}
+                onCreate={handleCreateSite}
+              />
             </>
           )}
 
