@@ -86,6 +86,8 @@ export interface PataphysicalData {
   engagementLevel: number;
   selectedMemeImageUrl: string | null;
   selectedMemeTitle: string | null;
+  /** Absent on pre-2026-07-31 snapshots — restore defaults it. */
+  selectedMemeSource?: 'archthesis' | 'external' | null;
   baseVariationId: string;
   targetCubeId: string | null;
   passMode: PassMode;

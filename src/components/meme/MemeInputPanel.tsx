@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
+import { useAppStore } from '../../store/useAppStore';
 import { CUBE_VARIATIONS } from '../../lib/cube/specifications';
 import { ArchthesisBrowser } from './ArchthesisBrowser';
-import { SiteContextCurator } from './SiteContextCurator';
 import { TranslationLexiconEditor } from './TranslationLexiconEditor';
 import { ModelComparisonPanel } from './ModelComparisonPanel';
 import { isModelLabEnabled } from '../../lib/modelLab';
@@ -11,6 +11,12 @@ import { getActiveSiteContext, subscribeActiveSiteContext } from '../../lib/stor
 import type { CuboidMemeInput, ArchthesisMeme } from '../../types/archthesis';
 import { Button } from '@/components/ui/button';
 import { Section } from '@/components/ui/section';
+import { ActiveSiteChip } from '../layout/ActiveSiteChip';
+
+/** What pass-1 reads when an external meme arrives with no caption: the image
+ *  itself is the meme, so the model is pointed at it rather than at prose. */
+const EXTERNAL_MEME_DESCRIPTION =
+  'External meme supplied as an image only — read its text and visual content from the attached image.';
 
 export const MemeInputPanel: React.FC = () => {
   const memeDescription = useMemeStore(s => s.memeDescription);
@@ -26,33 +32,27 @@ export const MemeInputPanel: React.FC = () => {
   const initWorkingCube = useMemeStore(s => s.initWorkingCube);
   const selectedMemeImageUrl = useMemeStore(s => s.selectedMemeImageUrl);
   const selectedMemeTitle = useMemeStore(s => s.selectedMemeTitle);
+  const selectedMemeSource = useMemeStore(s => s.selectedMemeSource);
   const setSelectedMeme = useMemeStore(s => s.setSelectedMeme);
   const targetCubeId = useMemeStore(s => s.targetCubeId);
+  const setActiveMode = useAppStore(s => s.setActiveMode);
 
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const hasAssembly = placedCubes.length > 0;
   const targetCube = placedCubes.find(c => c.id === targetCubeId);
 
   const [showBrowser, setShowBrowser] = useState(false);
-  const [showSiteContext, setShowSiteContext] = useState(false);
-  // Mirror active site context in state so saving/clearing inside the curator
-  // updates this panel on close. Reading localStorage directly on every render
-  // looks cheap but never reflects writes from the modal.
+  // External meme entry (URL + optional caption), local until "Use".
+  const [externalUrl, setExternalUrl] = useState('');
+  const [externalCaption, setExternalCaption] = useState('');
+  const [externalError, setExternalError] = useState<string | null>(null);
+  // Mirror the active site context so the "no site" hint tracks the Map tab.
   const [activeSiteContext, setActiveSiteContextState] = useState(() => getActiveSiteContext());
-
-  // Stay in sync with site context set elsewhere — notably the Map tab, which
-  // writes the active context without ever touching this panel's modal. Without
-  // this, the button label could show a stale site until the curator is reopened.
   useEffect(() => {
     return subscribeActiveSiteContext(() => {
       setActiveSiteContextState(getActiveSiteContext());
     });
   }, []);
-
-  const handleCloseSiteContext = () => {
-    setShowSiteContext(false);
-    setActiveSiteContextState(getActiveSiteContext());
-  };
 
   const handleArchthesisSelect = (input: CuboidMemeInput, meme: ArchthesisMeme) => {
     setMemeDescription(input.memeDescription);
@@ -60,14 +60,39 @@ export const MemeInputPanel: React.FC = () => {
     // Engagement rides along invisibly: derived from the meme's likes, it
     // scales cut magnitude in the prompt but is no longer user-editable.
     setEngagementLevel(input.engagementLevel);
-    setSelectedMeme(meme.imageUrl, meme.topText || meme.description?.slice(0, 50) || meme.id);
+    setSelectedMeme(
+      meme.imageUrl,
+      meme.topText || meme.description?.slice(0, 50) || meme.id,
+      'archthesis',
+    );
   };
 
-  // Dropping the archthesis selection returns to manual entry: the description
-  // stays (now editable in the textarea), but the meme-derived location and
-  // engagement are cleared so they can't silently ride along with edited text.
+  // An external meme is an image URL: the API forwards it to the model as a
+  // vision block, so the meme is read from the picture itself. The optional
+  // caption becomes the description; without one, a stock line points the
+  // model at the image. Only https URLs — the server rejects anything else.
+  const handleUseExternalMeme = () => {
+    const url = externalUrl.trim();
+    if (!/^https:\/\/.+/i.test(url)) {
+      setExternalError('Needs a public https:// image URL.');
+      return;
+    }
+    setExternalError(null);
+    const caption = externalCaption.trim();
+    setMemeDescription(caption || EXTERNAL_MEME_DESCRIPTION);
+    setLocationTag('');
+    setEngagementLevel(50);
+    setSelectedMeme(url, caption ? caption.slice(0, 50) : 'External meme', 'external');
+    setExternalUrl('');
+    setExternalCaption('');
+  };
+
+  // Clearing the selection empties the whole meme input — with no free-text
+  // field left in the panel, a lingering invisible description would be sent
+  // with nothing on screen to show it.
   const handleClearSelectedMeme = () => {
     setSelectedMeme(null, null);
+    setMemeDescription('');
     setLocationTag('');
     setEngagementLevel(50);
   };
@@ -103,6 +128,19 @@ export const MemeInputPanel: React.FC = () => {
         </div>
       )}
 
+      {/* The site the translation is anchored to. Set/changed in Map — the
+          in-panel curator was retired with Map as the landing tab. */}
+      <ActiveSiteChip />
+      {!activeSiteContext && (
+        <button
+          onClick={() => setActiveMode('map')}
+          className="mb-2 w-full text-left px-2.5 py-2 rounded-md bg-ink-100 border border-ink-200 text-ink-500 text-[11px] cursor-pointer hover:bg-ink-200"
+        >
+          No site attached — pick one in <span className="text-primary">Map</span> to
+          ground the translation.
+        </button>
+      )}
+
       {/* Primary task: the meme */}
       <Section id="pata-meme" title="Meme" defaultOpen>
       <div className="flex flex-col gap-2.5">
@@ -114,22 +152,10 @@ export const MemeInputPanel: React.FC = () => {
         Browse from archthesis...
       </Button>
 
-      {/* Site context curator */}
-      <Button
-        onClick={() => setShowSiteContext(true)}
-        className={`w-full h-auto py-2 px-3 text-[12px] font-medium justify-start border ${
-          activeSiteContext
-            ? 'bg-green-50 border-green-600/40 text-green-700 hover:bg-green-100'
-            : 'bg-ink-100 border-ink-200 text-ink-600 hover:bg-ink-200'
-        }`}
-      >
-        {activeSiteContext ? `Site: ${activeSiteContext.site_name}` : 'Set site context...'}
-      </Button>
-
       {selectedMemeImageUrl ? (
-        /* Archthesis meme selected — everything the translation reads comes
-           from the meme itself (description, location, engagement), so it
-           shows as one compact read-only card instead of editable fields. */
+        /* Selected meme — everything the translation reads comes from the
+           meme itself (image, description, location, engagement), shown as
+           one compact read-only card. */
         <div className="flex flex-col gap-1.5 p-2 bg-ink-100 border border-ink-200 rounded-md">
           <div className="flex items-center gap-2">
             <img
@@ -139,42 +165,71 @@ export const MemeInputPanel: React.FC = () => {
             />
             <div className="flex-1 min-w-0">
               <div className="text-ink-900 text-[11px] font-medium truncate">{selectedMemeTitle}</div>
-              <div className="text-ink-500 text-[10px]">from archthesis</div>
+              <div className="text-ink-500 text-[10px]">
+                {selectedMemeSource === 'external' ? 'external image' : 'from archthesis'}
+              </div>
               {locationTag && (
                 <div className="text-ink-500 text-[10px] truncate">{locationTag}</div>
               )}
             </div>
             <button
               onClick={handleClearSelectedMeme}
-              title="Clear selection (keeps the text for manual editing)"
+              title="Clear the selected meme"
               className="text-ink-500 hover:text-ink-700 text-sm leading-none px-0.5 bg-transparent border-0 cursor-pointer self-start"
             >
               &times;
             </button>
           </div>
-          {memeDescription && (
+          {memeDescription && memeDescription !== EXTERNAL_MEME_DESCRIPTION && (
             <div className="text-ink-600 text-[11px] leading-relaxed line-clamp-3">
               {memeDescription}
             </div>
           )}
         </div>
       ) : (
-        /* Manual entry — the textarea is the input for memes that aren't in
-           archthesis. */
-        <div>
-          <label className="text-ink-600 text-[12px] block mb-1">
-            Describe the meme or paste its content
-          </label>
-          <textarea
-            value={memeDescription}
-            onChange={(e) => setMemeDescription(e.target.value)}
-            placeholder="A viral meme about gentrification in south Tel Aviv..."
-            rows={4}
-            className="w-full px-2 py-2 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[13px] resize-y font-[inherit] box-border"
-          />
+        <div className="text-ink-400 text-[11px] leading-relaxed px-0.5">
+          Pick a meme from archthesis, or attach one from elsewhere under
+          External meme below.
         </div>
       )}
       </div>
+      </Section>
+
+      {/* Memes from outside archthesis, by image URL. The model reads the
+          picture itself; the caption is optional framing. */}
+      <Section id="pata-external" title="External meme">
+        <div className="flex flex-col gap-2">
+          <div>
+            <label className="text-ink-600 text-[12px] block mb-1">Image URL</label>
+            <input
+              type="url"
+              value={externalUrl}
+              onChange={(e) => setExternalUrl(e.target.value)}
+              placeholder="https://…/meme.jpg"
+              className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] box-border"
+            />
+          </div>
+          <div>
+            <label className="text-ink-600 text-[12px] block mb-1">Caption (optional)</label>
+            <textarea
+              value={externalCaption}
+              onChange={(e) => setExternalCaption(e.target.value)}
+              placeholder="Anything the image alone doesn't say"
+              rows={2}
+              className="w-full px-2 py-1.5 bg-ink-100 border border-ink-200 rounded text-ink-900 text-[12px] resize-y font-[inherit] box-border"
+            />
+          </div>
+          {externalError && (
+            <div className="text-destructive text-[11px]">{externalError}</div>
+          )}
+          <Button
+            onClick={handleUseExternalMeme}
+            disabled={!externalUrl.trim()}
+            className="w-full h-auto py-2 text-[12px] bg-ink-100 border border-ink-200 text-ink-600 hover:bg-ink-200 disabled:opacity-50"
+          >
+            Use this meme
+          </Button>
+        </div>
       </Section>
 
       {/* The vocabulary the translation reasons with — first-class, not a
@@ -211,7 +266,13 @@ export const MemeInputPanel: React.FC = () => {
           isTranslating ? 'bg-ink-200 text-ink-600 cursor-wait' : 'bg-primary hover:bg-primary/85 text-white'
         } ${isDisabled && !isTranslating ? 'opacity-50' : ''}`}
       >
-        {isTranslating ? 'Translating...' : hasAssembly && !targetCubeId ? 'Select a cube first' : 'Translate'}
+        {isTranslating
+          ? 'Translating...'
+          : !memeDescription.trim()
+          ? 'Pick a meme first'
+          : hasAssembly && !targetCubeId
+          ? 'Select a cube first'
+          : 'Translate'}
       </Button>
 
       {/* Error display */}
@@ -222,14 +283,13 @@ export const MemeInputPanel: React.FC = () => {
       )}
       </div>
 
-      {/* Modals — mounted at panel root so collapsing sections can't unmount
-          them while open */}
+      {/* Modal — mounted at panel root so collapsing sections can't unmount
+          it while open */}
       <ArchthesisBrowser
         open={showBrowser}
         onClose={() => setShowBrowser(false)}
         onSelect={handleArchthesisSelect}
       />
-      <SiteContextCurator open={showSiteContext} onClose={handleCloseSiteContext} />
     </div>
   );
 };
