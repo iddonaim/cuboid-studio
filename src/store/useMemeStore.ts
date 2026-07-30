@@ -209,7 +209,9 @@ export const useMemeStore = create<MemeState>((set, get) => ({
   cutterVisible: true,
   setCutterVisible: (visible) => set({ cutterVisible: visible }),
 
-  contextOpacity: 0.7,
+  // 50% out of the box: at a shallower fade the context still covers the
+  // subject and reads as solid rather than as something seen through.
+  contextOpacity: 0.5,
   setContextOpacity: (opacity) => set({ contextOpacity: Math.max(0, Math.min(1, opacity)) }),
 
   // Translation state

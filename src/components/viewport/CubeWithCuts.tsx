@@ -220,7 +220,11 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
           transparent={ghost || opacity < 1}
           // A ghost's fill is a hint of volume, not a surface — the outline
           // carries it. depthWrite off so it can never hide the solid layer.
-          opacity={ghost ? opacity * 0.22 : opacity}
+          //
+          // A receded fill is pushed well past its nominal alpha: paint at the
+          // literal slider value still covers what's behind it, which reads as
+          // a paler solid rather than as something seen through.
+          opacity={ghost ? opacity * 0.22 : receded ? opacity * 0.4 : opacity}
           depthWrite={!ghost}
           side={THREE.FrontSide}
           clippingPlanes={clippingPlanes || []}
@@ -240,9 +244,10 @@ export const CubeWithCuts: React.FC<CubeWithCutsProps> = ({
           color={edgeColor}
           linewidth={2}
           transparent={ghost || opacity < 1}
-          // Receded outlines drop faster than the fill they sit on: at equal
-          // alpha the linework still reads as the foreground drawing.
-          opacity={receded ? opacity * 0.55 : opacity}
+          // Linework carries a receded cube once its fill is mostly gone, so
+          // the outlines hold more of their alpha than the surface does —
+          // enough to read the form, light enough to sit behind the subject.
+          opacity={receded ? opacity * 0.7 : opacity}
           depthWrite={!ghost}
           clippingPlanes={clippingPlanes || []}
         />

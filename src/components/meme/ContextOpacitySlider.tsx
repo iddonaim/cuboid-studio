@@ -22,7 +22,7 @@ export const ContextOpacitySlider: React.FC = () => {
       </div>
       <Slider
         min={0}
-        max={90}
+        max={95}
         step={5}
         value={[transparency]}
         onValueChange={([v]) => setContextOpacity(1 - v / 100)}
