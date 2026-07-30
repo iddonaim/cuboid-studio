@@ -122,6 +122,49 @@ unaffected). Saved compositions will read differently — some contacts that
 showed open close, and vice versa. That is the point: the previous readings
 described a world nobody was looking at.
 
+### P0-8 · Green preview when placing from below — field report, OPEN
+
+Reported 2026-07-30, twice, after every fix below was pushed: approaching a
+composition from underneath, the placement ghost can still show green where
+the reporter expected a refusal. Parked deliberately — deadline pressure —
+not because it is understood.
+
+**What is already fixed and verified upstream of this report** (all on PR
+#128): hover targeting reads the ray's entry into the cell box, not the hit
+triangle's normal (212k-ray sweep, 0 wrong cells); the placement verdict memo
+tracks every input; the verdict answers about the chosen rotation, not a
+substituted one; an occupied hover cell refuses before the rules are asked;
+and the cutter spec was converted into the shipped models' frame (P0-7), which
+was the actual cause of the earlier green-on-shell sightings.
+
+**Candidate explanations, in the order to check them:**
+
+1. **Stale deployment.** The two post-fix sightings came minutes after the
+   pushes; if the Vercel preview predates commit `a482b77` (the frame
+   conversion), the main cause was still live in the tested build. First step
+   of any follow-up: confirm the deployed commit, then reproduce.
+2. **The verdict may be right.** After the frame fix, shells live mostly on
+   top/bottom faces — but 12 faces across the 70 variations are 93% solid
+   (a cutter nicks one corner) and read as closed to the eye while the law
+   counts the nick as a real cut. Green there is the law being honest about
+   a hole the viewer cannot see. Needs the specific cube id + rotation from
+   a reproduction to confirm or rule out.
+3. **Edge-tie in `getHoveredFaceFromRay`.** When the ray enters the cell box
+   almost exactly along an edge, the dominant-component tie-break can pick
+   the side face instead of the bottom, targeting a side cell that is empty →
+   all rotations valid → green. Steep from-below angles make edge entries
+   more likely. Testable in isolation with rays at grazing angles.
+4. **Hollow-model raycast path.** The models are hollow with one open rim
+   face; from below, a ray through the opening can hit interior walls or
+   pass through entirely, changing which cube (if any) receives the hover.
+   The targeting math is cell-based so a *received* hover is still resolved
+   correctly, but a hover received by an unexpected cube targets that cube's
+   neighbourhood.
+
+**To make this actionable:** a reproduction with the composition saved, the
+cube id + rotation hovered, and the deployed commit hash. Without those,
+anything further is guesswork — which is what this entry exists to prevent.
+
 ### P0-6 (original finding) · The connection law reads a face model that is wrong for 69 of 70 variations
 
 `computeFaceCutTypes` (`connectionRules.ts`) derives each face's cut type from
