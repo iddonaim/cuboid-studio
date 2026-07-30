@@ -149,7 +149,10 @@ const BuilderScene: React.FC = () => {
           position={hoverPos}
           rotation={placementValidity.rotation}
           opacity={0.8}
-          validPlacement={rulesEnabled ? placementValidity.valid : null}
+          // An invalid verdict shows red even with rules off: with rules off
+          // the only way to be invalid is an occupied cell, and a click there
+          // is refused regardless of the rules toggle — neutral would lie.
+          validPlacement={placementValidity.valid ? (rulesEnabled ? true : null) : false}
           isPreview
         />
       )}

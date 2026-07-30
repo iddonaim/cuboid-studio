@@ -218,10 +218,25 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
    * It now answers honestly about the chosen rotation. A helpful default still
    * exists, but it happens on arriving at a cell (see `setHoverPos`), where it
    * is a suggestion rather than a silent override of a deliberate choice.
+   *
+   * An OCCUPIED cell is invalid before the rules are even asked. The rules
+   * cannot notice the occupant themselves — a cube in the hovered cell is at
+   * distance zero, and the adjacency walk only sees neighbours one cell away —
+   * so without this check the ghost could draw green inside a placed cube.
+   * That is reachable: a pointer ray that slips through a cube's opening hits
+   * the ground plane behind it, and the snapped ground cell can be the one the
+   * cube stands in. `handlePlace` always refused this; the preview lied.
    */
   getPlacementValidity: () => {
-    const { hoverPos, previewRotation } = get();
+    const { hoverPos, previewRotation, placedCubes } = get();
     if (!hoverPos) return { valid: true, rotation: previewRotation };
+
+    const occupied = placedCubes.some(c =>
+      c.position[0] === hoverPos[0] &&
+      c.position[1] === hoverPos[1] &&
+      c.position[2] === hoverPos[2]
+    );
+    if (occupied) return { valid: false, rotation: previewRotation };
 
     const validRotations = get().getValidRotations();
     return {
