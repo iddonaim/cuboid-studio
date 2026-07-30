@@ -90,8 +90,8 @@ export const ConnectionReading: React.FC<ConnectionReadingProps> = ({ cubes }) =
                 ))}
               </ul>
               <div className="mt-1 text-ink-400 text-[10px]">
-                Variation faces as built; later meme cuts aren't tracked. No depth face
-                carries a cutter, so depth contacts close unless a cube is tipped.
+                Read from each cube's variation faces as built; a cut made later by a meme
+                translation isn't tracked here.
               </div>
             </>
           )}

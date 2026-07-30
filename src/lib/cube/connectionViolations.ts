@@ -307,11 +307,10 @@ export interface PlacementBlocker {
  * looking at can look perfectly compatible while an unseen neighbour is the one
  * saying no. This names the neighbours that do.
  *
- * A `shell` face is the interesting case: it refuses every cutter, so no
- * rotation of any variation can ever satisfy it. Since no variation carries a
- * cutter on either depth face at rest, an unrotated neighbour in depth blocks
- * its cell permanently — which is the usual reason a cell looks unplaceable for
- * no visible reason.
+ * A `shell` face is the interesting case: it refuses every cutter, so no rotation
+ * of any variation can ever satisfy it. Uncut faces are uncommon now that the
+ * face model is correct — 68 of 70 variations have at most one — so a cell that
+ * refuses every rotation is genuinely unusual rather than routine.
  */
 export function findPlacementBlockers(
   cellPosition: [number, number, number],
