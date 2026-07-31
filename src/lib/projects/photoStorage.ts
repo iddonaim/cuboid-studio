@@ -24,8 +24,17 @@ import {
 } from 'firebase/storage';
 import { storage } from '../firebase';
 
-/** Photos live under the owner's own prefix, which is what the rules match on. */
-const PHOTO_PREFIX = 'compositionPhotos';
+/**
+ * Everything this app stores lives under one owner-scoped prefix:
+ *
+ *   cuboidStudio/{ownerId}/photos/…    encode photographs
+ *   cuboidStudio/{ownerId}/captures/…  viewport captures (when added)
+ *
+ * One namespace keeps the bucket's rules to a single recursive block — the
+ * bucket is shared with archthesis (`memes/…`), and every extra top-level
+ * prefix would mean another hand-published rule.
+ */
+const STORAGE_ROOT = 'cuboidStudio';
 
 /** True when full-resolution photos can be stored (bucket configured). */
 export function isPhotoStorageAvailable(): boolean {
@@ -69,7 +78,7 @@ export async function uploadPhoto(
   if (!storage || !base64) return null;
   try {
     const name = `${crypto.randomUUID()}.${extensionFor(mediaType)}`;
-    const path = `${PHOTO_PREFIX}/${ownerId}/${name}`;
+    const path = `${STORAGE_ROOT}/${ownerId}/photos/${name}`;
     await uploadBytes(ref(storage, path), base64ToBlob(base64, mediaType), {
       contentType: mediaType,
     });

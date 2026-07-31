@@ -15,13 +15,16 @@
 // deploy workflow ships firestore.rules and never touches these, so nothing
 // republishes (or overwrites) them automatically.
 //
-// Layout: compositionPhotos/{ownerId}/{fileName}
+// Layout — one owner-scoped namespace for everything this app stores:
+//   cuboidStudio/{ownerId}/photos/…    encode photographs
+//   cuboidStudio/{ownerId}/captures/…  viewport captures
 // A composition document keeps a 240px thumbnail inline and points at the
 // original here by path. Only the authenticated owner may read or write their
-// own photographs.
+// own files. The recursive wildcard means new file kinds never need another
+// trip to the console.
 
 // ---- paste from here ----
-    match /compositionPhotos/{ownerId}/{fileName} {
+    match /cuboidStudio/{ownerId}/{allPaths=**} {
       allow read, write: if request.auth != null
                          && request.auth.uid == ownerId;
     }
@@ -34,7 +37,7 @@
 // rules_version = '2';
 // service firebase.storage {
 //   match /b/{bucket}/o {
-//     match /compositionPhotos/{ownerId}/{fileName} {
+//     match /cuboidStudio/{ownerId}/{allPaths=**} {
 //       allow read, write: if request.auth != null
 //                          && request.auth.uid == ownerId;
 //     }
