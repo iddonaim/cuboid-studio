@@ -74,7 +74,9 @@ export function buildSiteContextAt(
         ...base.quantitative.transit,
         bus_stops_nearby:
           transitCount > 0
-            ? `${transitCount} transit stop(s) within ${radiusMeters}m (Overpass)`
+            ? // "stop(s)/line(s)": the POI fetch yields discrete stops, while a
+              // map-context analysis yields named rail lines. Both land here.
+              `${transitCount} transit stop(s)/line(s) within ${radiusMeters}m (Overpass)`
             : base.quantitative.transit.bus_stops_nearby,
         walkability_notes:
           schoolCount > 0
@@ -96,7 +98,12 @@ export function buildSiteContextFromMap(
   return buildSiteContextAt(lat, lng, address, radiusMeters, getActiveSiteContext(), nearbyPois);
 }
 
-/** One-line site context block for the encoding vision request. */
+/**
+ * One-line site context block for the encoding vision request.
+ *
+ * NOTE: currently unused — `api/encode-space.ts` builds this prefix itself from
+ * the request body. Kept in sync with that builder so the two don't drift.
+ */
 export function formatSiteContextForEncode(ctx: SiteContextData): string {
   const { lat, lng, address, radius_meters } = ctx.quantitative.location;
   const radius = radius_meters || '500';
@@ -113,10 +120,22 @@ export function formatSiteContextForEncode(ctx: SiteContextData): string {
       .slice(0, 5)
       .join(', ') || 'none listed';
 
+  const morph = ctx.quantitative.morphology;
+  const fabric = [
+    morph.typology,
+    morph.dominant_height,
+    morph.street_width,
+    morph.topography,
+    morph.dominant_directionality,
+  ]
+    .filter((v) => typeof v === 'string' && v.trim().length > 0)
+    .join('; ');
+
   return (
     `Site context: ${address || 'Unknown address'}. ${lat}, ${lng}. ` +
     `Sun: ${sun.primary_exposure}; summer daylight ${sun.shadow_hours_summer}. ` +
-    `Nearby: ${transit} transit stops, ${schools} schools, ${civic} civic buildings, ${parks} parks within ${radius}m. ` +
-    `Major roads: ${roads}.`
+    `Nearby: ${transit} transit stops/lines, ${schools} schools, ${civic} civic buildings, ${parks} parks within ${radius}m. ` +
+    `Major roads: ${roads}.` +
+    (fabric ? ` Built fabric: ${fabric}.` : '')
   );
 }

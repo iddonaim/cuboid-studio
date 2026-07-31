@@ -5,24 +5,23 @@ import {
   subscribeActiveSiteContext,
 } from '../../lib/storage/siteContext';
 import { buildSiteContextAt } from '../../lib/siteContext/mapSiteContext';
+import {
+  MapAnalysisPayload,
+  morphologyFromMapAnalysis,
+  poisFromMapAnalysis,
+} from '../../lib/siteContext/mapContextPayload';
 import { buildMapContextSrc, siteKeyFromContext } from '../../lib/siteContext/mapContextUrl';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const DEFAULT_MAP_CONTEXT_URL = 'https://map-context-production.up.railway.app';
 
 /**
- * The shape the map-context iframe actually posts: its own analysis payload
- * (site_center/site_radius/address + raw layer data), NOT a SiteContextData.
- * It must be adapted before storage, otherwise the coordinates live under
- * keys nothing in this app reads and saved Sites end up "without location".
+ * The shape the map-context iframe actually posts (site_center/site_radius/
+ * address + raw layer data) is NOT a SiteContextData — see MapAnalysisPayload
+ * in lib/siteContext/mapContextPayload. It must be adapted before storage,
+ * otherwise the coordinates live under keys nothing in this app reads and
+ * saved Sites end up "without location".
  */
-interface MapAnalysisPayload {
-  site_center?: { lat?: number; lon?: number };
-  site_radius?: number;
-  address?: string;
-  quantitative?: SiteContextData['quantitative'];
-}
-
 interface AnalysisCompleteMessage {
   type: 'analysis-complete';
   data: MapAnalysisPayload;
@@ -38,6 +37,10 @@ function isAnalysisCompleteMessage(value: unknown): value is AnalysisCompleteMes
  * Convert the iframe payload into a proper SiteContextData anchored at the
  * analysis coordinates. Passes through unchanged if the payload already is
  * one (future-proofing for a converged map-context).
+ *
+ * The analysis layers (institutions, streets, rail, buildings, elevation) are
+ * distilled into POIs and morphology hints here — without this the whole
+ * bundle was discarded and Encode reported zero of everything for every site.
  */
 function adaptAnalysisPayload(raw: MapAnalysisPayload): SiteContextData | null {
   if (raw.quantitative?.location?.lat && raw.quantitative?.location?.lng) {
@@ -51,7 +54,18 @@ function adaptAnalysisPayload(raw: MapAnalysisPayload): SiteContextData | null {
   const radius = Number(raw.site_radius) || 400;
   // Fresh base: a new analysis describes a new site, so don't merge over
   // whatever context happened to be active before.
-  return buildSiteContextAt(lat, lng, address, radius, null);
+  const pois = poisFromMapAnalysis(raw, { lat, lng });
+  const context = buildSiteContextAt(lat, lng, address, radius, null, pois);
+
+  const morphology = morphologyFromMapAnalysis(raw);
+  if (!Object.keys(morphology).length) return context;
+  return {
+    ...context,
+    quantitative: {
+      ...context.quantitative,
+      morphology: { ...context.quantitative.morphology, ...morphology },
+    },
+  };
 }
 
 interface MapContextCanvasProps {
@@ -123,7 +137,16 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
             // (plain h-full would overflow by those 42px).
             'absolute top-[42px] left-0 w-full h-[calc(100%-42px)] border-0 bg-white'
       }
-      allow="clipboard-read; clipboard-write"
+      // Permissions Policy: a cross-origin iframe gets NO gated API unless the
+      // embedder delegates it here, and the embedded app can't opt itself in.
+      // - geolocation: map-context's picker has a "my location" control
+      //   (launcher.js). Without this it fails with a bare "location failed"
+      //   that looks like a map-context bug but is caused by this attribute.
+      // - fullscreen: the 3D atlas has a fullscreen toggle. This is the
+      //   necessary half on our side; the atlas also runs in a nested iframe
+      //   that map-context creates without `allowfullscreen`, so that button
+      //   needs a matching change there before it works end to end.
+      allow="clipboard-read; clipboard-write; geolocation; fullscreen"
     />
   );
 };
