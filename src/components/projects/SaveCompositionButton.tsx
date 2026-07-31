@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useProjectsStore } from '../../store/useProjectsStore';
 import { useToastStore } from '../../store/useToastStore';
-import { captureComposition } from '../../lib/projects/composition';
+import { captureComposition, persistCompositionPhotos } from '../../lib/projects/composition';
 import { createComposition, updateComposition, updateSite } from '../../lib/projects/firestore';
 import { getActiveSiteContext } from '../../lib/storage/siteContext';
 
@@ -53,7 +53,9 @@ export const SaveCompositionButton: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      const data = captureComposition();
+      // Photos upload before the document is written, so the record it
+      // stores already points at them.
+      const data = await persistCompositionPhotos(user?.uid ?? '', captureComposition());
       const c = await createComposition(
         activeProject.id, activeSite.id, name.trim() || defaultName(), data,
       );
@@ -73,7 +75,7 @@ export const SaveCompositionButton: React.FC = () => {
     if (!activeComposition) return;
     setSaving(true);
     try {
-      const data = captureComposition();
+      const data = await persistCompositionPhotos(user?.uid ?? '', captureComposition());
       await updateComposition(activeProject.id, activeSite.id, activeComposition.id, data);
       setActiveComposition({ ...activeComposition, updatedAt: Date.now(), data });
       await syncSiteContext();

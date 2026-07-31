@@ -23,6 +23,7 @@ import type {
   SiteDoc,
   CompositionDoc,
   CompositionData,
+  CaptureRecord,
 } from './types';
 import type { SiteContextData } from '../storage/siteContext';
 
@@ -169,6 +170,40 @@ export async function renameComposition(
   await updateDoc(
     doc(requireDb(), 'projects', projectId, 'sites', siteId, 'compositions', compositionId),
     { name, updatedAt: Date.now() },
+  );
+  await touchProject(projectId);
+}
+
+/**
+ * Append a capture to a stored composition, without rewriting the rest of the
+ * snapshot — the working state on screen may have moved on since the save, and
+ * a capture must never drag those changes into the record with it.
+ */
+export async function appendCapture(
+  projectId: string,
+  siteId: string,
+  compositionId: string,
+  existing: CaptureRecord[],
+  capture: CaptureRecord,
+): Promise<void> {
+  await updateDoc(
+    doc(requireDb(), 'projects', projectId, 'sites', siteId, 'compositions', compositionId),
+    { 'data.captures': [...existing, capture], updatedAt: Date.now() },
+  );
+  await touchProject(projectId);
+}
+
+/** Drop one capture from a stored composition (same targeted write). */
+export async function removeCapture(
+  projectId: string,
+  siteId: string,
+  compositionId: string,
+  existing: CaptureRecord[],
+  captureId: string,
+): Promise<void> {
+  await updateDoc(
+    doc(requireDb(), 'projects', projectId, 'sites', siteId, 'compositions', compositionId),
+    { 'data.captures': existing.filter(c => c.id !== captureId), updatedAt: Date.now() },
   );
   await touchProject(projectId);
 }

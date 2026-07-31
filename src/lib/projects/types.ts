@@ -68,7 +68,19 @@ export interface EncodeData {
    *  Kept deliberately tiny (not the full-resolution upload) so a composition
    *  document stays well under Firestore's size limit. Display-only on
    *  restore — re-encoding requires re-uploading the real photo(s). */
-  images?: Array<{ id: string; thumbnailDataUrl: string; isPrimary: boolean }>;
+  /**
+   * The photo(s) behind this encode. `thumbnailDataUrl` is always present
+   * (240px, inline in this document). `storagePath` points at the
+   * full-resolution original in Firebase Storage — absent on compositions
+   * saved before 2026-07-31, or when no bucket is configured, in which case
+   * the thumbnail is all there is and re-encoding needs a re-upload.
+   */
+  images?: Array<{
+    id: string;
+    thumbnailDataUrl: string;
+    isPrimary: boolean;
+    storagePath?: string;
+  }>;
   /** Remix v2: true when `encodedCubes` is a complete reinterpreted assembly
    *  that replaces the seed on load (rather than overlaying it). Absent on
    *  older compositions and non-remix encodes. */
@@ -78,6 +90,21 @@ export interface EncodeData {
    *  already persisted as `pataphysical.cubeOperators` — so this is no longer
    *  written. Kept so older compositions still parse. */
   seedOperators?: Record<string, OperatorRecord[]>;
+}
+
+/**
+ * A saved viewport capture. The image itself lives in Storage (captures are
+ * hi-res and would blow the document's ~1MB ceiling); the record keeps a small
+ * thumbnail for the list plus the view it was taken from, so two similar shots
+ * stay tellable apart.
+ */
+export interface CaptureRecord {
+  id: string;
+  storagePath: string;
+  thumbnailDataUrl: string;
+  createdAt: number;
+  projection: 'perspective' | 'orthographic';
+  section: { axis: 'x' | 'y' | 'z'; position: number; flipped: boolean } | null;
 }
 
 export interface PataphysicalData {
@@ -138,6 +165,10 @@ export interface CompositionData {
   evolution: EvolutionData;
   decode: DecodeData;
   siteContextSnapshot: SiteContextData | null;
+  /** Viewport captures saved against this composition. Written directly onto
+   *  the stored document when a capture is taken (not on the next save), so a
+   *  capture is never held in limbo. Absent until the first one. */
+  captures?: CaptureRecord[];
 }
 
 // --- Firestore document shapes --------------------------------------------

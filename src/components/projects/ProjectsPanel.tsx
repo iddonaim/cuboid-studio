@@ -8,7 +8,16 @@ import {
   listSites, createSite, deleteSite, renameSite, updateSite,
   listCompositions, createComposition, deleteComposition, renameComposition,
 } from '../../lib/projects/firestore';
-import { captureComposition, restoreComposition } from '../../lib/projects/composition';
+import {
+  captureComposition,
+  restoreComposition,
+  persistCompositionPhotos,
+  compositionPhotoPaths,
+} from '../../lib/projects/composition';
+import { deletePhotos, fetchFileBlob } from '../../lib/projects/photoStorage';
+import { removeCapture } from '../../lib/projects/firestore';
+import { CaptureGallery, captureMeta } from './CaptureGallery';
+import type { CaptureRecord } from '../../lib/projects/types';
 import { getActiveSiteContext } from '../../lib/storage/siteContext';
 import { shortSiteName } from '../../lib/siteContext/siteName';
 import type { ProjectDoc, SiteDoc, CompositionDoc } from '../../lib/projects/types';
@@ -160,6 +169,10 @@ export const ProjectsPanel: React.FC = () => {
   const [sites, setSites] = useState<SiteDoc[]>([]);
   const [compositions, setCompositions] = useState<CompositionDoc[]>([]);
   const [loading, setLoading] = useState(false);
+  /** Which composition's captures the list below is showing. */
+  const [openCompositionId, setOpenCompositionId] = useState<string | null>(null);
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const [zipping, setZipping] = useState(false);
 
   const refreshProjects = useCallback(async () => {
     if (!user) return;
@@ -261,7 +274,8 @@ export const ProjectsPanel: React.FC = () => {
 
   const handleSaveComposition = async (name: string) => {
     if (!activeProject || !activeSite) return;
-    const data = captureComposition();
+    // Photos upload first so the stored record points at them.
+    const data = await persistCompositionPhotos(user.uid, captureComposition());
     const c = await createComposition(activeProject.id, activeSite.id, name, data);
     setCompositions(prev => [c, ...prev]);
     setActiveComposition(c);
@@ -278,6 +292,14 @@ export const ProjectsPanel: React.FC = () => {
     if (!activeProject || !activeSite) return;
     await deleteComposition(activeProject.id, activeSite.id, c.id);
     setCompositions(prev => prev.filter(x => x.id !== c.id));
+    // Best-effort: drop the stored photographs too, so deleting a composition
+    // doesn't leave its originals paying rent in Storage forever. Never
+    // throws — the composition itself is already gone either way.
+    void deletePhotos([
+      ...compositionPhotoPaths(c.data),
+      ...(c.data.captures ?? []).map(capture => capture.storagePath),
+    ]);
+    if (openCompositionId === c.id) setOpenCompositionId(null);
   };
   const handleRenameComposition = async (c: CompositionDoc, name: string) => {
     if (!activeProject || !activeSite) return;
@@ -299,6 +321,75 @@ export const ProjectsPanel: React.FC = () => {
     } catch (err) {
       console.error('Load failed:', err);
       showToast('Load failed — snapshot may be incompatible', 'error');
+    }
+  };
+
+  const openComposition = compositions.find(c => c.id === openCompositionId) ?? null;
+  const openCaptures: CaptureRecord[] = openComposition?.data.captures ?? [];
+
+  const handleDeleteCapture = async (capture: CaptureRecord) => {
+    if (!activeProject || !activeSite || !openComposition) return;
+    try {
+      await removeCapture(
+        activeProject.id, activeSite.id, openComposition.id, openCaptures, capture.id,
+      );
+      const remaining = openCaptures.filter(c => c.id !== capture.id);
+      setCompositions(prev => prev.map(c =>
+        c.id === openComposition.id ? { ...c, data: { ...c.data, captures: remaining } } : c
+      ));
+      void deletePhotos([capture.storagePath]);
+    } catch (err) {
+      console.error(err);
+      showToast('Could not delete that capture', 'error');
+    }
+  };
+
+  /**
+   * Every capture in the project, zipped. Walks sites → compositions rather
+   * than the open list, so one download covers the whole investigation —
+   * which is what these are for (diagram source material), and it never
+   * touches the repo-bound demo bundle.
+   */
+  const handleDownloadProjectCaptures = async () => {
+    if (!activeProject) return;
+    setZipping(true);
+    try {
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+      let count = 0;
+
+      const projectSites = await listSites(activeProject.id);
+      for (const site of projectSites) {
+        const siteComps = await listCompositions(activeProject.id, site.id);
+        for (const comp of siteComps) {
+          for (const capture of comp.data.captures ?? []) {
+            const blob = await fetchFileBlob(capture.storagePath);
+            if (!blob) continue;
+            const safe = (s: string) => s.replace(/[^\w.-]+/g, '-').slice(0, 60);
+            const stamp = new Date(capture.createdAt).toISOString().replace(/[:.]/g, '-');
+            zip.file(`${safe(site.name)}/${safe(comp.name)}/${stamp}.png`, blob);
+            count++;
+          }
+        }
+      }
+
+      if (count === 0) {
+        showToast('No captures in this project yet', 'error');
+        return;
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeProject.name.replace(/[^\w.-]+/g, '-')}-captures.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`${count} capture${count === 1 ? '' : 's'} downloaded`, 'success');
+    } catch (err) {
+      console.error('Zip failed:', err);
+      showToast('Could not build the download', 'error');
+    } finally {
+      setZipping(false);
     }
   };
 
@@ -400,6 +491,16 @@ export const ProjectsPanel: React.FC = () => {
                 defaultValue={shortSiteName(getActiveSiteContext())}
                 onCreate={handleCreateSite}
               />
+
+              {/* Whole-project capture export — the diagram source material,
+                  full resolution, straight from storage. */}
+              <button
+                onClick={() => void handleDownloadProjectCaptures()}
+                disabled={zipping}
+                className="mt-3 w-full rounded border border-ink-200 bg-transparent hover:bg-ink-100 text-ink-600 text-[11px] py-2 cursor-pointer disabled:opacity-50"
+              >
+                {zipping ? 'Collecting captures…' : 'Download all captures (.zip)'}
+              </button>
             </>
           )}
 
@@ -411,7 +512,16 @@ export const ProjectsPanel: React.FC = () => {
                   <RowButton
                     key={c.id}
                     title={c.name}
-                    subtitle={`Saved ${fmtDate(c.updatedAt)}`}
+                    subtitle={
+                      `Saved ${fmtDate(c.updatedAt)}` +
+                      ((c.data.captures?.length ?? 0) > 0
+                        ? ` · ${c.data.captures!.length} capture${c.data.captures!.length === 1 ? '' : 's'}`
+                        : '')
+                    }
+                    onClick={() => {
+                      setOpenCompositionId(id => (id === c.id ? null : c.id));
+                      setGalleryIndex(null);
+                    }}
                     onDelete={() => handleDeleteComposition(c)}
                     onRename={name => handleRenameComposition(c, name)}
                     rightSlot={
@@ -429,10 +539,79 @@ export const ProjectsPanel: React.FC = () => {
                 )}
               </div>
               <NewItemRow placeholder="Save current as…" onCreate={handleSaveComposition} />
+
+              {/* Captures belong to one composition — click a row above to
+                  see its own. */}
+              {openComposition && (
+                <div className="mt-4 pt-3 border-t border-ink-200">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-mono text-[11px] uppercase tracking-wider text-ink-600">
+                      Captures
+                    </span>
+                    <span className="text-[11px] text-ink-400 tabular-nums">
+                      {openCaptures.length}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-ink-500 mb-2">
+                    of <span className="text-ink-700">{openComposition.name}</span>
+                  </div>
+
+                  {openCaptures.length === 0 ? (
+                    <div className="text-[11px] text-ink-400 italic">
+                      None yet — use the camera on the 3D view.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {openCaptures.map((capture, i) => (
+                        <div
+                          key={capture.id}
+                          className="group flex items-center gap-2 rounded-md border border-ink-200/70 hover:border-ink-300 p-1.5 bg-ink-100/40"
+                        >
+                          <button
+                            onClick={() => setGalleryIndex(i)}
+                            title="Open full size"
+                            className="flex items-center gap-2 flex-1 min-w-0 text-left bg-transparent border-0 cursor-pointer p-0"
+                          >
+                            <img
+                              src={capture.thumbnailDataUrl}
+                              alt=""
+                              className="w-[46px] h-9 flex-shrink-0 object-cover rounded-sm border border-ink-200 bg-ink-50"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[11.5px] text-ink-800 tabular-nums truncate">
+                                {fmtDate(capture.createdAt)}
+                              </span>
+                              <span className="block font-mono text-[10px] text-ink-500 truncate">
+                                {captureMeta(capture)}
+                              </span>
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCapture(capture)}
+                            title="Delete capture"
+                            className="opacity-0 group-hover:opacity-100 text-ink-400 hover:text-destructive text-[12px] bg-transparent border-0 cursor-pointer px-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {galleryIndex !== null && openCaptures.length > 0 && (
+        <CaptureGallery
+          captures={openCaptures}
+          index={Math.min(galleryIndex, openCaptures.length - 1)}
+          onIndexChange={setGalleryIndex}
+          onClose={() => setGalleryIndex(null)}
+        />
+      )}
     </>
   );
 };

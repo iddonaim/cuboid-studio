@@ -24,6 +24,7 @@ import type { CubeTranslation } from '../../store/useMemeStore';
 import { DEFAULT_LEXICON } from '../../prompts/lexicon.default';
 import type { OperatorRecord, LLMOperatorResult } from '../operators/types';
 import type { CompositionData } from './types';
+import { fetchPhoto, uploadPhoto } from './photoStorage';
 
 /** OperatorRecord carries every field applyLLMOperator needs. */
 function recordToResult(record: OperatorRecord): LLMOperatorResult {
@@ -54,14 +55,23 @@ export function captureComposition(): CompositionData {
 
   // Small thumbnails of whatever photo(s) are currently loaded — restored-only
   // thumbnails (from a prior load) carry forward unchanged on re-save.
+  // `storagePath` rides along when the full-resolution original is already in
+  // Storage (a prior save, or a load that restored it), so a re-save never
+  // re-uploads the same photograph.
   const imageThumbnails = encoding.multiPhotoEnabled
     ? encoding.uploadedImages.map(img => ({
         id: img.id,
         thumbnailDataUrl: img.thumbnailDataUrl,
         isPrimary: img.id === encoding.primaryImageId,
+        ...(img.storagePath ? { storagePath: img.storagePath } : {}),
       }))
     : encoding.imageThumbnail
-      ? [{ id: 'single', thumbnailDataUrl: encoding.imageThumbnail, isPrimary: true }]
+      ? [{
+          id: 'single',
+          thumbnailDataUrl: encoding.imageThumbnail,
+          isPrimary: true,
+          ...(encoding.imageStoragePath ? { storagePath: encoding.imageStoragePath } : {}),
+        }]
       : [];
 
   return {
@@ -85,9 +95,9 @@ export function captureComposition(): CompositionData {
           // written when at least one is loaded.
           ...(imageThumbnails.length > 0 ? { images: imageThumbnails } : {}),
           // Provenance: which model + grammar version produced this encode.
-          // The full re-run is unreproducible by design (photos are saved as
-          // thumbnails only, and the LLM is nondeterministic) — so at least
-          // the conditions of the translation are archived.
+          // The LLM is nondeterministic, so a re-run is never byte-identical —
+          // but with the photograph now stored at full resolution, the inputs
+          // themselves are archived rather than only described.
           ...(encoding.encodingModel ? { model: encoding.encodingModel } : {}),
           ...(encoding.encodingPromptVersion
             ? { promptVersion: encoding.encodingPromptVersion }
@@ -158,6 +168,56 @@ export function captureComposition(): CompositionData {
     },
     siteContextSnapshot: getActiveSiteContext(),
   };
+}
+
+/**
+ * Upload any photo in this snapshot that isn't in Storage yet, and stamp its
+ * path onto the snapshot (and back into the encoding store, so the next save
+ * of the same composition reuses the upload).
+ *
+ * Call between `captureComposition()` and writing the document. Failures are
+ * swallowed inside `uploadPhoto` — a photo that won't upload leaves the
+ * snapshot exactly as it was before Storage existed: thumbnail only.
+ */
+export async function persistCompositionPhotos(
+  ownerId: string,
+  data: CompositionData,
+): Promise<CompositionData> {
+  const images = data.encode?.images;
+  if (!ownerId || !images || images.length === 0) return data;
+
+  const encoding = useEncodingStore.getState();
+  const recorded: Record<string, string> = {};
+
+  await Promise.all(
+    images.map(async image => {
+      if (image.storagePath) return; // already stored by an earlier save
+      const source = image.id === 'single'
+        ? { base64: encoding.imageBase64, mediaType: encoding.imageMediaType }
+        : (() => {
+            const match = encoding.uploadedImages.find(img => img.id === image.id);
+            return { base64: match?.base64 ?? null, mediaType: match?.mediaType ?? null };
+          })();
+      if (!source.base64) return; // thumbnail-only photo from an older save
+      const path = await uploadPhoto(ownerId, source.base64, source.mediaType || 'image/jpeg');
+      if (path) {
+        image.storagePath = path;
+        recorded[image.id] = path;
+      }
+    }),
+  );
+
+  if (Object.keys(recorded).length > 0) {
+    encoding.recordPhotoStoragePaths(recorded);
+  }
+  return data;
+}
+
+/** Every stored-photo path a composition owns — for cleanup on delete. */
+export function compositionPhotoPaths(data: CompositionData): string[] {
+  return (data.encode?.images ?? [])
+    .map(image => image.storagePath)
+    .filter((path): path is string => Boolean(path));
 }
 
 /** Rebuild the standalone working-cube geometry by replaying its operators. */
@@ -270,6 +330,24 @@ export async function restoreComposition(
     const images = data.encode.images ?? [];
     const isMultiPhoto = images.length > 1;
 
+    // Pull the full-resolution originals back from Storage, in parallel.
+    // Anything without a path (saved before photos were stored, or saved with
+    // no bucket configured) resolves to null and keeps its thumbnail.
+    const restoredPhotos = await Promise.all(
+      images.map(async image => {
+        if (!image.storagePath) return null;
+        const photo = await fetchPhoto(image.storagePath);
+        if (!photo) return null;
+        return {
+          base64: photo.base64,
+          mediaType: photo.mediaType,
+          dataUrl: `data:${photo.mediaType};base64,${photo.base64}`,
+        };
+      }),
+    );
+    const allPhotosRestored =
+      images.length > 0 && restoredPhotos.every(photo => photo !== null);
+
     useEncodingStore.setState({
       encodedCubes: data.encode.encodedCubes,
       encodingReasoning: data.encode.encodingReasoning,
@@ -289,23 +367,33 @@ export async function restoreComposition(
       // Model + prompt provenance — absent on pre-provenance compositions.
       encodingModel: data.encode.model ?? null,
       encodingPromptVersion: data.encode.promptVersion ?? null,
-      // Photo thumbnails — display-only, no full-res base64 to re-encode with.
+      // Photos: the full-resolution originals come back from Storage when the
+      // save carried them (`restoredPhotos`, resolved above). Anything the
+      // fetch couldn't produce falls back to its thumbnail, which is display
+      // -only — so encoding stays blocked unless EVERY photo came back whole,
+      // since a half-restored set would encode against missing images.
       multiPhotoEnabled: isMultiPhoto,
-      uploadedImage: !isMultiPhoto && images[0] ? images[0].thumbnailDataUrl : null,
-      imageBase64: null,
-      imageMediaType: !isMultiPhoto && images[0] ? 'image/jpeg' : null,
+      uploadedImage: !isMultiPhoto && images[0]
+        ? (restoredPhotos[0]?.dataUrl ?? images[0].thumbnailDataUrl)
+        : null,
+      imageBase64: !isMultiPhoto ? (restoredPhotos[0]?.base64 ?? null) : null,
+      imageMediaType: !isMultiPhoto && images[0]
+        ? (restoredPhotos[0]?.mediaType ?? 'image/jpeg')
+        : null,
       imageThumbnail: !isMultiPhoto && images[0] ? images[0].thumbnailDataUrl : null,
+      imageStoragePath: !isMultiPhoto ? (images[0]?.storagePath ?? null) : null,
       uploadedImages: isMultiPhoto
-        ? images.map(img => ({
+        ? images.map((img, i) => ({
             id: img.id,
-            dataUrl: img.thumbnailDataUrl,
-            base64: '',
-            mediaType: 'image/jpeg',
+            dataUrl: restoredPhotos[i]?.dataUrl ?? img.thumbnailDataUrl,
+            base64: restoredPhotos[i]?.base64 ?? '',
+            mediaType: restoredPhotos[i]?.mediaType ?? 'image/jpeg',
             thumbnailDataUrl: img.thumbnailDataUrl,
+            ...(img.storagePath ? { storagePath: img.storagePath } : {}),
           }))
         : [],
       primaryImageId: isMultiPhoto ? (images.find(img => img.isPrimary)?.id ?? images[0]?.id ?? null) : null,
-      imagesRestoredOnly: images.length > 0,
+      imagesRestoredOnly: images.length > 0 && !allPhotosRestored,
     });
   }
 

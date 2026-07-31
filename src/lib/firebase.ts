@@ -13,6 +13,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { initializeFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
@@ -34,6 +35,7 @@ export const isFirebaseConfigured = Boolean(
 let app: FirebaseApp | null = null;
 let authClient: Auth | null = null;
 let dbClient: Firestore | null = null;
+let storageClient: FirebaseStorage | null = null;
 
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig as Record<string, string>);
@@ -42,9 +44,19 @@ if (isFirebaseConfigured) {
   // optional fields (e.g. pass1/pass2 may be null/undefined) without manual
   // scrubbing before every write.
   dbClient = initializeFirestore(app, { ignoreUndefinedProperties: true });
+  // Storage holds the full-resolution encode photos. A Firestore document
+  // caps at ~1MB and already carries the assembly, so the record keeps only
+  // a thumbnail; the photograph itself lives here. Absent bucket config =>
+  // no client, and saves fall back to thumbnail-only (the pre-2026-07-31
+  // behaviour) rather than failing.
+  if (firebaseConfig.storageBucket) {
+    storageClient = getStorage(app);
+  }
 }
 
 /** Firebase Auth client, or null when Firebase isn't configured. */
 export const auth = authClient;
 /** Firestore client, or null when Firebase isn't configured. */
 export const db = dbClient;
+/** Firebase Storage client, or null when Firebase/the bucket isn't configured. */
+export const storage = storageClient;
