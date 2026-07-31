@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getFileUrl, fetchFileBlob } from '../../lib/projects/photoStorage';
 import { importPlanUnderlay } from '../../lib/decode/planUnderlay';
-import { useDecodeStore } from '../../store/useDecodeStore';
+import { MAX_UNDERLAYS, useDecodeStore } from '../../store/useDecodeStore';
 import { useAppStore } from '../../store/useAppStore';
 import { useToastStore } from '../../store/useToastStore';
 import type { CaptureRecord } from '../../lib/projects/types';
@@ -34,7 +34,8 @@ export const CaptureGallery: React.FC<{
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [sending, setSending] = useState(false);
-  const setUnderlay = useDecodeStore(s => s.setUnderlay);
+  const addUnderlay = useDecodeStore(s => s.addUnderlay);
+  const underlayCount = useDecodeStore(s => s.underlays.length);
   const setActiveMode = useAppStore(s => s.setActiveMode);
   const showToast = useToastStore(s => s.showToast);
 
@@ -65,9 +66,15 @@ export const CaptureGallery: React.FC<{
 
   if (!capture) return null;
 
-  // Send to Decode as a locked underlay — the same path an imported plan takes,
-  // so registration and persistence behave identically.
+  // Send to Decode as another underlay — the same path an imported plan takes,
+  // so registration and persistence behave identically. Appends to the stack
+  // rather than replacing it: a capture and the plan it sits over are the
+  // whole point of having layers.
   const handleUseInDecode = async () => {
+    if (underlayCount >= MAX_UNDERLAYS) {
+      showToast(`Decode already holds ${MAX_UNDERLAYS} underlays`, 'error');
+      return;
+    }
     setSending(true);
     try {
       const blob = await fetchFileBlob(capture.storagePath);
@@ -76,10 +83,14 @@ export const CaptureGallery: React.FC<{
         return;
       }
       const file = new File([blob], `capture-${capture.id}.png`, { type: 'image/png' });
-      setUnderlay(await importPlanUnderlay(file));
+      addUnderlay(await importPlanUnderlay(file, {
+        source: 'capture',
+        label: `Capture · ${new Date(capture.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+        storagePath: capture.storagePath,
+      }));
       setActiveMode('decode');
       onClose();
-      showToast('Capture set as the Decode underlay', 'success');
+      showToast('Capture added to the Decode underlays', 'success');
     } catch (err) {
       console.error('Use in Decode failed:', err);
       showToast('Could not use that capture', 'error');

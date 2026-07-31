@@ -138,23 +138,34 @@ export interface EvolutionData {
   lastAppliedCubeId: string | null;
 }
 
+export interface StoredUnderlay {
+  id?: string;
+  source?: 'plan' | 'capture';
+  label?: string;
+  visible?: boolean;
+  opacity?: number;
+  storagePath?: string;
+  thumbnailDataUrl: string;
+  imageHash: string;
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
+  scale: number;
+}
+
 export interface DecodeData {
   canvasTiles: CanvasTile[];
   freestyle: boolean;
-  /** Plan-underlay reference + registration. Same policy as encode photos:
-   *  a ~240px thumbnail and a fingerprint of the imported file, never
-   *  full-res base64 (Firestore doc-size limit). Absent on compositions
-   *  saved before underlays existed and when none was imported. */
-  underlay?: {
-    thumbnailDataUrl: string;
-    imageHash: string;
-    width: number;
-    height: number;
-    offsetX: number;
-    offsetY: number;
-    rotation: number;
-    scale: number;
-  };
+  /** Legacy single underlay (pre-2026-07-31). Read on restore into a
+   *  one-item stack; never written any more. */
+  underlay?: StoredUnderlay;
+  /** The underlay stack, top of the stack first. Each entry keeps a ~240px
+   *  thumbnail inline plus a fingerprint; `storagePath` points at the
+   *  full-resolution original so a restored sheet draws the real image
+   *  instead of a blurry stand-in. Absent when nothing is imported. */
+  underlays?: StoredUnderlay[];
 }
 
 /** The full composition payload stored under a composition document. */

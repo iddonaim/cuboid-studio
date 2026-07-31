@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccent } from '../../contexts/AccentContext';
-import { Circle, Group, Image, Layer, Rect, Shape, Stage } from 'react-konva';
+import { Circle, Group, Image, Layer, Rect, Shape, Stage, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import { CanvasTile, DecodeUnderlay, useDecodeStore } from '../../store/useDecodeStore';
 import { getSnapPoints } from '../../lib/decode/snapPoints';
@@ -11,6 +11,7 @@ import {
   TILE_SIZE,
 } from '../../lib/decode/snapUtils';
 import { variation2dPath } from '../../lib/decode/variation2dPath';
+import { snapRotation } from '../../lib/decode/rotationSnap';
 import {
   registerSheetCapture,
   sheetBounds,
@@ -46,9 +47,18 @@ function useVariationImage(variationId: string): HTMLImageElement | null {
  *  its recorded registration. Non-interactive by design — tiles drag over it.
  *  Falls back to the persisted thumbnail (stretched to the registered size)
  *  when the full-res data URL is gone after a composition restore. */
-const UnderlayImage: React.FC<{ underlay: DecodeUnderlay }> = ({ underlay }) => {
+const UnderlayImage: React.FC<{
+  underlay: DecodeUnderlay;
+  armed: boolean;
+  onArm: () => void;
+  onChange: (
+    patch: Partial<Pick<DecodeUnderlay, 'offsetX' | 'offsetY' | 'rotation' | 'scale'>>,
+  ) => void;
+}> = ({ underlay, armed, onArm, onChange }) => {
   const src = underlay.dataUrl ?? underlay.thumbnailDataUrl;
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const nodeRef = useRef<Konva.Image | null>(null);
+  const trRef = useRef<Konva.Transformer | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,18 +72,78 @@ const UnderlayImage: React.FC<{ underlay: DecodeUnderlay }> = ({ underlay }) => 
     };
   }, [src]);
 
+  // Attach the handles to this image once both exist.
+  useEffect(() => {
+    if (armed && trRef.current && nodeRef.current) {
+      trRef.current.nodes([nodeRef.current]);
+      trRef.current.getLayer()?.batchDraw();
+    }
+  }, [armed, image]);
+
   if (!image) return null;
+
+  const width = underlay.width * underlay.scale;
+  const height = underlay.height * underlay.scale;
+
   return (
-    <Image
-      image={image}
-      x={underlay.offsetX}
-      y={underlay.offsetY}
-      rotation={underlay.rotation}
-      width={underlay.width * underlay.scale}
-      height={underlay.height * underlay.scale}
-      opacity={0.45}
-      listening={false}
-    />
+    <>
+      <Image
+        ref={nodeRef}
+        image={image}
+        x={underlay.offsetX}
+        y={underlay.offsetY}
+        rotation={underlay.rotation}
+        width={width}
+        height={height}
+        opacity={underlay.opacity}
+        // Deaf unless armed — this is what keeps a registered layer put.
+        listening={armed}
+        draggable={armed}
+        onMouseDown={onArm}
+        onDragEnd={e => onChange({ offsetX: e.target.x(), offsetY: e.target.y() })}
+        onTransformEnd={() => {
+          const node = nodeRef.current;
+          if (!node) return;
+          // The model carries ONE scale, so a layer can never be stretched out
+          // of true: read back a single factor and reset the node's own scale.
+          const factor = (node.scaleX() + node.scaleY()) / 2;
+          const nextScale = underlay.scale * factor;
+          node.scaleX(1);
+          node.scaleY(1);
+          onChange({
+            offsetX: node.x(),
+            offsetY: node.y(),
+            rotation: node.rotation(),
+            scale: nextScale,
+          });
+        }}
+      />
+      {armed && (
+        <Transformer
+          ref={trRef}
+          rotateEnabled
+          keepRatio
+          // Corners only: uniform scale, no edge handles that would stretch.
+          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+          rotationSnaps={[]}
+          anchorSize={9}
+          anchorCornerRadius={5}
+          borderStroke="#BE4A21"
+          borderDash={[4, 3]}
+          anchorStroke="#BE4A21"
+          anchorFill="#FDFCF9"
+          // Magnetic rotation: continuous, latching only near a mark. Shift
+          // suppresses it entirely for angles that must not be tidied.
+          rotationSnapTolerance={0}
+          boundBoxFunc={(oldBox, newBox) => (newBox.width < 12 || newBox.height < 12 ? oldBox : newBox)}
+          onTransform={e => {
+            const node = e.target as Konva.Node;
+            const evt = (e as unknown as { evt?: MouseEvent }).evt;
+            node.rotation(snapRotation(node.rotation(), Boolean(evt?.shiftKey)));
+          }}
+        />
+      )}
+    </>
   );
 };
 
@@ -261,7 +331,10 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const [activeSnap, setActiveSnap] = useState<ActiveSnap | null>(null);
 
   const canvasTiles = useDecodeStore(s => s.canvasTiles);
-  const underlay = useDecodeStore(s => s.underlay);
+  const underlays = useDecodeStore(s => s.underlays);
+  const armedUnderlayId = useDecodeStore(s => s.armedUnderlayId);
+  const setArmedUnderlayId = useDecodeStore(s => s.setArmedUnderlayId);
+  const updateUnderlayRegistration = useDecodeStore(s => s.updateUnderlayRegistration);
   const selectedTileId = useDecodeStore(s => s.selectedTileId);
   const pendingPlacementVariationId = useDecodeStore(s => s.pendingPlacementVariationId);
   const moveTile = useDecodeStore(s => s.moveTile);
@@ -648,12 +721,27 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         <Layer name="sheet-chrome" listening={false}>
           <InfiniteGrid width={size.width} height={size.height} />
         </Layer>
-        {underlay && (
-          <Layer name="sheet-chrome" listening={false}>
-            <UnderlayImage underlay={underlay} />
+        {underlays.length > 0 && (
+          // Index 0 is the top of the stack (as the layers list reads it), so
+          // the array is drawn in reverse. `sheet-chrome` keeps underlays out
+          // of exported PNGs, same as the grid.
+          <Layer name="sheet-chrome" listening={!!armedUnderlayId}>
+            {[...underlays].reverse().map(layer => (
+              layer.visible ? (
+                <UnderlayImage
+                  key={layer.id}
+                  underlay={layer}
+                  armed={armedUnderlayId === layer.id}
+                  onArm={() => setArmedUnderlayId(layer.id)}
+                  onChange={patch => updateUnderlayRegistration(layer.id, patch)}
+                />
+              ) : null
+            ))}
           </Layer>
         )}
-        <Layer>
+        {/* Tiles stand down while an underlay is armed: a stray drag can't
+            grab a transparent glyph instead of the image, and vice versa. */}
+        <Layer listening={!armedUnderlayId}>
           {canvasTiles.map(tile => (
             <CanvasTileNode
               key={tile.id}

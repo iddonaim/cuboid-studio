@@ -52,7 +52,12 @@ export async function resizeImageToBase64(
   }
 
   const base64 = await blobToBase64(blob);
-  const thumbnailDataUrl = thumbCanvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY);
+  // PNG sources keep PNG thumbnails: a viewport capture is a transparent
+  // cut-out, and a JPEG thumbnail would flatten that to black — which is
+  // exactly what a restored capture-underlay would then draw.
+  const thumbnailDataUrl = isPng
+    ? thumbCanvas.toDataURL('image/png')
+    : thumbCanvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY);
   return { base64, mediaType, thumbnailDataUrl };
 }
 

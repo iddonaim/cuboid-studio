@@ -24,6 +24,20 @@ export interface CompositionSnapshot {
  * doc-size limit).
  */
 export interface DecodeUnderlay {
+  /** Stable identity within the stack. */
+  id: string;
+  /** What this layer is, for the list: an imported plan or a saved capture. */
+  source: 'plan' | 'capture';
+  /** Short label shown in the layers list. */
+  label: string;
+  /** Hidden layers stay in the stack and keep their registration. */
+  visible: boolean;
+  /** 0–1. Earns its place once layers stack: dropping the top one back is how
+   *  you line a captured view up against a plan underneath it. */
+  opacity: number;
+  /** Full-resolution original in Firebase Storage, when it has one. Lets a
+   *  restored composition draw the real image instead of its thumbnail. */
+  storagePath?: string;
   /** Full-res data URL for crisp on-screen display. Null after a composition
    *  restore — the underlay then renders from the thumbnail (blurry but
    *  registered) until the architect re-imports the plan file. */
@@ -48,6 +62,10 @@ export interface DecodeUnderlay {
 
 const MAX_HISTORY = 5;
 
+/** Enough for a plan plus a few views; short of turning the sidebar into a
+ *  compositing app. */
+export const MAX_UNDERLAYS = 4;
+
 function cloneTiles(tiles: CanvasTile[]): CanvasTile[] {
   return tiles.map(t => ({ ...t }));
 }
@@ -70,12 +88,31 @@ interface DecodeState {
   selectedTileId: string | null;
   /** Mobile: variation picked in parts drawer, pending canvas tap. */
   pendingPlacementVariationId: string | null;
-  /** Locked plan underlay beneath the tiles, or null when none imported. */
-  underlay: DecodeUnderlay | null;
+  /**
+   * Images beneath the tiles, drawn last-first: index 0 is the top of the
+   * stack, matching how the layers list reads. Empty when nothing is imported.
+   */
+  underlays: DecodeUnderlay[];
+  /**
+   * The one layer currently editable on canvas, or null.
+   *
+   * Underlays are deaf by default — that is what stops a stray drag from
+   * nudging a registered plan. Arming a layer wakes exactly that one (and
+   * stands the tiles down for the duration), so moving an image is always
+   * something you asked for.
+   */
+  armedUnderlayId: string | null;
 
-  setUnderlay: (underlay: DecodeUnderlay | null) => void;
-  /** Adjust registration (offset/rotation/scale) of the current underlay. */
+  addUnderlay: (underlay: DecodeUnderlay) => void;
+  removeUnderlay: (id: string) => void;
+  setUnderlays: (underlays: DecodeUnderlay[]) => void;
+  moveUnderlay: (id: string, direction: -1 | 1) => void;
+  toggleUnderlayVisible: (id: string) => void;
+  setUnderlayOpacity: (id: string, opacity: number) => void;
+  setArmedUnderlayId: (id: string | null) => void;
+  /** Adjust registration (offset/rotation/scale) of one underlay. */
   updateUnderlayRegistration: (
+    id: string,
     patch: Partial<Pick<DecodeUnderlay, 'offsetX' | 'offsetY' | 'rotation' | 'scale'>>,
   ) => void;
 
@@ -100,15 +137,56 @@ export const useDecodeStore = create<DecodeState>((set, get) => ({
   fitRequestId: 0,
   selectedTileId: null,
   pendingPlacementVariationId: null,
-  underlay: null,
+  underlays: [],
+  armedUnderlayId: null,
 
-  setUnderlay: (underlay) => set({ underlay }),
+  addUnderlay: (underlay) => set(state => (
+    state.underlays.length >= MAX_UNDERLAYS
+      ? state
+      : { underlays: [underlay, ...state.underlays], armedUnderlayId: underlay.id }
+  )),
 
-  updateUnderlayRegistration: (patch) => {
-    const current = get().underlay;
-    if (!current) return;
-    set({ underlay: { ...current, ...patch } });
-  },
+  removeUnderlay: (id) => set(state => ({
+    underlays: state.underlays.filter(u => u.id !== id),
+    armedUnderlayId: state.armedUnderlayId === id ? null : state.armedUnderlayId,
+  })),
+
+  setUnderlays: (underlays) => set({
+    underlays: underlays.slice(0, MAX_UNDERLAYS),
+    armedUnderlayId: null,
+  }),
+
+  moveUnderlay: (id, direction) => set(state => {
+    const index = state.underlays.findIndex(u => u.id === id);
+    const target = index + direction;
+    if (index === -1 || target < 0 || target >= state.underlays.length) return state;
+    const next = [...state.underlays];
+    [next[index], next[target]] = [next[target], next[index]];
+    return { underlays: next };
+  }),
+
+  toggleUnderlayVisible: (id) => set(state => ({
+    underlays: state.underlays.map(u =>
+      u.id === id ? { ...u, visible: !u.visible } : u
+    ),
+    // A hidden layer must not stay armed — its handles would float over nothing.
+    armedUnderlayId:
+      state.armedUnderlayId === id && state.underlays.find(u => u.id === id)?.visible
+        ? null
+        : state.armedUnderlayId,
+  })),
+
+  setUnderlayOpacity: (id, opacity) => set(state => ({
+    underlays: state.underlays.map(u =>
+      u.id === id ? { ...u, opacity: Math.max(0, Math.min(1, opacity)) } : u
+    ),
+  })),
+
+  setArmedUnderlayId: (armedUnderlayId) => set({ armedUnderlayId }),
+
+  updateUnderlayRegistration: (id, patch) => set(state => ({
+    underlays: state.underlays.map(u => (u.id === id ? { ...u, ...patch } : u)),
+  })),
 
   addTile: (tile) => {
     const id = tile.id ?? crypto.randomUUID();
