@@ -18,7 +18,11 @@ const HELP_DESKTOP: Record<HelpKey, string> = {
   'encoding':              'Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
   'encoding-builder':      'Editing seed \u2022 Click to place \u2022 Space to rotate \u2022 R to tip \u2022 Esc to release \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
   'evolution-evolve':      'Click cubes to select favorites \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
-  'evolution-pataphysical':'Enter a meme description and click Translate \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
+  // "Pick", not "enter": the description field was retired when the panel moved
+  // to selecting a meme (from archthesis or an external image URL) and reading
+  // its description off the meme itself. Matches the Translate button's own
+  // empty state, "Pick a meme first".
+  'evolution-pataphysical':'Pick a meme and click Translate \u2022 Middle-drag to pan \u2022 Right-drag to orbit' + ORTHO_HINT,
 };
 
 const HELP_TOUCH: Record<HelpKey, string> = {
