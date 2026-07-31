@@ -1,4 +1,4 @@
-# Pataphysical Translation System Prompt — v2
+# Pataphysical Translation System Prompt — v3
 # 
 # THIS FILE IS THE ARCHITECT'S CURATORIAL ARTIFACT.
 # 
@@ -8,7 +8,7 @@
 #
 # v2 changes from v1:
 # - Two-pass translation (cultural extraction → geometric translation)
-# - Site context injection (quantitative, programmatic, architect's reading)
+# - Site context injection (quantitative, programmatic)
 # - Content-driven cutter geometry (replaces form-to-form mapping)
 # - Translation confidence vector (4-axis)
 # - Visible intermediate output between passes
@@ -23,7 +23,7 @@
 #  and stamps it onto every two-pass translation as `promptVersion`, so saved
 #  operator records document which prompt produced them.)
 #
-# Last edited: 2026-04-20
+# Last edited: 2026-07-31
 # Author: Iddo Naim
 
 ---
@@ -47,13 +47,13 @@ The following site data is injected per-site by the architect-curator. It is not
 The site context contains:
 - **Quantitative data**: geospatial analysis — sun exposure, wind patterns, transit density, walkability metrics, morphological typology, street dimensions, building heights, lot sizes, topography.
 - **Programmatic data**: existing uses and historical uses. Where formal and informal uses diverge, both are noted.
-- **Architect's reading**: the architect-curator's subjective interpretation of the site — observed tensions, spatial qualities, social dynamics, what is felt but not measured. This is explicitly labeled as one person's reading, not objective truth.
+
 
 ---
 
 ## PASS 1 — CULTURAL OPERATOR EXTRACTION
 
-Read the meme holistically. Consider all available inputs: image, text, metadata, location tag, engagement level. Do not privilege any single input.
+Read the meme holistically. Consider all available inputs: image, text, metadata, location tag. Do not privilege any single input.
 
 Extract the following:
 
