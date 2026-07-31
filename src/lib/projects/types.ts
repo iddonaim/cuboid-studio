@@ -92,6 +92,21 @@ export interface EncodeData {
   seedOperators?: Record<string, OperatorRecord[]>;
 }
 
+/**
+ * A saved viewport capture. The image itself lives in Storage (captures are
+ * hi-res and would blow the document's ~1MB ceiling); the record keeps a small
+ * thumbnail for the list plus the view it was taken from, so two similar shots
+ * stay tellable apart.
+ */
+export interface CaptureRecord {
+  id: string;
+  storagePath: string;
+  thumbnailDataUrl: string;
+  createdAt: number;
+  projection: 'perspective' | 'orthographic';
+  section: { axis: 'x' | 'y' | 'z'; position: number; flipped: boolean } | null;
+}
+
 export interface PataphysicalData {
   memeDescription: string;
   locationTag: string;
@@ -150,6 +165,10 @@ export interface CompositionData {
   evolution: EvolutionData;
   decode: DecodeData;
   siteContextSnapshot: SiteContextData | null;
+  /** Viewport captures saved against this composition. Written directly onto
+   *  the stored document when a capture is taken (not on the next save), so a
+   *  capture is never held in limbo. Absent until the first one. */
+  captures?: CaptureRecord[];
 }
 
 // --- Firestore document shapes --------------------------------------------

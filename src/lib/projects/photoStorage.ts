@@ -115,6 +115,54 @@ export async function fetchPhoto(
   }
 }
 
+/**
+ * Upload a viewport capture (already a stamped PNG blob). Returns its storage
+ * path, or null when storage is unavailable or the upload failed — the caller
+ * then tells the architect the capture wasn't kept rather than pretending.
+ */
+export async function uploadCapture(
+  ownerId: string,
+  blob: Blob,
+): Promise<string | null> {
+  if (!storage || !ownerId) return null;
+  try {
+    const path = `${STORAGE_ROOT}/${ownerId}/captures/${crypto.randomUUID()}.png`;
+    await uploadBytes(ref(storage, path), blob, { contentType: 'image/png' });
+    return path;
+  } catch (err) {
+    console.error('Capture upload failed:', err);
+    return null;
+  }
+}
+
+/**
+ * A URL for displaying a stored file directly (gallery `<img src>`), rather
+ * than pulling the bytes into memory as base64. Null when unavailable.
+ */
+export async function getFileUrl(path: string): Promise<string | null> {
+  if (!storage || !path) return null;
+  try {
+    return await getDownloadURL(ref(storage, path));
+  } catch (err) {
+    console.error('Could not resolve stored file:', path, err);
+    return null;
+  }
+}
+
+/** Raw bytes of a stored file — for the zip export and Decode hand-off. */
+export async function fetchFileBlob(path: string): Promise<Blob | null> {
+  const url = await getFileUrl(path);
+  if (!url) return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.blob();
+  } catch (err) {
+    console.error('Could not download stored file:', path, err);
+    return null;
+  }
+}
+
 /** Best-effort cleanup when a composition is deleted. Never throws. */
 export async function deletePhotos(paths: string[]): Promise<void> {
   if (!storage || paths.length === 0) return;

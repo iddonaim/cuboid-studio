@@ -97,6 +97,69 @@ function buildProvenance(camera: CaptureCameraState | null): CaptureProvenance {
   };
 }
 
+/** Longest edge of the thumbnail kept inline on a composition document. */
+const CAPTURE_THUMB_MAX = 240;
+
+async function thumbnailFromDataUrl(dataURL: string): Promise<string> {
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('Could not read the capture'));
+    image.src = dataURL;
+  });
+  const longest = Math.max(image.width, image.height) || 1;
+  const scale = Math.min(1, CAPTURE_THUMB_MAX / longest);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+  // Captures are transparent cut-outs; the thumbnail is a JPEG for size, so
+  // it needs a ground or the transparent areas render black.
+  ctx.fillStyle = '#FAF9F6';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.6);
+}
+
+/** A capture prepared for storage rather than for the filesystem. */
+export interface CaptureForSave {
+  /** Full-resolution PNG, provenance already stamped in. */
+  blob: Blob;
+  /** ~240px JPEG for the composition document's inline list. */
+  thumbnailDataUrl: string;
+  projection: 'perspective' | 'orthographic';
+  section: { axis: 'x' | 'y' | 'z'; position: number; flipped: boolean } | null;
+}
+
+/**
+ * Capture the viewport for saving into a composition: the same stamped PNG the
+ * download path produces, plus a thumbnail and the view it was taken from.
+ * Null when no canvas has registered (e.g. the Decode sheet is up).
+ */
+export async function captureForSave(options?: CaptureOptions): Promise<CaptureForSave | null> {
+  const captured = captureViewport(options);
+  if (!captured) return null;
+
+  const res = await fetch(captured.dataURL);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  const provenance = buildProvenance(captured.camera);
+  const stamped = embedPngText(bytes, 'cuboid-provenance', JSON.stringify(provenance));
+
+  return {
+    blob: new Blob([stamped.buffer as ArrayBuffer], { type: 'image/png' }),
+    thumbnailDataUrl: await thumbnailFromDataUrl(captured.dataURL),
+    projection: captured.camera?.projection ?? 'perspective',
+    section: provenance.sectionCut.enabled
+      ? {
+          axis: provenance.sectionCut.axis,
+          position: provenance.sectionCut.position,
+          flipped: provenance.sectionCut.flipped,
+        }
+      : null,
+  };
+}
+
 /**
  * Captures the viewport, stamps provenance metadata into the PNG, and
  * triggers a file download (desktop) or opens the native share sheet with
