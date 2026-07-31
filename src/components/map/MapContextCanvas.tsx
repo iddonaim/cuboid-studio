@@ -137,7 +137,16 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
             // (plain h-full would overflow by those 42px).
             'absolute top-[42px] left-0 w-full h-[calc(100%-42px)] border-0 bg-white'
       }
-      allow="clipboard-read; clipboard-write"
+      // Permissions Policy: a cross-origin iframe gets NO gated API unless the
+      // embedder delegates it here, and the embedded app can't opt itself in.
+      // - geolocation: map-context's picker has a "my location" control
+      //   (launcher.js). Without this it fails with a bare "location failed"
+      //   that looks like a map-context bug but is caused by this attribute.
+      // - fullscreen: the 3D atlas has a fullscreen toggle. This is the
+      //   necessary half on our side; the atlas also runs in a nested iframe
+      //   that map-context creates without `allowfullscreen`, so that button
+      //   needs a matching change there before it works end to end.
+      allow="clipboard-read; clipboard-write; geolocation; fullscreen"
     />
   );
 };
