@@ -160,11 +160,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .filter(Boolean)
           .slice(0, 5)
           .join(', ') || 'none listed';
+
+      // Built fabric, when the site carries it (map-context analysis or a
+      // curator entry). Omitted entirely when empty, so a site without this
+      // data produces exactly the prompt it did before.
+      const morph = q?.morphology;
+      const fabric = [
+        morph?.typology,
+        morph?.dominant_height,
+        morph?.street_width,
+        morph?.topography,
+        morph?.dominant_directionality,
+      ]
+        .filter((v: unknown): v is string => typeof v === 'string' && v.trim().length > 0)
+        .join('; ');
+
       siteContextPrefix =
         `Site context: ${loc.address || 'Unknown address'}. ${loc.lat}, ${loc.lng}. ` +
         `Sun: ${sun?.primary_exposure || 'n/a'}; summer daylight ${sun?.shadow_hours_summer || 'n/a'}. ` +
-        `Nearby: ${transit} transit stops, ${schools} schools, ${civic} civic buildings, ${parks} parks within ${radius}m. ` +
-        `Major roads: ${roads}.\n\n`;
+        `Nearby: ${transit} transit stops/lines, ${schools} schools, ${civic} civic buildings, ${parks} parks within ${radius}m. ` +
+        `Major roads: ${roads}.` +
+        (fabric ? ` Built fabric: ${fabric}.` : '') +
+        `\n\n`;
     }
   }
 
