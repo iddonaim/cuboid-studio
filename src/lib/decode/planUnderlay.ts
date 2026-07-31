@@ -22,13 +22,22 @@ function imageDimensions(dataUrl: string): Promise<{ width: number; height: numb
   });
 }
 
-/** Read a plan image file into a fresh underlay with identity registration. */
-export async function importPlanUnderlay(file: File): Promise<DecodeUnderlay> {
+/** Read an image file into a fresh underlay layer with default registration. */
+export async function importPlanUnderlay(
+  file: File,
+  meta: { source?: 'plan' | 'capture'; label?: string; storagePath?: string } = {},
+): Promise<DecodeUnderlay> {
   const { base64, mediaType, thumbnailDataUrl } = await resizeImageToBase64(file);
   const dataUrl = `data:${mediaType};base64,${base64}`;
   const { width, height } = await imageDimensions(dataUrl);
   const scale = (DEFAULT_SPAN_TILES * TILE_SIZE) / Math.max(width, height);
   return {
+    id: crypto.randomUUID(),
+    source: meta.source ?? 'plan',
+    label: meta.label ?? file.name.replace(/\.[^.]+$/, '').slice(0, 40),
+    visible: true,
+    opacity: 1,
+    ...(meta.storagePath ? { storagePath: meta.storagePath } : {}),
     dataUrl,
     thumbnailDataUrl,
     imageHash: hashImageBase64(base64),

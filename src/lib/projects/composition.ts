@@ -149,20 +149,27 @@ export function captureComposition(): CompositionData {
     decode: {
       canvasTiles: decode.canvasTiles,
       freestyle: decode.freestyle,
-      // Underlay: thumbnail + fingerprint + registration only — the full-res
-      // dataUrl is session-only, same policy as encode photos.
-      ...(decode.underlay
+      // Underlay stack: thumbnail + fingerprint + registration inline, with a
+      // `storagePath` when the full-resolution original is already stored (see
+      // persistCompositionPhotos). Top of the stack first.
+      ...(decode.underlays.length > 0
         ? {
-            underlay: {
-              thumbnailDataUrl: decode.underlay.thumbnailDataUrl,
-              imageHash: decode.underlay.imageHash,
-              width: decode.underlay.width,
-              height: decode.underlay.height,
-              offsetX: decode.underlay.offsetX,
-              offsetY: decode.underlay.offsetY,
-              rotation: decode.underlay.rotation,
-              scale: decode.underlay.scale,
-            },
+            underlays: decode.underlays.map(layer => ({
+              id: layer.id,
+              source: layer.source,
+              label: layer.label,
+              visible: layer.visible,
+              opacity: layer.opacity,
+              ...(layer.storagePath ? { storagePath: layer.storagePath } : {}),
+              thumbnailDataUrl: layer.thumbnailDataUrl,
+              imageHash: layer.imageHash,
+              width: layer.width,
+              height: layer.height,
+              offsetX: layer.offsetX,
+              offsetY: layer.offsetY,
+              rotation: layer.rotation,
+              scale: layer.scale,
+            })),
           }
         : {}),
     },
@@ -210,14 +217,54 @@ export async function persistCompositionPhotos(
   if (Object.keys(recorded).length > 0) {
     encoding.recordPhotoStoragePaths(recorded);
   }
+
+  await persistUnderlayImages(ownerId, data);
   return data;
+}
+
+/**
+ * Upload any underlay whose original isn't stored yet, and stamp the path onto
+ * both the snapshot and the live layer. Without this a reopened sheet draws
+ * its 240px thumbnail — registered, but far too coarse to draw against.
+ */
+async function persistUnderlayImages(ownerId: string, data: CompositionData): Promise<void> {
+  const layers = data.decode.underlays;
+  if (!ownerId || !layers || layers.length === 0) return;
+
+  const decode = useDecodeStore.getState();
+  const uploaded: Record<string, string> = {};
+
+  await Promise.all(
+    layers.map(async layer => {
+      if (layer.storagePath || !layer.id) return;
+      const live = decode.underlays.find(u => u.id === layer.id);
+      const dataUrl = live?.dataUrl;
+      if (!dataUrl) return; // restored thumbnail-only layer; nothing to upload
+      const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+      if (!match) return;
+      const path = await uploadPhoto(ownerId, match[2], match[1]);
+      if (path) {
+        layer.storagePath = path;
+        uploaded[layer.id] = path;
+      }
+    }),
+  );
+
+  if (Object.keys(uploaded).length > 0) {
+    useDecodeStore.setState({
+      underlays: decode.underlays.map(u =>
+        uploaded[u.id] ? { ...u, storagePath: uploaded[u.id] } : u
+      ),
+    });
+  }
 }
 
 /** Every stored-photo path a composition owns — for cleanup on delete. */
 export function compositionPhotoPaths(data: CompositionData): string[] {
-  return (data.encode?.images ?? [])
-    .map(image => image.storagePath)
-    .filter((path): path is string => Boolean(path));
+  return [
+    ...(data.encode?.images ?? []).map(image => image.storagePath),
+    ...(data.decode.underlays ?? []).map(layer => layer.storagePath),
+  ].filter((path): path is string => Boolean(path));
 }
 
 /** Rebuild the standalone working-cube geometry by replaying its operators. */
@@ -460,12 +507,45 @@ export async function restoreComposition(
   });
 
   // --- Decode ---
+  // Underlay stack, with the legacy single field folded in. Full-resolution
+  // originals come back from Storage in parallel; anything without a path (an
+  // older save, or no bucket configured) keeps its thumbnail.
+  const storedUnderlays = data.decode.underlays
+    ?? (data.decode.underlay ? [data.decode.underlay] : []);
+  const restoredUnderlays = await Promise.all(
+    storedUnderlays.map(async layer => {
+      if (!layer.storagePath) return null;
+      const photo = await fetchPhoto(layer.storagePath);
+      return photo ? `data:${photo.mediaType};base64,${photo.base64}` : null;
+    }),
+  );
+
   useDecodeStore.setState({
     canvasTiles: data.decode.canvasTiles,
     freestyle: data.decode.freestyle,
     // Underlay restores registered but thumbnail-only (dataUrl is never
     // persisted); re-importing the plan file restores full resolution.
-    underlay: data.decode.underlay ? { ...data.decode.underlay, dataUrl: null } : null,
+    // Underlays: the stack as saved, or a legacy single underlay read in as a
+    // one-item stack. `dataUrl` starts null and the full-resolution originals
+    // are fetched below — until they land, each layer draws its thumbnail.
+    underlays: storedUnderlays.map((layer, i) => ({
+      id: layer.id ?? crypto.randomUUID(),
+      source: layer.source ?? 'plan',
+      label: layer.label ?? (layer.source === 'capture' ? 'Capture' : 'Plan'),
+      visible: layer.visible ?? true,
+      opacity: layer.opacity ?? 1,
+      ...(layer.storagePath ? { storagePath: layer.storagePath } : {}),
+      dataUrl: restoredUnderlays[i] ?? null,
+      thumbnailDataUrl: layer.thumbnailDataUrl,
+      imageHash: layer.imageHash,
+      width: layer.width,
+      height: layer.height,
+      offsetX: layer.offsetX,
+      offsetY: layer.offsetY,
+      rotation: layer.rotation,
+      scale: layer.scale,
+    })),
+    armedUnderlayId: null,
     selectedTileId: null,
     pendingPlacementVariationId: null,
   });

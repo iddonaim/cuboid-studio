@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CanvasTile, TileRotation } from '../../store/useDecodeStore';
 import { RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
-import { useDecodeStore } from '../../store/useDecodeStore';
+import { MAX_UNDERLAYS, useDecodeStore } from '../../store/useDecodeStore';
 import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
 import {
   downloadDecodeSheetPng,
@@ -106,8 +106,14 @@ const DecodeComposer: React.FC = () => {
   const selectedTileId = useDecodeStore(s => s.selectedTileId);
   const pendingPlacementVariationId = useDecodeStore(s => s.pendingPlacementVariationId);
 
-  const underlay = useDecodeStore(s => s.underlay);
-  const setUnderlay = useDecodeStore(s => s.setUnderlay);
+  const underlays = useDecodeStore(s => s.underlays);
+  const addUnderlay = useDecodeStore(s => s.addUnderlay);
+  const removeUnderlay = useDecodeStore(s => s.removeUnderlay);
+  const moveUnderlay = useDecodeStore(s => s.moveUnderlay);
+  const toggleUnderlayVisible = useDecodeStore(s => s.toggleUnderlayVisible);
+  const setUnderlayOpacity = useDecodeStore(s => s.setUnderlayOpacity);
+  const armedUnderlayId = useDecodeStore(s => s.armedUnderlayId);
+  const setArmedUnderlayId = useDecodeStore(s => s.setArmedUnderlayId);
   const updateUnderlayRegistration = useDecodeStore(s => s.updateUnderlayRegistration);
   const setFreestyle = useDecodeStore(s => s.setFreestyle);
   const addTile = useDecodeStore(s => s.addTile);
@@ -135,15 +141,28 @@ const DecodeComposer: React.FC = () => {
       setImportingUnderlay(true);
       setUnderlayError(null);
       try {
-        setUnderlay(await importPlanUnderlay(file));
+        addUnderlay(await importPlanUnderlay(file));
       } catch (err) {
         setUnderlayError(err instanceof Error ? err.message : 'Failed to import plan');
       } finally {
         setImportingUnderlay(false);
       }
     },
-    [setUnderlay],
+    [addUnderlay],
   );
+
+  const armedLayer = underlays.find(u => u.id === armedUnderlayId) ?? null;
+
+  // Esc puts the armed layer back to sleep — the same key that clears a tile
+  // selection, so "stop what I'm doing" stays one habit.
+  useEffect(() => {
+    if (!armedUnderlayId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setArmedUnderlayId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [armedUnderlayId, setArmedUnderlayId]);
 
   // Auto-composition: grow the notation like the assembly's +N buttons grow
   // the assembly. The notation rule is that elements connect through their
@@ -331,8 +350,11 @@ const DecodeComposer: React.FC = () => {
           canvas. Only registration is recorded (offset / rotation / scale);
           saves keep a thumbnail + fingerprint, never full-res base64. */}
       <div>
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
-          Plan underlay
+        <p className="mb-1 flex items-baseline justify-between text-[11px] font-semibold uppercase tracking-wider text-ink-600">
+          <span>Underlays</span>
+          <span className="font-normal tabular-nums text-ink-400">
+            {underlays.length} / {MAX_UNDERLAYS}
+          </span>
         </p>
         <input
           ref={underlayInputRef}
@@ -344,52 +366,130 @@ const DecodeComposer: React.FC = () => {
             e.target.value = '';
           }}
         />
-        {!underlay ? (
-          <Button
-            type="button"
-            disabled={importingUnderlay}
-            onClick={() => underlayInputRef.current?.click()}
-            className="h-auto py-1 px-2.5 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200"
-          >
-            {importingUnderlay ? 'Importing…' : 'Import plan image'}
-          </Button>
+        {underlays.length === 0 ? (
+          <p className="mb-1.5 text-[11px] italic text-ink-400">
+            None — the sheet is drawing on the lattice alone.
+          </p>
         ) : (
-          <div className="flex flex-col gap-1.5 rounded border border-ink-200 bg-ink-100/60 p-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src={underlay.dataUrl ?? underlay.thumbnailDataUrl}
-                  alt="Plan underlay"
-                  className="h-8 w-8 rounded border border-ink-300 object-cover"
-                />
-                <span className="truncate font-mono text-[10px] text-ink-500">
-                  {underlay.dataUrl ? `plan ${underlay.imageHash}` : `plan ${underlay.imageHash} · thumbnail only`}
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                title="Remove underlay"
-                className="h-7 w-7 text-ink-600 hover:text-ink-800"
-                onClick={() => setUnderlay(null)}
-                aria-label="Remove underlay"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+          <div className="mb-1.5 flex flex-col gap-1">
+            {underlays.map((layer, i) => {
+              const armed = armedUnderlayId === layer.id;
+              return (
+                <div
+                  key={layer.id}
+                  className={`group flex items-center gap-1.5 rounded border p-1 ${
+                    armed ? 'border-primary bg-primary/[0.06]' : 'border-ink-200/70 bg-ink-100/40'
+                  }`}
+                >
+                  {/* Click to arm, click again to put it back to sleep. */}
+                  <button
+                    type="button"
+                    onClick={() => setArmedUnderlayId(armed ? null : layer.id)}
+                    title={armed ? 'Finish adjusting' : 'Adjust on the sheet'}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 border-0 bg-transparent p-0 text-left cursor-pointer"
+                  >
+                    <img
+                      src={layer.thumbnailDataUrl}
+                      alt=""
+                      className={`h-7 w-9 flex-shrink-0 rounded-sm border border-ink-200 object-cover ${
+                        layer.visible ? '' : 'opacity-40'
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-[11px] ${
+                        layer.visible ? 'text-ink-800' : 'text-ink-400 line-through'
+                      }`}>
+                        {layer.label}
+                      </span>
+                      <span className="block font-mono text-[9.5px] text-ink-500">
+                        {layer.source === 'capture' ? 'capture' : 'plan'}
+                        {armed ? ' · adjusting' : ''}
+                      </span>
+                    </span>
+                  </button>
+
+                  <div className="flex flex-col leading-none">
+                    <button
+                      type="button" onClick={() => moveUnderlay(layer.id, -1)} disabled={i === 0}
+                      title="Move up" aria-label={`Move ${layer.label} up`}
+                      className="border-0 bg-transparent px-0.5 text-[9px] text-ink-400 hover:text-ink-700 disabled:opacity-25 cursor-pointer"
+                    >▲</button>
+                    <button
+                      type="button" onClick={() => moveUnderlay(layer.id, 1)}
+                      disabled={i === underlays.length - 1}
+                      title="Move down" aria-label={`Move ${layer.label} down`}
+                      className="border-0 bg-transparent px-0.5 text-[9px] text-ink-400 hover:text-ink-700 disabled:opacity-25 cursor-pointer"
+                    >▼</button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleUnderlayVisible(layer.id)}
+                    title={layer.visible ? 'Hide' : 'Show'}
+                    aria-label={`${layer.visible ? 'Hide' : 'Show'} ${layer.label}`}
+                    className="border-0 bg-transparent px-1 text-[11px] text-ink-400 hover:text-ink-700 cursor-pointer"
+                  >
+                    {layer.visible ? '◉' : '○'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeUnderlay(layer.id)}
+                    title="Remove layer"
+                    aria-label={`Remove ${layer.label}`}
+                    className="border-0 bg-transparent px-1 text-[11px] text-ink-400 hover:text-destructive cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Registration + opacity drive whichever layer is armed. */}
+        {armedLayer && (
+          <div className="mb-1.5 rounded border border-ink-200 bg-ink-100/60 p-2">
+            <p className="m-0 mb-1.5 text-[10px] text-ink-500">
+              Adjusting <span className="text-ink-700">{armedLayer.label}</span> — drag it on the
+              sheet, corners scale and rotate. Esc when done.
+            </p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <RegistrationField label="X" value={underlay.offsetX}
-                onChange={v => updateUnderlayRegistration({ offsetX: v })} />
-              <RegistrationField label="Y" value={underlay.offsetY}
-                onChange={v => updateUnderlayRegistration({ offsetY: v })} />
-              <RegistrationField label="Rot°" value={underlay.rotation}
-                onChange={v => updateUnderlayRegistration({ rotation: v })} />
-              <RegistrationField label="Scale" value={underlay.scale} step={0.01}
-                onChange={v => { if (v > 0) updateUnderlayRegistration({ scale: v }); }} />
+              <RegistrationField label="X" value={armedLayer.offsetX}
+                onChange={v => updateUnderlayRegistration(armedLayer.id, { offsetX: v })} />
+              <RegistrationField label="Y" value={armedLayer.offsetY}
+                onChange={v => updateUnderlayRegistration(armedLayer.id, { offsetY: v })} />
+              <RegistrationField label="Rot°" value={armedLayer.rotation}
+                onChange={v => updateUnderlayRegistration(armedLayer.id, { rotation: v })} />
+              <RegistrationField label="Scale" value={armedLayer.scale} step={0.01}
+                onChange={v => { if (v > 0) updateUnderlayRegistration(armedLayer.id, { scale: v }); }} />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <label className="font-mono text-[10px] text-ink-500" htmlFor="underlay-opacity">
+                Opacity
+              </label>
+              <input
+                id="underlay-opacity"
+                type="range" min={10} max={100} step={5}
+                value={Math.round(armedLayer.opacity * 100)}
+                onChange={e => setUnderlayOpacity(armedLayer.id, Number(e.target.value) / 100)}
+                className="h-1 flex-1 accent-primary"
+              />
+              <span className="w-8 text-right text-[10px] tabular-nums text-ink-600">
+                {Math.round(armedLayer.opacity * 100)}%
+              </span>
             </div>
           </div>
         )}
+
+        <Button
+          type="button"
+          disabled={importingUnderlay || underlays.length >= MAX_UNDERLAYS}
+          onClick={() => underlayInputRef.current?.click()}
+          title={underlays.length >= MAX_UNDERLAYS ? `Up to ${MAX_UNDERLAYS} layers` : undefined}
+          className="h-auto py-1 px-2.5 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:opacity-50"
+        >
+          {importingUnderlay ? 'Importing…' : 'Import plan image'}
+        </Button>
         {underlayError && <p className="mt-1 text-[11px] text-red-600">{underlayError}</p>}
       </div>
 
