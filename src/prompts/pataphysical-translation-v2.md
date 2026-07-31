@@ -18,7 +18,7 @@
 # This prompt is loaded by the API route and sent as the system prompt to the LLM.
 # Changes to this file change the system's behavior immediately.
 #
-# version: 1
+# version: 2
 # (Provenance: bump this number whenever this file is edited. The API reads it
 #  and stamps it onto every two-pass translation as `promptVersion`, so saved
 #  operator records document which prompt produced them.)
