@@ -17,7 +17,7 @@
 
 ## 1. WHAT THIS IS
 
-The pataphysical translation system is the core computational pipeline of **Topological Translation**, a B.Arch thesis project by Iddo Naim at Tel Aviv University (David Azrieli School of Architecture). It translates internet memes into spatial operations on a 3D cube manifold, mediated by site-specific context.
+The pataphysical translation system is the core computational pipeline of **POETIKS / פה־אתיקה**, a B.Arch thesis project by Iddo Naim at Tel Aviv University (David Azrieli School of Architecture). It translates internet memes into spatial operations on a 3D cube manifold, mediated by site-specific context.
 
 The system is embedded in **Cuboid Studio**, a Three.js web application hosted on Vercel. The translation prompt (`pataphysical-translation-v2.md`) is loaded as a system prompt by a Vercel serverless function and sent to a frontier LLM (default: Claude Sonnet) via OpenRouter.
 

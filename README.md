@@ -2,7 +2,7 @@
 
 A browser-based 3D modular logic builder that translates internet memes and inhabited spaces into cuboid assemblies through boolean cuts.
 
-Cuboid Studio is the application layer of **Topological Translation**, a B.Arch thesis by Iddo Naim at the David Azrieli School of Architecture, Tel Aviv University. It is paired with [archmeme](https://github.com/iddonaim/archthesis), a participatory meme database that feeds the translation pipeline.
+Cuboid Studio is the application layer of **POETIKS / פה־אתיקה**, a B.Arch thesis by Iddo Naim at the David Azrieli School of Architecture, Tel Aviv University. It is paired with [archmeme](https://github.com/iddonaim/archthesis), a participatory meme database that feeds the translation pipeline.
 
 **Live:** https://cuboidstudio.vercel.app
 
