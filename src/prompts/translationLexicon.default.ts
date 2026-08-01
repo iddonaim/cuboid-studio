@@ -112,7 +112,7 @@ export const DEFAULT_TRANSLATION_LEXICON: TranslationLexicon = {
     { label: 'Exaggeration', definition: 'amplifying a quality beyond reality', operator: 'amplification', mapping_note: ' (increase target weights)' },
     { label: 'Juxtaposition', definition: 'placing incompatible things together', operator: 'reassignment', mapping_note: ' (swap edge targets between unlike elements)' },
     { label: 'Absurdity', definition: 'logic that defeats itself', operator: 'shuffle', mapping_note: ' (randomize a subset of topology)' },
-    { label: 'Nostalgia', definition: 'longing for a past or idealized state', operator: 'preservation', mapping_note: ' (lock current weights, resist mutation)' },
+    { label: 'Nostalgia', definition: 'longing for a past or idealized state', operator: 'preservation', mapping_note: ' (lock current weights, hold the current state against further operators)' },
     { label: 'Rage / frustration', definition: 'direct expression of anger or discontent', operator: 'amplification', mapping_note: ' with high magnitude (≥ 0.7)' },
     { label: 'Satire', definition: 'critiquing through imitation', operator: 'drift', mapping_note: ' (gradual displacement from current state)' },
     { label: 'Solidarity', definition: 'expressing shared identity or condition', operator: 'consolidation', mapping_note: ' (strengthen existing clusters, increase adjacency)' },
@@ -162,7 +162,7 @@ export const DEFAULT_TRANSLATION_DESCRIPTIONS: Record<string, string> = {
   affect_geometry:
     "These rules turn the meme's emotional charge into cutter geometry — the actual shape change. The trigger names a geometric tendency, the examples are affects that imply it, and the implication describes the cut. This is where you tune how feeling becomes form.",
   decay:
-    'Decay sets how quickly a meme’s mutation fades over generations. These lines tell the engine how to read virality and lifespan into a decay value.',
+    'Decay is an authored value carried on the translation record — validated, displayed and included in exports, but read by nothing behavioural: it shapes no geometry and no score, and nothing in the system fades over time. These lines tell the engine how to read virality and lifespan into that value.',
   confidence_axes:
     "The four axes the engine scores itself on for every translation. Editing a description changes what the engine reports about where a translation is motivated versus improvising. The four axes themselves are fixed.",
 };
