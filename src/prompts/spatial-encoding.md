@@ -1,5 +1,7 @@
 # Spatial Encoding System Prompt
 #
+# ARCHIVAL (2026-08-01): the project was renamed from "Topological Translation" to POETIKS on 2026-07-23; the body below is left at the old name and kept as an archival artifact.
+#
 # THIS FILE IS THE ARCHITECT'S CURATORIAL ARTIFACT.
 #
 # It defines the rules by which the LLM translates photographs of inhabited spaces

@@ -178,7 +178,7 @@ export const SiteContextCurator: React.FC<SiteContextCuratorProps> = ({ open, on
         <div className="flex justify-between items-center px-5 py-4 border-b border-ink-200">
           <div>
             <div className="text-[11px] text-ink-500 tracking-[0.1em] uppercase">
-              Topological Translation
+              POETIKS
             </div>
             <h2 className="text-ink-900 text-base font-semibold mt-1">Site Context Curator</h2>
           </div>
