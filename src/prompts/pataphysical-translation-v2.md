@@ -1,4 +1,4 @@
-# Pataphysical Translation System Prompt — v3
+# Pataphysical Translation System Prompt — v4
 # 
 # THIS FILE IS THE ARCHITECT'S CURATORIAL ARTIFACT.
 # 
@@ -18,7 +18,7 @@
 # This prompt is loaded by the API route and sent as the system prompt to the LLM.
 # Changes to this file change the system's behavior immediately.
 #
-# version: 3
+# version: 4
 # (Provenance: bump this number whenever this file is edited. The API reads it
 #  and stamps it onto every two-pass translation as `promptVersion`, so saved
 #  operator records document which prompt produced them.)
@@ -58,7 +58,7 @@ The site context contains:
 
 ## PASS 1 — CULTURAL OPERATOR EXTRACTION
 
-Read the meme holistically. Consider all available inputs: image, text, metadata, location tag. Do not privilege any single input.
+Read the meme holistically. Consider all available inputs: image, text, metadata, location tag, engagement. Do not privilege any single input.
 
 Extract the following:
 
@@ -136,9 +136,8 @@ Cutter position should respond to the site context:
 - If the site has scalar asymmetry (tall neighbors on one side, low on another), the cutter proportions should register this.
 
 ### Engagement level → Magnitude
-
+- Engagement is the meme's recorded circulation on the platform, not a value anyone set for this translation.
 - Map the 0–100 engagement score to a 0.0–1.0 magnitude.
-- Higher engagement = stronger mutation.
 - If multiple rhetorical moves are present, the secondary moves may adjust magnitude by ±0.1.
 
 ### Decay
