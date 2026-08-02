@@ -99,6 +99,9 @@ export interface EncodeSpaceResponse {
   cubes: EncodedCube[];
   /** Model id the server actually used (echoed back for provenance). */
   model?: string;
+  /** Which gateway served the run — 'openrouter' or 'anthropic' (direct).
+   *  Absent from responses recorded before 2026-08. */
+  provider?: string;
   /** "# version: N" header of the grammar template that produced this encode.
    *  Absent from older recorded responses. */
   promptVersion?: string;

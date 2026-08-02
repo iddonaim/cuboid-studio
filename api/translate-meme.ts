@@ -100,6 +100,7 @@ export async function parseAndRoute(
   passMode: PassMode,
   selectedModel: string,
   promptVersion: string | null = null,
+  provider: 'openrouter' | 'anthropic' | null = null,
 ): Promise<VercelResponse> {
   const validate = (value: any): ValidationResult =>
     passMode === 'two_pass'
@@ -159,11 +160,22 @@ export async function parseAndRoute(
       raw: JSON.stringify(result.raw).substring(0, 500),
     });
   }
-  // Prompt provenance rides along when the loaded prompt file declared a
-  // "# version: N" header (currently only the v2 translation prompt does).
+  // Provenance stamps, gated separately on purpose:
+  // - promptVersion rides on any object payload whenever the loaded prompt
+  //   file declared a "# version: N" header — NOT coupled to pass mode.
+  //   Today only the v2 prompt carries a header, so single-pass never stamps
+  //   in practice; if the v1 prompt ever gains one, the stamp must appear
+  //   rather than silently vanish.
+  // - provider — which gateway served the run — is two-pass only: the
+  //   single-pass payload is spread into operator params client-side, and
+  //   this new key must not leak into it.
   const payload =
-    promptVersion && result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)
-      ? { ...(result.payload as Record<string, unknown>), promptVersion }
+    result.payload && typeof result.payload === 'object' && !Array.isArray(result.payload)
+      ? {
+          ...(result.payload as Record<string, unknown>),
+          ...(promptVersion ? { promptVersion } : {}),
+          ...(passMode === 'two_pass' && provider ? { provider } : {}),
+        }
       : result.payload;
   return res.status(200).json(payload);
 }
@@ -279,7 +291,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       selectedModel,
       passMode,
     });
-    return parseAndRoute(res, caller, userMessage, passMode, selectedModel, promptVersion);
+    return parseAndRoute(res, caller, userMessage, passMode, selectedModel, promptVersion, 'openrouter');
   }
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -294,7 +306,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     selectedModel,
     passMode,
   });
-  return parseAndRoute(res, caller, userMessage, passMode, selectedModel, promptVersion);
+  return parseAndRoute(res, caller, userMessage, passMode, selectedModel, promptVersion, 'anthropic');
 }
 
 // ---------------------------------------------------------------------------

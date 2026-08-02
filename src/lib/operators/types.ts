@@ -63,6 +63,9 @@ export interface OperatorRecord {
   pass2?: TranslationPass2;
   confidenceVector?: ConfidenceVector;
   model?: string;
+  /** Which gateway served the run — 'openrouter' or 'anthropic' (direct).
+   *  Absent on records made before 2026-08. */
+  provider?: string;
   /** "# version: N" header of the prompt file that produced this translation. */
   promptVersion?: string;
 }
@@ -135,4 +138,7 @@ export interface TwoPassTranslationResult {
   model: string;
   /** "# version: N" header of the prompt file used (absent on old demo recordings). */
   promptVersion?: string;
+  /** Which gateway served the run — 'openrouter' or 'anthropic' (direct).
+   *  Absent on responses recorded before 2026-08. */
+  provider?: string;
 }

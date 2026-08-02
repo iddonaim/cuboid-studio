@@ -26,6 +26,7 @@ function clearReadingFields() {
     encodingLexicon: null as SpatialLexicon | null,
     encodingLexiconId: null as string | null,
     encodingModel: null as string | null,
+    encodingProvider: null as string | null,
     encodingPromptVersion: null as string | null,
     // Every caller of this helper also nulls encodedCubes, and these flags
     // only describe the current result — drop them alongside.
@@ -143,6 +144,8 @@ export interface EncodeComparisonEntry {
   elapsedMs?: number;
   /** Model id the server actually used (echoed back by the API). */
   resolvedModel?: string | null;
+  /** Gateway the server reported for this entry's run. */
+  resolvedProvider?: string | null;
   reading?: SpatialReading | null;
   reasoning?: string;
   /** Processed (grid-snapped, seed-filtered) cubes, ready to render as-is. */
@@ -172,6 +175,7 @@ export interface PreviousEncodeResult {
   lexicon: SpatialLexicon | null;
   lexiconId: string | null;
   model: string | null;
+  provider: string | null;
   promptVersion: string | null;
   remixResultReplacesSeed: boolean;
   /** True if this result had been applied into the assembly before it was replaced. */
@@ -236,6 +240,8 @@ interface EncodingState {
   encodingLexiconId: string | null;
   /** Model id the server reported for the current encode result (provenance). */
   encodingModel: string | null;
+  /** Gateway the server reported — 'openrouter' or 'anthropic' (direct). */
+  encodingProvider: string | null;
   /** Grammar-template "# version" the server reported for the current encode. */
   encodingPromptVersion: string | null;
   lastError: string | null;
@@ -446,6 +452,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
   encodingLexicon: null,
   encodingLexiconId: null,
   encodingModel: null,
+  encodingProvider: null,
   encodingPromptVersion: null,
   lastError: null,
 
@@ -475,6 +482,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       encodingLexicon: prev.lexicon,
       encodingLexiconId: prev.lexiconId,
       encodingModel: prev.model,
+      encodingProvider: prev.provider,
       encodingPromptVersion: prev.promptVersion,
       remixResultReplacesSeed: prev.remixResultReplacesSeed,
       // Restoring only brings the result back into the panel — nothing is
@@ -615,6 +623,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
             status: 'done',
             elapsedMs: Math.round(performance.now() - t0),
             resolvedModel: result.model ?? null,
+            resolvedProvider: result.provider ?? null,
             promptVersion: result.promptVersion ?? null,
             reading: result.reading ?? null,
             reasoning: result.reasoning,
@@ -656,6 +665,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
       encodingLexicon: entry.lexicon ?? null,
       encodingLexiconId: entry.lexiconId ?? null,
       encodingModel: entry.resolvedModel ?? entry.modelId,
+      encodingProvider: entry.resolvedProvider ?? null,
       encodingPromptVersion: entry.promptVersion ?? null,
       resultApplied: false,
       // Picking a compared entry replaces the shown result too — any snapshot
@@ -764,6 +774,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
               lexicon: outgoing.encodingLexicon,
               lexiconId: outgoing.encodingLexiconId,
               model: outgoing.encodingModel,
+              provider: outgoing.encodingProvider,
               promptVersion: outgoing.encodingPromptVersion,
               remixResultReplacesSeed: outgoing.remixResultReplacesSeed,
               wasApplied: outgoing.resultApplied,
@@ -782,6 +793,7 @@ export const useEncodingStore = create<EncodingState>((set, get) => ({
         encodingLexicon: capturedLexicon,
         encodingLexiconId: capturedLexiconId,
         encodingModel: result.model ?? null,
+        encodingProvider: result.provider ?? null,
         encodingPromptVersion: result.promptVersion ?? null,
         resultApplied: false,
         previousResult,

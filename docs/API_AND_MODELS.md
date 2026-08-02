@@ -14,17 +14,18 @@ serverless functions. API keys never reach the browser.
 | | ② Encode (photo → assembly) | ③ Translate (meme → operator) |
 |---|---|---|
 | **Function** | `api/encode-space.ts` | `api/translate-meme.ts` |
-| **Service** | Anthropic API directly — always | **OpenRouter** when `OPENROUTER_API_KEY` is set; Anthropic API as fallback |
-| **Model** | `claude-sonnet-4-6` (default, `ENCODE_MODEL`) | OpenRouter default: `anthropic/claude-sonnet-4.6` (`DEFAULT_MODEL`) · Anthropic fallback default: `claude-sonnet-4-6` |
+| **Service** | **OpenRouter** when `OPENROUTER_API_KEY` is set; Anthropic API as fallback (same rule as translation — aligned 2026-08-02; was Anthropic-direct by default before) | **OpenRouter** when `OPENROUTER_API_KEY` is set; Anthropic API as fallback |
+| **Model** | `anthropic/claude-sonnet-4.6` (default, `ENCODE_MODEL` — either id spelling accepted, converted per transport) | OpenRouter default: `anthropic/claude-sonnet-4.6` (`DEFAULT_MODEL`) · Anthropic fallback default: `claude-sonnet-4-6` |
 | **max_tokens** | 2000 | 2000 (two-pass) / 1000 (single) |
 | **Sampling params** | none sent | none sent |
 | **Callers** | Encode button — 1 call per encode, with resized photos attached | Pataphysical (1 call per translate) **and** Evolve (1 call per candidate — a default generation = 6 parallel two-pass calls) |
 | **Per-request override** | `model` body param (used by the Model lab) | `model` body param, validated + passed through (UI = the archived Model lab; see GAPS P2-4) |
 
 Provenance: every translation records the model that produced it
-(`lastModel`, shown in the record drawer and serialized into compositions).
-Encode results do **not** currently record their model — small gap worth
-closing whenever `encode-space.ts` is next touched.
+(`lastModel`, shown in the record drawer and serialized into compositions),
+and encode responses echo theirs (`model`). Since 2026-08-02 both surfaces
+also record `provider` — `openrouter` or `anthropic` — because the same
+model id can now arrive by either route on either surface.
 
 ### Model alignment (resolved 2026-07-14)
 
@@ -64,10 +65,10 @@ iframe (Railway); Grasshopper live-link (local HTTP, port 9876).
 (Nominatim, Overpass, GovMap, Tel Aviv GIS, data.gov.il, elevation services,
 land.gov.il, Meirim).
 
-**Env keys:** `OPENROUTER_API_KEY` (translation + Evolve),
-`ANTHROPIC_API_KEY` (encode + translation fallback), `VITE_FIREBASE_*`,
-`VITE_MAP_CONTEXT_URL`. (`TRANSLATION_PASS_MODE` is documented but dead —
-GAPS P0-2.)
+**Env keys:** `OPENROUTER_API_KEY` (encode + translation + Evolve),
+`ANTHROPIC_API_KEY` (fallback for both when the OpenRouter key is absent),
+`VITE_FIREBASE_*`, `VITE_MAP_CONTEXT_URL`. (`TRANSLATION_PASS_MODE` is
+documented but dead — GAPS P0-2.)
 
 ---
 
