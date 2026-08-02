@@ -2,13 +2,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fs from 'fs';
 import path from 'path';
 import { DEFAULT_LEXICON, type SpatialLexicon } from '../src/prompts/lexicon.default.js';
-import { toAnthropicModelId } from '../src/lib/models.js';
+import { toAnthropicModelId, toOpenRouterModelId } from '../src/lib/models.js';
 import { parsePromptVersion } from '../src/lib/promptVersion.js';
 
 // Vision model for encoding, overridable per deployment via ENCODE_MODEL
-// (Anthropic or OpenRouter-style id — normalized either way). Model strategy:
-// docs/MODEL_STRATEGY.md.
-const ENCODE_MODEL = toAnthropicModelId(process.env.ENCODE_MODEL?.trim() || 'claude-sonnet-4-6');
+// (Anthropic or OpenRouter-style id — converted to whichever the active
+// transport wants). Model strategy: docs/MODEL_STRATEGY.md.
+const ENCODE_MODEL = process.env.ENCODE_MODEL?.trim() || 'anthropic/claude-sonnet-4.6';
 
 // Response ceiling. Sized for newer-generation models whose tokenizers count
 // ~30% more tokens for the same text (observed on the translation path). This
@@ -22,7 +22,8 @@ type EncodingImage = { base64: string; mediaType: string; isPrimary: boolean };
  * Vercel serverless function: POST /api/encode-space
  *
  * Accepts one or more base64 images of inhabited space and translates them
- * into a cuboid assembly composition using Claude's vision API.
+ * into a cuboid assembly composition using a vision model via OpenRouter
+ * (or the Anthropic-native fallback when OPENROUTER_API_KEY isn't set).
  *
  * The system prompt is composed at runtime by filling the grammar template
  * (src/prompts/spatial-encoding-grammar.md) with vocabulary from the active
@@ -105,8 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const promptVersion = parsePromptVersion(grammarTemplate);
 
   // Per-request model override (OpenRouter-style id, e.g. "google/gemini-3.5-flash"),
-  // sent by the encode Model lab. Absent for a normal encode, which keeps the
-  // exact Anthropic-direct path below.
+  // sent by the encode Model lab. Absent for a normal encode, which runs
+  // ENCODE_MODEL on whichever transport is active below.
   const requestedModel =
     typeof req.body.model === 'string' && req.body.model.trim() ? req.body.model.trim() : null;
 
@@ -118,26 +119,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : userText;
   };
 
-  // Transport selection. A request that names a model goes through OpenRouter
-  // (any vendor) when an OpenRouter key is configured; everything else — every
-  // normal encode — takes the unchanged Anthropic-direct path. `modelUsed` is
-  // echoed back for provenance.
+  // Transport selection — mirrors translate-meme (2026-08-02, previously
+  // Anthropic-direct by default): OpenRouter whenever its key is configured,
+  // Anthropic native as the fallback. A request that names a model (the Model
+  // lab) rides whichever transport is active, same as a normal encode.
+  // `modelUsed` and `provider` are echoed back for provenance.
   const openRouterKey = process.env.OPENROUTER_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
+  const modelPref = requestedModel ?? ENCODE_MODEL;
+
   let runModel: (userText: string) => Promise<string>;
   let modelUsed: string;
+  let provider: 'openrouter' | 'anthropic';
 
-  if (requestedModel && openRouterKey) {
-    modelUsed = requestedModel;
-    runModel = makeOpenRouterEncodeCaller(openRouterKey, requestedModel, systemPrompt, images, composeUserText);
+  if (openRouterKey) {
+    provider = 'openrouter';
+    modelUsed = toOpenRouterModelId(modelPref);
+    runModel = makeOpenRouterEncodeCaller(openRouterKey, modelUsed, systemPrompt, images, composeUserText);
   } else {
     if (!anthropicKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+      return res.status(500).json({ error: 'Neither OPENROUTER_API_KEY nor ANTHROPIC_API_KEY configured' });
     }
-    // Normal encode uses ENCODE_MODEL; a named Claude model with no OpenRouter
-    // key falls back here (non-Claude ids will 400 visibly, per model).
-    modelUsed = requestedModel ? toAnthropicModelId(requestedModel) : ENCODE_MODEL;
+    // Non-Claude ids can't run Anthropic-native; they 400 visibly, per model.
+    provider = 'anthropic';
+    modelUsed = toAnthropicModelId(modelPref);
     runModel = makeAnthropicEncodeCaller(anthropicKey, modelUsed, systemPrompt, images, composeUserText);
   }
 
@@ -281,9 +287,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(reading ? { reading } : {}),
       reasoning: parsed.reasoning,
       cubes: validCubes,
-      // Provenance: which model + grammar version produced this reading.
-      // Additive — existing clients ignore them; capture persists them.
+      // Provenance: which model + gateway + grammar version produced this
+      // reading. Additive — existing clients ignore them; capture persists
+      // them. `provider` disambiguates the route now that the same model can
+      // be served OpenRouter-primary or Anthropic-fallback.
       model: modelUsed,
+      provider,
       ...(promptVersion ? { promptVersion } : {}),
       // Remix confirmation — the client only treats the result as a full
       // replacement assembly when the remix grammar section actually ran.
@@ -305,7 +314,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 // call here — encoding is a vision task, so a retry that couldn't see the
 // space would be meaningless.
 
-/** OpenRouter (OpenAI-compatible, multimodal) — used for any named model. */
+/** OpenRouter (OpenAI-compatible, multimodal) — the default transport. */
 function makeOpenRouterEncodeCaller(
   apiKey: string,
   model: string,
@@ -355,7 +364,7 @@ function makeOpenRouterEncodeCaller(
   };
 }
 
-/** Anthropic native — the default encode path and the no-OpenRouter fallback. */
+/** Anthropic native — the fallback when OPENROUTER_API_KEY is unset. */
 function makeAnthropicEncodeCaller(
   apiKey: string,
   model: string,

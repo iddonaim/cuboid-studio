@@ -26,6 +26,8 @@ export interface PrecomputedTranslation {
   pass2: TranslationPass2 | null;
   confidenceVector: ConfidenceVector | null;
   model: string | null;
+  /** Gateway that served the run — 'openrouter' or 'anthropic' (direct). */
+  provider?: string | null;
   /** Prompt-file "# version" of the run that produced this translation. */
   promptVersion?: string | null;
 }
@@ -40,6 +42,8 @@ export interface ComparisonEntry {
   elapsedMs?: number;
   /** Model id the server actually used (echoed back by the API). */
   resolvedModel?: string | null;
+  /** Gateway the server reported for this entry's run. */
+  resolvedProvider?: string | null;
   /** Prompt-file "# version" the server reported for this run. */
   promptVersion?: string | null;
   pass1?: TranslationPass1;
@@ -291,6 +295,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
             status: 'done',
             elapsedMs: Math.round(performance.now() - t0),
             resolvedModel: twoPass.model,
+            resolvedProvider: twoPass.provider ?? null,
             promptVersion: twoPass.promptVersion ?? null,
             pass1: twoPass.pass1,
             pass2: twoPass.pass2,
@@ -333,6 +338,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       pass2: entry.pass2 ?? null,
       confidenceVector: entry.confidenceVector ?? null,
       model: entry.resolvedModel ?? entry.modelId,
+      provider: entry.resolvedProvider ?? null,
       promptVersion: entry.promptVersion ?? null,
     });
 
@@ -445,6 +451,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
       let pass2: TranslationPass2 | null = null;
       let confidenceVector: ConfidenceVector | null = null;
       let modelUsed: string | null = null;
+      let providerUsed: string | null = null;
       let promptVersionUsed: string | null = null;
 
       if (pre) {
@@ -455,6 +462,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         pass2 = pre.pass2;
         confidenceVector = pre.confidenceVector;
         modelUsed = pre.model;
+        providerUsed = pre.provider ?? null;
         promptVersionUsed = pre.promptVersion ?? null;
       } else if (passMode === 'two_pass') {
         const twoPass = await translateMemeTwoPass({
@@ -467,6 +475,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         pass2 = twoPass.pass2;
         confidenceVector = twoPass.pass2.confidence_vector;
         modelUsed = twoPass.model;
+        providerUsed = twoPass.provider ?? null;
         promptVersionUsed = twoPass.promptVersion ?? null;
         // Synthesize v1-shaped result from pass2 so the existing cutter
         // pipeline, CutterTweakPanel, and revertLastOperator all work
@@ -531,6 +540,7 @@ export const useMemeStore = create<MemeState>((set, get) => ({
         ...(pass2 ? { pass2 } : {}),
         ...(confidenceVector ? { confidenceVector } : {}),
         ...(modelUsed ? { model: modelUsed } : {}),
+        ...(providerUsed ? { provider: providerUsed } : {}),
         ...(promptVersionUsed ? { promptVersion: promptVersionUsed } : {}),
       };
 

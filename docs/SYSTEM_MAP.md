@@ -83,14 +83,13 @@ Map → Encode → Evolution → Decode.
 | **Output** | Five-axis reading (atmosphere/light/emotion continuous + rhythm/placement categorical) → reasoning → proposed cuboid assembly |
 | **Interaction** | Edit the reading (L2 — model original preserved + `readingEdited` flag); author/select lexicons (L3, Firestore, signed-in); merge mode opens the inline assembly seed editor; re-encode; save |
 
-- API: `api/encode-space.ts` — **Anthropic-direct by default** on `ENCODE_MODEL`
-  (defaults to `claude-sonnet-4-6`; not hardcoded). An OpenRouter path exists
-  but is only taken when a request explicitly names a model *and*
-  `OPENROUTER_API_KEY` is set — today only the archived Model lab does that, so
-  a normal encode always goes Anthropic-direct. This is unlike `translate-meme`,
-  which routes through OpenRouter whenever the key is present. Reading is
-  sanitised but never fatal; `cubes` is the only hard requirement. One
-  JSON-reparse retry.
+- API: `api/encode-space.ts` — **OpenRouter whenever `OPENROUTER_API_KEY` is
+  set, Anthropic native as fallback** (aligned with `translate-meme`
+  2026-08-02; before that, encode was Anthropic-direct by default). Model is
+  `ENCODE_MODEL` (defaults to `anthropic/claude-sonnet-4.6`; either id
+  spelling accepted). Responses echo `model` + `provider` for provenance.
+  Reading is sanitised but never fatal; `cubes` is the only hard requirement.
+  One JSON-reparse retry.
 - **Merge mode sends the seed assembly** (2026-07-22): a compact summary of the
   already-placed cubes ({variationId, position, rotation, operatorCount}) rides
   on the request; the server re-serialises it from whitelisted fields into the
@@ -214,7 +213,7 @@ off), selected variation, preview rotation.
 
 | Endpoint | Model / upstream | Notes |
 |---|---|---|
-| `POST /api/encode-space` | Anthropic-direct `ENCODE_MODEL` (default `claude-sonnet-4-6`); OpenRouter only for a request that names a model | 1–7 images; optional `seedAssembly` (merge mode, whitelist-revalidated, ≤300 cubes); reading soft-fails, cubes hard-fail; 1 reparse retry; echoes `model` + `promptVersion` |
+| `POST /api/encode-space` | OpenRouter `ENCODE_MODEL` (default `anthropic/claude-sonnet-4.6`), Anthropic fallback | 1–7 images; optional `seedAssembly` (merge mode, whitelist-revalidated, ≤300 cubes); reading soft-fails, cubes hard-fail; 1 reparse retry; echoes `model` + `promptVersion` |
 | `POST /api/translate-meme` | OpenRouter `anthropic/claude-sonnet-4`, Anthropic fallback | single + two-pass; size caps, SSRF guard, semantic retry; echoes `promptVersion` on two-pass; `TRANSLATION_PASS_MODE` env is documented but **never read** (dead) |
 | `GET /api/fetch-memes` | archthesis Firestore REST | public web API key hardcoded in source (public-read rules) |
 | `GET /api/fetch-meme-by-id` | archthesis Firestore REST | likes→engagement log scaling |

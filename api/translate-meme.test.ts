@@ -147,6 +147,31 @@ describe('parseAndRoute', () => {
     expect(res.json).toHaveBeenCalledWith({ pass1: validPass1, pass2: validPass2, model: 'test-model' });
   });
 
+  it('stamps the serving gateway onto the two-pass payload when provider is given', async () => {
+    const caller = vi.fn().mockResolvedValue(JSON.stringify([validPass1, validPass2]));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'two_pass', 'test-model', null, 'openrouter');
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      pass1: validPass1,
+      pass2: validPass2,
+      model: 'test-model',
+      provider: 'openrouter',
+    });
+  });
+
+  it('never injects provider into the single-pass payload (it is spread into operator params)', async () => {
+    const caller = vi.fn().mockResolvedValue(JSON.stringify(validSingle));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model', null, 'anthropic');
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(validSingle);
+  });
+
   it('retries once with an explicit JSON instruction when the first response is not valid JSON, then succeeds', async () => {
     const caller = vi.fn()
       .mockResolvedValueOnce('sure, here it is: ' + JSON.stringify(validSingle))

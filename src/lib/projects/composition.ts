@@ -99,6 +99,7 @@ export function captureComposition(): CompositionData {
           // but with the photograph now stored at full resolution, the inputs
           // themselves are archived rather than only described.
           ...(encoding.encodingModel ? { model: encoding.encodingModel } : {}),
+          ...(encoding.encodingProvider ? { provider: encoding.encodingProvider } : {}),
           ...(encoding.encodingPromptVersion
             ? { promptVersion: encoding.encodingPromptVersion }
             : {}),
@@ -413,6 +414,7 @@ export async function restoreComposition(
       encodingLexiconId: data.encode.lexiconId ?? null,
       // Model + prompt provenance — absent on pre-provenance compositions.
       encodingModel: data.encode.model ?? null,
+      encodingProvider: data.encode.provider ?? null,
       encodingPromptVersion: data.encode.promptVersion ?? null,
       // Photos: the full-resolution originals come back from Storage when the
       // save carried them (`restoredPhotos`, resolved above). Anything the

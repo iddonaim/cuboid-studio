@@ -71,9 +71,10 @@ provenance fields make mixed-model archives legible, but figures read better
 from one model.
 
 **Step 4 — align.** Encode and translation should normally run the same
-model family/version (`ENCODE_MODEL` gets the Anthropic spelling of what
-`TRANSLATION_MODEL` gets in OpenRouter spelling). Deliberate divergence is
-allowed but must be recorded below with its reason.
+model family/version. Since 2026-08-02 both surfaces route the same way
+(OpenRouter primary, Anthropic fallback), so the same OpenRouter-style id
+works in both `ENCODE_MODEL` and `TRANSLATION_MODEL`. Deliberate divergence
+is allowed but must be recorded below with its reason.
 
 ## Standing rules
 
@@ -91,6 +92,7 @@ allowed but must be recorded below with its reason.
 | Date | Decision | Reason |
 |---|---|---|
 | 2026-07-12 | Model lab built; defaults unchanged (`anthropic/claude-sonnet-4` translation, `claude-sonnet-4-6` encode) pending first probe-set run | Informed decision preferred over blind alignment; Sonnet 4 deprecation makes a decision necessary soon |
+| 2026-08-02 | **Encode transport aligned with translation: OpenRouter primary, Anthropic-native fallback** (`api/encode-space.ts`). Model unchanged (Sonnet 4.6); `ENCODE_MODEL` default respelled `claude-sonnet-4-6` → `anthropic/claude-sonnet-4.6` (either spelling still accepted). Both surfaces now record a `provider` provenance field. | Closes the key-asymmetry footgun (encode 500'd if only the OpenRouter key was set while translation kept working); one gateway rule across the pipeline. Not live-verified at decision time — an encode against a real photo on the preview deployment is the gate before merge. |
 | 2026-07-14 | **Standardized on Sonnet 4.6 across the pipeline.** Translation default moved `anthropic/claude-sonnet-4` → `anthropic/claude-sonnet-4.6` (`api/translate-meme.ts`); encode already ran `claude-sonnet-4-6`. Model lab **archived** — hidden by default behind the `MODEL_LAB_ENABLED` flag / `?modellab=1` URL override (`src/lib/modelLab.ts`), code kept in-tree. | Decision reached ("wisdom from the model lab"); aligning encode + translation on one model satisfies the "one model across the pipeline" principle and retires the deprecated Sonnet 4 default. Comparison UI no longer needed day-to-day but revivable when the next model lands. |
 
 > **Reviving the Model lab.** It is not deleted — the panels, registry

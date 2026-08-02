@@ -61,6 +61,9 @@ export interface EncodeData {
   /** Model id the server reported for this encode. Absent on compositions
    *  saved before provenance capture existed. */
   model?: string;
+  /** Which gateway served the encode — 'openrouter' or 'anthropic' (direct).
+   *  Absent on compositions saved before 2026-08. */
+  provider?: string;
   /** "# version" header of the grammar template that produced this encode.
    *  Absent on older compositions and pre-versioned grammar files. */
   promptVersion?: string;

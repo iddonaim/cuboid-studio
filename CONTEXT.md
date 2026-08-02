@@ -272,7 +272,7 @@ public/thumbnails/    Pre-rendered variation thumbnails
 | `OPENROUTER_API_KEY` | Primary LLM gateway (default model `anthropic/claude-sonnet-4.6`). |
 | `ANTHROPIC_API_KEY` | Legacy fallback, used only when OpenRouter key is absent. |
 | `TRANSLATION_MODEL` | Default model for meme translation (OpenRouter-style id); defaults to `anthropic/claude-sonnet-4.6`. |
-| `ENCODE_MODEL` | Default vision model for photo encoding (Anthropic or OpenRouter-style id, normalized either way); defaults to `claude-sonnet-4-6`. |
+| `ENCODE_MODEL` | Default vision model for photo encoding (Anthropic or OpenRouter-style id, converted per transport); defaults to `anthropic/claude-sonnet-4.6`. |
 | `VITE_MAP_CONTEXT_URL` | URL of the embedded map-context iframe (defaults to the Railway deployment). |
 | `VITE_FIREBASE_*` | Firebase Auth + Firestore + Storage config (Projects/Compositions/photos). Blank → feature hidden; a blank `VITE_FIREBASE_STORAGE_BUCKET` specifically disables full-res photo storage and falls back to thumbnails. |
 | `TRANSLATION_PASS_MODE` | Server-side default pass mode (`single` / `two_pass`); clients override per request. |
@@ -364,6 +364,11 @@ load-bearing claims **except** the following, which this section overrides:
    in the shipped default config while being wrong about the code — which is
    how it survived a verification pass. Same lesson as item 1: a code-verified
    label carries its date and no more.
+   **Superseded 2026-08-02 (same day, deliberate change):** the asymmetry
+   itself was then removed — encode now selects its transport exactly like
+   `translate-meme` (OpenRouter whenever the key is set, Anthropic native as
+   fallback), and both surfaces record a `provider` provenance field. The
+   line-number references above describe the pre-change code.
 5. **Undocumented shipped features** (post-2026-07-03): the editable
    **translation lexicon** system ("Level A": `useTranslationLexiconStore`,
    Firestore `translationLexicons` collection — also covered by

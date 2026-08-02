@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MODEL_OPTIONS, toAnthropicModelId } from './models';
+import { MODEL_OPTIONS, toAnthropicModelId, toOpenRouterModelId } from './models';
 
 describe('toAnthropicModelId', () => {
   it('strips the vendor prefix and converts version dots to dashes', () => {
@@ -24,6 +24,12 @@ describe('toAnthropicModelId', () => {
     expect(toAnthropicModelId('google/gemini-3.5-flash')).toBe('google/gemini-3.5-flash');
   });
 
+  it('round-trips with toOpenRouterModelId for the Claude family', () => {
+    for (const id of ['anthropic/claude-sonnet-4.6', 'anthropic/claude-opus-4.8', 'anthropic/claude-sonnet-5']) {
+      expect(toOpenRouterModelId(toAnthropicModelId(id))).toBe(id);
+    }
+  });
+
   it('registry ids are unique and OpenRouter-shaped', () => {
     const ids = MODEL_OPTIONS.map(m => m.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -37,5 +43,27 @@ describe('toAnthropicModelId', () => {
     // Claude family.
     expect(MODEL_OPTIONS[0].id).toBe('anthropic/claude-sonnet-4.6');
     expect(MODEL_OPTIONS[1].id).toBe('anthropic/claude-sonnet-5');
+  });
+});
+
+describe('toOpenRouterModelId', () => {
+  it('prefixes bare Claude ids and converts version dashes to dots', () => {
+    expect(toOpenRouterModelId('claude-sonnet-4-6')).toBe('anthropic/claude-sonnet-4.6');
+    expect(toOpenRouterModelId('claude-opus-4-8')).toBe('anthropic/claude-opus-4.8');
+    expect(toOpenRouterModelId('claude-haiku-4-5')).toBe('anthropic/claude-haiku-4.5');
+  });
+
+  it('leaves dashless versions alone apart from the prefix', () => {
+    expect(toOpenRouterModelId('claude-sonnet-5')).toBe('anthropic/claude-sonnet-5');
+  });
+
+  it('passes vendor-prefixed ids through unchanged, any vendor', () => {
+    expect(toOpenRouterModelId('anthropic/claude-sonnet-4.6')).toBe('anthropic/claude-sonnet-4.6');
+    expect(toOpenRouterModelId('google/gemini-3.5-flash')).toBe('google/gemini-3.5-flash');
+    expect(toOpenRouterModelId('openai/gpt-5.6-sol')).toBe('openai/gpt-5.6-sol');
+  });
+
+  it('passes non-Claude bare ids through for OpenRouter to reject visibly', () => {
+    expect(toOpenRouterModelId('gpt-4o')).toBe('gpt-4o');
   });
 });

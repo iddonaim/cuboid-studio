@@ -87,3 +87,16 @@ export function toAnthropicModelId(id: string): string {
   const stripped = id.startsWith('anthropic/') ? id.slice('anthropic/'.length) : id;
   return stripped.replace(/(\d)\.(\d)/g, '$1-$2');
 }
+
+/**
+ * Convert an Anthropic API id to OpenRouter's naming: add the vendor prefix
+ * and turn version dashes into dots ("claude-sonnet-4-6" →
+ * "anthropic/claude-sonnet-4.6"). Ids that already carry a vendor prefix
+ * (any vendor) pass through unchanged, as do non-Claude bare ids — OpenRouter
+ * rejects those visibly per request, which is the desired failure mode.
+ */
+export function toOpenRouterModelId(id: string): string {
+  if (id.includes('/')) return id;
+  if (!id.startsWith('claude-')) return id;
+  return 'anthropic/' + id.replace(/(\d)-(\d)/g, '$1.$2');
+}
