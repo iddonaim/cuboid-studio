@@ -122,7 +122,7 @@ Map → Encode → Evolution → Decode.
 | **Interaction** | Tweak cutter parameters before apply (`CutterTweakPanel`); operator history per cube; click any changed cube → record drawer with full reasoning (`TranslationRecord`, `CubeChangeCard`); re-run; edit the translation lexicon (`TranslationLexiconEditor`, shown in two-pass mode) |
 
 - API: `api/translate-meme.ts` — OpenRouter when key present (default
-  `anthropic/claude-sonnet-4`), Anthropic-native fallback. Strong validation:
+  `anthropic/claude-sonnet-4.6`), Anthropic-native fallback. Strong validation:
   input size caps, SSRF guard on meme image URLs, JSON-reparse retry **plus** a
   semantic retry that quotes the exact validation error back to the model.
 - ⚠️ What apply actually does: **one boolean subtraction of the cutter from the
@@ -210,7 +210,7 @@ off), selected variation, preview rotation.
 | Endpoint | Model / upstream | Notes |
 |---|---|---|
 | `POST /api/encode-space` | Anthropic-native `claude-sonnet-4-6` | 1–7 images; optional `seedAssembly` (merge mode, whitelist-revalidated, ≤300 cubes); reading soft-fails, cubes hard-fail; 1 reparse retry; echoes `model` + `promptVersion` |
-| `POST /api/translate-meme` | OpenRouter `anthropic/claude-sonnet-4`, Anthropic fallback | single + two-pass; size caps, SSRF guard, semantic retry; echoes `promptVersion` on two-pass; `TRANSLATION_PASS_MODE` env is documented but **never read** (dead) |
+| `POST /api/translate-meme` | OpenRouter `anthropic/claude-sonnet-4.6`, Anthropic fallback | single + two-pass; size caps, SSRF guard, semantic retry; echoes `promptVersion` on two-pass; `TRANSLATION_PASS_MODE` env is documented but **never read** (dead) |
 | `GET /api/fetch-memes` | archthesis Firestore REST | public web API key hardcoded in source (public-read rules) |
 | `GET /api/fetch-meme-by-id` | archthesis Firestore REST | likes→engagement log scaling |
 | `GET /api/geocode` | Nominatim | UA set server-side |
