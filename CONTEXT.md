@@ -271,6 +271,8 @@ public/thumbnails/    Pre-rendered variation thumbnails
 |----------|---------|
 | `OPENROUTER_API_KEY` | Primary LLM gateway (default model `anthropic/claude-sonnet-4.6`). |
 | `ANTHROPIC_API_KEY` | Legacy fallback, used only when OpenRouter key is absent. |
+| `TRANSLATION_MODEL` | Default model for meme translation (OpenRouter-style id); defaults to `anthropic/claude-sonnet-4.6`. |
+| `ENCODE_MODEL` | Default vision model for photo encoding (Anthropic or OpenRouter-style id, normalized either way); defaults to `claude-sonnet-4-6`. |
 | `VITE_MAP_CONTEXT_URL` | URL of the embedded map-context iframe (defaults to the Railway deployment). |
 | `VITE_FIREBASE_*` | Firebase Auth + Firestore + Storage config (Projects/Compositions/photos). Blank → feature hidden; a blank `VITE_FIREBASE_STORAGE_BUCKET` specifically disables full-res photo storage and falls back to thumbnails. |
 | `TRANSLATION_PASS_MODE` | Server-side default pass mode (`single` / `two_pass`); clients override per request. |
@@ -343,6 +345,25 @@ load-bearing claims **except** the following, which this section overrides:
    3 rotation).
 4. **Encode uses the Anthropic-native API with `claude-sonnet-4-6` hardcoded** —
    only `translate-meme` goes through OpenRouter.
+   ⚠ **False as written — corrected 2026-08-02.** `api/encode-space.ts` does
+   have an OpenRouter path: it reads `OPENROUTER_API_KEY` (:125) and POSTs to
+   `openrouter.ai/api/v1/chat/completions` (:323). The model is not hardcoded
+   either — it is `ENCODE_MODEL` (:11), which merely *defaults* to
+   `claude-sonnet-4-6`.
+   What is true, and what this item was reaching for: **encode is
+   Anthropic-direct by default, unlike `translate-meme`.** The two surfaces
+   branch differently. `translate-meme` is unconditional — key set → OpenRouter
+   (`api/translate-meme.ts`:272), Anthropic only when the key is absent. Encode
+   takes OpenRouter only when a request *names a model* **and** a key is set
+   (:131); a normal encode sends no model, so it goes Anthropic-direct on
+   `ENCODE_MODEL` even with an OpenRouter key configured (:373 — "the default
+   encode path and the no-OpenRouter fallback", :358).
+   Today the only caller that names a model is the archived Model lab
+   (`useEncodingStore.ts`:597/607, gated by `isModelLabEnabled()`); the Encode
+   button itself (:725/735) never does. So the claim matched observed behavior
+   in the shipped default config while being wrong about the code — which is
+   how it survived a verification pass. Same lesson as item 1: a code-verified
+   label carries its date and no more.
 5. **Undocumented shipped features** (post-2026-07-03): the editable
    **translation lexicon** system ("Level A": `useTranslationLexiconStore`,
    Firestore `translationLexicons` collection — also covered by
