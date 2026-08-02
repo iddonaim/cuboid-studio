@@ -162,6 +162,16 @@ describe('parseAndRoute', () => {
     });
   });
 
+  it('stamps promptVersion onto the single-pass payload when the prompt file declares one — not coupled to pass mode', async () => {
+    const caller = vi.fn().mockResolvedValue(JSON.stringify(validSingle));
+    const res = fakeRes();
+
+    await parseAndRoute(res, caller, 'the user message', 'single', 'test-model', '3');
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ...validSingle, promptVersion: '3' });
+  });
+
   it('never injects provider into the single-pass payload (it is spread into operator params)', async () => {
     const caller = vi.fn().mockResolvedValue(JSON.stringify(validSingle));
     const res = fakeRes();
