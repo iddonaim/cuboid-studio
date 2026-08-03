@@ -12,6 +12,15 @@
 > and assembly editing / Pataphysical are no longer top-level tabs. The translation pipeline
 > itself (§3 onward) is still accurate. For the current, reconciled state of the
 > app, see [`CONTEXT.md`](CONTEXT.md).
+>
+> **Model ids in this document are April 2026 values and are not maintained.**
+> Every `anthropic/claude-sonnet-4` below (§2 tech stack, §4.1a, §4.1c) was the
+> default when this spec was written. The live default moved to
+> `anthropic/claude-sonnet-4.6` on 2026-07-14; the authoritative value is
+> `DEFAULT_MODEL` in `api/translate-meme.ts`, overridable per deployment via
+> the `TRANSLATION_MODEL` env var, and the reasoning is in
+> [`docs/MODEL_STRATEGY.md`](docs/MODEL_STRATEGY.md). Read the ids below as a
+> record of what was specified in April, not as current configuration.
 
 ---
 
