@@ -121,7 +121,7 @@ export const ArchthesisBrowser: React.FC<ArchthesisBrowserProps> = ({ open, onCl
       onClick={onClose}
     >
       <div
-        className="bg-ink-100 rounded-xl border border-ink-200 w-[90vw] max-w-[800px] max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-ink-100 rounded-xl border border-ink-200 w-[90vw] max-w-[800px] max-h-[calc(var(--app-vh)*0.85)] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

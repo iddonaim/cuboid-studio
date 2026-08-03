@@ -8,8 +8,6 @@ import {
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 
-const TOP_BAR = 42;
-
 const MODE_LABELS: Record<AppMode, string> = {
   map:       'Map',
   encoding:  'Encode',
@@ -72,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mode, isOpen, children, export
       className="absolute left-0 z-40 flex flex-col"
       data-tour="sidebar"
       style={{
-        top: TOP_BAR,
+        top: 'var(--topbar-h)',
         bottom: 0,
         width,
         minWidth: SIDEBAR_MIN_WIDTH,

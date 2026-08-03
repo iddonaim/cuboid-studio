@@ -23,7 +23,7 @@ export const EncodingResultPanel: React.FC<EncodingResultPanelProps> = ({ docked
 
   const wrapperCls = docked
     ? 'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]'
-    : `absolute right-4 z-20 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[260px] ${isMobile ? 'top-4' : 'top-[42px]'}`;
+    : `absolute right-4 z-20 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[260px] ${isMobile ? 'top-4' : 'top-[var(--topbar-h)]'}`;
 
   if (!showPanel) return null;
 

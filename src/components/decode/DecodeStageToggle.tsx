@@ -32,7 +32,7 @@ export const DecodeStageToggle: React.FC = () => {
       onClick={() => setStageView('draw')}
       title="Back to the notation sheet"
       className="absolute left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-1.5 h-9 pl-3 pr-4 rounded-full border-0 bg-primary hover:bg-primary/85 text-white text-[13px] font-semibold shadow-[0_3px_12px_rgba(35,33,24,0.28)] transition-colors duration-100 cursor-pointer"
-      style={{ top: isMobile ? 12 : 'calc(42px + env(safe-area-inset-top, 0px) + 12px)' }}
+      style={{ top: isMobile ? 12 : 'calc(var(--topbar-h) + 12px)' }}
     >
       <ArrowLeft size={15} strokeWidth={2.25} />
       Notation sheet
