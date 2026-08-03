@@ -132,10 +132,19 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
             // insets do NOT stretch it (unlike a normal block), so without an
             // explicit size it collapses to its intrinsic 300x150 default and
             // the embedded app renders clipped in the top-left. Size it
-            // explicitly instead — full width, and full height minus the 42px
-            // top offset so the bottom lands exactly at the viewport edge
-            // (plain h-full would overflow by those 42px).
-            'absolute top-[42px] left-0 w-full h-[calc(100%-42px)] border-0 bg-white'
+            // explicitly instead — see the style prop below.
+            'absolute left-0 w-full border-0 bg-white'
+      }
+      // Full width, and full height minus the top bar so the bottom lands
+      // exactly at the viewport edge (plain h-full would overflow by the bar).
+      // 100% here is the app root, which is the *visible* viewport tall — on
+      // iOS a viewport-unit height would have run the iframe off the bottom of
+      // the screen behind the browser toolbar, taking the embedded map app's
+      // own bottom controls with it.
+      style={
+        isMobile
+          ? undefined
+          : { top: 'var(--topbar-h)', height: 'calc(100% - var(--topbar-h))' }
       }
       // Permissions Policy: a cross-origin iframe gets NO gated API unless the
       // embedder delegates it here, and the embedded app can't opt itself in.

@@ -7,7 +7,7 @@ import type { OperatorRecord } from '../../lib/operators/types';
 import { ContextOpacitySlider } from '../meme/ContextOpacitySlider';
 
 const floatingCls =
-  'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[70vh] overflow-y-auto';
+  'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[calc(var(--app-vh)*0.70)] overflow-y-auto';
 const dockedCls =
   'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]';
 

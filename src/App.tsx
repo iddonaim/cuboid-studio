@@ -289,15 +289,15 @@ const AppInner: React.FC = () => {
 
   if (isMobile) {
     return (
-      // mobile-root uses 100dvh (dynamic viewport height) for iOS Safari compatibility.
+      // app-root is exactly the visible viewport tall (see --app-vh in index.css).
       // Flex-column layout: TopBar spacer → viewport (flex-1) → BottomSheet.
-      <div className="mobile-root flex flex-col w-screen">
+      <div className="app-root flex flex-col">
         {/* TopBar: fixed at top, mobile variant shows logo + cube count only */}
         <TopBar showModeTabs={false} />
 
-        {/* Spacer because TopBar is position:fixed and doesn't occupy flow —
-            must match the TopBar's own height calc (42px + top safe area). */}
-        <div style={{ height: 'calc(42px + env(safe-area-inset-top, 0px))', flexShrink: 0 }} aria-hidden />
+        {/* Spacer because TopBar is position:fixed and doesn't occupy flow.
+            Same --topbar-h the bar sizes itself with, so the two can't drift. */}
+        <div style={{ height: 'var(--topbar-h)', flexShrink: 0 }} aria-hidden />
 
         {/* Map controls (view switch + Encode handoff). Its own row in the
             column, so it pushes the map down instead of covering the embedded
@@ -386,8 +386,12 @@ const AppInner: React.FC = () => {
   }
 
   // ── Desktop layout ─────────────────────────────────────────────────────────
+  // Also the iPad layout: useIsMobile only switches to the phone layout below
+  // 640px, so a tablet lands here and needs the same visible-viewport height
+  // (app-root) the phone branch uses — h-screen/100vh cropped the bottom of
+  // the UI behind iOS Safari's and Chrome's toolbars.
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
+    <div className="app-root relative overflow-hidden">
       {/* TopBar: fixed glass bar, full width */}
       <TopBar />
 

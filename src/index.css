@@ -70,6 +70,30 @@ img {
   input, select, textarea { font-size: 16px; }
 }
 
+/* ── Viewport metrics ──────────────────────────────────────────────────────
+ * --app-vh — the height of the viewport you can actually SEE. On iOS (iPad
+ * exactly as much as iPhone) `100vh` means "the viewport with the browser
+ * chrome hidden", which is taller than the window whenever the address bar
+ * and tab strip are on screen. An app root sized to 100vh therefore hangs off
+ * the bottom of the display behind Safari's/Chrome's toolbar, and everything
+ * anchored to that bottom edge — the sidebar's lower rows, the help pill, the
+ * view gizmo, the map iframe — is pushed out of reach. `100dvh` tracks the
+ * visible box instead (iOS 15.4+); the plain `100vh` above it is the fallback
+ * for older iOS, where the old cropping remains.
+ *
+ * --topbar-h — the TopBar's height including the status-bar inset it pads
+ * itself with. Everything that sits under the bar offsets by this, so the
+ * number lives in one place instead of being re-typed as a literal 42 in a
+ * dozen components. env() is 0 in a normal browser tab and on desktop; it
+ * only grows in an installed standalone PWA on a notched device. */
+:root {
+  --app-vh: 100vh;
+  --topbar-h: calc(42px + env(safe-area-inset-top, 0px));
+}
+@supports (height: 100dvh) {
+  :root { --app-vh: 100dvh; }
+}
+
 /* html is the actual scrolling element on iOS/iPadOS Safari in standards mode —
  * overflow:hidden on body alone does not stop the page from rubber-band
  * scrolling there, which can drag position:fixed bars out of view. Lock both,
@@ -93,21 +117,20 @@ body {
   overflow: hidden;
 }
 
-/* Mobile root: use dynamic viewport height so the layout fits exactly
- * between Safari's address bar and toolbar on real iOS devices.
- * 100dvh auto-adjusts as chrome shows/hides (iOS 15.4+).
- * 100vh is the fallback for older iOS — still broken there but acceptable. */
-.mobile-root {
-  height: 100vh;
-  height: 100dvh;
+/* App root — both layouts, phone and desktop/tablet. Sized to the visible
+ * viewport so the layout ends where the screen ends on iOS, instead of
+ * running on behind the browser toolbar. */
+.app-root {
+  width: 100%;
+  height: var(--app-vh);
 }
 
-/* Bottom-sheet snap heights. dvh (with vh fallback for older iOS) so the
- * half/full states track the *visible* viewport as Safari's chrome
- * collapses, instead of the taller layout viewport. */
+/* Bottom-sheet snap heights, off the same visible-viewport measure so the
+ * half/full states track Safari's chrome instead of the taller layout
+ * viewport. */
 .sheet-h-collapsed { height: 56px; }
-.sheet-h-half { height: 50vh; height: 50dvh; }
-.sheet-h-full { height: 88vh; height: 88dvh; }
+.sheet-h-half { height: calc(var(--app-vh) * 0.5); }
+.sheet-h-full { height: calc(var(--app-vh) * 0.88); }
 
 canvas { display: block; }
 

@@ -392,10 +392,10 @@ export const SitesMapView: React.FC = () => {
   // sibling overlays like the Analysis/My-sites toggle.
   const rootClass = isMobile
     ? 'absolute inset-0 bg-slate-950 isolate'
-    : 'absolute top-[42px] left-0 right-0 bottom-0 bg-slate-950 isolate';
+    : 'absolute left-0 right-0 bottom-0 bg-slate-950 isolate';
 
   return (
-    <div className={rootClass}>
+    <div className={rootClass} style={isMobile ? undefined : { top: 'var(--topbar-h)' }}>
       <div ref={mapContainerRef} className="absolute inset-0" />
 
       {/* Status line: loading / error / empty */}
@@ -561,7 +561,7 @@ export const SitesMapView: React.FC = () => {
         <div className="absolute bottom-6 left-3 z-[1000] max-w-[88%]">
           {unlocatedOpen ? (
             <div
-              className="w-[280px] rounded-md border border-slate-700 shadow-2xl flex flex-col max-h-[50vh]"
+              className="w-[280px] rounded-md border border-slate-700 shadow-2xl flex flex-col max-h-[calc(var(--app-vh)*0.50)]"
               style={{ background: 'rgba(15, 23, 42, 0.96)' }}
             >
               <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">

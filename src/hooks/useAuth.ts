@@ -18,6 +18,11 @@ import {
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../lib/firebase';
 
+/** How long to wait for Firebase's first auth state before showing the
+ *  signed-out UI anyway. Long enough for a cold start on a slow connection,
+ *  short enough that a wedged storage layer doesn't hide sign-in for good. */
+const AUTH_READY_TIMEOUT_MS = 8000;
+
 interface UseAuthResult {
   user: User | null;
   loading: boolean;
@@ -37,11 +42,33 @@ export function useAuth(): UseAuthResult {
       setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsubscribe;
+    // `loading` gates the entire account cluster — AuthControls renders
+    // nothing at all while it is true — so it has to resolve even when
+    // Firebase cannot answer. Auth persistence sits on IndexedDB, which
+    // WebKit (every iOS/iPadOS browser, Chrome included) restricts in Private
+    // Browsing and Lockdown Mode; when it's unavailable the observer can
+    // error, or simply never call back. Either way the old code left loading
+    // pinned true forever and the "Sign in" button never appeared.
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (u) => {
+        setUser(u);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Firebase auth state listener failed:', err);
+        setUser(null);
+        setLoading(false);
+      },
+    );
+    // Belt and braces for the "never calls back" case: fall through to the
+    // signed-out UI rather than hiding the account controls indefinitely. A
+    // late-arriving auth state still flips the UI when it lands.
+    const timer = setTimeout(() => setLoading(false), AUTH_READY_TIMEOUT_MS);
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {

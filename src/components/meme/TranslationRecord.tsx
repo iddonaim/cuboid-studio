@@ -273,7 +273,7 @@ export const RecordViewerDrawer: React.FC = () => {
     <div
       className="fixed right-0 z-[60] flex flex-col bg-card border-l border-ink-200 shadow-[-8px_0_28px_hsl(45_9%_13%/0.12)]"
       style={{
-        top: 'calc(42px + env(safe-area-inset-top, 0px))',
+        top: 'var(--topbar-h)',
         bottom: 0,
         width: 480,
         maxWidth: '94vw',

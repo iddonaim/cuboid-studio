@@ -275,7 +275,7 @@ export const OnboardingModal: React.FC = () => {
       onClick={e => { if (e.target === e.currentTarget) close(); }}
     >
       <div
-        className="w-full max-w-[680px] max-h-[88vh] flex flex-col rounded-xl overflow-hidden"
+        className="w-full max-w-[680px] max-h-[calc(var(--app-vh)*0.88)] flex flex-col rounded-xl overflow-hidden"
         style={{
           background: 'hsl(var(--card))',
           border: '1px solid hsl(var(--border))',
