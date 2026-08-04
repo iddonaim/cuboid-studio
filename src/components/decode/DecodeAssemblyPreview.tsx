@@ -10,6 +10,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
 import { useMemeStore } from '../../store/useMemeStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { CubeWithCuts } from '../viewport/CubeWithCuts';
 
 /** Where the preview looks from before the 3D viewport has been used. */
@@ -102,6 +103,7 @@ export const DecodeAssemblyPreview: React.FC = () => {
   const orthographic = useAppStore(s => s.orthographic);
   const lastViewpoint = useAppStore(s => s.lastViewpoint);
   const clippingPlanes = useClippingPlanes();
+  const isMobile = useIsMobile();
 
   const bounds = useMemo(
     () => assemblyBoundsFromPositions(placedCubes.map(c => c.position)),
@@ -128,7 +130,11 @@ export const DecodeAssemblyPreview: React.FC = () => {
       onClick={() => setStageView('model')}
       title="Open the 3D assembly — orbit and section it there, and this follows"
       aria-label="Open the 3D assembly"
-      className="absolute bottom-14 right-3 z-10 h-[168px] w-[224px] overflow-hidden rounded-lg border border-ink-200 bg-ink-50/90 p-0 shadow-[0_4px_20px_hsl(45_9%_13%/0.12)] backdrop-blur-sm cursor-pointer hover:border-ink-300"
+      // Smaller on a phone: 224px is 57% of a 390px screen, and at that size it
+      // both swallowed the sheet it sits on and collided with the help pill.
+      className={`absolute bottom-14 right-3 z-10 overflow-hidden rounded-lg border border-ink-200 bg-ink-50/90 p-0 shadow-[0_4px_20px_hsl(45_9%_13%/0.12)] backdrop-blur-sm cursor-pointer hover:border-ink-300 ${
+        isMobile ? 'h-[105px] w-[140px]' : 'h-[168px] w-[224px]'
+      }`}
     >
       <Canvas
         // The sheet owns the pointer; the preview is a picture you click.
@@ -162,9 +168,13 @@ export const DecodeAssemblyPreview: React.FC = () => {
           );
         })}
       </Canvas>
-      <span className="pointer-events-none absolute bottom-1 right-2 font-mono text-[9px] uppercase tracking-wider text-ink-500">
-        {placedCubes.length} cubes
-      </span>
+      {/* Dropped on the phone: at 140px the caption lands on the assembly
+          itself, and the TopBar already carries the same count. */}
+      {!isMobile && (
+        <span className="pointer-events-none absolute bottom-1 right-2 font-mono text-[9px] uppercase tracking-wider text-ink-500">
+          {placedCubes.length} cubes
+        </span>
+      )}
     </button>
   );
 };

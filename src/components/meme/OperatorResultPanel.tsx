@@ -2,10 +2,9 @@ import React from 'react';
 import { useMemeStore } from '../../store/useMemeStore';
 import type { TranslationRecordView } from '../../lib/operators/recordView';
 import { TranslationRecordSummary } from './TranslationRecord';
+import { MobileCanvasCard } from '../layout/MobileCanvasCard';
 import { Button } from '@/components/ui/button';
 
-const floatingCls =
-  'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[calc(var(--app-vh)*0.70)] overflow-y-auto';
 const dockedCls =
   'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]';
 
@@ -78,11 +77,8 @@ export const OperatorResultPanel: React.FC<{ docked?: boolean }> = ({ docked = f
     snapshotCutter: (targetCubeId ? translation?.cutterGeometry : lastCutterGeometry) ?? null,
   };
 
-  return (
-    <div className={docked ? dockedCls : floatingCls}>
-      <p className="text-ink-500 text-[10px] uppercase tracking-wider m-0 mb-2">
-        Latest translation
-      </p>
+  const body = (
+    <>
       <TranslationRecordSummary view={view} />
 
       {operators.length > 0 && (
@@ -93,6 +89,25 @@ export const OperatorResultPanel: React.FC<{ docked?: boolean }> = ({ docked = f
           Revert Last
         </Button>
       )}
+    </>
+  );
+
+  // Phone: a chip that opens into a drawer, rather than a 280px Inspector card
+  // floated over a 390px canvas. See MobileCanvasCard.
+  if (!docked) {
+    return (
+      <MobileCanvasCard label="Latest translation" detail={lastResult.operator}>
+        {body}
+      </MobileCanvasCard>
+    );
+  }
+
+  return (
+    <div className={dockedCls}>
+      <p className="text-ink-500 text-[10px] uppercase tracking-wider m-0 mb-2">
+        Latest translation
+      </p>
+      {body}
     </div>
   );
 };

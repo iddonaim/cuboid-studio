@@ -5,9 +5,8 @@ import { useRecordViewerStore } from '../../store/useRecordViewerStore';
 import { viewFromOperatorRecord } from '../../lib/operators/recordView';
 import type { OperatorRecord } from '../../lib/operators/types';
 import { ContextOpacitySlider } from '../meme/ContextOpacitySlider';
+import { MobileCanvasCard } from '../layout/MobileCanvasCard';
 
-const floatingCls =
-  'absolute top-4 right-4 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[280px] max-h-[calc(var(--app-vh)*0.70)] overflow-y-auto';
 const dockedCls =
   'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]';
 
@@ -54,26 +53,14 @@ export const CubeChangeCard: React.FC<{ docked?: boolean }> = ({ docked = false 
     );
   };
 
-  return (
-    <div className={docked ? dockedCls : floatingCls}>
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <div>
-          <p className="text-ink-900 text-sm m-0">Cube changes</p>
-          <p className="text-ink-500 text-[11px] m-0">
-            {cube.variationId} · {records.length === 0
-              ? 'unchanged'
-              : `${records.length} ${records.length === 1 ? 'change' : 'changes'}`}
-          </p>
-        </div>
-        <button
-          onClick={() => setTargetCubeId(null)}
-          title="Close"
-          className="text-ink-400 hover:text-ink-700 text-[14px] leading-none bg-transparent border-0 cursor-pointer px-1"
-        >
-          ×
-        </button>
-      </div>
+  const subtitle = `${cube.variationId} · ${
+    records.length === 0
+      ? 'unchanged'
+      : `${records.length} ${records.length === 1 ? 'change' : 'changes'}`
+  }`;
 
+  const body = (
+    <>
       {/* Fade the rest of the composition while this cube is the subject */}
       <div className="mb-2">
         <ContextOpacitySlider />
@@ -117,6 +104,39 @@ export const CubeChangeCard: React.FC<{ docked?: boolean }> = ({ docked = false 
           ))}
         </div>
       )}
+    </>
+  );
+
+  // Phone: a chip that opens into a drawer, rather than a 280px Inspector card
+  // floated over a 390px canvas. See MobileCanvasCard.
+  if (!docked) {
+    return (
+      <MobileCanvasCard
+        label="Cube changes"
+        detail={subtitle}
+        onDismiss={() => setTargetCubeId(null)}
+      >
+        {body}
+      </MobileCanvasCard>
+    );
+  }
+
+  return (
+    <div className={dockedCls}>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <div>
+          <p className="text-ink-900 text-sm m-0">Cube changes</p>
+          <p className="text-ink-500 text-[11px] m-0">{subtitle}</p>
+        </div>
+        <button
+          onClick={() => setTargetCubeId(null)}
+          title="Close"
+          className="text-ink-400 hover:text-ink-700 text-[14px] leading-none bg-transparent border-0 cursor-pointer px-1"
+        >
+          ×
+        </button>
+      </div>
+      {body}
     </div>
   );
 };

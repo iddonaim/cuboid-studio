@@ -1,15 +1,14 @@
 import React from 'react';
 import { useEncodingStore } from '../../store/useEncodingStore';
-import { useIsMobile } from '../../hooks/useIsMobile';
 import { remixDecisions } from '../../lib/encoding/remixDecisions';
+import { MobileCanvasCard } from '../layout/MobileCanvasCard';
 
 interface EncodingResultPanelProps {
-  /** Render as a card in the desktop Inspector rail instead of floating. */
+  /** Render as a card in the desktop Inspector rail instead of the phone's canvas card. */
   docked?: boolean;
 }
 
 export const EncodingResultPanel: React.FC<EncodingResultPanelProps> = ({ docked = false }) => {
-  const isMobile = useIsMobile();
   const encodingReasoning = useEncodingStore(s => s.encodingReasoning);
   const isEncoding = useEncodingStore(s => s.isEncoding);
   const seedCubes = useEncodingStore(s => s.seedCubes);
@@ -21,42 +20,38 @@ export const EncodingResultPanel: React.FC<EncodingResultPanelProps> = ({ docked
   const showPanel = isEncoding || hasEncodeResult;
   const isReencoding = isEncoding && hasEncodeResult;
 
-  const wrapperCls = docked
-    ? 'pointer-events-auto w-full bg-card border border-ink-200 rounded-lg p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]'
-    : `absolute right-4 z-20 bg-ink-100 border border-ink-200 rounded-lg p-4 w-[260px] ${isMobile ? 'top-4' : 'top-[var(--topbar-h)]'}`;
-
   if (!showPanel) return null;
 
   if (isEncoding && !hasEncodeResult) {
-    return (
-      <div className={wrapperCls}>
-        <p className="text-ink-600 text-[13px] m-0">Encoding space...</p>
+    return docked ? (
+      <div className="pointer-events-auto w-full rounded-lg border border-ink-200 bg-card p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)]">
+        <p className="m-0 text-[13px] text-ink-600">Encoding space...</p>
       </div>
+    ) : (
+      <MobileCanvasCard label="Encoding space…" expandable={false} />
     );
   }
 
-  return (
-    <div
-      className={`${wrapperCls} ${docked ? '' : 'max-h-[min(70vh,480px)] overflow-y-auto'} ${isReencoding ? 'opacity-60' : ''}`}
-    >
+  // Shared between both layouts — only the frame around it differs.
+  const body = (
+    <>
       {isReencoding && (
-        <p className="text-primary text-[11px] m-0 mb-2">Updating interpretation…</p>
+        <p className="m-0 mb-2 text-[11px] text-primary">Updating interpretation…</p>
       )}
-      <p className="text-ink-900 text-sm mb-2">Space Encoded</p>
       {encodingReasoning ? (
-        <div className="p-2 bg-ink-100 border border-ink-200 rounded text-ink-700 text-[12px] leading-relaxed italic">
+        <div className="rounded border border-ink-200 bg-ink-100 p-2 text-[12px] italic leading-relaxed text-ink-700">
           {encodingReasoning}
           {/* Merge adds to the seed, so "preserved · added" describes it. A
               remix rewrites the seed — counting all of it as preserved and the
               whole result as added is simply untrue, so it reports what the
               model actually decided. */}
           {mode === 'merge' && seedCubes.length > 0 && (
-            <p className="text-ink-600 text-[12px] mt-1.5 mb-0 not-italic">
+            <p className="mb-0 mt-1.5 text-[12px] not-italic text-ink-600">
               {seedCubes.length} preserved · {encodedCubes?.length ?? 0} added
             </p>
           )}
           {mode === 'remix' && remixResultReplacesSeed && encodedCubes && (
-            <p className="text-ink-600 text-[12px] mt-1.5 mb-0 not-italic">
+            <p className="mb-0 mt-1.5 text-[12px] not-italic text-ink-600">
               {(() => {
                 const d = remixDecisions(encodedCubes, seedCubes);
                 return `${d.carried.length} carried · ${d.transplanted.length} transplanted · ${d.added.length} new · ${d.discarded.length} discarded`;
@@ -65,8 +60,30 @@ export const EncodingResultPanel: React.FC<EncodingResultPanelProps> = ({ docked
           )}
         </div>
       ) : (
-        <p className="text-ink-500 text-[12px] m-0">No interpretation text returned.</p>
+        <p className="m-0 text-[12px] text-ink-500">No interpretation text returned.</p>
       )}
+    </>
+  );
+
+  if (!docked) {
+    return (
+      <MobileCanvasCard
+        label="Space encoded"
+        detail={isReencoding ? 'updating…' : undefined}
+      >
+        {body}
+      </MobileCanvasCard>
+    );
+  }
+
+  return (
+    <div
+      className={`pointer-events-auto w-full rounded-lg border border-ink-200 bg-card p-4 shadow-[0_4px_20px_hsl(45_9%_13%/0.08)] ${
+        isReencoding ? 'opacity-60' : ''
+      }`}
+    >
+      <p className="mb-2 text-sm text-ink-900">Space Encoded</p>
+      {body}
     </div>
   );
 };
