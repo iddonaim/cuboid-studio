@@ -58,6 +58,7 @@ export const HelpBar: React.FC = () => {
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
   const decodeStageView  = useDecodeStore(s => s.stageView);
   const hasCubes         = useBuilderStore(s => s.placedCubes.length > 0);
+  const canvasHints      = useAppStore(s => s.canvasHints);
   const isMobile         = useIsMobile();
 
   const key: HelpKey =
@@ -77,6 +78,9 @@ export const HelpBar: React.FC = () => {
     const timer = setTimeout(() => setFaded(true), TOUCH_HINT_MS);
     return () => clearTimeout(timer);
   }, [key, isMobile]);
+
+  // Switched off in Preferences — the default at phone widths.
+  if (!canvasHints) return null;
 
   return (
     <div

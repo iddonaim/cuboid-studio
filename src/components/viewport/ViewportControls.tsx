@@ -32,6 +32,7 @@ const OrbitTargetSync: React.FC<{ center: THREE.Vector3 }> = ({ center }) => {
  */
 export const ViewportControls: React.FC<SceneFlags> = (flags) => {
   const orthographic = useAppStore(s => s.orthographic);
+  const viewCube = useAppStore(s => s.viewCube);
   const setLastViewpoint = useAppStore(s => s.setLastViewpoint);
   const camera = useThree(s => s.camera);
   const controls = useThree(s => s.controls) as OrbitControlsImpl | null;
@@ -99,14 +100,18 @@ export const ViewportControls: React.FC<SceneFlags> = (flags) => {
         onEnd={recordViewpoint}
       />
       <OrbitTargetSync center={bounds.center} />
-      <GizmoHelper
-        alignment="bottom-right"
-        margin={[72, 92]}
-        onTarget={() => centerRef.current.clone()}
-        onUpdate={handleGizmoUpdate}
-      >
-        <GizmoViewcube />
-      </GizmoHelper>
+      {/* Off by default at phone widths, where it parks in a corner of an
+          already small canvas — Preferences turns it back on. */}
+      {viewCube && (
+        <GizmoHelper
+          alignment="bottom-right"
+          margin={[72, 92]}
+          onTarget={() => centerRef.current.clone()}
+          onUpdate={handleGizmoUpdate}
+        >
+          <GizmoViewcube />
+        </GizmoHelper>
+      )}
     </>
   );
 };
