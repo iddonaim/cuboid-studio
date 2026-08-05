@@ -57,8 +57,8 @@ const SLOT_ICONS: Record<NavSlot['key'], React.FC> = {
 /**
  * Switching tabs is only ever a change of mode. It used to also force the
  * sheet open to half height, which discarded a deliberate collapse and took
- * half the canvas with it; the sheet now remembers its height per mode and
- * decides for itself (see BottomSheet).
+ * half the canvas with it. The sheet moves when you drag its handle, and
+ * otherwise stays put.
  */
 export const MobileTabBar: React.FC = () => {
   const activeMode    = useAppStore(s => s.activeMode);

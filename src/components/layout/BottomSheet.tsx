@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { useAppStore, AppMode } from '../../store/useAppStore';
+import React, { useRef, useState } from 'react';
+import { useAppStore } from '../../store/useAppStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { MobileTabBar, SheetHeight } from './MobileTabBar';
@@ -74,25 +74,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
 
-  // ── Sheet height, remembered per mode ──────────────────────────────────────
-  // Tapping a tab used to snap the sheet back to half however you had left it,
-  // so "get out of the way, I want to see the model" was undone by the very
-  // next tab tap — and half the canvas went with it. Each mode now keeps the
-  // height you last left it at. A mode you haven't opened yet still starts at
-  // half: that is where its controls are, and they should be visible on
-  // arrival. Session-only, deliberately — this is transient framing, not a
-  // preference worth carrying into tomorrow.
-  const [heightByMode, setHeightByMode] = useState<Partial<Record<AppMode, SheetHeight>>>({});
-  const heightState = heightByMode[activeMode] ?? 'half';
-  const setHeightState = useCallback(
-    (next: SheetHeight | ((prev: SheetHeight) => SheetHeight)) => {
-      setHeightByMode(prev => ({
-        ...prev,
-        [activeMode]: typeof next === 'function' ? next(prev[activeMode] ?? 'half') : next,
-      }));
-    },
-    [activeMode],
-  );
+  // The handle is the only thing that moves the sheet. Tapping a tab used to
+  // force it open to half height as well, which undid a deliberate collapse
+  // and took half the canvas with it on every tab switch.
+  const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
 
   const effectiveHeightState = forceCollapsed ? 'collapsed' : heightState;
 
