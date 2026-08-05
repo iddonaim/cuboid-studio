@@ -25,9 +25,9 @@ export const DemoExportButton: React.FC = () => {
       downloadRawDemoBundle(bundle);
       const rec = bundle.recordings;
       const recLine = rec
-        ? `Recording included: ${rec.geocode.length} address(es), ${rec.encodes.length} ` +
-          `photo encode(s), ${rec.evolveRounds.length} evolve round(s), ${rec.twoPass.length} ` +
-          `live translation(s). `
+        ? `Recording included: ${rec.geocode.length} address(es), ${rec.pois?.length ?? 0} ` +
+          `POI lookup(s), ${rec.encodes.length} photo encode(s), ${rec.evolveRounds.length} ` +
+          `evolve round(s), ${rec.twoPass.length} live translation(s). `
         : 'No ?demoRecord session found in this browser. ';
       setMessage(
         `Exported ${bundle.compositions.length} composition(s), ${bundle.pins.length} pin(s), ` +
