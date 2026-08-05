@@ -6,12 +6,12 @@ import {
   recordEncode,
   recordEvolveRound,
   recordTwoPass,
-  recordPois,
+  recordSiteAnalysis,
   hashImageBase64,
   metersBetween,
 } from './recorder';
 import type { EvolutionCandidate } from '../../store/useEvolutionStore';
-import type { NearbyPoisData } from '../storage/siteContext';
+import type { SiteContextData } from '../storage/siteContext';
 
 // Node test env has no localStorage — provide a minimal in-memory stand-in.
 const store = new Map<string, string>();
@@ -26,21 +26,13 @@ beforeEach(() => {
 
 const geo = { query: 'חיים לבנון 30', lat: 32.1064, lng: 34.8006, displayName: 'חיים לבנון, תל אביב' };
 
-/** POI payload carrying `n` transit stops, so captures are distinguishable. */
-const pois = (n: number): NearbyPoisData => ({
-  transit: Array.from({ length: n }, (_, i) => ({
-    name: `stop-${i}`,
-    type: 'bus_stop',
-    lat: 32.1,
-    lng: 34.8,
-  })),
-  education: [],
-  healthcare: [],
-  civic: [],
-  greenSpace: [],
-  markets: [],
-  majorRoads: [],
-});
+/** Site context named `name`, standing in for one map-context analysis. */
+const context = (name: string) =>
+  ({
+    site_name: name,
+    generated: '2026-08-05T00:00:00.000Z',
+    quantitative: { location: { lat: '32.1064', lng: '34.8006', address: name } },
+  }) as unknown as SiteContextData;
 
 describe('demo recorder', () => {
   it('starts empty and accumulates events', () => {
@@ -73,21 +65,19 @@ describe('demo recorder', () => {
     expect(rec?.evolveRounds.map(r => r.candidates.length)).toEqual([2, 1]);
   });
 
-  it('re-committing the same site overwrites its POIs; a different one appends', () => {
-    recordPois({ lat: 32.1064, lng: 34.8006, radius: 500, data: pois(1) });
-    // Same spot within the drift tolerance, same radius → replaces.
-    recordPois({ lat: 32.10641, lng: 34.80061, radius: 500, data: pois(2) });
-    expect(getRecording()?.pois).toHaveLength(1);
-    expect(getRecording()?.pois?.[0].data.transit).toHaveLength(2);
+  it('re-analysing the same site overwrites; a different site appends', () => {
+    recordSiteAnalysis({ lat: 32.1064, lng: 34.8006, context: context('first run') });
+    // Re-geocoding the same address lands a few metres off → still one site.
+    recordSiteAnalysis({ lat: 32.10641, lng: 34.80061, context: context('second run') });
+    expect(getRecording()?.siteAnalyses).toHaveLength(1);
+    expect(getRecording()?.siteAnalyses?.[0].context.site_name).toBe('second run');
 
-    // Same spot, different radius → a genuinely different lookup.
-    recordPois({ lat: 32.1064, lng: 34.8006, radius: 800, data: pois(3) });
     // Far enough away to be another site.
-    recordPois({ lat: 31.7683, lng: 35.2137, radius: 500, data: pois(4) });
-    expect(getRecording()?.pois).toHaveLength(3);
+    recordSiteAnalysis({ lat: 31.7683, lng: 35.2137, context: context('jerusalem') });
+    expect(getRecording()?.siteAnalyses).toHaveLength(2);
   });
 
-  it('a recording made before POIs existed accepts them instead of throwing', () => {
+  it('a recording made before site analyses existed accepts them instead of throwing', () => {
     // Exactly what an older ?demoRecord session left in localStorage.
     store.set(
       'cs-demo-recording',
@@ -99,9 +89,11 @@ describe('demo recorder', () => {
         twoPass: [],
       }),
     );
-    expect(getRecording()?.pois).toEqual([]);
-    expect(() => recordPois({ lat: 32.1, lng: 34.8, radius: 500, data: pois(1) })).not.toThrow();
-    expect(getRecording()?.pois).toHaveLength(1);
+    expect(getRecording()?.siteAnalyses).toEqual([]);
+    expect(() =>
+      recordSiteAnalysis({ lat: 32.1, lng: 34.8, context: context('late arrival') }),
+    ).not.toThrow();
+    expect(getRecording()?.siteAnalyses).toHaveLength(1);
     // The pre-existing captures survive the backfill.
     expect(getRecording()?.geocode).toHaveLength(1);
   });

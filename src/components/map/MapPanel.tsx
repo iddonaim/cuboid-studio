@@ -256,27 +256,14 @@ export const MapPanel: React.FC = () => {
     let pois: NearbyPoisData | undefined;
 
     try {
-      // Offline demo: replay the POI lookup recorded for this site, so the
-      // scripted "let the POI categories populate" beat still reads.
-      if (isDemoMode()) {
-        const { getDemoPois } = await import('../../lib/demo/bundle');
-        pois = await getDemoPois(pin.lat, pin.lng, radius);
-      } else {
-        const res = await fetch(
-          `/api/fetch-context-pois?lat=${pin.lat}&lng=${pin.lng}&radius=${radius}`
-        );
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || err.message || `POI fetch failed (${res.status})`);
-        }
-        pois = (await res.json()) as NearbyPoisData;
-
-        // ?demoRecord: capture the lookup for offline replay.
-        if (isDemoRecordMode()) {
-          const { recordPois } = await import('../../lib/demo/recorder');
-          recordPois({ lat: pin.lat, lng: pin.lng, radius, data: pois });
-        }
+      const res = await fetch(
+        `/api/fetch-context-pois?lat=${pin.lat}&lng=${pin.lng}&radius=${radius}`
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || `POI fetch failed (${res.status})`);
       }
+      pois = (await res.json()) as NearbyPoisData;
       setPoiSummary(
         `Found ${pois.transit.length} transit stops, ${pois.education.length} schools, ${pois.civic.length} civic buildings within ${radius}m`
       );

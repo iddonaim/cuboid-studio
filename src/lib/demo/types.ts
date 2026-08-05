@@ -22,7 +22,7 @@ import type { ArchthesisMeme } from '../../types/archthesis';
 import type { TwoPassTranslationResult } from '../operators/types';
 import type { EncodeSpaceResponse } from '../api/encodeSpace';
 import type { EvolutionCandidate } from '../../store/useEvolutionStore';
-import type { NearbyPoisData } from '../storage/siteContext';
+import type { SiteContextData } from '../storage/siteContext';
 
 /** A composition doc plus the hierarchy path it came from. */
 export interface DemoComposition {
@@ -64,15 +64,19 @@ export interface RecordedEvolveRound {
 }
 
 /**
- * A successful nearby-POI lookup ("Set active site"), keyed by the pin and
- * radius it was asked for. Without this the offline talk reaches the scripted
- * "let the POI categories populate" beat with an empty site context.
+ * One completed site analysis from the embedded map-context app, keyed by the
+ * coordinates it was run at.
+ *
+ * This is the *adapted* SiteContextData, not the raw `analysis-complete`
+ * payload: the raw bundle carries thousands of polygons, and the recording
+ * lives in localStorage before it ever reaches the bundle file. Storing the
+ * distilled context keeps it small, and it is exactly what the app persists
+ * as the active site anyway.
  */
-export interface RecordedPois {
+export interface RecordedSiteAnalysis {
   lat: number;
   lng: number;
-  radius: number;
-  data: NearbyPoisData;
+  context: SiteContextData;
 }
 
 export interface DemoRecordings {
@@ -84,10 +88,10 @@ export interface DemoRecordings {
   /** Two-pass translations observed live (merged with the harvested ones). */
   twoPass: DemoTranslation[];
   /**
-   * Nearby-POI lookups. Optional because recordings captured before POIs were
-   * recorded have no such array — readers must tolerate it being absent.
+   * Completed site analyses. Optional because recordings captured before
+   * these were recorded have no such array — readers must tolerate that.
    */
-  pois?: RecordedPois[];
+  siteAnalyses?: RecordedSiteAnalysis[];
 }
 
 export interface DemoBundle {
@@ -114,7 +118,7 @@ export interface DemoBundle {
    */
   images: Record<string, string>;
   /**
-   * Optional live-session recordings (geocode, nearby POIs, encodes, evolve
+   * Optional live-session recordings (geocode, site analyses, encodes, evolve
    * rounds, extra two-pass translations). Absent in bundles exported before
    * the recorder existed, and individual capture kinds are absent in bundles
    * exported before that kind was recorded — every consumer must tolerate both.

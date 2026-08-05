@@ -78,15 +78,15 @@ The demo replays ONE recorded online run of the talk workflow. Protocol:
 
 1. Open the live site with `?demoRecord`, signed in, online. Perform the talk
    workflow normally — every network/AI answer is captured as it happens
-   (watch the console for `[demoRecord]` lines): address geocode (from the
-   Analysis map's address bar *and* the "My sites" place search — both feed the
-   same pool), the nearby-POI lookup behind **Set active site**, photo
-   encode(s) (keyed to the exact image file), every two-pass translation, and
-   each "Generate candidates" click (full round, in click order).
+   (watch the console for `[demoRecord]` lines): the finished map-context site
+   analysis, the "My sites" place search, photo encode(s) (keyed to the exact
+   image file), every two-pass translation, and each "Generate candidates"
+   click (full round, in click order).
 
-   Commit the site at the radius you'll use on stage — POIs are recorded per
-   pin *and* radius, and that click is what fills the scripted "POI categories
-   populate" beat.
+   Let the Analysis tab's map run all the way to a finished analysis — that
+   payload is the only source of a populated site context (POIs, morphology)
+   the offline demo has, because the analysis itself is a separate remote app
+   that cannot run offline.
 2. In the SAME browser, open `?demoExport` and export — the recording is
    folded into `demo-bundle-raw.json` (the button reports what it included).
 3. `node scripts/build-demo-bundle.mjs …` + `seed-demo-tiles.mjs` as before.
@@ -98,12 +98,16 @@ Replay rules (choreography contract):
   recorded round shows a clear error. Reloading the page restarts the order.
 - The address bar matches loosely (partial typing OK); with a single recorded
   address, any query resolves to it.
-- POIs replay from the nearest recorded lookup, preferring one taken at the
-  same radius — a pin dropped slightly off the recorded spot still populates.
-  With nothing recorded, the commit still succeeds and shows the usual "POI
-  data unavailable" note, exactly as an older bundle does.
-- Re-recording a beat overwrites (geocode/encode/translation/POIs — POIs count
-  as the same site within ~50m at the same radius) or appends (evolve rounds).
+- Site analyses replay from the nearest recording, so a site opened from a
+  slightly different pin still resolves. Nothing recorded reads as "none"
+  rather than an error, so an older bundle behaves exactly as it did.
+- **Open — the Analysis tab offline.** The analysis runs inside an iframe
+  pointing at map-context (a separate deployed app), so offline that view has
+  nothing to show no matter what was recorded. The recording restores the
+  *site context* it produced, not the analysis screen. Decide whether the talk
+  opens on "My sites" instead, or whether that beat gets a different treatment.
+- Re-recording a beat overwrites (geocode/encode/translation/site analysis —
+  analyses count as the same site within ~50m) or appends (evolve rounds).
   `localStorage.removeItem('cs-demo-recording')` starts over.
 
 ## What remains (honest list)

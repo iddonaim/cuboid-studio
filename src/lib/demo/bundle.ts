@@ -17,8 +17,8 @@ import type { ArchthesisMeme, FetchMemesResponse } from '../../types/archthesis'
 import type { TwoPassTranslationResult, OperatorRecord } from '../operators/types';
 import type { EncodeSpaceResponse } from '../api/encodeSpace';
 import type { EvolutionCandidate } from '../../store/useEvolutionStore';
-import type { NearbyPoisData } from '../storage/siteContext';
-import type { DemoBundle, DemoComposition } from './types';
+import type { SiteContextData } from '../storage/siteContext';
+import type { DemoBundle, DemoComposition, RecordedSiteAnalysis } from './types';
 import { metersBetween } from './recorder';
 
 const BUNDLE_URL = '/demo/bundle.json';
@@ -200,34 +200,30 @@ export async function getDemoGeocode(
 }
 
 /**
- * Replay the recorded nearby-POI lookup for a committed site. The nearest
- * recording wins, so a pin dropped a little off the recorded spot still
- * populates the POI beat instead of leaving the site context empty.
- *
- * Throws when nothing was recorded — the caller already treats a failure here
- * as "site saved without POI data", so an old bundle degrades exactly as it
- * did before rather than breaking the commit.
+ * Recorded site analyses, newest-recorded last. Offline the map-context iframe
+ * can't run — it's a separate remote app — so these are the only source of a
+ * populated Active Site Context (POIs, morphology) the demo has.
  */
-export async function getDemoPois(
+export async function listDemoSiteAnalyses(): Promise<RecordedSiteAnalysis[]> {
+  return (await loadDemoBundle()).recordings?.siteAnalyses ?? [];
+}
+
+/**
+ * The recorded analysis nearest a point, so a site opened from a slightly
+ * different pin still resolves. Null when nothing was recorded — callers
+ * decide whether that's fatal, since a bundle exported before analyses were
+ * recorded must still behave as it did before.
+ */
+export async function getDemoSiteAnalysis(
   lat: number,
   lng: number,
-  radius: number,
-): Promise<NearbyPoisData> {
-  const recorded = (await loadDemoBundle()).recordings?.pois ?? [];
-  if (recorded.length === 0) {
-    throw new Error(
-      'Offline demo: no recorded POI lookup. Record a session with ?demoRecord ' +
-        'and commit the site once, so the POI beat has data to replay.',
-    );
-  }
-  // Prefer a recording taken at the same radius; fall back to any distance-wise
-  // nearest one rather than failing the beat.
-  const sameRadius = recorded.filter(p => p.radius === radius);
-  const pool = sameRadius.length > 0 ? sameRadius : recorded;
-  const nearest = pool.reduce((best, p) =>
-    metersBetween(p, { lat, lng }) < metersBetween(best, { lat, lng }) ? p : best,
+): Promise<SiteContextData | null> {
+  const recorded = await listDemoSiteAnalyses();
+  if (recorded.length === 0) return null;
+  const nearest = recorded.reduce((best, s) =>
+    metersBetween(s, { lat, lng }) < metersBetween(best, { lat, lng }) ? s : best,
   );
-  return nearest.data;
+  return nearest.context;
 }
 
 /** Replay a recorded photo encode, matched by image fingerprint. */
