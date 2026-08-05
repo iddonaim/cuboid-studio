@@ -12,6 +12,8 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { useAccent } from '../../contexts/AccentContext';
+import { useAppStore } from '../../store/useAppStore';
+import { Switch } from '@/components/ui/switch';
 import { ACCENT_PRESETS, CANONICAL_ACCENT } from '../../lib/theme/accent';
 
 const GearIcon: React.FC = () => (
@@ -23,6 +25,10 @@ const GearIcon: React.FC = () => (
 
 export const SettingsPopover: React.FC = () => {
   const { accent, setAccent, resetAccent } = useAccent();
+  const canvasHints    = useAppStore(s => s.canvasHints);
+  const setCanvasHints = useAppStore(s => s.setCanvasHints);
+  const viewCube       = useAppStore(s => s.viewCube);
+  const setViewCube    = useAppStore(s => s.setViewCube);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +113,46 @@ export const SettingsPopover: React.FC = () => {
                 />
               );
             })}
+          </div>
+
+          <div className="h-px bg-ink-200 -mx-3 mb-2" />
+
+          {/* ── Canvas aids ──
+              Both default off on a phone, where they take a real share of the
+              viewport, and on above it. */}
+          <div className="font-mono text-[11px] uppercase tracking-wider text-ink-500 mb-2">
+            Canvas
+          </div>
+
+          <div className="flex flex-col gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="pref-canvas-hints"
+                checked={canvasHints}
+                onCheckedChange={setCanvasHints}
+                className="data-[state=checked]:bg-accent"
+              />
+              <label
+                htmlFor="pref-canvas-hints"
+                className={`text-[13px] cursor-pointer ${canvasHints ? 'text-ink-800' : 'text-ink-500'}`}
+              >
+                Gesture hints
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="pref-view-cube"
+                checked={viewCube}
+                onCheckedChange={setViewCube}
+                className="data-[state=checked]:bg-accent"
+              />
+              <label
+                htmlFor="pref-view-cube"
+                className={`text-[13px] cursor-pointer ${viewCube ? 'text-ink-800' : 'text-ink-500'}`}
+              >
+                View cube
+              </label>
+            </div>
           </div>
 
           <div className="h-px bg-ink-200 -mx-3 mb-2" />

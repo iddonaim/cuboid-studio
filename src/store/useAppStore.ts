@@ -75,6 +75,17 @@ interface AppState {
   ) => void;
   setOrthographic: (value: boolean) => void;
   toggleOrthographic: () => void;
+  /**
+   * Canvas aids — the gesture-hint pill and the orientation view cube. Both
+   * are worth their space on a desktop canvas and expensive on a phone, where
+   * between them they covered a corner and a strip of a 390px-wide viewport.
+   * So they default off at phone widths and on above, and either way the
+   * choice is a switch in the Preferences popover, remembered per browser.
+   */
+  canvasHints: boolean;
+  setCanvasHints: (value: boolean) => void;
+  viewCube: boolean;
+  setViewCube: (value: boolean) => void;
 }
 
 export const SIDEBAR_MIN_WIDTH = 240;
@@ -96,6 +107,29 @@ function loadSidebarWidth(): number {
     // localStorage unavailable (SSR, privacy mode) — fall through to default
   }
   return SIDEBAR_DEFAULT_WIDTH;
+}
+
+const CANVAS_HINTS_KEY = 'cs-canvas-hints';
+const VIEW_CUBE_KEY    = 'cs-view-cube';
+
+/**
+ * A canvas aid's stored preference, or — with nothing stored — on above the
+ * phone breakpoint and off below it. Same 640px the layout switches on.
+ */
+function loadCanvasAid(key: string): boolean {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored === '0') return false;
+    if (stored === '1') return true;
+    return window.innerWidth >= 640;
+  } catch {
+    // localStorage unavailable (SSR, privacy mode) — assume there's room.
+    return true;
+  }
+}
+
+function storeCanvasAid(key: string, value: boolean): void {
+  try { localStorage.setItem(key, value ? '1' : '0'); } catch { /* ignore */ }
 }
 
 const ONBOARDING_SEEN_KEY = 'cs-onboarding-seen';
@@ -138,4 +172,14 @@ export const useAppStore = create<AppState>((set) => ({
   setLastViewpoint: (lastViewpoint) => set({ lastViewpoint }),
   setOrthographic: (value) => set({ orthographic: value }),
   toggleOrthographic: () => set(s => ({ orthographic: !s.orthographic })),
+  canvasHints: loadCanvasAid(CANVAS_HINTS_KEY),
+  setCanvasHints: (value) => {
+    storeCanvasAid(CANVAS_HINTS_KEY, value);
+    set({ canvasHints: value });
+  },
+  viewCube: loadCanvasAid(VIEW_CUBE_KEY),
+  setViewCube: (value) => {
+    storeCanvasAid(VIEW_CUBE_KEY, value);
+    set({ viewCube: value });
+  },
 }));
