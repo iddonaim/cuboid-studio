@@ -1,10 +1,22 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import {
   getDemoGeocode,
   getDemoEncode,
   getDemoEvolveRound,
+  getDemoPois,
   getDemoTranslation,
 } from './bundle';
+
+/** POI payload carrying `n` transit stops, so recordings are distinguishable. */
+const poiData = (n: number) => ({
+  transit: Array.from({ length: n }, (_, i) => ({ name: `stop-${i}`, type: 'bus_stop', lat: 32.1, lng: 34.8 })),
+  education: [],
+  healthcare: [],
+  civic: [],
+  greenSpace: [],
+  markets: [],
+  majorRoads: [],
+});
 
 // loadDemoBundle fetches /demo/bundle.json once and caches — serve a synthetic
 // bundle exercising the recording-replay paths.
@@ -28,6 +40,10 @@ const bundle = {
       { candidates: [{ id: 'r1c0', memeImageUrl: 'https://remote/unknown.jpg' }] },
     ],
     twoPass: [{ memeDescription: 'in-both', result: { model: 'recorded' } }],
+    pois: [
+      { lat: 32.1064, lng: 34.8006, radius: 500, data: poiData(2) },
+      { lat: 31.7683, lng: 35.2137, radius: 500, data: poiData(1) },
+    ],
   },
 };
 
@@ -50,6 +66,39 @@ describe('recorded geocode replay', () => {
   it('falls back to the single recorded address on a stage typo', async () => {
     const hit = await getDemoGeocode('totally-wrong-address');
     expect(hit.lat).toBeCloseTo(32.1064);
+  });
+});
+
+describe('recorded POI replay', () => {
+  it('serves the recording taken at the same radius, nearest first', async () => {
+    // Standing on the Tel Aviv pin at its recorded radius.
+    const near = await getDemoPois(32.1064, 34.8006, 500);
+    expect(near.transit).toHaveLength(2);
+    // Jerusalem is nearer the other recording.
+    const far = await getDemoPois(31.7683, 35.2137, 500);
+    expect(far.transit).toHaveLength(1);
+  });
+
+  it('falls back across radii rather than losing the beat', async () => {
+    // No 900m recording exists — the nearest capture still answers.
+    const hit = await getDemoPois(32.1064, 34.8006, 900);
+    expect(hit.transit).toHaveLength(2);
+  });
+
+  it('a bundle exported before POIs were recorded fails soft, not hard', async () => {
+    // Fresh module instance so loadDemoBundle re-fetches; the statically
+    // imported helpers above keep using the original cached bundle.
+    vi.resetModules();
+    const realFetch = globalThis.fetch;
+    const legacy = { ...bundle, recordings: { ...bundle.recordings, pois: undefined } };
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(legacy), { status: 200 })) as typeof fetch;
+    const { getDemoPois: legacyGetDemoPois } = await import('./bundle');
+    // The caller treats a throw here as "site saved without POI data".
+    await expect(legacyGetDemoPois(32.1064, 34.8006, 500)).rejects.toThrow(
+      /no recorded POI lookup/,
+    );
+    globalThis.fetch = realFetch;
   });
 });
 

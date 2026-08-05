@@ -78,9 +78,15 @@ The demo replays ONE recorded online run of the talk workflow. Protocol:
 
 1. Open the live site with `?demoRecord`, signed in, online. Perform the talk
    workflow normally — every network/AI answer is captured as it happens
-   (watch the console for `[demoRecord]` lines): address geocode, photo
+   (watch the console for `[demoRecord]` lines): address geocode (from the
+   Analysis map's address bar *and* the "My sites" place search — both feed the
+   same pool), the nearby-POI lookup behind **Set active site**, photo
    encode(s) (keyed to the exact image file), every two-pass translation, and
    each "Generate candidates" click (full round, in click order).
+
+   Commit the site at the radius you'll use on stage — POIs are recorded per
+   pin *and* radius, and that click is what fills the scripted "POI categories
+   populate" beat.
 2. In the SAME browser, open `?demoExport` and export — the recording is
    folded into `demo-bundle-raw.json` (the button reports what it included).
 3. `node scripts/build-demo-bundle.mjs …` + `seed-demo-tiles.mjs` as before.
@@ -92,8 +98,13 @@ Replay rules (choreography contract):
   recorded round shows a clear error. Reloading the page restarts the order.
 - The address bar matches loosely (partial typing OK); with a single recorded
   address, any query resolves to it.
-- Re-recording a beat overwrites (geocode/encode/translation) or appends
-  (evolve rounds). `localStorage.removeItem('cs-demo-recording')` starts over.
+- POIs replay from the nearest recorded lookup, preferring one taken at the
+  same radius — a pin dropped slightly off the recorded spot still populates.
+  With nothing recorded, the commit still succeeds and shows the usual "POI
+  data unavailable" note, exactly as an older bundle does.
+- Re-recording a beat overwrites (geocode/encode/translation/POIs — POIs count
+  as the same site within ~50m at the same radius) or appends (evolve rounds).
+  `localStorage.removeItem('cs-demo-recording')` starts over.
 
 ## What remains (honest list)
 

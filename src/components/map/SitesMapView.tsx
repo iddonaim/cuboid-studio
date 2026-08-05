@@ -20,6 +20,7 @@ import { loadSitePins, isLocated, SitePin } from '../../lib/projects/sitePins';
 import { listCompositions, updateSite } from '../../lib/projects/firestore';
 import { restoreComposition } from '../../lib/projects/composition';
 import { isDemoMode } from '../../lib/demo/demoMode';
+import { isDemoRecordMode } from '../../lib/demo/recorder';
 import {
   loadDemoSitePins,
   listDemoCompositions,
@@ -346,12 +347,30 @@ export const SitesMapView: React.FC = () => {
     if (!q) return;
     setPlaceSearching(true);
     try {
+      // Offline demo: replay the recorded lookup, same as the Analysis map's
+      // address bar — otherwise placing a site by address dies offline.
+      if (isDemoMode()) {
+        const { getDemoGeocode } = await import('../../lib/demo/bundle');
+        const hit = await getDemoGeocode(q);
+        setPendingPos({ lat: hit.lat, lng: hit.lng });
+        setPendingAddress(hit.displayName || q);
+        mapRef.current?.flyTo([hit.lat, hit.lng], 15, { duration: 0.6 });
+        return;
+      }
+
       const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Geocoding failed (${res.status})`);
       const lat = parseFloat(data.lat);
       const lng = parseFloat(data.lng);
       if (Number.isNaN(lat) || Number.isNaN(lng)) throw new Error('Invalid coordinates returned');
+
+      // ?demoRecord: capture it into the same pool the address bar records to.
+      if (isDemoRecordMode()) {
+        const { recordGeocode } = await import('../../lib/demo/recorder');
+        recordGeocode({ query: q, lat, lng, displayName: data.display_name || q });
+      }
+
       setPendingPos({ lat, lng });
       setPendingAddress(data.display_name || q);
       mapRef.current?.flyTo([lat, lng], 15, { duration: 0.6 });

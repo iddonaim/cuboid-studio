@@ -22,6 +22,7 @@ import type { ArchthesisMeme } from '../../types/archthesis';
 import type { TwoPassTranslationResult } from '../operators/types';
 import type { EncodeSpaceResponse } from '../api/encodeSpace';
 import type { EvolutionCandidate } from '../../store/useEvolutionStore';
+import type { NearbyPoisData } from '../storage/siteContext';
 
 /** A composition doc plus the hierarchy path it came from. */
 export interface DemoComposition {
@@ -62,6 +63,18 @@ export interface RecordedEvolveRound {
   candidates: EvolutionCandidate[];
 }
 
+/**
+ * A successful nearby-POI lookup ("Set active site"), keyed by the pin and
+ * radius it was asked for. Without this the offline talk reaches the scripted
+ * "let the POI categories populate" beat with an empty site context.
+ */
+export interface RecordedPois {
+  lat: number;
+  lng: number;
+  radius: number;
+  data: NearbyPoisData;
+}
+
 export interface DemoRecordings {
   startedAt: string;
   geocode: RecordedGeocode[];
@@ -70,6 +83,11 @@ export interface DemoRecordings {
   evolveRounds: RecordedEvolveRound[];
   /** Two-pass translations observed live (merged with the harvested ones). */
   twoPass: DemoTranslation[];
+  /**
+   * Nearby-POI lookups. Optional because recordings captured before POIs were
+   * recorded have no such array — readers must tolerate it being absent.
+   */
+  pois?: RecordedPois[];
 }
 
 export interface DemoBundle {
@@ -96,9 +114,10 @@ export interface DemoBundle {
    */
   images: Record<string, string>;
   /**
-   * Optional live-session recordings (geocode, encodes, evolve rounds, extra
-   * two-pass translations). Absent in bundles exported before the recorder
-   * existed — every consumer must tolerate that.
+   * Optional live-session recordings (geocode, nearby POIs, encodes, evolve
+   * rounds, extra two-pass translations). Absent in bundles exported before
+   * the recorder existed, and individual capture kinds are absent in bundles
+   * exported before that kind was recorded — every consumer must tolerate both.
    */
   recordings?: DemoRecordings;
 }
