@@ -54,20 +54,15 @@ const SLOT_ICONS: Record<NavSlot['key'], React.FC> = {
   decode:    DecodeIcon,
 };
 
-interface MobileTabBarProps {
-  heightState: SheetHeight;
-  /** Called when a tab is pressed and the sheet is currently collapsed */
-  onExpandToHalf: () => void;
-}
-
-export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpandToHalf }) => {
+/**
+ * Switching tabs is only ever a change of mode. It used to also force the
+ * sheet open to half height, which discarded a deliberate collapse and took
+ * half the canvas with it. The sheet moves when you drag its handle, and
+ * otherwise stays put.
+ */
+export const MobileTabBar: React.FC = () => {
   const activeMode    = useAppStore(s => s.activeMode);
   const setActiveMode = useAppStore(s => s.setActiveMode);
-
-  const handlePress = (mode: AppMode) => {
-    setActiveMode(mode);
-    if (heightState === 'collapsed') onExpandToHalf();
-  };
 
   return (
     <div
@@ -85,7 +80,7 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({ heightState, onExpan
         return (
           <button
             key={slot.key}
-            onClick={() => handlePress(slot.key as AppMode)}
+            onClick={() => setActiveMode(slot.key as AppMode)}
             className="flex-1 flex flex-col items-center justify-center gap-[3px] bg-transparent border-none cursor-pointer transition-colors"
             style={{
               color:      active ? 'hsl(var(--primary))' : 'hsl(45 6% 55%)',

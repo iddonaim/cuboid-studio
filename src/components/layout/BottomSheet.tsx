@@ -64,7 +64,6 @@ interface BottomSheetProps {
  * layer so it always renders above the WebGL canvas on iOS Safari.
  */
 export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollapsed = false }) => {
-  const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
   // Live px height while a drag is in progress; null when settled on a snap.
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +73,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
   const activeMode       = useAppStore(s => s.activeMode);
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
+
+  // The handle is the only thing that moves the sheet. Tapping a tab used to
+  // force it open to half height as well, which undid a deliberate collapse
+  // and took half the canvas with it on every tab switch.
+  const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
+
   const effectiveHeightState = forceCollapsed ? 'collapsed' : heightState;
 
   // Context-aware label that reflects the current sub-mode (e.g. Encode → Edit assembly
@@ -95,7 +100,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
     }
     if (!forceCollapsed) setHeightState(s => NEXT_STATE[s]);
   };
-  const expandToHalf = () => { if (!forceCollapsed && heightState === 'collapsed') setHeightState('half'); };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (forceCollapsed) return;
@@ -191,7 +195,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
       )}
 
       {/* ── Tab bar — always visible ────────────────────────────────────── */}
-      <MobileTabBar heightState={effectiveHeightState} onExpandToHalf={expandToHalf} />
+      <MobileTabBar />
     </div>
   );
 };
