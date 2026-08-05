@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { useAppStore } from '../../store/useAppStore';
+import React, { useCallback, useRef, useState } from 'react';
+import { useAppStore, AppMode } from '../../store/useAppStore';
 import { useEncodingStore } from '../../store/useEncodingStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { MobileTabBar, SheetHeight } from './MobileTabBar';
@@ -64,7 +64,6 @@ interface BottomSheetProps {
  * layer so it always renders above the WebGL canvas on iOS Safari.
  */
 export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollapsed = false }) => {
-  const [heightState, setHeightState] = useState<SheetHeight>('collapsed');
   // Live px height while a drag is in progress; null when settled on a snap.
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +73,27 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
   const activeMode       = useAppStore(s => s.activeMode);
   const seedEditOpen     = useEncodingStore(s => s.seedEditOpen);
   const evolutionSubMode = useEvolutionStore(s => s.subMode);
+
+  // ── Sheet height, remembered per mode ──────────────────────────────────────
+  // Tapping a tab used to snap the sheet back to half however you had left it,
+  // so "get out of the way, I want to see the model" was undone by the very
+  // next tab tap — and half the canvas went with it. Each mode now keeps the
+  // height you last left it at. A mode you haven't opened yet still starts at
+  // half: that is where its controls are, and they should be visible on
+  // arrival. Session-only, deliberately — this is transient framing, not a
+  // preference worth carrying into tomorrow.
+  const [heightByMode, setHeightByMode] = useState<Partial<Record<AppMode, SheetHeight>>>({});
+  const heightState = heightByMode[activeMode] ?? 'half';
+  const setHeightState = useCallback(
+    (next: SheetHeight | ((prev: SheetHeight) => SheetHeight)) => {
+      setHeightByMode(prev => ({
+        ...prev,
+        [activeMode]: typeof next === 'function' ? next(prev[activeMode] ?? 'half') : next,
+      }));
+    },
+    [activeMode],
+  );
+
   const effectiveHeightState = forceCollapsed ? 'collapsed' : heightState;
 
   // Context-aware label that reflects the current sub-mode (e.g. Encode → Edit assembly
@@ -95,7 +115,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
     }
     if (!forceCollapsed) setHeightState(s => NEXT_STATE[s]);
   };
-  const expandToHalf = () => { if (!forceCollapsed && heightState === 'collapsed') setHeightState('half'); };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (forceCollapsed) return;
@@ -191,7 +210,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ children, forceCollaps
       )}
 
       {/* ── Tab bar — always visible ────────────────────────────────────── */}
-      <MobileTabBar heightState={effectiveHeightState} onExpandToHalf={expandToHalf} />
+      <MobileTabBar />
     </div>
   );
 };
