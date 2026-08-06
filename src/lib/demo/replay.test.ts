@@ -1,10 +1,18 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import {
   getDemoGeocode,
   getDemoEncode,
   getDemoEvolveRound,
+  getDemoSiteAnalysis,
   getDemoTranslation,
 } from './bundle';
+
+/** Named site context, standing in for one recorded map-context analysis. */
+const siteContext = (name: string) => ({
+  site_name: name,
+  generated: '2026-08-05T00:00:00.000Z',
+  quantitative: { location: { lat: '32.1064', lng: '34.8006', address: name } },
+});
 
 // loadDemoBundle fetches /demo/bundle.json once and caches — serve a synthetic
 // bundle exercising the recording-replay paths.
@@ -28,6 +36,10 @@ const bundle = {
       { candidates: [{ id: 'r1c0', memeImageUrl: 'https://remote/unknown.jpg' }] },
     ],
     twoPass: [{ memeDescription: 'in-both', result: { model: 'recorded' } }],
+    siteAnalyses: [
+      { lat: 32.1064, lng: 34.8006, context: siteContext('tel aviv site') },
+      { lat: 31.7683, lng: 35.2137, context: siteContext('jerusalem site') },
+    ],
   },
 };
 
@@ -50,6 +62,33 @@ describe('recorded geocode replay', () => {
   it('falls back to the single recorded address on a stage typo', async () => {
     const hit = await getDemoGeocode('totally-wrong-address');
     expect(hit.lat).toBeCloseTo(32.1064);
+  });
+});
+
+describe('recorded site-analysis replay', () => {
+  it('serves the analysis nearest the asked-for point', async () => {
+    const tlv = await getDemoSiteAnalysis(32.1064, 34.8006);
+    expect(tlv?.site_name).toBe('tel aviv site');
+    const jlm = await getDemoSiteAnalysis(31.7683, 35.2137);
+    expect(jlm?.site_name).toBe('jerusalem site');
+  });
+
+  it('a pin dropped a little off still resolves to that site', async () => {
+    const hit = await getDemoSiteAnalysis(32.108, 34.802);
+    expect(hit?.site_name).toBe('tel aviv site');
+  });
+
+  it('a bundle exported before analyses were recorded reads as none, not an error', async () => {
+    // Fresh module instance so loadDemoBundle re-fetches; the statically
+    // imported helpers above keep using the original cached bundle.
+    vi.resetModules();
+    const realFetch = globalThis.fetch;
+    const legacy = { ...bundle, recordings: { ...bundle.recordings, siteAnalyses: undefined } };
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(legacy), { status: 200 })) as typeof fetch;
+    const { getDemoSiteAnalysis: legacyLookup } = await import('./bundle');
+    await expect(legacyLookup(32.1064, 34.8006)).resolves.toBeNull();
+    globalThis.fetch = realFetch;
   });
 });
 

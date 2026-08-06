@@ -2,10 +2,11 @@
  * Demo recorder — captures ONE real online session for offline replay.
  *
  * Open the live app with `?demoRecord` and perform the talk workflow normally.
- * Every network/AI answer the demo needs (geocode, photo encode, evolve
- * candidate rounds, two-pass translations) is appended to localStorage as it
- * happens. Afterwards, the ?demoExport button folds the recording into
- * demo-bundle-raw.json (see export.ts), and demo mode replays it.
+ * Every network/AI answer the demo needs (the map-context site analysis, the
+ * "My sites" address search, photo encode, evolve candidate rounds, two-pass
+ * translations) is appended to localStorage as it happens. Afterwards, the
+ * ?demoExport button folds the recording into demo-bundle-raw.json (see
+ * export.ts), and demo mode replays it.
  *
  * The recording survives reloads and accumulates across ?demoRecord visits in
  * the same browser; re-recording a beat just appends. Use clearRecording()
@@ -16,10 +17,29 @@ import type {
   RecordedGeocode,
   RecordedEncode,
   RecordedEvolveRound,
+  RecordedSiteAnalysis,
   DemoTranslation,
 } from './types';
 
 const STORAGE_KEY = 'cs-demo-recording';
+
+/**
+ * Two analyses count as the same site within this distance (metres). Running
+ * the same address twice can land a few metres apart — map-context re-geocodes
+ * the address string rather than trusting the picked suggestion — and that
+ * shouldn't stack duplicate captures.
+ */
+const SAME_SITE_METERS = 50;
+
+/** Flat-earth distance in metres — exact enough at neighbourhood scale. */
+export function metersBetween(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const latMeters = (a.lat - b.lat) * 111_320;
+  const lngMeters = (a.lng - b.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(latMeters, lngMeters);
+}
 
 export function isDemoRecordMode(): boolean {
   try {
@@ -39,6 +59,7 @@ function emptyRecording(): DemoRecordings {
     encodes: [],
     evolveRounds: [],
     twoPass: [],
+    siteAnalyses: [],
   };
 }
 
@@ -49,6 +70,10 @@ export function getRecording(): DemoRecordings | null {
     const rec = JSON.parse(raw) as DemoRecordings;
     // Minimal shape check so a corrupt entry can't poison the export.
     if (!Array.isArray(rec.geocode) || !Array.isArray(rec.evolveRounds)) return null;
+    // A recording started before a capture kind existed has no array for it.
+    // Backfill so appending to it can't throw mid-talk and the export always
+    // carries a well-formed shape.
+    if (!Array.isArray(rec.siteAnalyses)) rec.siteAnalyses = [];
     return rec;
   } catch {
     return null;
@@ -103,6 +128,25 @@ export function recordEvolveRound(entry: RecordedEvolveRound): void {
   console.info(
     `[demoRecord] evolve round ${getRecording()?.evolveRounds.length ?? '?'} captured ` +
       `(${entry.candidates.length} candidates)`,
+  );
+}
+
+export function recordSiteAnalysis(entry: RecordedSiteAnalysis): void {
+  append(rec => {
+    // Re-running the analysis on the same spot (give or take a few metres)
+    // overwrites rather than duplicates.
+    rec.siteAnalyses = (rec.siteAnalyses ?? []).filter(
+      s => metersBetween(s, entry) > SAME_SITE_METERS,
+    );
+    rec.siteAnalyses.push(entry);
+  });
+  const pois = entry.context.nearby_pois;
+  const counted = pois
+    ? `${pois.transit.length} transit / ${pois.education.length} education / ${pois.civic.length} civic`
+    : 'no POIs in payload';
+  console.info(
+    `[demoRecord] site analysis captured: "${entry.context.site_name}" ` +
+      `(${entry.lat.toFixed(4)}, ${entry.lng.toFixed(4)} — ${counted})`,
   );
 }
 
