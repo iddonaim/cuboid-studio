@@ -17,7 +17,9 @@ import type { ArchthesisMeme, FetchMemesResponse } from '../../types/archthesis'
 import type { TwoPassTranslationResult, OperatorRecord } from '../operators/types';
 import type { EncodeSpaceResponse } from '../api/encodeSpace';
 import type { EvolutionCandidate } from '../../store/useEvolutionStore';
-import type { DemoBundle, DemoComposition } from './types';
+import type { SiteContextData } from '../storage/siteContext';
+import type { DemoBundle, DemoComposition, RecordedSiteAnalysis } from './types';
+import { metersBetween } from './recorder';
 
 const BUNDLE_URL = '/demo/bundle.json';
 
@@ -195,6 +197,33 @@ export async function getDemoGeocode(
     );
   }
   return { lat: hit.lat, lng: hit.lng, displayName: hit.displayName };
+}
+
+/**
+ * Recorded site analyses, newest-recorded last. Offline the map-context iframe
+ * can't run — it's a separate remote app — so these are the only source of a
+ * populated Active Site Context (POIs, morphology) the demo has.
+ */
+export async function listDemoSiteAnalyses(): Promise<RecordedSiteAnalysis[]> {
+  return (await loadDemoBundle()).recordings?.siteAnalyses ?? [];
+}
+
+/**
+ * The recorded analysis nearest a point, so a site opened from a slightly
+ * different pin still resolves. Null when nothing was recorded — callers
+ * decide whether that's fatal, since a bundle exported before analyses were
+ * recorded must still behave as it did before.
+ */
+export async function getDemoSiteAnalysis(
+  lat: number,
+  lng: number,
+): Promise<SiteContextData | null> {
+  const recorded = await listDemoSiteAnalyses();
+  if (recorded.length === 0) return null;
+  const nearest = recorded.reduce((best, s) =>
+    metersBetween(s, { lat, lng }) < metersBetween(best, { lat, lng }) ? s : best,
+  );
+  return nearest.context;
 }
 
 /** Replay a recorded photo encode, matched by image fingerprint. */

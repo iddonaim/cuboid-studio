@@ -11,6 +11,7 @@ import {
   poisFromMapAnalysis,
 } from '../../lib/siteContext/mapContextPayload';
 import { buildMapContextSrc, siteKeyFromContext } from '../../lib/siteContext/mapContextUrl';
+import { isDemoRecordMode } from '../../lib/demo/recorder';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const DEFAULT_MAP_CONTEXT_URL = 'https://map-context-production.up.railway.app';
@@ -143,6 +144,20 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({
       // subscription synchronously, and the guard above must already know
       // the iframe is showing this site.
       iframeSiteKeyRef.current = siteKeyFromContext(context) ?? iframeSiteKeyRef.current;
+
+      // ?demoRecord: capture the finished analysis. Offline this iframe can't
+      // run at all, so without a recording the demo has no site context —
+      // Encode and the translations then read zero of everything.
+      if (isDemoRecordMode()) {
+        const lat = Number(context.quantitative.location.lat);
+        const lng = Number(context.quantitative.location.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          void import('../../lib/demo/recorder').then(({ recordSiteAnalysis }) =>
+            recordSiteAnalysis({ lat, lng, context }),
+          );
+        }
+      }
+
       onAnalysisComplete(context);
     };
     window.addEventListener('message', handleMessage);
