@@ -34,6 +34,19 @@ function isAnalysisCompleteMessage(value: unknown): value is AnalysisCompleteMes
 }
 
 /**
+ * The iframe's "← ניתוח חדש" (new analysis) button posts this before it
+ * returns to its picker: the user is starting over, so the site Cuboid
+ * attached from the previous run is no longer what they're working on.
+ */
+function isAnalysisResetMessage(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { type?: unknown }).type === 'analysis-reset'
+  );
+}
+
+/**
  * Convert the iframe payload into a proper SiteContextData anchored at the
  * analysis coordinates. Passes through unchanged if the payload already is
  * one (future-proofing for a converged map-context).
@@ -70,9 +83,14 @@ function adaptAnalysisPayload(raw: MapAnalysisPayload): SiteContextData | null {
 
 interface MapContextCanvasProps {
   onAnalysisComplete: (data: SiteContextData) => void;
+  /** The iframe went back to its picker — drop the site it had attached. */
+  onAnalysisReset: () => void;
 }
 
-export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisComplete }) => {
+export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({
+  onAnalysisComplete,
+  onAnalysisReset,
+}) => {
   const isMobile = useIsMobile();
   const mapContextUrl = useMemo(
     () => import.meta.env.VITE_MAP_CONTEXT_URL || DEFAULT_MAP_CONTEXT_URL,
@@ -108,6 +126,16 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
     const expectedOrigin = new URL(mapContextUrl).origin;
     const handleMessage = (event: MessageEvent<unknown>) => {
       if (event.origin !== expectedOrigin) return;
+      if (isAnalysisResetMessage(event.data)) {
+        // The iframe is navigating itself back to the bare picker. Point our
+        // src there too — otherwise it keeps the old boot params, and
+        // re-selecting that same site later would be a no-op src change that
+        // never reloads the iframe (it would sit on the picker instead).
+        iframeSiteKeyRef.current = null;
+        setIframeSrc(mapContextUrl);
+        onAnalysisReset();
+        return;
+      }
       if (!isAnalysisCompleteMessage(event.data)) return;
       const context = adaptAnalysisPayload(event.data.data);
       if (!context) return;
@@ -119,7 +147,7 @@ export const MapContextCanvas: React.FC<MapContextCanvasProps> = ({ onAnalysisCo
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [mapContextUrl, onAnalysisComplete]);
+  }, [mapContextUrl, onAnalysisComplete, onAnalysisReset]);
 
   return (
     <iframe
