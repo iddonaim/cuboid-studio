@@ -102,7 +102,18 @@ interface DecodeState {
    * something you asked for.
    */
   armedUnderlayId: string | null;
+  /**
+   * Last known small PNG of the notation sheet, kept for the saved-composition
+   * record.
+   *
+   * The sheet can only be photographed while its Konva stage is mounted, and
+   * "Save to project" lives in the TopBar — so a save made from Encode has
+   * nothing live to capture. The canvas refreshes this on its way out, which
+   * is what lets a composition saved from anywhere still carry its drawing.
+   */
+  sheetThumbnailDataUrl: string | null;
 
+  setSheetThumbnail: (dataUrl: string | null) => void;
   addUnderlay: (underlay: DecodeUnderlay) => void;
   removeUnderlay: (id: string) => void;
   setUnderlays: (underlays: DecodeUnderlay[]) => void;
@@ -139,6 +150,9 @@ export const useDecodeStore = create<DecodeState>((set, get) => ({
   pendingPlacementVariationId: null,
   underlays: [],
   armedUnderlayId: null,
+  sheetThumbnailDataUrl: null,
+
+  setSheetThumbnail: (sheetThumbnailDataUrl) => set({ sheetThumbnailDataUrl }),
 
   addUnderlay: (underlay) => set(state => (
     state.underlays.length >= MAX_UNDERLAYS

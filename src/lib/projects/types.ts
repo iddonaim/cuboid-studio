@@ -21,6 +21,7 @@ import type {
   ConfidenceVector,
 } from '../operators/types';
 import type { CanvasTile } from '../../store/useDecodeStore';
+import type { AppMode } from '../../store/useAppStore';
 import type { SiteContextData } from '../storage/siteContext';
 import type {
   EvolutionCandidate,
@@ -166,6 +167,13 @@ export interface DecodeData {
    *  full-resolution original so a restored sheet draws the real image
    *  instead of a blurry stand-in. Absent when nothing is imported. */
   underlays?: StoredUnderlay[];
+  /** A ~240px PNG of the notation sheet — tiles and visible underlays — so
+   *  the composition list can show which drawing this is rather than only its
+   *  name and date. PNG, not JPEG: the sheet is a transparent cut-out and a
+   *  JPEG would flatten it onto black. Absent when the sheet is empty, when
+   *  the drawing was never on screen this session, or when the image came out
+   *  too large to sit inside the document's size budget. */
+  sheetThumbnailDataUrl?: string;
 }
 
 /** The full composition payload stored under a composition document. */
@@ -176,6 +184,11 @@ export interface CompositionData {
   evolution: EvolutionData;
   decode: DecodeData;
   siteContextSnapshot: SiteContextData | null;
+  /** The mode the architect was working in when this was saved. Restoring
+   *  returns to it, so a session that ended on the notation sheet reopens
+   *  there. Absent on compositions saved before this was recorded — those
+   *  fall back to inferring the mode from what the snapshot contains. */
+  savedFromMode?: AppMode;
   /** Viewport captures saved against this composition. Written directly onto
    *  the stored document when a capture is taken (not on the next save), so a
    *  capture is never held in limbo. Absent until the first one. */

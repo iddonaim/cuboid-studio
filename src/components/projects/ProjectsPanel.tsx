@@ -74,8 +74,11 @@ const RowButton: React.FC<{
   onDelete: () => void;
   /** When provided, a hover pencil turns the title into an inline rename input. */
   onRename?: (name: string) => Promise<void>;
+  /** Small image standing in for what this row holds — a saved composition's
+   *  notation sheet. Names and dates don't tell two drawings apart. */
+  thumbnail?: string;
   rightSlot?: React.ReactNode;
-}> = ({ title, subtitle, onClick, onDelete, onRename, rightSlot }) => {
+}> = ({ title, subtitle, onClick, onDelete, onRename, thumbnail, rightSlot }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   const [busy, setBusy] = useState(false);
@@ -119,10 +122,23 @@ const RowButton: React.FC<{
           onClick={onClick}
           onDoubleClick={onRename ? startEdit : undefined}
           title={onRename ? 'Double-click to rename' : undefined}
-          className="flex-1 text-left cursor-pointer bg-transparent border-0 min-w-0"
+          className="flex flex-1 items-center gap-2 text-left cursor-pointer bg-transparent border-0 min-w-0"
         >
-          <div className="text-[12px] text-ink-800 truncate">{title}</div>
-          {subtitle && <div className="text-[11px] text-ink-500 truncate">{subtitle}</div>}
+          {thumbnail && (
+            // Checkered-free plain paper behind it: the sheet is a transparent
+            // cut-out, and on the panel's own ground the line work vanishes.
+            <img
+              src={thumbnail}
+              alt=""
+              className="h-8 w-10 flex-shrink-0 rounded-sm border border-ink-200 bg-white object-contain"
+            />
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12px] text-ink-800 truncate">{title}</span>
+            {subtitle && (
+              <span className="block text-[11px] text-ink-500 truncate">{subtitle}</span>
+            )}
+          </span>
         </button>
       )}
       {rightSlot}
@@ -512,8 +528,12 @@ export const ProjectsPanel: React.FC = () => {
                   <RowButton
                     key={c.id}
                     title={c.name}
+                    thumbnail={c.data.decode?.sheetThumbnailDataUrl}
                     subtitle={
                       `Saved ${fmtDate(c.updatedAt)}` +
+                      ((c.data.decode?.canvasTiles?.length ?? 0) > 0
+                        ? ` · ${c.data.decode.canvasTiles.length} tile${c.data.decode.canvasTiles.length === 1 ? '' : 's'}`
+                        : '') +
                       ((c.data.captures?.length ?? 0) > 0
                         ? ` · ${c.data.captures!.length} capture${c.data.captures!.length === 1 ? '' : 's'}`
                         : '')

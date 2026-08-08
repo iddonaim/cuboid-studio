@@ -302,3 +302,48 @@ export function downloadDecodeSheetPng(options?: SheetCaptureOptions): boolean {
   a.click();
   return true;
 }
+
+// ── Thumbnail, for the saved-composition record ──────────────────────────
+
+/** Longest edge (px) of the sheet thumbnail persisted with a composition. */
+const SHEET_THUMBNAIL_EDGES = [240, 160];
+
+/**
+ * Ceiling on the persisted thumbnail, in base64 characters (~110KB of image).
+ *
+ * A composition document is capped at ~1MB by Firestore and already carries a
+ * 240px thumbnail per underlay. A sheet drawn over a photographic plan is a
+ * photograph as far as PNG is concerned, so it can run large — better to save
+ * the composition without a thumbnail than to fail the write.
+ */
+const SHEET_THUMBNAIL_MAX_CHARS = 150_000;
+
+/**
+ * A small PNG of the notation sheet, for the composition list.
+ *
+ * PNG rather than JPEG, and deliberately so: the sheet is a transparent
+ * cut-out, and a JPEG thumbnail would flatten it onto black — the same trap
+ * the underlay thumbnails avoid.
+ *
+ * Null when the sheet isn't mounted (Konva only draws what's on screen, so a
+ * save made from another mode has nothing to photograph — the store's cached
+ * thumbnail covers that case) or when there's nothing drawn.
+ */
+export function captureSheetThumbnail(
+  tiles: CanvasTile[],
+  underlays: DecodeUnderlay[] = [],
+): string | null {
+  const bounds = sheetBounds(tiles, underlays);
+  if (!bounds) return null;
+  const longest = Math.max(bounds.width, bounds.height);
+  if (longest <= 0) return null;
+
+  // Step down rather than give up at the first oversize: a smaller sheet
+  // thumbnail is still worth far more to the list than none at all.
+  for (const edge of SHEET_THUMBNAIL_EDGES) {
+    const dataUrl = captureSheetPng({ pixelRatio: edge / longest });
+    if (!dataUrl) return null;
+    if (dataUrl.length <= SHEET_THUMBNAIL_MAX_CHARS) return dataUrl;
+  }
+  return null;
+}
