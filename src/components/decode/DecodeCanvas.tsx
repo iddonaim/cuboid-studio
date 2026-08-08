@@ -121,6 +121,8 @@ const UnderlayImage: React.FC<{
       {armed && (
         <Transformer
           ref={trRef}
+          // Chrome, not drawing: the layer itself exports, its handles don't.
+          name="sheet-chrome"
           rotateEnabled
           keepRatio
           // Corners only: uniform scale, no edge handles that would stretch.
@@ -594,18 +596,23 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   }, [measured, size.width, size.height]);
 
   /**
-   * Transparent PNG of the drawing itself: the drafting chrome is hidden, the
-   * stage is temporarily reset to 1:1 at the drawing's corner so the crop is
-   * in predictable coordinates, and everything is put back afterwards. Nothing
+   * Transparent PNG of the drawing itself — tiles *and* the visible underlay
+   * stack, at their registered opacity. Only the drafting chrome is hidden
+   * (grid, selection outline, snap dots, transform handles); the stage is
+   * temporarily reset to 1:1 at the drawing's corner so the crop is in
+   * predictable coordinates, and everything is put back afterwards. Nothing
    * paints the canvas background (the paper is CSS on the container), so what
    * comes out is a cut-out.
+   *
+   * The crop is sized from tiles and underlays together, so a plan that
+   * reaches past the tiles is framed rather than sliced.
    */
   useEffect(() => {
     registerSheetCapture((options) => {
       const stage = stageRef.current;
       if (!stage) return null;
-      const tiles = useDecodeStore.getState().canvasTiles;
-      const bounds = sheetBounds(tiles);
+      const { canvasTiles: tiles, underlays: layers } = useDecodeStore.getState();
+      const bounds = sheetBounds(tiles, layers);
       if (!bounds) return null;
 
       const prev = { pos: stage.position(), scale: stage.scaleX() };
@@ -723,9 +730,10 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
         </Layer>
         {underlays.length > 0 && (
           // Index 0 is the top of the stack (as the layers list reads it), so
-          // the array is drawn in reverse. `sheet-chrome` keeps underlays out
-          // of exported PNGs, same as the grid.
-          <Layer name="sheet-chrome" listening={!!armedUnderlayId}>
+          // the array is drawn in reverse. This layer is *not* chrome — a
+          // registered plan is part of the drawing and exports with it; only
+          // its transform handles are hidden for the capture.
+          <Layer listening={!!armedUnderlayId}>
             {[...underlays].reverse().map(layer => (
               layer.visible ? (
                 <UnderlayImage

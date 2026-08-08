@@ -5,7 +5,7 @@ import {
   sheetBounds,
 } from './decodeSheetExport';
 import { TILE_SIZE } from './snapUtils';
-import type { CanvasTile } from '../../store/useDecodeStore';
+import type { CanvasTile, DecodeUnderlay } from '../../store/useDecodeStore';
 
 const tile = (
   id: string,
@@ -14,6 +14,24 @@ const tile = (
   y: number,
   rotation: 0 | 1 | 2 | 3 = 0,
 ): CanvasTile => ({ id, variationId, x, y, rotation });
+
+const underlay = (over: Partial<DecodeUnderlay> = {}): DecodeUnderlay => ({
+  id: 'u1',
+  source: 'plan',
+  label: 'Ground floor plan',
+  visible: true,
+  opacity: 1,
+  dataUrl: 'data:image/png;base64,AAAA',
+  thumbnailDataUrl: 'data:image/jpeg;base64,BBBB',
+  imageHash: 'deadbeef',
+  width: 100,
+  height: 50,
+  offsetX: 0,
+  offsetY: 0,
+  rotation: 0,
+  scale: 1,
+  ...over,
+});
 
 /** Shaped like the real files in public/2d: a scoped style block plus marks. */
 const variationSvg = (stroke: string) => `<?xml version="1.0" encoding="UTF-8"?>
@@ -41,6 +59,41 @@ describe('sheetBounds', () => {
     expect(b.minX).toBeLessThan(-240);
     expect(b.minY).toBeLessThan(-180);
     expect(b.width).toBeGreaterThan(TILE_SIZE);
+  });
+
+  it('frames an underlay that reaches past the tiles, rather than slicing it', () => {
+    const tiles = [tile('a', 'v-01', 0, 0)];
+    const plan = underlay({ width: 900, height: 700, offsetX: -400, offsetY: -300 });
+    const b = sheetBounds(tiles, [plan])!;
+    expect(b.minX).toBeLessThan(-400);
+    expect(b.minY).toBeLessThan(-300);
+    expect(b.minX + b.width).toBeGreaterThan(500);
+    expect(b.minY + b.height).toBeGreaterThan(400);
+  });
+
+  it('exports an underlay on its own, with no tiles placed', () => {
+    const b = sheetBounds([], [underlay({ width: 200, height: 100 })]);
+    expect(b).not.toBeNull();
+    expect(b!.width).toBeGreaterThan(200);
+  });
+
+  it('ignores hidden layers', () => {
+    const tiles = [tile('a', 'v-01', 0, 0)];
+    const hidden = underlay({ visible: false, width: 5000, height: 5000 });
+    expect(sheetBounds(tiles, [hidden])).toEqual(sheetBounds(tiles));
+    expect(sheetBounds([], [hidden])).toBeNull();
+  });
+
+  it('measures a rotated underlay by its true extent, not its unrotated box', () => {
+    // 100×50 turned 90° occupies x∈[-50,0], y∈[0,100] about its own corner.
+    const b = sheetBounds([], [underlay({ rotation: 90 })])!;
+    expect(b.minX).toBeCloseTo(-50 - TILE_SIZE * 0.25);
+    expect(b.width).toBeCloseTo(50 + TILE_SIZE * 0.5);
+    expect(b.height).toBeCloseTo(100 + TILE_SIZE * 0.5);
+  });
+
+  it('is still null with nothing drawn and nothing registered', () => {
+    expect(sheetBounds([], [])).toBeNull();
   });
 });
 
@@ -118,5 +171,58 @@ describe('composeSheetSvg', () => {
     const svg = composeSheetSvg(tiles, sources, b);
     expect(svg).toContain(`viewBox="${b.minX} ${b.minY} ${b.width} ${b.height}"`);
     expect(svg).toContain('translate(-300 -200)');
+  });
+
+  describe('underlay layers', () => {
+    const tiles = [tile('a', 'v-01', 0, 0)];
+    const compose = (layers: DecodeUnderlay[]) =>
+      composeSheetSvg(tiles, sources, sheetBounds(tiles, layers)!, layers);
+
+    it('embeds each visible layer as its own named group, at its registration', () => {
+      const svg = compose([
+        underlay({ offsetX: -60, offsetY: 20, width: 300, height: 200, scale: 0.5 }),
+      ]);
+      expect(svg).toContain('id="underlay-1-ground-floor-plan"');
+      expect(svg).toContain('transform="translate(-60 20)"');
+      expect(svg).toContain('width="150" height="100"');
+      expect(svg).toContain('xlink:href="data:image/png;base64,AAAA"');
+      expect(svg).toContain('xmlns:xlink=');
+    });
+
+    it('draws layers beneath the tiles', () => {
+      const svg = compose([underlay()]);
+      expect(svg.indexOf('<image')).toBeLessThan(svg.indexOf('<use '));
+    });
+
+    it('paints the stack bottom-up — index 0 is the top layer', () => {
+      const svg = compose([
+        underlay({ id: 'u1', label: 'Top' }),
+        underlay({ id: 'u2', label: 'Bottom' }),
+      ]);
+      // Numbered as the list reads, emitted in reverse so the top layer wins.
+      expect(svg.indexOf('id="underlay-2-bottom"')).toBeLessThan(
+        svg.indexOf('id="underlay-1-top"'),
+      );
+    });
+
+    it('leaves hidden layers out entirely', () => {
+      const svg = compose([underlay({ visible: false })]);
+      expect(svg).not.toContain('<image');
+    });
+
+    it('carries rotation and partial opacity through', () => {
+      const svg = compose([underlay({ rotation: 30, opacity: 0.4 })]);
+      expect(svg).toContain('opacity="0.4"');
+      expect(svg).toContain('rotate(30)');
+    });
+
+    it('falls back to the thumbnail when the full-res URL is gone', () => {
+      const svg = compose([underlay({ dataUrl: null })]);
+      expect(svg).toContain('xlink:href="data:image/jpeg;base64,BBBB"');
+    });
+
+    it('is unchanged when no layers are registered', () => {
+      expect(compose([])).not.toContain('<image');
+    });
   });
 });

@@ -130,6 +130,9 @@ const DecodeComposer: React.FC = () => {
   );
 
   const isEmpty = canvasTiles.length === 0;
+  // SVG and PNG carry the underlay stack, so a registered plan on its own is
+  // still something to export. DXF is geometry-only and stays on `isEmpty`.
+  const nothingToExport = isEmpty && !underlays.some(u => u.visible);
   const [exporting, setExporting] = useState(false);
   const [importingUnderlay, setImportingUnderlay] = useState(false);
   const [underlayError, setUnderlayError] = useState<string | null>(null);
@@ -241,12 +244,12 @@ const DecodeComposer: React.FC = () => {
   const [exportError, setExportError] = useState<string | null>(null);
 
   const runExport = async (kind: 'dxf' | 'svg' | 'png') => {
-    if (isEmpty || exporting) return;
+    if ((kind === 'dxf' ? isEmpty : nothingToExport) || exporting) return;
     setExporting(true);
     setExportError(null);
     try {
       if (kind === 'dxf') await downloadDecodeCompositionDxf(canvasTiles);
-      else if (kind === 'svg') await downloadDecodeSheetSvg(canvasTiles);
+      else if (kind === 'svg') await downloadDecodeSheetSvg(canvasTiles, underlays);
       else if (!downloadDecodeSheetPng()) {
         // Only possible with the sheet unmounted — i.e. the 3D view is up.
         setExportError('Switch back to the sheet to export a PNG.');
@@ -506,8 +509,8 @@ const DecodeComposer: React.FC = () => {
           </Button>
           <Button
             type="button"
-            disabled={isEmpty || exporting}
-            title="Vector drawing — one named group per tile, one symbol per variation"
+            disabled={nothingToExport || exporting}
+            title="Vector drawing — every layer: one named group per tile, one per underlay"
             onClick={() => void runExport('svg')}
             className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
           >
@@ -517,8 +520,8 @@ const DecodeComposer: React.FC = () => {
         <div className="flex gap-2">
           <Button
             type="button"
-            disabled={isEmpty || exporting}
-            title="Transparent background, 3× resolution"
+            disabled={nothingToExport || exporting}
+            title="Every visible layer, flattened — transparent background, 3× resolution"
             onClick={() => void runExport('png')}
             className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
           >
@@ -527,7 +530,7 @@ const DecodeComposer: React.FC = () => {
           <Button
             type="button"
             disabled={isEmpty || exporting}
-            title="Geometry only — DXF carries no layers or groups"
+            title="Tile geometry only — DXF carries no groups and no underlay images"
             onClick={() => void runExport('dxf')}
             className="flex-1 h-auto py-2 text-[12px] border border-ink-200 bg-ink-100 text-ink-700 hover:bg-ink-200 disabled:bg-ink-100 disabled:text-ink-400"
           >
