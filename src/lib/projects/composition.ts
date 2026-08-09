@@ -16,6 +16,8 @@ import { useEncodingStore } from '../../store/useEncodingStore';
 import { useMemeStore } from '../../store/useMemeStore';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { useDecodeStore } from '../../store/useDecodeStore';
+import { useAppStore } from '../../store/useAppStore';
+import { captureSheetThumbnail, sheetBounds } from '../decode/decodeSheetExport';
 import { getActiveSiteContext, setActiveSiteContext } from '../storage/siteContext';
 import { CUBE_VARIATIONS } from '../cube/specifications';
 import { getVariationGeometryAsync } from '../cube/csgUtils';
@@ -38,6 +40,23 @@ function recordToResult(record: OperatorRecord): LLMOperatorResult {
   };
 }
 
+/**
+ * A small PNG of the notation sheet to file alongside the snapshot.
+ *
+ * Prefers a fresh capture — accurate to the moment of saving — but the sheet
+ * can only be photographed while its stage is mounted, and "Save to project"
+ * is reachable from any mode. The canvas keeps a thumbnail in the store for
+ * exactly that case. Either way, an empty sheet gets nothing: without the
+ * `sheetBounds` guard a cleared canvas would keep filing its old drawing.
+ */
+function sheetThumbnail(decode: ReturnType<typeof useDecodeStore.getState>): string | null {
+  if (!sheetBounds(decode.canvasTiles, decode.underlays)) return null;
+  return (
+    captureSheetThumbnail(decode.canvasTiles, decode.underlays)
+    ?? decode.sheetThumbnailDataUrl
+  );
+}
+
 /** Read the complete working state into a plain-JSON snapshot. */
 export function captureComposition(): CompositionData {
   const builder = useBuilderStore.getState();
@@ -45,6 +64,7 @@ export function captureComposition(): CompositionData {
   const meme = useMemeStore.getState();
   const evolution = useEvolutionStore.getState();
   const decode = useDecodeStore.getState();
+  const sheetImage = sheetThumbnail(decode);
 
   const hasUploadedPhotos = encoding.multiPhotoEnabled
     ? encoding.uploadedImages.length > 0
@@ -172,8 +192,10 @@ export function captureComposition(): CompositionData {
             })),
           }
         : {}),
+      ...(sheetImage ? { sheetThumbnailDataUrl: sheetImage } : {}),
     },
     siteContextSnapshot: getActiveSiteContext(),
+    savedFromMode: useAppStore.getState().activeMode,
   };
 }
 
@@ -265,6 +287,26 @@ export function compositionPhotoPaths(data: CompositionData): string[] {
     ...(data.encode?.images ?? []).map(image => image.storagePath),
     ...(data.decode.underlays ?? []).map(layer => layer.storagePath),
   ].filter((path): path is string => Boolean(path));
+}
+
+/**
+ * Which mode a restored composition should open in.
+ *
+ * A composition saved from the sheet reopens on the sheet — that is where the
+ * work was, and having to click back into Decode every time you loaded your
+ * own drawing was the thing worth fixing. Compositions saved before that was
+ * recorded fall back to the original inference: Decode only when it holds the
+ * only meaningful content, otherwise Encode.
+ */
+export function landingModeFor(data: CompositionData): 'encoding' | 'decode' {
+  const storedUnderlays = data.decode.underlays ?? (data.decode.underlay ? [data.decode.underlay] : []);
+  const hasDecode = data.decode.canvasTiles.length > 0 || storedUnderlays.length > 0;
+  const hasBuild = data.builderAssembly.placedCubes.length > 0 || data.encode != null;
+
+  if (!hasDecode) return 'encoding';
+  if (data.savedFromMode === 'decode') return 'decode';
+  if (data.savedFromMode) return 'encoding';
+  return hasBuild ? 'encoding' : 'decode';
 }
 
 /** Rebuild the standalone working-cube geometry by replaying its operators. */
@@ -548,11 +590,10 @@ export async function restoreComposition(
     armedUnderlayId: null,
     selectedTileId: null,
     pendingPlacementVariationId: null,
+    // Carried forward so re-saving without opening Decode keeps the drawing
+    // in the record rather than quietly dropping it.
+    sheetThumbnailDataUrl: data.decode.sheetThumbnailDataUrl ?? null,
   });
 
-  // Landing mode: Decode if it has the only meaningful content, else Encode.
-  const hasDecode = data.decode.canvasTiles.length > 0;
-  const hasBuild = data.builderAssembly.placedCubes.length > 0 || data.encode != null;
-  const landingMode: 'encoding' | 'decode' = hasDecode && !hasBuild ? 'decode' : 'encoding';
-  return { landingMode };
+  return { landingMode: landingModeFor(data) };
 }

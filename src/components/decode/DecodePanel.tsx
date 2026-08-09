@@ -3,6 +3,7 @@ import type { CanvasTile, TileRotation } from '../../store/useDecodeStore';
 import { RotateCw, X } from 'lucide-react';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { MAX_UNDERLAYS, useDecodeStore } from '../../store/useDecodeStore';
+import { useProjectsStore } from '../../store/useProjectsStore';
 import { downloadDecodeCompositionDxf } from '../../lib/decode/decodeDxfExport';
 import {
   downloadDecodeSheetPng,
@@ -123,6 +124,7 @@ const DecodeComposer: React.FC = () => {
   const setSelectedTileId = useDecodeStore(s => s.setSelectedTileId);
   const setPendingPlacementVariationId = useDecodeStore(s => s.setPendingPlacementVariationId);
   const requestFit = useDecodeStore(s => s.requestFit);
+  const activeComposition = useProjectsStore(s => s.activeComposition);
 
   const drawerVariations = useMemo(
     () => (freestyle ? ALL_VARIATIONS : dedupeVariationsFromAssembly(placedCubes)),
@@ -538,6 +540,16 @@ const DecodeComposer: React.FC = () => {
           </Button>
         </div>
         {exportError && <p className="text-[11px] text-red-600">{exportError}</p>}
+        {/* The sheet has always saved with the composition — tiles, layers,
+            registration and all — but nothing here ever said so, so it read
+            as export-only work. */}
+        {!nothingToExport && (
+          <p className="text-[11px] text-ink-400">
+            {activeComposition
+              ? <>Tiles and layers save with <span className="text-ink-600">{activeComposition.name}</span> — reopening brings the sheet back.</>
+              : <>Tiles and layers save with the composition — <span className="text-ink-600">Save to project</span>, top right.</>}
+          </p>
+        )}
       </div>
 
       {/* Section cut — it drives the corner preview and the full 3D alike, so

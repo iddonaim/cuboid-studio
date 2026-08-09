@@ -13,6 +13,7 @@ import {
 import { variation2dPath } from '../../lib/decode/variation2dPath';
 import { snapRotation } from '../../lib/decode/rotationSnap';
 import {
+  captureSheetThumbnail,
   registerSheetCapture,
   sheetBounds,
   unregisterSheetCapture,
@@ -343,6 +344,7 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
   const setSelectedTileId = useDecodeStore(s => s.setSelectedTileId);
   const addTile = useDecodeStore(s => s.addTile);
   const fitRequestId = useDecodeStore(s => s.fitRequestId);
+  const setSheetThumbnail = useDecodeStore(s => s.setSheetThumbnail);
 
   const panRef = useRef<{ active: boolean; lastX: number; lastY: number }>({
     active: false,
@@ -638,6 +640,23 @@ export const DecodeCanvas: React.FC<DecodeCanvasProps> = ({
     });
     return () => unregisterSheetCapture();
   }, []);
+
+  /**
+   * Keep the store's sheet thumbnail current while the stage is up.
+   *
+   * "Save to project" lives in the TopBar and can be pressed from any mode,
+   * but Konva can only photograph a mounted stage — so the thumbnail is taken
+   * here, ahead of time, rather than at save. Refreshing on a short debounce
+   * after the drawing settles (rather than on the way out) keeps it clear of
+   * React's unmount ordering, where the stage may already be gone by the time
+   * a cleanup runs.
+   */
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSheetThumbnail(captureSheetThumbnail(canvasTiles, underlays));
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [canvasTiles, underlays, setSheetThumbnail]);
 
   const firstFitRequest = useRef(fitRequestId);
   useEffect(() => {
