@@ -1,6 +1,6 @@
 import { type SpatialLexicon } from '../../prompts/lexicon.default';
 import { useLexiconStore } from '../../store/useLexiconStore';
-import { isDemoMode } from '../demo/demoMode';
+import { isDemoMode, isPresenterFallbackMode } from '../demo/demoMode';
 import { isDemoRecordMode } from '../demo/recorder';
 import { NETWORK_FALLBACK_TIMEOUT_MS, fetchWithTimeout, isNetworkFailure } from './networkTimeout';
 
@@ -175,36 +175,47 @@ export async function encodeSpace(request: EncodeSpaceRequest): Promise<EncodeSp
           ...(siteContext ? { siteContext } : {}),
         };
 
+  const requestInit: RequestInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+
   let response: Response;
-  try {
-    response = await fetchWithTimeout('/api/encode-space', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    // Timeout or dropped connection (not a server error — the server never
-    // answered): fall back to a cached reading for this exact photo (and, in
-    // merge mode, this exact seed) if one was saved earlier. A new/improvised
-    // photo with no saved match still fails, with a clear reason instead of a
-    // silently faked reading.
-    if (isNetworkFailure(err)) {
-      try {
-        const { getDemoEncode } = await import('../demo/bundle');
-        const { hashImageBase64 } = await import('../demo/recorder');
-        const result = await getDemoEncode(demoReplayKey(request, hashImageBase64));
-        console.warn(
-          `[network-fallback] encode-space: no response within ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s — served a saved result instead.`,
-        );
-        return result;
-      } catch {
-        throw new Error(
-          `Couldn't reach the server (waited ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s), and this photo hasn't been ` +
-            'encoded and saved before, so there is nothing to fall back on. Check the connection and try again.',
-        );
+  if (isPresenterFallbackMode()) {
+    try {
+      response = await fetchWithTimeout('/api/encode-space', requestInit);
+    } catch (err) {
+      // Timeout or dropped connection (not a server error — the server never
+      // answered): fall back to a cached reading for this exact photo (and, in
+      // merge mode, this exact seed) if one was saved earlier. A new/improvised
+      // photo with no saved match still fails, with a clear reason instead of a
+      // silently faked reading. Only reachable with `?presenting` — a normal
+      // visitor's failed request never gets a stand-in reading; see
+      // isPresenterFallbackMode().
+      if (isNetworkFailure(err)) {
+        try {
+          const { getDemoEncode } = await import('../demo/bundle');
+          const { hashImageBase64 } = await import('../demo/recorder');
+          const result = await getDemoEncode(demoReplayKey(request, hashImageBase64));
+          console.warn(
+            `[network-fallback] encode-space: no response within ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s — served a saved result instead.`,
+          );
+          return result;
+        } catch {
+          throw new Error(
+            `Couldn't reach the server (waited ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s), and this photo hasn't been ` +
+              'encoded and saved before, so there is nothing to fall back on. Check the connection and try again.',
+          );
+        }
       }
+      throw err;
     }
-    throw err;
+  } else {
+    // Normal (non-presenting) path — unchanged from before this fallback
+    // existed: no artificial timeout, no cached stand-in, a failure is just
+    // a failure.
+    response = await fetch('/api/encode-space', requestInit);
   }
 
   if (!response.ok) {

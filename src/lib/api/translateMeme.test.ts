@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { TwoPassTranslationResult } from '../operators/types';
 
-vi.mock('../demo/demoMode', () => ({ isDemoMode: () => false }));
+vi.mock('../demo/demoMode', () => ({
+  isDemoMode: () => false,
+  isPresenterFallbackMode: vi.fn(() => false),
+}));
 vi.mock('../demo/recorder', () => ({ isDemoRecordMode: () => false }));
 vi.mock('../demo/bundle', () => ({ getDemoTranslation: vi.fn() }));
 vi.mock('../../store/useTranslationLexiconStore', () => ({
@@ -10,11 +13,12 @@ vi.mock('../../store/useTranslationLexiconStore', () => ({
 
 import { translateMemeTwoPass } from './translateMeme';
 import { getDemoTranslation } from '../demo/bundle';
+import { isPresenterFallbackMode } from '../demo/demoMode';
 import { NETWORK_FALLBACK_TIMEOUT_MS } from './networkTimeout';
 
 const CANNED_RESULT = { pass1: {}, pass2: {} } as unknown as TwoPassTranslationResult;
 
-describe('translateMemeTwoPass — network fallback', () => {
+describe('translateMemeTwoPass — network fallback (?presenting only)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -26,6 +30,7 @@ describe('translateMemeTwoPass — network fallback', () => {
   });
 
   it('serves the saved translation when the server times out and a match exists', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(true);
     vi.stubGlobal(
       'fetch',
       vi.fn((_url: string, init: RequestInit) => {
@@ -52,6 +57,7 @@ describe('translateMemeTwoPass — network fallback', () => {
   });
 
   it('throws a clear error when the server times out and nothing is saved for this meme', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(true);
     vi.stubGlobal(
       'fetch',
       vi.fn((_url: string, init: RequestInit) => {
@@ -92,6 +98,27 @@ describe('translateMemeTwoPass — network fallback', () => {
         skipSiteContext: true,
       }),
     ).rejects.toThrow(/API error \(500\)/);
+    expect(getDemoTranslation).not.toHaveBeenCalled();
+  });
+
+  it('without ?presenting, a dropped connection is a real error — no timeout, no fallback, even if a saved match exists', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(false);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    vi.mocked(getDemoTranslation).mockResolvedValue(CANNED_RESULT);
+
+    await expect(
+      translateMemeTwoPass({
+        memeDescription: 'a known meme',
+        locationTag: null,
+        engagementLevel: 5,
+        skipSiteContext: true,
+      }),
+    ).rejects.toThrow('Failed to fetch');
     expect(getDemoTranslation).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { EncodeSpaceResponse } from './encodeSpace';
 
-vi.mock('../demo/demoMode', () => ({ isDemoMode: () => false }));
+vi.mock('../demo/demoMode', () => ({
+  isDemoMode: () => false,
+  isPresenterFallbackMode: vi.fn(() => false),
+}));
 vi.mock('../demo/recorder', () => ({
   isDemoRecordMode: () => false,
   hashImageBase64: (payload: string) => `hash:${payload}`,
@@ -13,6 +16,7 @@ vi.mock('../../store/useLexiconStore', () => ({
 
 import { encodeSpace } from './encodeSpace';
 import { getDemoEncode } from '../demo/bundle';
+import { isPresenterFallbackMode } from '../demo/demoMode';
 import { NETWORK_FALLBACK_TIMEOUT_MS } from './networkTimeout';
 
 const CANNED_RESULT: EncodeSpaceResponse = { reasoning: 'cached', cubes: [] };
@@ -27,7 +31,7 @@ function neverRespondingFetch() {
   });
 }
 
-describe('encodeSpace — network fallback', () => {
+describe('encodeSpace — network fallback (?presenting only)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -39,6 +43,7 @@ describe('encodeSpace — network fallback', () => {
   });
 
   it('serves the saved reading when the server times out and this exact photo was saved before', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(true);
     vi.stubGlobal('fetch', neverRespondingFetch());
     vi.mocked(getDemoEncode).mockResolvedValue(CANNED_RESULT);
 
@@ -50,6 +55,7 @@ describe('encodeSpace — network fallback', () => {
   });
 
   it('throws a clear error when the server times out and this photo has no saved reading', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(true);
     vi.stubGlobal('fetch', neverRespondingFetch());
     vi.mocked(getDemoEncode).mockRejectedValue(new Error('no recorded encode'));
 
@@ -61,12 +67,27 @@ describe('encodeSpace — network fallback', () => {
   });
 
   it('does not fall back on a real server error (server was reachable)', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(true);
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ error: 'boom' }), { status: 500 })),
     );
 
     await expect(encodeSpace({ imageBase64: 'anything' })).rejects.toThrow('boom');
+    expect(getDemoEncode).not.toHaveBeenCalled();
+  });
+
+  it('without ?presenting, a dropped connection is a real error — no timeout, no fallback, even if a saved match exists', async () => {
+    vi.mocked(isPresenterFallbackMode).mockReturnValue(false);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    vi.mocked(getDemoEncode).mockResolvedValue(CANNED_RESULT);
+
+    await expect(encodeSpace({ imageBase64: 'known-photo-bytes' })).rejects.toThrow('Failed to fetch');
     expect(getDemoEncode).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import { LLMOperatorResult, TwoPassTranslationResult } from '../operators/types';
 import { getActiveSiteContext } from '../storage/siteContext';
 import { useTranslationLexiconStore } from '../../store/useTranslationLexiconStore';
-import { isDemoMode } from '../demo/demoMode';
+import { isDemoMode, isPresenterFallbackMode } from '../demo/demoMode';
 import { getDemoTranslation } from '../demo/bundle';
 import { isDemoRecordMode } from '../demo/recorder';
 import { NETWORK_FALLBACK_TIMEOUT_MS, fetchWithTimeout, isNetworkFailure } from './networkTimeout';
@@ -84,38 +84,49 @@ export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise
   // original prompt — so default behaviour is unchanged.
   const translation_lexicon = useTranslationLexiconStore.getState().getActiveTranslationLexicon();
 
+  const requestInit: RequestInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...rest,
+      pass_mode: 'two_pass',
+      site_context: siteContext,
+      translation_lexicon,
+    }),
+  };
+
   let response: Response;
-  try {
-    response = await fetchWithTimeout('/api/translate-meme', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...rest,
-        pass_mode: 'two_pass',
-        site_context: siteContext,
-        translation_lexicon,
-      }),
-    });
-  } catch (err) {
-    // Timeout or dropped connection (not a server error — the server never
-    // answered): fall back to a cached result for this exact meme if one was
-    // saved earlier. An improvised meme with no saved match still fails, with
-    // a clear reason instead of a silently faked response.
-    if (isNetworkFailure(err)) {
-      try {
-        const result = await getDemoTranslation(req.memeDescription);
-        console.warn(
-          `[network-fallback] translate-meme: no response within ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s — served a saved result instead.`,
-        );
-        return result;
-      } catch {
-        throw new Error(
-          `Couldn't reach the server (waited ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s), and this meme hasn't been ` +
-            'translated and saved before, so there is nothing to fall back on. Check the connection and try again.',
-        );
+  if (isPresenterFallbackMode()) {
+    try {
+      response = await fetchWithTimeout('/api/translate-meme', requestInit);
+    } catch (err) {
+      // Timeout or dropped connection (not a server error — the server never
+      // answered): fall back to a cached result for this exact meme if one was
+      // saved earlier. An improvised meme with no saved match still fails, with
+      // a clear reason instead of a silently faked response. Only reachable
+      // with `?presenting` — a normal visitor's failed request never gets a
+      // stand-in result; see isPresenterFallbackMode().
+      if (isNetworkFailure(err)) {
+        try {
+          const result = await getDemoTranslation(req.memeDescription);
+          console.warn(
+            `[network-fallback] translate-meme: no response within ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s — served a saved result instead.`,
+          );
+          return result;
+        } catch {
+          throw new Error(
+            `Couldn't reach the server (waited ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s), and this meme hasn't been ` +
+              'translated and saved before, so there is nothing to fall back on. Check the connection and try again.',
+          );
+        }
       }
+      throw err;
     }
-    throw err;
+  } else {
+    // Normal (non-presenting) path — unchanged from before this fallback
+    // existed: no artificial timeout, no cached stand-in, a failure is just
+    // a failure.
+    response = await fetch('/api/translate-meme', requestInit);
   }
 
   if (!response.ok) {
