@@ -4,6 +4,7 @@ import { useTranslationLexiconStore } from '../../store/useTranslationLexiconSto
 import { isDemoMode } from '../demo/demoMode';
 import { getDemoTranslation } from '../demo/bundle';
 import { isDemoRecordMode } from '../demo/recorder';
+import { NETWORK_FALLBACK_TIMEOUT_MS, fetchWithTimeout, isNetworkFailure } from './networkTimeout';
 
 export interface TranslateMemeRequest {
   memeDescription: string;
@@ -83,16 +84,39 @@ export async function translateMemeTwoPass(req: TranslateMemeV2Request): Promise
   // original prompt — so default behaviour is unchanged.
   const translation_lexicon = useTranslationLexiconStore.getState().getActiveTranslationLexicon();
 
-  const response = await fetch('/api/translate-meme', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...rest,
-      pass_mode: 'two_pass',
-      site_context: siteContext,
-      translation_lexicon,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout('/api/translate-meme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...rest,
+        pass_mode: 'two_pass',
+        site_context: siteContext,
+        translation_lexicon,
+      }),
+    });
+  } catch (err) {
+    // Timeout or dropped connection (not a server error — the server never
+    // answered): fall back to a cached result for this exact meme if one was
+    // saved earlier. An improvised meme with no saved match still fails, with
+    // a clear reason instead of a silently faked response.
+    if (isNetworkFailure(err)) {
+      try {
+        const result = await getDemoTranslation(req.memeDescription);
+        console.warn(
+          `[network-fallback] translate-meme: no response within ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s — served a saved result instead.`,
+        );
+        return result;
+      } catch {
+        throw new Error(
+          `Couldn't reach the server (waited ${NETWORK_FALLBACK_TIMEOUT_MS / 1000}s), and this meme hasn't been ` +
+            'translated and saved before, so there is nothing to fall back on. Check the connection and try again.',
+        );
+      }
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const body = await response.text();
