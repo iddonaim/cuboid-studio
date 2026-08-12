@@ -33,7 +33,7 @@ export const DemoExportButton: React.FC = () => {
         `Exported ${bundle.compositions.length} composition(s), ${bundle.pins.length} pin(s), ` +
           `${bundle.memes.length} meme(s), ${bundle.translations.length} canned translation(s). ` +
           recLine +
-          'Now run: node scripts/build-demo-bundle.mjs demo-bundle-raw.json',
+          'Downloaded demo-bundle-raw.json — send that file over to finish building the bundle.',
       );
     } catch (err) {
       console.error('Demo export failed:', err);
