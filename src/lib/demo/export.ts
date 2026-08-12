@@ -13,6 +13,7 @@
  */
 import { loadSitePins, isLocated } from '../projects/sitePins';
 import { listCompositions } from '../projects/firestore';
+import { getFileUrl } from '../projects/photoStorage';
 import type { OperatorRecord } from '../operators/types';
 import type { ArchthesisMeme, FetchMemesResponse } from '../../types/archthesis';
 import type { DemoBundle, DemoComposition, DemoRecordings, DemoTranslation } from './types';
@@ -67,6 +68,37 @@ function collectImageUrls(
   return [...urls];
 }
 
+/** Every encode-photo and capture storage path across the exported compositions. */
+function collectStoragePaths(compositions: DemoComposition[]): string[] {
+  const paths = new Set<string>();
+  for (const c of compositions) {
+    for (const img of c.doc.data.encode?.images ?? []) {
+      if (img.storagePath) paths.add(img.storagePath);
+    }
+    for (const cap of c.doc.data.captures ?? []) {
+      if (cap.storagePath) paths.add(cap.storagePath);
+    }
+  }
+  return [...paths];
+}
+
+/**
+ * Resolve every storage path to a download URL while we're genuinely signed
+ * in as its owner — this is the one moment that works. A failed resolution
+ * (deleted file, storage unavailable) is just dropped rather than thrown;
+ * the raw export already has the thumbnail as a fallback for that photo.
+ */
+async function resolveFullResUrls(paths: string[]): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  await Promise.all(
+    paths.map(async path => {
+      const url = await getFileUrl(path);
+      if (url) out[path] = url;
+    }),
+  );
+  return out;
+}
+
 /**
  * Build the raw bundle. `images` maps every remote URL to its future local
  * path — the Node script performs the actual downloads and keeps the mapping.
@@ -101,6 +133,8 @@ export async function buildRawDemoBundle(ownerId: string): Promise<DemoBundle> {
     images[url] = `/demo/memes/img-${String(i).padStart(3, '0')}.${ext}`;
   });
 
+  const fullResUrls = await resolveFullResUrls(collectStoragePaths(compositions));
+
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -109,6 +143,7 @@ export async function buildRawDemoBundle(ownerId: string): Promise<DemoBundle> {
     memes,
     translations: harvestTranslations(compositions),
     images,
+    fullResUrls,
     ...(recordings ? { recordings } : {}),
   };
 }

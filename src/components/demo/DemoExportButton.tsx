@@ -29,9 +29,15 @@ export const DemoExportButton: React.FC = () => {
           `${rec.geocode.length} address(es), ${rec.encodes.length} photo encode(s), ` +
           `${rec.evolveRounds.length} evolve round(s), ${rec.twoPass.length} live translation(s). `
         : 'No ?demoRecord session found in this browser. ';
+      const resolved = Object.keys(bundle.fullResUrls ?? {}).length;
+      const requested = bundle.compositions.reduce(
+        (n, c) => n + (c.doc.data.encode?.images?.length ?? 0) + (c.doc.data.captures?.length ?? 0),
+        0,
+      );
       setMessage(
         `Exported ${bundle.compositions.length} composition(s), ${bundle.pins.length} pin(s), ` +
-          `${bundle.memes.length} meme(s), ${bundle.translations.length} canned translation(s). ` +
+          `${bundle.memes.length} meme(s), ${bundle.translations.length} canned translation(s), ` +
+          `${resolved}/${requested} full-resolution photo(s)/capture(s). ` +
           recLine +
           'Downloaded demo-bundle-raw.json — send that file over to finish building the bundle.',
       );
