@@ -124,4 +124,18 @@ export interface DemoBundle {
    * exported before that kind was recorded — every consumer must tolerate both.
    */
   recordings?: DemoRecordings;
+  /**
+   * Storage path → resolved download URL, for every encode photo and viewport
+   * capture referenced by `compositions` (full-resolution originals — NOT the
+   * 240px thumbnails already inline in the composition doc). Firebase Storage
+   * rules gate the *signed-in owner* resolving a path to a URL, not fetching
+   * the resulting URL itself, so this is what lets a tool with no Firebase
+   * credentials (e.g. an external asset puller) download the real files: the
+   * browser resolves them once, while genuinely signed in as the owner, at
+   * export time. Not consumed by the offline `?demo` bundle build — those
+   * still ship only the inline thumbnails — this exists purely so the raw
+   * export is a complete, self-contained handoff of the real material.
+   * Absent on exports from before this existed.
+   */
+  fullResUrls?: Record<string, string>;
 }
