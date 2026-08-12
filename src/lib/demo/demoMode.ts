@@ -12,16 +12,16 @@
  *   - build flag:  VITE_OFFLINE_DEMO=1        (baked into a dedicated build)
  *
  * The flag is read once at module load — a mid-session URL change requires a
- * reload, which is the safe behaviour for a live talk.
+ * reload, which is the safe behaviour for a live talk. Matching is
+ * case-insensitive (see urlFlag.ts) so address-bar autocomplete swapping in a
+ * differently-cased history entry can't silently break the flag on stage.
  */
+import { hasUrlFlag } from './urlFlag';
 
 function detect(): boolean {
   try {
     if (import.meta.env.VITE_OFFLINE_DEMO === '1') return true;
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.has('demo')) return true;
-    }
+    if (hasUrlFlag('demo')) return true;
   } catch {
     /* non-browser context (tests) — fall through */
   }
@@ -37,9 +37,7 @@ export function isDemoMode(): boolean {
 /** Authoring aid: shows the "Export demo bundle" button (online, signed in). */
 export function isDemoExportMode(): boolean {
   try {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).has('demoExport');
-    }
+    return hasUrlFlag('demoExport');
   } catch {
     /* ignore */
   }
@@ -65,9 +63,7 @@ export function isDemoExportMode(): boolean {
 function detectPresenterFallback(): boolean {
   try {
     if (import.meta.env.VITE_PRESENTER_FALLBACK === '1') return true;
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).has('presenting');
-    }
+    if (hasUrlFlag('presenting')) return true;
   } catch {
     /* non-browser context (tests) — fall through */
   }

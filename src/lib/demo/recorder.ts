@@ -20,6 +20,7 @@ import type {
   RecordedSiteAnalysis,
   DemoTranslation,
 } from './types';
+import { hasUrlFlag } from './urlFlag';
 
 const STORAGE_KEY = 'cs-demo-recording';
 
@@ -43,9 +44,7 @@ export function metersBetween(
 
 export function isDemoRecordMode(): boolean {
   try {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).has('demoRecord');
-    }
+    return hasUrlFlag('demoRecord');
   } catch {
     /* non-browser context */
   }
