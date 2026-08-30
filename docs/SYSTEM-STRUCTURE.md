@@ -7,8 +7,8 @@ under **Extracted**.
 
 - Layers 0–1 (this file): system map + cross-system contracts.
 - Layers 2–3: per-repo `STRUCTURE.md` at the root of each repo — `cuboid-studio/STRUCTURE.md`,
-  `map-context/STRUCTURE.md`, `archthesis/STRUCTURE.md` *(Layer 2 written 2026-08-30; Layer 3
-  pending)*.
+  `map-context/STRUCTURE.md`, `archthesis/STRUCTURE.md` *(Layers 2–3 written 2026-08-30 —
+  the record is complete)*.
 
 The three codebases are three separate repositories (the planned workspace merge did not happen):
 `iddonaim/cuboid-studio`, `iddonaim/map-context`, `iddonaim/archthesis`.
