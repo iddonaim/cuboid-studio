@@ -306,6 +306,115 @@ Stage-by-stage, with the exact call relationships the edges assert:
    `createComposition`/`updateComposition` (`firestore.ts:134,150`) under
    `projects/{p}/sites/{s}/compositions/{c}`.
 
+#### Flow A — Map → site context → encode/translate requests *(traced 2026-08-30)*
+
+```mermaid
+flowchart TB
+    L1["map-context posts analysis-complete<br/>map-context/launcher.js:219 (fire), :591-592 (relay)<br/>— cross-repo edge, contract in Layer 1 §3"]
+    M1["Origin check + message parse<br/>src/components/map/MapContextCanvas.tsx:127-140<br/>type guards at :31-48"]
+    M2["adaptAnalysisPayload()<br/>MapContextCanvas.tsx:60-84 —<br/>poisFromMapAnalysis / morphologyFromMapAnalysis<br/>(src/lib/siteContext/mapContextPayload.ts),<br/>buildSiteContextAt (src/lib/siteContext/mapSiteContext.ts)"]
+    A1["handleAnalysisComplete<br/>src/App.tsx:171-175<br/>setActiveSiteContext + setSiteAnalysisReady"]
+    S1[("localStorage 'cuboid:activeSiteContext'<br/>src/lib/storage/siteContext.ts:9 (key), :96-103 (write)")]
+    E1["Encode attaches site context<br/>src/store/useEncodingStore.ts:710 getActiveSiteContext()<br/>→ encodeSpace({... siteContext}) at :725,:735<br/>(comparison path same at :562,:597,:607)"]
+    E2["Client body build<br/>src/lib/api/encodeSpace.ts:153-176<br/>siteContext field, conditional spread"]
+    E3["Server folds it into the prompt<br/>api/encode-space.ts:144-147<br/>(siteContext → prompt prefix)"]
+    T1["Translate attaches site context<br/>src/lib/api/translateMeme.ts:74-77 —<br/>site_context defaults from getActiveSiteContext();<br/>translation_lexicon added at :85,:93-95"]
+    T2["Server request contract<br/>api/translate-meme.ts:182-235<br/>site_context ≤ 32 KB (Layer 2 §2.4)"]
+
+    L1 --> M1
+    M1 --> M2
+    M2 --> A1
+    A1 --> S1
+    S1 --> E1
+    E1 --> E2
+    E2 --> E3
+    S1 --> T1
+    T1 --> T2
+```
+
+Edge notes: the site context reaches the two request bodies by **different mechanisms** —
+Encode reads it explicitly in the store action and passes it down
+(`useEncodingStore.ts:710` → `encodeSpace.ts:153-176`), while Translate's API client reads it
+*itself* as a default when the caller doesn't supply one (`translateMeme.ts:74-77`; the
+`useMemeStore.translate()` call at `useMemeStore.ts:460-464` indeed omits it and relies on that
+default). `handleAnalysisComplete` also skips the "analysis ready" flag when the incoming
+context is the same site being restored (`App.tsx:172-174`, via `isSameSite`); the reset
+message clears both (`handleAnalysisReset`, `App.tsx:181-184`).
+
+#### Flow B — Encode request → five-axis reading → proposed assembly → apply/merge/remix *(traced 2026-08-30)*
+
+```mermaid
+flowchart TB
+    Q1["encode() action<br/>src/store/useEncodingStore.ts:673<br/>images + siteContext + seedAssembly"]
+    Q2["API client<br/>src/lib/api/encodeSpace.ts:143 encodeSpace()<br/>POST /api/encode-space at :187/:218"]
+    Q3["api/encode-space.ts —<br/>Anthropic call at :373;<br/>reading sanitised, never a 422, at :277-281"]
+    LLM["Anthropic API"]
+    R0["Response {reading?, reasoning, cubes,<br/>model?, promptVersion?, …}<br/>src/lib/api/encodeSpace.ts:97-110"]
+    R1["Five-axis reading (SpatialReading)<br/>src/lib/api/encodeSpace.ts:87-93:<br/>atmosphere, light, emotion, rhythm, placement;<br/>architect edits via updateEncodingReading<br/>useEncodingStore.ts:242"]
+    P1["Proposed assembly state<br/>src/store/useEncodingStore.ts (encodedCubes)"]
+    D1["remixDecisions()<br/>src/lib/encoding/remixDecisions.ts:51 →<br/>{carried, transplanted, added, discarded,<br/>discardedOperatorCount} (:38-49)"]
+    U1["Decision display only:<br/>EncodingPanel.tsx:187,<br/>EncodingResultPanel.tsx:56,<br/>Viewport3D.tsx:454 (preview)"]
+    B1["loadIntoBuilder()<br/>useEncodingStore.ts:800 —<br/>apply: base []; merge: current cubes;<br/>remix (legacy overlay): seed (:835-846);<br/>remix v2 replaces seed (:825-832)"]
+    B2["applyRemixOperators()<br/>useEncodingStore.ts:872 —<br/>transplants inherit via inheritFromSeedId,<br/>discarded cubes' records dropped"]
+    B3["Builder placement<br/>useBuilderStore.setPlacedCubes +<br/>pushToHistory (useEncodingStore.ts:830-831, :845-846)"]
+
+    Q1 --> Q2
+    Q2 --> Q3
+    Q3 --> LLM
+    LLM --> Q3
+    Q3 --> R0
+    R0 --> R1
+    R0 --> P1
+    P1 --> D1
+    D1 --> U1
+    P1 --> B1
+    B1 --> B2
+    B1 --> B3
+    B2 --> B3
+```
+
+Edge notes — the one most likely to differ from an authored diagram:
+**`remixDecisions()` is not on the apply path.** It classifies the result for the panels and
+the 3D preview (`U1` above); `loadIntoBuilder()` never calls it. The apply path instead
+re-derives transplants inside `applyRemixOperators()` from each cube's `inheritFromSeedId`
+(`useEncodingStore.ts:872` and its doc comment) — two independent implementations of the same
+carried/transplanted/discarded logic, one for display, one for effect. Merge-mode dedupe (same
+id or same occupied cell never stacks) is at `useEncodingStore.ts:837-843`.
+
+#### Flow C — Decode selector → sheet → export *(traced 2026-08-30)*
+
+```mermaid
+flowchart TB
+    V1["Variation selector<br/>src/components/decode/DecodePanel.tsx:315<br/>setPendingPlacementVariationId"]
+    V2["Decode state<br/>src/store/useDecodeStore.ts —<br/>pendingPlacementVariationId :90,:140;<br/>addTile :205; CanvasTile {id, variationId,<br/>x, y, rotation} :5-11"]
+    V3["Sheet canvas (react-konva)<br/>src/components/decode/DecodeCanvas.tsx —<br/>click placement calls addTile at :527,:539;<br/>registers the PNG capturer<br/>(registerSheetCapture, :17-19)"]
+    X0["Export dispatch<br/>DecodePanel.tsx:247-259<br/>runExport('dxf' | 'svg' | 'png')"]
+    X1["SVG sheet<br/>src/lib/decode/decodeSheetExport.ts:251<br/>downloadDecodeSheetSvg → composeSheetSvg :203;<br/>inlines /2d/v-XX.svg as vector symbols<br/>(variation2dPath.ts:2-4),<br/>CSS class-scoped per variation :123"]
+    X2["PNG<br/>decodeSheetExport.ts:296 downloadDecodeSheetPng<br/>→ captureSheetPng :292 (uses the capturer<br/>DecodeCanvas registered; fails if sheet unmounted)"]
+    X3["DXF<br/>src/lib/decode/decodeDxfExport.ts:105<br/>downloadDecodeCompositionDxf<br/>(dxf-writer, :1)"]
+    H["Composition save reuses the sheet machinery<br/>src/lib/projects/composition.ts:20 imports<br/>captureSheetThumbnail + sheetBounds<br/>→ DecodeData.sheetThumbnailDataUrl (Layer 2 §2.2)"]
+
+    V1 --> V2
+    V2 --> V3
+    V3 --> V2
+    V2 --> X0
+    X0 --> X1
+    X0 --> X2
+    X0 --> X3
+    V3 --> X2
+    V2 --> H
+```
+
+Edge notes: the sheet's tile graphics are the 70 pre-drawn 2D variation SVGs under
+`public/2d/` (`variation2dPath.ts:2-4`) — the Decode sheet never touches the 3D CSG geometry.
+The SVG export inlines those files as one `<symbol>` per distinct variation (class-scoped so
+their styles can't collide, `decodeSheetExport.ts:123`); the DXF export rebuilds line geometry
+from tile positions via `snapPoints`/`snapUtils` (`decodeDxfExport.ts:3-4`); the PNG path is a
+live canvas capture and therefore only works while the sheet is mounted
+(`DecodePanel.tsx:255-257`). Underlays ride along in the SVG as embedded `<image>` elements
+(`decodeSheetExport.ts:31` comment) but are absent from the DXF, which takes only `canvasTiles`
+(`DecodePanel.tsx:253`).
+
 ---
 
 ## DRIFT
