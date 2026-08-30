@@ -98,22 +98,32 @@ async function makeContext(
 }
 
 describe('matrix expansion', () => {
-  it('expands the toy config to 3 memes × 1 model × 3 cells × 3 replicates = 27 cells, deterministically ordered', async () => {
+  it('expands the toy config to 3 memes × 1 model × 2 cells (a, c) × 3 replicates = 18 cells, deterministically ordered', async () => {
     const { config, corpus } = await loadToy();
     const cells = expandMatrix(config, corpus);
-    expect(cells).toHaveLength(27);
+    expect(cells).toHaveLength(18);
     expect(corpus.raw_collection_count).toBe(3);
     expect(corpus.used_count).toBe(3);
     // Meme ids ascending; a-cells before c-cells within a meme×model.
     expect(cells[0].memeId).toBe('meme-toy-0001-current');
     expect(cells[0].cellType).toBe('a');
     expect(cells[0].replicateIndex).toBe(0);
-    expect(cells[8].memeId).toBe('meme-toy-0001-current');
-    expect(cells[8].cellType).toBe('c');
-    expect(cells[9].memeId).toBe('meme-toy-0002-legacy');
+    expect(cells[3].memeId).toBe('meme-toy-0001-current');
+    expect(cells[3].cellType).toBe('c');
+    expect(cells[6].memeId).toBe('meme-toy-0002-legacy');
     // Expanding twice gives identical doc ids in identical order.
     const again = expandMatrix(config, corpus).map((c) => c.docId);
     expect(cells.map((c) => c.docId)).toEqual(again);
+  });
+
+  it('rejects a config naming cell (b) — dropped as separate runs (Iddo, 2026-08-30)', () => {
+    const withB = JSON.stringify({
+      batch_id: 'b-test', experiment: 'E2', baseline_tag: 'SCAFFOLD-X',
+      corpus: { meme_ids: 'all' },
+      models: [{ id: 'anthropic/claude-sonnet-4.6', provider: 'anthropic' }],
+      cells: ['a', 'b', 'c'], replicates: 1, site_context_file: null, budget_cap_usd: null,
+    });
+    expect(() => parseBatchConfig(withB, 'with-b.json')).toThrow(/dropped as separate runs/);
   });
 
   it('doc ids are Firestore-safe and encode the full cell identity', async () => {
@@ -167,14 +177,14 @@ describe('dry-run cost table (DoD 2)', () => {
     }));
 
     const table = renderDryRunTable(cells);
-    expect(table.cell_count).toBe(27);
-    // Believable: a real two-pass system prompt is thousands of tokens, so a
-    // 27-cell toy batch lands in whole-dollar-cents territory, not zero and
+    expect(table.cell_count).toBe(18);
+    // Believable: a real two-pass system prompt is thousands of tokens, so an
+    // 18-cell toy batch lands in whole-dollar-cents territory, not zero and
     // not hundreds of dollars.
     expect(table.total_usd).toBeGreaterThan(0.1);
     expect(table.total_usd).toBeLessThan(10);
-    // 9 groups (3 memes × 3 cells) + header/footer lines.
-    expect(table.lines.length).toBeGreaterThan(9);
+    // 6 groups (3 memes × 2 cells) + header/footer lines.
+    expect(table.lines.length).toBeGreaterThan(6);
     expect(table.lines.join('\n')).toContain('anthropic/claude-sonnet-4.6');
   });
 });

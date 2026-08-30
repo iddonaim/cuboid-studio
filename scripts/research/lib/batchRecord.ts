@@ -85,7 +85,7 @@ export function buildBatchRecord(args: {
       cell_count: args.cellCount,
       ordering: 'meme id ascending × config model order × cells (a, b, c) × replicate ascending',
       doc_id_scheme:
-        '<batch_id>__<experiment>__translation__<meme_id>__<provider>_<model id, / → ~ and . → ->__cell-<a|b|c>__r<replicate>',
+        '<batch_id>__<experiment>__translation__<meme_id>__<provider>_<model id, / → ~ and . → ->__cell-<a|c>__r<replicate>',
     },
     regime: args.regime,
     site_context_hash: args.siteContextHash,

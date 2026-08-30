@@ -9,7 +9,7 @@
   "models": [
     { "id": "anthropic/claude-sonnet-4.6", "provider": "anthropic" }
   ],
-  "cells": ["a", "b", "c"],
+  "cells": ["a", "c"],
   "replicates": 3,
   "site_context_file": null,
   "composition_ref": null,

@@ -4,7 +4,14 @@
  * itself is recorded in the batch manifest.
  */
 
-export type CellType = 'a' | 'b' | 'c';
+/**
+ * E2 cell types. Cell (b) — "Pass 1 only" — was DROPPED as separate runs by
+ * Iddo's ruling of 2026-08-30: the one-call two-pass pipeline cannot stop
+ * after Pass 1 without a prompt variant (forbidden in Phase 0), so reading
+ * variance is decomposed from (a)'s Pass-1 marginals together with (c)'s
+ * translation-given-frozen-reading variance, not measured by its own cell.
+ */
+export type CellType = 'a' | 'c';
 
 export interface BatchModelConfig {
   /** Model id as the transport expects it (OpenRouter-style for openrouter,
@@ -55,7 +62,7 @@ export interface BatchConfig {
   frozen_pass1_source?: 'batch-cell-a' | Record<string, string>;
 }
 
-const CELL_ORDER: CellType[] = ['a', 'b', 'c'];
+const CELL_ORDER: CellType[] = ['a', 'c'];
 
 export function parseBatchConfig(json: string, filePath: string): BatchConfig {
   const cfg = JSON.parse(json) as BatchConfig;
@@ -81,7 +88,13 @@ export function parseBatchConfig(json: string, filePath: string): BatchConfig {
   }
   if (!Array.isArray(cfg.cells) || cfg.cells.length === 0) fail('cells must be a non-empty array');
   for (const c of cfg.cells) {
-    if (!CELL_ORDER.includes(c)) fail(`unknown cell type "${c}" (expected a, b, c)`);
+    if ((c as string) === 'b') {
+      fail(
+        'cell (b) was dropped as separate runs (Iddo, 2026-08-30): reading variance is decomposed ' +
+        'from cells (a) and (c), not run on its own — remove "b" from cells',
+      );
+    }
+    if (!CELL_ORDER.includes(c)) fail(`unknown cell type "${c}" (expected a, c)`);
   }
   if (!Number.isInteger(cfg.replicates) || cfg.replicates < 1) fail('replicates must be a positive integer');
   if (cfg.site_context_file !== null && typeof cfg.site_context_file !== 'string') {

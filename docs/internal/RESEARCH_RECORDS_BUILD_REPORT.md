@@ -34,12 +34,12 @@ no UI or prompt behavior changed.
   `makeAnthropicCaller`/`makeOpenRouterCaller`, `buildUserMessage`,
   `composeTranslationPrompt`, `mapMemeToCuboidInput`) — never the Vercel
   handlers, never UI code paths (ruling R6).
-- Matrix runner: corpus × model × cells(a/b/c) × replicate, deterministic
+- Matrix runner: corpus × model × cells(a/c) × replicate, deterministic
   ordering, resumable by batch_id (deterministic Firestore doc ids,
   existence-checked). Model routing explicit per cell — never inferred.
 - Frozen input: E2 cell (c) via assistant prefill (R1), E3 state
   hash + request reconstruction (R2) in `scripts/research/lib/evolveState.ts`.
-- Cost governance: `--dry-run` (verified: 27-cell toy matrix ≈ $0.83, zero
+- Cost governance: `--dry-run` (verified: 18-cell toy matrix ≈ $0.53, zero
   network), `--budget-cap`, per-record `cost_usd_estimate`.
 - Corpus (2026-08-30 addition #1): raw `memes` collection via REST
   `listDocuments`; the batch record stores `raw_collection_count` next to
@@ -66,18 +66,16 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
    are stale). Adding a second header would be wrong, so the only permitted
    prompt-file edit was **not** made: zero prompt files changed, and
    `grammar_version_declared` reads "5" through the existing
-   `parsePromptVersion`. Nothing is blocked; flagging because the ruling's
-   premise was false.
-2. **E2 cell (b) has no ruling.** The shipped two-pass is one model call, so
-   a true "Pass 1 only" run is impossible without a prompt variant — which R1
-   forbids in Phase 0. R1 resolved this for cell (c) but not (b). The
-   scaffold implements (b) as the same live call as (a), pre-registering
-   only the Pass-1 fields as measured (Pass 2 recorded but exploratory) —
-   defensible because Pass 1's token distribution is unaffected by the
-   continuation, and independent samples for the (a) and (b) analyses are
-   cleaner than reusing (a)'s Pass 1s. **Needs a ruling before any campaign**
-   (alternative: drop (b) as separate runs and read Pass-1 variance off (a),
-   halving that cost).
+   `parsePromptVersion`. *Ruled 2026-08-30: no action — confirmed.*
+2. **E2 cell (b) — RESOLVED (Iddo, 2026-08-30): dropped as separate runs.**
+   The shipped two-pass is one model call, so a true "Pass 1 only" run is
+   impossible without a prompt variant (forbidden in Phase 0). Per the
+   ruling, the E2 decomposition comes from cells (a) and (c) alone: (a)'s
+   Pass-1 marginals carry the reading-variance component, (c) carries
+   translation-variance-given-a-fixed-reading. Implemented: the matrix is
+   cells (a, c) only, and a batch config naming "b" is rejected with a
+   message citing this ruling. The envelope/payload schema needed no change
+   (`pass1_input_mode` already distinguishes the two remaining cells).
 3. **Deliverer id.** R3 defines deliverer as "the actor whose call produced
    the record" → `architect` (the harness) on every Phase-0 record. The v6
    arrow-colour law would instead attribute model output to `llm`. The
@@ -139,7 +137,9 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
      for capturing a `FrozenEvolveState` from the app.
   3. `Math.random()` in sampling/target-picking needs an injectable RNG if
      campaign replay is ever to be seedable (harness-only concern).
-  The E3 runner stays a stub until these are ruled on.
+  *Ruled 2026-08-30: refactor approved, behavior-preserving, as its own PR*
+  — it ships separately from this change; the E3 runner gets wired after
+  that PR lands. Until then the E3 runner stays a stub.
 
 ## Adversarial review round (pre-push)
 

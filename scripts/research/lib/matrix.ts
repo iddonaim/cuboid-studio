@@ -1,5 +1,5 @@
 /**
- * Matrix expansion: cells = corpus × model × regime × cell-type(a/b/c) ×
+ * Matrix expansion: cells = corpus × model × regime × cell-type(a/c) ×
  * replicate, in a deterministic order, each with a deterministic Firestore
  * document id so a resumed batch can skip completed cells.
  *
@@ -9,15 +9,14 @@
  * The batch manifest maps every doc id back to its cell coordinates.
  *
  * Cell semantics under the shipped ONE-CALL two-pass pipeline:
- *   (a) full pipeline — live call, total variance.
- *   (b) "Pass 1 only" — the pipeline cannot stop after Pass 1 without a
- *       prompt variant, which Phase 0 forbids (R1: "No prompt variants in
- *       Phase 0"). Cell (b) therefore runs the SAME live call as (a) and
- *       pre-registers only the Pass-1 fields as measured; its Pass 2 is
- *       recorded (raw is always kept) but exploratory. This is an
- *       interpretation the rulings do not cover — flagged in the build
- *       report, and cheap to re-rule before any campaign.
- *   (c) frozen Pass 1 → Pass 2 only, via assistant prefill (R1).
+ *   (a) full pipeline — live call, total variance. Its Pass-1 marginals
+ *       double as the reading-variance measurement.
+ *   (c) frozen Pass 1 → Pass 2 only, via assistant prefill (R1) —
+ *       translation variance given a fixed reading.
+ * Cell (b) — "Pass 1 only" — was dropped as separate runs (Iddo,
+ * 2026-08-30): the pipeline cannot stop after Pass 1 without a prompt
+ * variant (forbidden in Phase 0), so the E2 decomposition comes from (a)
+ * and (c) alone. Configs naming "b" are rejected in parseBatchConfig.
  */
 
 import type { DeclaredInfo } from '../../../src/research/types';
@@ -102,20 +101,10 @@ export function declaredForCell(cellType: CellType): DeclaredInfo {
         fixed: SHARED_FIXED,
         varied: [],
         stochastic: SHARED_STOCHASTIC,
+        // Cell (a) measures both passes: its Pass-1 marginals are the
+        // reading-variance component of the decomposition (cell (b) was
+        // dropped as separate runs — Iddo, 2026-08-30).
         measured: [...PASS1_MEASURED, ...PASS2_MEASURED, 'parse_status', 'timing_ms'],
-      };
-    case 'b':
-      return {
-        fixed: SHARED_FIXED,
-        varied: [],
-        stochastic: SHARED_STOCHASTIC,
-        measured: [
-          ...PASS1_MEASURED,
-          'parse_status',
-          'timing_ms',
-          // One-call pipeline: pass 2 is generated and recorded but NOT a
-          // pre-registered outcome of cell (b) — exploratory only.
-        ],
       };
     case 'c':
       return {

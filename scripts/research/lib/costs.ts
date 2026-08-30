@@ -59,7 +59,7 @@ export function estimateCellCost(cell: {
   systemPromptChars: number;
   userMessageChars: number;
   hasImage: boolean;
-  cellType: 'a' | 'b' | 'c';
+  cellType: 'a' | 'c';
   prefillChars?: number;
 }): CellCostEstimate {
   const { pricing, known } = pricingFor(cell.modelId);
