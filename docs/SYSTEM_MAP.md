@@ -5,7 +5,10 @@
 > the map-context repo. Companion documents: `GAPS_AND_HOLES.md` (what's broken,
 > missing, or drifted — ranked) and `BOOK_AND_PRESENTATION_GUIDE.md` (how to
 > present all of this). CONTEXT.md remains the quick orientation; this file is the
-> deep reference. Where the two disagree, this file is newer.
+> deep reference. Where the two disagree (noted 2026-08-30): CONTEXT.md has been
+> the newer file since 2026-08-09 — defer per the SoT chain: repo `CONTEXT.md`
+> (mechanism) → Notion `Cuboid — SOURCE OF TRUTH` page (decisions & facts) →
+> instruments → archival.
 
 ---
 
