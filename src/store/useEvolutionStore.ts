@@ -2,13 +2,17 @@ import { create } from 'zustand';
 import type { LLMOperatorResult, TranslationPass1, TranslationPass2 } from '../lib/operators/types';
 import type { ArchthesisMeme } from '../types/archthesis';
 import type { FetchMemesResponse } from '../types/archthesis';
-import { mapMemeToCuboidInput } from '../lib/meme-mapper';
 import { translateMemeTwoPass } from '../lib/api/translateMeme';
+import {
+  buildSimulatedOperatorRecord,
+  planGeneration,
+  scoreCandidateProgress,
+  type TargetCubeStrategy,
+} from '../lib/evolution/generation';
 import { isDemoMode } from '../lib/demo/demoMode';
 import { isDemoRecordMode } from '../lib/demo/recorder';
 import {
   computeCompressibility,
-  compressionProgress,
   createSnapshot,
   CompressibilityScore,
   CompressibilitySnapshot,
@@ -41,7 +45,10 @@ export interface EvolutionCandidate {
   compressionProgress: number;
 }
 
-export type TargetCubeStrategy = 'random' | 'least-compressed' | 'adaptive';
+// Target selection + generation planning moved to src/lib/evolution/generation.ts
+// (pure, importable headlessly by the research harness — R2 refactor,
+// approved 2026-08-30). Re-exported so existing import sites keep working.
+export type { TargetCubeStrategy };
 
 /**
  * Evolution's internal sub-mode.
@@ -233,30 +240,22 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     const baseline = computeCompressibility(placedCubes, cubeOperators);
     set({ baselineScore: baseline });
 
-    // Pick target cubes
-    const targetCubeIds = pickTargetCubes(
-      placedCubes.map(c => c.id),
-      cubeOperators,
-      state.config.populationSize,
-      state.config.targetCubeStrategy,
+    // Resolve this generation's assignments (target cubes + sampled memes)
+    // through the pure generation lib — same logic as before, extracted so
+    // the research harness can replay a step without importing this store.
+    const { config: liveConfig, memePool } = get();
+    const assignments = planGeneration({
       placedCubes,
-    );
-
-    // Sample memes from pool
-    const { config, memePool } = get();
-    const filteredPool = config.memePoolFilter
-      ? memePool.filter(m => m.tags.some(t =>
-          t.toLowerCase().includes(config.memePoolFilter!.toLowerCase())
-        ))
-      : memePool;
-    const pool = filteredPool.length > 0 ? filteredPool : memePool;
+      cubeOperators,
+      populationSize: state.config.populationSize,
+      targetCubeStrategy: state.config.targetCubeStrategy,
+      memePool,
+      memePoolFilter: liveConfig.memePoolFilter,
+    });
 
     // Fire parallel Claude calls
     const errors: string[] = [];
-    const promises = targetCubeIds.map(async (cubeId, idx): Promise<EvolutionCandidate | null> => {
-      const meme = pool[Math.floor(Math.random() * pool.length)];
-      const input = mapMemeToCuboidInput(meme);
-
+    const promises = assignments.map(async ({ index: idx, targetCubeId: cubeId, meme, input }): Promise<EvolutionCandidate | null> => {
       try {
         const twoPassResult = await translateMemeTwoPass({
           memeDescription: input.memeDescription,
@@ -269,27 +268,17 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
         const pass2 = twoPassResult.pass2;
 
         // Simulate applying this candidate and measure compression progress
-        const simulatedOperators = {
-          ...cubeOperators,
-          [cubeId]: [
-            ...(cubeOperators[cubeId] || []),
-            {
-              id: `evo-sim-${idx}`,
-              source: 'meme' as const,
-              operator: cutterConfig.operator,
-              targets: cutterConfig.targets,
-              magnitude: cutterConfig.magnitude,
-              decay: cutterConfig.decay,
-              createdAt: new Date().toISOString(),
-              memeDescription: input.memeDescription,
-              reasoning: cutterConfig.reasoning,
-              cutter: cutterConfig.cutter,
-            },
-          ],
-        };
-
-        const afterScore = computeCompressibility(placedCubes, simulatedOperators);
-        const progress = compressionProgress(baseline, afterScore);
+        const progress = scoreCandidateProgress({
+          placedCubes,
+          cubeOperators,
+          baseline,
+          targetCubeId: cubeId,
+          simulatedRecord: buildSimulatedOperatorRecord({
+            index: idx,
+            cutterConfig,
+            memeDescription: input.memeDescription,
+          }),
+        });
 
         return {
           id: `evo-${Date.now()}-${idx}`,
@@ -332,7 +321,7 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
         candidates: [],
         isGenerating: false,
         generationPhase: null,
-        lastError: `All ${targetCubeIds.length} candidates failed. ${summary}`,
+        lastError: `All ${assignments.length} candidates failed. ${summary}`,
       });
       return;
     }
@@ -347,9 +336,9 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
     }
 
     // Build a warning if some (but not all) candidates failed
-    const failedCount = targetCubeIds.length - candidates.length;
+    const failedCount = assignments.length - candidates.length;
     const partialWarning = failedCount > 0
-      ? `${failedCount} of ${targetCubeIds.length} candidates failed — showing ${candidates.length} results`
+      ? `${failedCount} of ${assignments.length} candidates failed — showing ${candidates.length} results`
       : null;
 
     set({
@@ -589,68 +578,6 @@ export const useEvolutionStore = create<EvolutionState>((set, get) => ({
   },
 }));
 
-// ---------------------------------------------------------------------------
-// Target cube selection strategies
-// ---------------------------------------------------------------------------
-
-function pickTargetCubes(
-  cubeIds: string[],
-  cubeOperators: Record<string, import('../lib/operators/types').OperatorRecord[]>,
-  count: number,
-  strategy: TargetCubeStrategy,
-  placedCubes: import('../lib/cube/types').PlacedCube[],
-): string[] {
-  if (cubeIds.length === 0) return [];
-  const n = Math.min(count, cubeIds.length);
-
-  switch (strategy) {
-    case 'least-compressed': {
-      // Score each cube by its operator count (fewer = less compressed = more interesting to target)
-      const scored = cubeIds.map(id => ({
-        id,
-        opCount: (cubeOperators[id] || []).length,
-      }));
-      scored.sort((a, b) => a.opCount - b.opCount);
-
-      // Take the least-operated cubes, with some randomness within ties
-      const result: string[] = [];
-      let i = 0;
-      while (result.length < n && i < scored.length) {
-        const tieGroup = [scored[i]];
-        while (i + 1 < scored.length && scored[i + 1].opCount === scored[i].opCount) {
-          i++;
-          tieGroup.push(scored[i]);
-        }
-        // Shuffle the tie group
-        for (let j = tieGroup.length - 1; j > 0; j--) {
-          const k = Math.floor(Math.random() * (j + 1));
-          [tieGroup[j], tieGroup[k]] = [tieGroup[k], tieGroup[j]];
-        }
-        for (const item of tieGroup) {
-          if (result.length < n) result.push(item.id);
-        }
-        i++;
-      }
-      return result;
-    }
-
-    case 'adaptive': {
-      // Hybrid: 50% least-compressed, 50% random
-      const half = Math.ceil(n / 2);
-      const leastCompressed = pickTargetCubes(cubeIds, cubeOperators, half, 'least-compressed', placedCubes);
-      const remaining = cubeIds.filter(id => !leastCompressed.includes(id));
-      const randomPicks = pickTargetCubes(remaining, cubeOperators, n - half, 'random', placedCubes);
-      return [...leastCompressed, ...randomPicks];
-    }
-
-    case 'random':
-    default: {
-      const shuffled = [...cubeIds];
-      for (let j = shuffled.length - 1; j > 0; j--) {
-        const k = Math.floor(Math.random() * (j + 1));
-        [shuffled[j], shuffled[k]] = [shuffled[k], shuffled[j]];
-      }
-      return shuffled.slice(0, n);
-    }
-  }
-}
+// Target cube selection lives in src/lib/evolution/generation.ts
+// (pickTargetCubes) — moved there, behavior unchanged, so the research
+// harness can use it without importing this store.
