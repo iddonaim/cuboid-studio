@@ -20,12 +20,17 @@ import type { ArchthesisMeme, FetchMemesResponse } from '../src/types/archthesis
  * small (thesis-scale), so re-reading offset+limit docs per page is fine.
  */
 
-const PROJECT_ID = 'adaptivememeticarchitect-2776f';
-const API_KEY = 'AIzaSyCsb6uQgANSQSnCp6kPhFX7I3TG_PQCd3o';
-const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+// Exported for the research harness (scripts/research/), which reads the raw
+// `memes` collection through the same REST endpoint and decoder — see the
+// cross-system structure record (docs/SYSTEM-STRUCTURE.md, landing on PR
+// #152; Layer 1 §2) for why it must NOT go through this handler's query
+// (orderBy createdAt silently drops docs missing the field).
+export const PROJECT_ID = 'adaptivememeticarchitect-2776f';
+export const API_KEY = 'AIzaSyCsb6uQgANSQSnCp6kPhFX7I3TG_PQCd3o';
+export const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 /** Extract a typed value from a Firestore REST API field */
-function extractValue(field: any): any {
+export function extractValue(field: any): any {
   if (!field) return undefined;
   if ('stringValue' in field) return field.stringValue;
   if ('integerValue' in field) return Number(field.integerValue);
@@ -44,8 +49,11 @@ function extractValue(field: any): any {
   return undefined;
 }
 
-/** Convert a Firestore REST document to our ArchthesisMeme type */
-function docToMeme(doc: any): ArchthesisMeme {
+/** Convert a Firestore REST document to our ArchthesisMeme type.
+ *  NOTE: injects the declared-type defaults ('' for topText/bottomText, etc.)
+ *  — fine for app display/input mapping, wrong for content hashing. The
+ *  research content hash reads the raw stored fields instead. */
+export function docToMeme(doc: any): ArchthesisMeme {
   const fields = doc.fields || {};
   // Document name format: projects/.../documents/memes/{id}
   const nameParts = (doc.name as string).split('/');

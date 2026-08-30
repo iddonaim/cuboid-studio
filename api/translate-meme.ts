@@ -37,7 +37,9 @@ const DEFAULT_MODEL = process.env.TRANSLATION_MODEL?.trim() || 'anthropic/claude
 // 2000 tokens on Sonnet 4 truncates mid-JSON on Sonnet 5 (observed live,
 // 2026-07-12). Ceilings are upper bounds, not spend: only actually generated
 // tokens cost time and money.
-const MAX_TOKENS_TWO_PASS = 4096;
+// Exported so the research harness records the exact ceiling it ran with
+// instead of duplicating the number.
+export const MAX_TOKENS_TWO_PASS = 4096;
 const MAX_TOKENS_SINGLE = 1500;
 
 type PassMode = 'single' | 'two_pass';
@@ -47,7 +49,7 @@ type PassMode = 'single' | 'two_pass';
  * Accepts only https:// URLs whose host is not a private/loopback/link-local
  * address or cloud metadata IP.
  */
-function isSafePublicHttpsUrl(raw: string): boolean {
+export function isSafePublicHttpsUrl(raw: string): boolean {
   let u: URL;
   try { u = new URL(raw); } catch { return false; }
   if (u.protocol !== 'https:') return false;
@@ -75,7 +77,7 @@ function resolvePassMode(requestOverride?: unknown): PassMode {
   return requestOverride === 'two_pass' ? 'two_pass' : 'single';
 }
 
-function buildUserMessage(memeDescription: string, locationTag: string | null, engagement: number): string {
+export function buildUserMessage(memeDescription: string, locationTag: string | null, engagement: number): string {
   return [
     `Meme description: ${memeDescription}`,
     locationTag ? `Location: ${locationTag}` : 'Location: none specified',
@@ -83,7 +85,7 @@ function buildUserMessage(memeDescription: string, locationTag: string | null, e
   ].join('\n');
 }
 
-function stripCodeFences(s: string): string {
+export function stripCodeFences(s: string): string {
   return s.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
 }
 
@@ -301,16 +303,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 // Transport: OpenRouter (OpenAI-compatible format)
 // ---------------------------------------------------------------------------
 
-interface CallerOpts {
+export interface CallerOpts {
   apiKey: string;
   userMessage: string;
   memeImageUrl: string | null;
   systemPrompt: string;
   selectedModel: string;
   passMode: PassMode;
+  /**
+   * Optional assistant-turn prefill: when set, the request carries a trailing
+   * assistant message with this text and the model continues from it. Unused
+   * by the app (requests are unchanged when absent); the research harness
+   * uses it for E2 cell (c) — frozen Pass 1 — so both paths share one
+   * transport implementation.
+   */
+  assistantPrefill?: string;
 }
 
-function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Promise<string> {
+export function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Promise<string> {
   const messageContent: any[] = [];
   if (opts.memeImageUrl) {
     messageContent.push({
@@ -339,6 +349,8 @@ function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Prom
         messages: [
           { role: 'system', content: opts.systemPrompt },
           { role: 'user', content },
+          // Trailing assistant message = continuation request (prefill).
+          ...(opts.assistantPrefill ? [{ role: 'assistant', content: opts.assistantPrefill }] : []),
         ],
       }),
     });
@@ -366,7 +378,7 @@ function makeOpenRouterCaller(opts: CallerOpts): (retryMessage?: string) => Prom
 // Transport: Anthropic native (legacy fallback when OPENROUTER_API_KEY unset)
 // ---------------------------------------------------------------------------
 
-async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: string) => Promise<string>> {
+export async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: string) => Promise<string>> {
   // Fetch meme image up-front so retries don't re-download. Only https public
   // URLs allowed (SSRF guard).
   let imageBase64: string | null = null;
@@ -418,7 +430,11 @@ async function makeAnthropicCaller(opts: CallerOpts): Promise<(retryMessage?: st
         model: anthropicModel,
         max_tokens: opts.passMode === 'two_pass' ? MAX_TOKENS_TWO_PASS : MAX_TOKENS_SINGLE,
         system: opts.systemPrompt,
-        messages: [{ role: 'user', content: messageContent }],
+        messages: [
+          { role: 'user', content: messageContent },
+          // Trailing assistant message = continuation request (prefill).
+          ...(opts.assistantPrefill ? [{ role: 'assistant', content: opts.assistantPrefill }] : []),
+        ],
       }),
     });
 
