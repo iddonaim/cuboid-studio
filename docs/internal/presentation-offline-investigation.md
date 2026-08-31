@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Superseded by `docs/internal/offline-demo-first-pass.md` (which says so explicitly). File stays at this path — e2e specs cite it. Do not cite as current.
+
 # Presentation Offline Investigation — Step 0 Verification Gate
 
 **Status:** Read-only recon complete. No app code changed. This document is the only write.

@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Predates the POETIKS rename, the P0-6/P0-7 geometry fixes and the pass-mode retirement; the Aug 9 defense it targeted is past. If the written book is still an active deliverable, its claim/don't-claim list needs a successor doc — do not reuse this one as-is. Do not cite as current.
+
 # Book & Presentation Guide — synthesizing Cuboid Studio
 
 > Produced 2026-07-12 from the full-system audit (`SYSTEM_MAP.md`,

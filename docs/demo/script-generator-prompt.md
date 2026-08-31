@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Its CANONICAL FACTS block predates the POETIKS rename and the P0-7 geometry fix — the anti-drift mechanism has itself drifted. If demo generation is rerun, rebuild the facts block from CONTEXT.md first. Do not cite as current.
+
 # Cuboid Studio — Demo Script Generator Prompt
 
 Reusable prompt for producing future video scripts / live-demo narrations (Claude, NotebookLM, etc.).

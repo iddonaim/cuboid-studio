@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Shot list for the one-off demo recording, which is done. Do not cite as current.
+
 # Cuboid Studio — One-Off Demo Recording: Shot List & Cue Card
 
 The master plan: record the **live app** (cuboidstudio.vercel.app, signed in, network on)

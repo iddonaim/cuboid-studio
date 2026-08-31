@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): build history, not current state — and its own "CURRENT STATE (2026-06-07) — read this first" heading is RETRACTED: that section is ~9 weeks behind HEAD and still describes the pass-mode toggle retired 2026-07-30. The session log below remains valuable history. For the current picture read `CONTEXT.md` (which this file itself calls "the authoritative, reconciled picture"). Do not cite as current.
+
 # Claude Code CLI - Project Handoff Prompt
 
 ## Context & Project Overview

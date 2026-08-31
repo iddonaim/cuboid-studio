@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Its premise ("the modal is NOT in this repo") is false at HEAD — the shipped `OnboardingModal.tsx` exists and differs from this script, so its "source of truth" claim is retired. File stays at this path — `OnboardingModal.tsx` cites it. Do not cite as current.
+
 # Cuboid Studio — Onboarding Showcase Script (v4)
 
 > v4 = v3 reconciled with the July 2026 design overhaul (PR #79). Structure and
