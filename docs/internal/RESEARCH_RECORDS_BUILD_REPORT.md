@@ -103,6 +103,15 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
 - **`engagement_at_run`** is stored as `{likes, engagement_level}` — the raw
   count and the 0-100 log-scale value the prompt actually received (the spec
   names the field without fixing its type).
+  *Ruled 2026-08-31: the likes loophole stays as is.* Likes are live platform
+  state: the meme content hash deliberately excludes them, they are
+  snapshotted at corpus load, and a resumed batch re-reads them — so the
+  engagement a prompt receives is not pinned by any hash and can drift
+  between capture, run, and resume. Per the ruling this is not enforced
+  away; instead `engagement_at_run` is declared **reported-not-measured** in
+  every pre-registration default (E2 cells and E3 steps): it is provenance,
+  never a controlled condition or an outcome, and no analysis may treat it
+  as either without labeling the move exploratory (spec principle 6).
 - **Not added (proposed only):** meme image *byte* hashes on translation
   records (the spec lists image hashes for encode only; the meme image
   reaches the model, so its bytes are technically an unhashed mutable input —
@@ -121,11 +130,18 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
   kept one shared transport instead of a diverging research copy.
   `api/fetch-memes.ts` similarly only gained `export` keywords (constants,
   `extractValue`, `docToMeme`).
-- **E3 step mode: partially ready, campaign mode blocked (R2).** Ready now:
-  state schema, `hashEvolveState`, and exact request reconstruction from a
-  frozen state's resolved assignments (`lib/evolveState.ts`), because
-  `mapMemeToCuboidInput` and `computeCompressibility` are pure libs. Blocked,
-  per R2 "report the exact refactor and wait":
+- **E3 step mode: WIRED (Iddo's go, 2026-08-31).** One evolve_step record =
+  one replayed generation-step from a frozen state: assignments fired
+  through the app's transports/validator, candidates kept raw+parsed with
+  per-candidate attempts, ranking scored with the extracted generation lib,
+  the state's declared criterion (`max-compression-progress`) selecting the
+  winner. The state schema gained `composition.cube_operators` (the full
+  per-cube operator history — `operator_count` alone cannot reproduce
+  ranking scores); site-context, lexicon, pool-content and state hashes are
+  verified before any spend, and resume re-verifies the state hash against
+  the batch manifest. Still absent: in-app state capture (states are
+  authored by hand) and CAMPAIGN mode. The refactor that unblocked this
+  (below) shipped as its own PR per the ruling:
   1. `pickTargetCubes` in `src/store/useEvolutionStore.ts` is module-private —
      needs `export` (no behavior change).
   2. The generation loop (meme sampling, candidate assembly, simulated
@@ -138,8 +154,10 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
   3. `Math.random()` in sampling/target-picking needs an injectable RNG if
      campaign replay is ever to be seedable (harness-only concern).
   *Ruled 2026-08-30: refactor approved, behavior-preserving, as its own PR*
-  — it ships separately from this change; the E3 runner gets wired after
-  that PR lands. Until then the E3 runner stays a stub.
+  — shipped and merged as cuboid-studio#155; the step-mode runner above is
+  built on it. `EvolveCandidateRecord` gained an optional `attempts[]`
+  (same principle-1/-4 grounds as the translation payload's attempts —
+  flagged here like the others).
 
 ## Adversarial review round (pre-push)
 

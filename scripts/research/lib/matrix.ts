@@ -73,6 +73,9 @@ const SHARED_FIXED = [
 const SHARED_STOCHASTIC = [
   'model sampling (temperature unset — provider default)',
   'pipeline parse/validation retry (app behavior, all attempts recorded)',
+  // Ruled 2026-08-31: the likes loophole stays as is; engagement is declared
+  // for what it actually is, not silently treated as a fixed condition.
+  'engagement_at_run: reported-not-measured (likes are live platform state, snapshotted at corpus load; a resume may re-read a changed value — recorded for provenance, not a controlled condition or an outcome)',
 ];
 
 const PASS1_MEASURED = [
