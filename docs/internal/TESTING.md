@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Superseded by the test tree itself (48 vitest files + 6 Playwright specs at HEAD vs the handful this maps). File stays at this path — code comments cite it. Do not cite as current.
+
 # Testing
 
 This project uses **[Vitest](https://vitest.dev)** as its test harness. Vitest

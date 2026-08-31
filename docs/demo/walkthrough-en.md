@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. The demo cycle is closed. Content may be worth mining for the book. Do not cite as current.
+
 # Cuboid Studio — A Step-by-Step Walkthrough for Architects
 
 Live app: https://cuboidstudio.vercel.app · Repo: https://github.com/iddonaim/cuboid-studio

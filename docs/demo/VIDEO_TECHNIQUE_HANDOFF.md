@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. The demo was recorded; the cycle is closed. References a `cuboid-marketing` repo not attached here. Do not cite as current.
+
 # Handoff: Getting the Demo Video to "Marko Radak Level"
 
 > Written 2026-07-09 as a handoff between Claude sessions. Next session should

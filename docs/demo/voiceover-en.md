@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Recording done; still says "Cuboid Studio" throughout (pre-POETIKS). Do not cite as current.
+
 # Cuboid Studio — Demo Voiceover (EN)
 
 Audience: professional architects. Target: ~5 min at a measured pace (~520 words).
