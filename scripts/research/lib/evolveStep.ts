@@ -91,6 +91,8 @@ export function declaredForStep(): DeclaredInfo {
     stochastic: [
       'model sampling (temperature unset — provider default)',
       'pipeline parse/validation retry (app behavior, all attempts recorded)',
+      // Ruled 2026-08-31 (same as the E2 blocks): likes loophole left as is.
+      'engagement_at_run: reported-not-measured (likes are live platform state, snapshotted at corpus load; a resume may re-read a changed value — recorded for provenance, not a controlled condition or an outcome)',
     ],
     measured: [
       'per-candidate pass1 + pass2 (raw + parsed)',

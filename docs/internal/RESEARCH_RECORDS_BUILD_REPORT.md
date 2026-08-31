@@ -103,6 +103,15 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
 - **`engagement_at_run`** is stored as `{likes, engagement_level}` — the raw
   count and the 0-100 log-scale value the prompt actually received (the spec
   names the field without fixing its type).
+  *Ruled 2026-08-31: the likes loophole stays as is.* Likes are live platform
+  state: the meme content hash deliberately excludes them, they are
+  snapshotted at corpus load, and a resumed batch re-reads them — so the
+  engagement a prompt receives is not pinned by any hash and can drift
+  between capture, run, and resume. Per the ruling this is not enforced
+  away; instead `engagement_at_run` is declared **reported-not-measured** in
+  every pre-registration default (E2 cells and E3 steps): it is provenance,
+  never a controlled condition or an outcome, and no analysis may treat it
+  as either without labeling the move exploratory (spec principle 6).
 - **Not added (proposed only):** meme image *byte* hashes on translation
   records (the spec lists image hashes for encode only; the meme image
   reaches the model, so its bytes are technically an unhashed mutable input —
