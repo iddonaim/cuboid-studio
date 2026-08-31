@@ -327,6 +327,29 @@ export interface TranslationCellResult {
   called: boolean;
 }
 
+/**
+ * Explicit routing means the id must survive the transport untouched:
+ * makeAnthropicCaller silently substitutes claude-sonnet-4-6 for ids it
+ * cannot normalize (app-side safety net) — for research runs that would
+ * record one model and call another. Refuse up front instead. Shared by the
+ * E2 cell executor and the E3 step executor.
+ */
+export function assertAnthropicModelId(modelId: string): void {
+  const normalized = toAnthropicModelId(modelId);
+  if (!normalized.startsWith('claude-')) {
+    throw new Error(
+      `model ${modelId} is routed anthropic-direct but does not normalize to a claude-* id ` +
+      `(got "${normalized}") — the transport would silently substitute its default model; fix the batch config`,
+    );
+  }
+}
+
+export function providerLabel(model: BatchConfig['models'][number]): string {
+  if (model.provider === 'anthropic') return 'anthropic';
+  const vendor = model.id.includes('/') ? model.id.split('/')[0] : model.id;
+  return `openrouter:${vendor}`;
+}
+
 function baseEnvelope(
   ctx: TranslationCellContext,
   cell: MatrixCell,
@@ -354,11 +377,7 @@ function baseEnvelope(
   };
 }
 
-function providerLabel(model: BatchConfig['models'][number]): string {
-  if (model.provider === 'anthropic') return 'anthropic';
-  const vendor = model.id.includes('/') ? model.id.split('/')[0] : model.id;
-  return `openrouter:${vendor}`;
-}
+
 
 /**
  * Runs one E2 cell and returns the record to write. Never throws for
@@ -434,18 +453,8 @@ export async function runTranslationCell(
     frozenRecordId = source.recordId;
   }
 
-  // Explicit routing means the id must survive the transport untouched:
-  // makeAnthropicCaller silently substitutes claude-sonnet-4-6 for ids it
-  // cannot normalize (app-side safety net) — for research runs that would
-  // record one model and call another. Refuse up front instead.
   if (cell.model.provider === 'anthropic') {
-    const normalized = toAnthropicModelId(cell.model.id);
-    if (!normalized.startsWith('claude-')) {
-      throw new Error(
-        `model ${cell.model.id} is routed anthropic-direct but does not normalize to a claude-* id ` +
-        `(got "${normalized}") — the transport would silently substitute its default model; fix the batch config`,
-      );
-    }
+    assertAnthropicModelId(cell.model.id);
   }
 
   // Transport per explicit routing — never inferred from which keys exist.
