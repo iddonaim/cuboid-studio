@@ -80,9 +80,14 @@ npm run test:rules
   rebuilt from the state's resolved assignments, ranked with the app's own
   compression-progress scoring (`src/lib/evolution/generation.ts`), the
   state's declared criterion selecting the winner. Site-context, lexicon,
-  pool-content and state hashes are all verified before any spend; states
-  are authored by hand for now (no in-app capture yet). Campaign mode is
-  still a stub.
+  pool-content and state hashes are all verified before any spend.
+  **Capturing a state**: the Evolve panel's "Export frozen state (research)"
+  action (below the candidate list, enabled once a generation exists)
+  downloads the state file — and, when a site is active, a companion
+  site-context file to point the batch config's `site_context_file` at.
+  The export is self-checked through the same parser the replay runs, and
+  meme content hashes come from the raw documents, so a captured state is
+  accepted-by-construction. Campaign mode is still a stub.
 - **Failures are data**: refusals, malformed JSON, timeouts and the
   pipeline's own retries are all recorded verbatim (`attempts[]`), and
   schema-invalid payloads are written as `parse_status: "failed"` with the
