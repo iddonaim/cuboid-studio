@@ -1,0 +1,48 @@
+[
+  {
+    "id": "meme-toy-0001-current",
+    "fields": {
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/example/o/memes%2Fmeme-toy-0001.jpg?alt=media",
+      "memeText": "WAITING FOR THE BUS THAT NEVER COMES / me, at the new station",
+      "description": "Transit frustration at the light rail opening delay",
+      "tags": ["transit", "tel-aviv"],
+      "location": {
+        "latitude": 32.0853,
+        "longitude": 34.7818,
+        "display_name": "Allenby St, Tel Aviv-Yafo",
+        "showInGallery": true,
+        "hideFromGallery": false
+      },
+      "username": "toy-user-1",
+      "likes": 12,
+      "hidden": false,
+      "createdAt": "2026-08-01T10:00:00.000Z",
+      "originSource": "link"
+    }
+  },
+  {
+    "id": "meme-toy-0002-legacy",
+    "fields": {
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/example/o/memes%2Fmeme-toy-0002.jpg?alt=media",
+      "topText": "MY LANDLORD",
+      "bottomText": "RAISING RENT AGAIN",
+      "description": "A legacy-shape doc that really stores topText/bottomText/userId",
+      "tags": ["housing"],
+      "username": "toy-user-2",
+      "likes": 87,
+      "userId": "legacy-uid-123",
+      "hidden": false,
+      "createdAt": "2026-06-15T08:30:00.000Z"
+    }
+  },
+  {
+    "id": "meme-toy-0003-minimal",
+    "fields": {
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/example/o/memes%2Fmeme-toy-0003.jpg?alt=media",
+      "memeText": "this is fine",
+      "tags": [],
+      "likes": 0,
+      "createdAt": "2026-08-20T14:45:00.000Z"
+    }
+  }
+]

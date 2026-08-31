@@ -1,0 +1,11 @@
+{
+  "//": "Emulator config for `npm run test:rules` ONLY. Deliberately NO firestore.rules mapping: the rules-unit-testing harness loads the ruleset programmatically, and leaving the mapping out means a stray `firebase deploy` from this repo has no Firestore target (the DEPLOYED ruleset ships from archthesis/firestore.rules — see the banner in firestore.rules here).",
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    }
+  }
+}

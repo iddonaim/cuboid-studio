@@ -15,7 +15,13 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'api/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'api/**/*.test.ts',
+      // Research harness scaffold (Phase 0) — pure-logic tests, node env.
+      'scripts/research/**/*.test.ts',
+    ],
     // Surface unhandled assertions loudly rather than passing silently.
     passWithNoTests: false,
   },
