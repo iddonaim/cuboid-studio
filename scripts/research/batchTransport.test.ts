@@ -21,6 +21,7 @@ import type { EvolveStepPayload, TranslationPayload, TranslationRecord } from '.
 import { validateEnvelope, validatePayload } from '../../src/research/validate';
 import { buildAnthropicMessageParams } from './lib/anthropicBatch';
 import {
+  batchUsageForRecord,
   makeE2BatchUnit,
   makeE3BatchUnit,
   makeReplayCaller,
@@ -72,9 +73,17 @@ const validPass2 = {
 };
 const validTwoPassText = JSON.stringify([validPass1, validPass2]);
 
-function succeededEntry(text: string): ReplayEntry {
-  return { kind: 'result', result: { type: 'succeeded', message: { content: [{ type: 'text', text }], stop_reason: 'end_turn' } } };
+function succeededEntry(text: string, usage?: Record<string, number>): ReplayEntry {
+  return {
+    kind: 'result',
+    result: {
+      type: 'succeeded',
+      message: { content: [{ type: 'text', text }], stop_reason: 'end_turn', ...(usage ? { usage } : {}) },
+    },
+  };
 }
+
+const toyUsage = { input_tokens: 5100, output_tokens: 1180, cache_creation_input_tokens: 1100, cache_read_input_tokens: 0 };
 
 // ---------------------------------------------------------------------------
 // Pricing math
@@ -205,14 +214,15 @@ describe('makeReplayCaller', () => {
 });
 
 describe('withBatchTransportDeclared', () => {
-  it('appends one fixed and one stochastic line, preserving the sync lines', () => {
+  it('appends one fixed, one stochastic, and one measured line, preserving the sync lines', () => {
     const declared = { fixed: ['f1'], varied: [], stochastic: ['s1'], measured: ['m1'] };
     const out = withBatchTransportDeclared(declared);
     expect(out.fixed.slice(0, 1)).toEqual(['f1']);
     expect(out.fixed[1]).toMatch(/anthropic message batches api/);
     expect(out.stochastic.slice(0, 1)).toEqual(['s1']);
     expect(out.stochastic[1]).toMatch(/batch scheduling/);
-    expect(out.measured).toEqual(['m1']);
+    expect(out.measured.slice(0, 1)).toEqual(['m1']);
+    expect(out.measured[1]).toMatch(/usage: real token counts as billed/);
     expect(declared.fixed).toEqual(['f1']); // input untouched
   });
 });
@@ -345,6 +355,97 @@ describe('E2 batch unit (real executor)', () => {
     expect(payload.attempts.map((a) => a.role)).toEqual(['initial', 'parse_retry']);
     expect(payload.attempts[0].raw_response).toBe('not json at all');
     expect(payload.parse_status).toBe('ok');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Real usage capture (2026-09-04 approval: optional, additive)
+// ---------------------------------------------------------------------------
+
+describe('batchUsageForRecord', () => {
+  it('sums the API-reported usage of replayed calls; the block validates as an envelope field', async () => {
+    const { cells, ctx } = await e2Fixtures();
+    const cellA = cells.find((c) => c.cellType === 'a')!;
+    const unit = makeE2BatchUnit(cellA, ctx, 'key', toyEstimate);
+    const entries = new Map([['call', succeededEntry(validTwoPassText, toyUsage)]]);
+    const { record } = await unit.executeWithReplay(entries);
+
+    const usage = batchUsageForRecord(entries, record);
+    expect(usage).toEqual({
+      source: 'anthropic-batch',
+      input_tokens: 5100,
+      output_tokens: 1180,
+      cache_creation_input_tokens: 1100,
+      cache_read_input_tokens: 0,
+      calls_covered: 1,
+      calls_total: 1,
+    });
+    expect(validateEnvelope({ ...record, usage })).toBeNull();
+
+    // Sync-run records never carry usage (the sync transports discard it).
+    const syncCtx: TranslationCellContext = { ...ctx, transportOverride: () => async () => validTwoPassText };
+    const syncRecord = (await runTranslationCell(syncCtx, cellA)).record;
+    expect(syncRecord.usage).toBeUndefined();
+  });
+
+  it('a sync retry raises calls_total but not calls_covered — partial coverage is explicit', async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url !== 'https://api.anthropic.com/v1/messages') throw new Error(`unexpected fetch: ${url}`);
+      return new Response(JSON.stringify({ content: [{ type: 'text', text: validTwoPassText }], stop_reason: 'end_turn' }), { status: 200 });
+    }) as typeof fetch;
+
+    const { cells, ctx } = await e2Fixtures();
+    const cellA = cells.find((c) => c.cellType === 'a')!;
+    const unit = makeE2BatchUnit(cellA, ctx, 'key', toyEstimate);
+    const entries = new Map([['call', succeededEntry('not json at all', toyUsage)]]);
+    const { record } = await unit.executeWithReplay(entries);
+    expect((record.payload as TranslationPayload).attempts).toHaveLength(2); // initial + parse_retry
+
+    const usage = batchUsageForRecord(entries, record)!;
+    expect(usage.calls_covered).toBe(1);
+    expect(usage.calls_total).toBe(2);
+    expect(usage.input_tokens).toBe(5100); // the retry's tokens are NOT invented
+    expect(validateEnvelope({ ...record, usage })).toBeNull();
+  });
+
+  it('returns null when no call reported usage (the record omits the block)', async () => {
+    const { cells, ctx } = await e2Fixtures();
+    const cellA = cells.find((c) => c.cellType === 'a')!;
+    const unit = makeE2BatchUnit(cellA, ctx, 'key', toyEstimate);
+    const entries = new Map([['call', succeededEntry(validTwoPassText)]]);
+    const { record } = await unit.executeWithReplay(entries);
+    expect(batchUsageForRecord(entries, record)).toBeNull();
+  });
+
+  it('E3: covers usage-bearing candidates only; sync-filled slots count toward calls_total', async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('https://firebasestorage.googleapis.com/')) {
+        return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+      }
+      if (url !== 'https://api.anthropic.com/v1/messages') throw new Error(`unexpected fetch: ${url}`);
+      return new Response(JSON.stringify({ content: [{ type: 'text', text: validResponse(1) }], stop_reason: 'end_turn' }), { status: 200 });
+    }) as typeof fetch;
+
+    const { ctx } = await e3Fixtures();
+    const model = ctx.config.models[0];
+    const unit = makeE3BatchUnit(model, 0, 'e3-doc', ctx, 'key', ctx.requests.map(() => toyEstimate));
+    const entries = new Map<string, ReplayEntry>(
+      ctx.requests.map((r) => [
+        `cand${r.candidate_index}`,
+        r.candidate_index === 1
+          ? ({ kind: 'sync-fill' } as ReplayEntry)
+          : succeededEntry(validResponse(r.candidate_index), toyUsage),
+      ]),
+    );
+    const { record } = await unit.executeWithReplay(entries);
+
+    const usage = batchUsageForRecord(entries, record)!;
+    expect(usage.calls_covered).toBe(ctx.requests.length - 1);
+    expect(usage.calls_total).toBe(ctx.requests.length);
+    expect(usage.input_tokens).toBe(5100 * (ctx.requests.length - 1));
+    expect(validateEnvelope({ ...record, usage })).toBeNull();
   });
 });
 

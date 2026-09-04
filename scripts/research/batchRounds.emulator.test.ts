@@ -99,12 +99,18 @@ const fakeBatches = new Map<string, FakeBatch>();
 let batchCounter = 0;
 let imageBytes = new Uint8Array([1, 2, 3, 4]);
 
+const FAKE_USAGE = { input_tokens: 5100, output_tokens: 1180, cache_creation_input_tokens: 1100, cache_read_input_tokens: 0 };
+
 function defaultResult(request: { params: Record<string, unknown> }): BatchResultEntry {
   const messages = request.params.messages as Array<{ role: string; content: unknown }>;
   const prefilled = messages[messages.length - 1]?.role === 'assistant';
   return {
     type: 'succeeded',
-    message: { content: [{ type: 'text', text: prefilled ? continuationFor : fullTwoPass }], stop_reason: 'end_turn' },
+    message: {
+      content: [{ type: 'text', text: prefilled ? continuationFor : fullTwoPass }],
+      stop_reason: 'end_turn',
+      usage: FAKE_USAGE,
+    },
   };
 }
 
@@ -284,11 +290,18 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
       expect(collect1.written).toBe(aCells.length);
       expect(collect1.awaiting_submission).toBe(cCells.length);
 
-      const aRecord = (await getDoc(doc(db, 'research_records', aCells[0].docId))).data() as { payload: TranslationPayload; declared: { fixed: string[] }; cost_usd_estimate: number };
+      const aRecord = (await getDoc(doc(db, 'research_records', aCells[0].docId))).data() as {
+        payload: TranslationPayload;
+        declared: { fixed: string[] };
+        cost_usd_estimate: number;
+        usage?: Record<string, unknown>;
+      };
       expect(aRecord.payload.parse_status).toBe('ok');
       expect(aRecord.payload.attempts.map((a) => a.role)).toEqual(['initial']);
       expect(aRecord.declared.fixed.some((l) => l.includes('anthropic message batches'))).toBe(true);
       expect(aRecord.cost_usd_estimate).toBeGreaterThan(0);
+      // Real billed usage rides along (2026-09-04 approval), coverage explicit.
+      expect(aRecord.usage).toEqual({ source: 'anthropic-batch', ...FAKE_USAGE, calls_covered: 1, calls_total: 1 });
 
       // Round 2: the c-cells go up, prefilled from round 1's records.
       await submitBatchRound(roundCtx, units);
@@ -425,11 +438,24 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
     const summary = await collectBatchRound(roundCtx, units);
     expect(summary.written).toBe(units.length);
 
-    const record = (await getDoc(doc(db, 'research_records', units[0].docId))).data() as { payload: EvolveStepPayload; declared: { fixed: string[] } };
+    const record = (await getDoc(doc(db, 'research_records', units[0].docId))).data() as {
+      payload: EvolveStepPayload;
+      declared: { fixed: string[] };
+      usage?: Record<string, unknown>;
+    };
     expect(record.payload.parse_status).toBe('ok');
     expect(record.payload.candidate_set).toHaveLength(requests.length);
     expect(Object.keys(record.payload.ranking_scores)).toHaveLength(requests.length);
     expect(record.declared.fixed.some((l) => l.includes('anthropic message batches'))).toBe(true);
+    expect(record.usage).toEqual({
+      source: 'anthropic-batch',
+      input_tokens: FAKE_USAGE.input_tokens * requests.length,
+      output_tokens: FAKE_USAGE.output_tokens * requests.length,
+      cache_creation_input_tokens: FAKE_USAGE.cache_creation_input_tokens * requests.length,
+      cache_read_input_tokens: 0,
+      calls_covered: requests.length,
+      calls_total: requests.length,
+    });
   });
 });
 

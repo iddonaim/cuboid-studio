@@ -143,8 +143,12 @@ prints them, and GitHub masks them in logs regardless.
   construction. Before any result is attached, the request params are
   rebuilt and hash-compared against the submission doc (a result never lands
   on a request the harness can't reproduce). Batch-collected records differ
-  from sync ones only in two appended `declared` lines (transport + batch
-  scheduling); `timing_ms` there measures collect-time replay, not model
+  from sync ones in three appended `declared` lines (transport, batch
+  scheduling, usage measurement) and an optional `usage` block — the real
+  billed token counts summed over batch-replayed calls, with
+  `calls_covered`/`calls_total` making explicit that sync retries and
+  sync-filled slots report none (additive schema change, approved
+  2026-09-04); `timing_ms` there measures collect-time replay, not model
   latency. Expired/canceled slots billed nothing and re-enter the next
   submit round; an E3 step with a partial expiry sync-fills only the missing
   candidates. One submission may be open at a time per batch; submission

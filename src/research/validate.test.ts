@@ -138,6 +138,39 @@ describe('validateEnvelope', () => {
   it('rejects declared blocks that are not string arrays', () => {
     expect(validateEnvelope(envelope({ declared: { fixed: [1], varied: [], stochastic: [], measured: [] } as never }))).toContain('declared');
   });
+
+  it('usage is optional and additive (2026-09-04 approval): absent stays valid, present validates', () => {
+    expect(validateEnvelope(envelope())).toBeNull(); // no usage — every earlier record
+    const usage = {
+      source: 'anthropic-batch',
+      input_tokens: 5100,
+      output_tokens: 1180,
+      cache_creation_input_tokens: 1100,
+      cache_read_input_tokens: 0,
+      calls_covered: 1,
+      calls_total: 2,
+    };
+    expect(validateEnvelope(envelope({ usage }))).toBeNull();
+  });
+
+  it('rejects malformed usage blocks', () => {
+    const usage = {
+      source: 'anthropic-batch',
+      input_tokens: 5100,
+      output_tokens: 1180,
+      cache_creation_input_tokens: 1100,
+      cache_read_input_tokens: 0,
+      calls_covered: 1,
+      calls_total: 1,
+    };
+    expect(validateEnvelope(envelope({ usage: 'lots' as never }))).toContain('usage');
+    expect(validateEnvelope(envelope({ usage: { ...usage, source: '' } }))).toContain('usage.source');
+    expect(validateEnvelope(envelope({ usage: { ...usage, input_tokens: -1 } }))).toContain('usage.input_tokens');
+    expect(validateEnvelope(envelope({ usage: { ...usage, output_tokens: 1.5 } }))).toContain('usage.output_tokens');
+    // A block with no covered calls is meaningless — the writer omits it instead.
+    expect(validateEnvelope(envelope({ usage: { ...usage, calls_covered: 0 } }))).toContain('usage.calls_covered');
+    expect(validateEnvelope(envelope({ usage: { ...usage, calls_covered: 3, calls_total: 2 } }))).toContain('usage.calls_total');
+  });
 });
 
 describe('validatePayload — accepts all four kinds (DoD b)', () => {

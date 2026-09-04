@@ -38,7 +38,14 @@
 
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import { makeAnthropicCaller, type CallerOpts } from '../../../api/translate-meme.js';
-import { RESEARCH_BATCHES_COLLECTION, type DeclaredInfo, type ResearchRecord } from '../../../src/research/types.js';
+import {
+  RESEARCH_BATCHES_COLLECTION,
+  type DeclaredInfo,
+  type EvolveStepPayload,
+  type ResearchRecord,
+  type TranslationPayload,
+  type UsageInfo,
+} from '../../../src/research/types.js';
 import { researchRecordExists, writeResearchRecord } from '../../../src/research/writeResearchRecord.js';
 import {
   batchCustomId,
@@ -80,6 +87,63 @@ export function withBatchTransportDeclared(declared: DeclaredInfo): DeclaredInfo
       ...declared.stochastic,
       'batch scheduling: attempt 1 ran asynchronously in the batch service — recorded timing_ms measures collect-time replay, not model latency; prompt-cache hits are best-effort; parse/validation retries (and calls whose batch slot expired) run synchronously at collect time',
     ],
+    measured: [
+      ...declared.measured,
+      'usage: real token counts as billed, summed over batch-replayed calls (sync retries and sync-filled slots report none — coverage recorded as usage.calls_covered/calls_total; 2026-09-04 approval)',
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Real usage capture (2026-09-04 approval: optional, additive)
+// ---------------------------------------------------------------------------
+
+/** Every transport call the finished record actually made (attempts include
+ *  the pipeline's retries; evolve_step counts across candidates). */
+function transportCallCount(record: ResearchRecord): number {
+  if (record.kind === 'translation') return (record.payload as TranslationPayload).attempts.length;
+  if (record.kind === 'evolve_step') {
+    return (record.payload as EvolveStepPayload).candidate_set.reduce((n, c) => n + (c.attempts?.length ?? 0), 0);
+  }
+  return 0;
+}
+
+/**
+ * Sums the API-reported usage of the record's batch-replayed calls. Only
+ * succeeded batch results carry a usage object (errored/expired/canceled
+ * slots billed nothing; sync retries and sync-fills go through the app's
+ * caller, which discards usage — app code, unchanged). A succeeded result
+ * that later failed parsing still counts: its tokens were billed. Returns
+ * null when no call reported usage — the record then omits the block.
+ */
+export function batchUsageForRecord(
+  entries: Map<string, ReplayEntry>,
+  record: ResearchRecord,
+): UsageInfo | null {
+  let covered = 0;
+  let input = 0;
+  let output = 0;
+  let cacheWrite = 0;
+  let cacheRead = 0;
+  for (const entry of entries.values()) {
+    if (entry.kind !== 'result' || entry.result.type !== 'succeeded') continue;
+    const usage = (entry.result.message as { usage?: Record<string, unknown> } | null | undefined)?.usage;
+    if (!usage || typeof usage.input_tokens !== 'number' || typeof usage.output_tokens !== 'number') continue;
+    covered++;
+    input += usage.input_tokens;
+    output += usage.output_tokens;
+    cacheWrite += typeof usage.cache_creation_input_tokens === 'number' ? usage.cache_creation_input_tokens : 0;
+    cacheRead += typeof usage.cache_read_input_tokens === 'number' ? usage.cache_read_input_tokens : 0;
+  }
+  if (covered === 0) return null;
+  return {
+    source: 'anthropic-batch',
+    input_tokens: input,
+    output_tokens: output,
+    cache_creation_input_tokens: cacheWrite,
+    cache_read_input_tokens: cacheRead,
+    calls_covered: covered,
+    calls_total: transportCallCount(record),
   };
 }
 
@@ -762,6 +826,8 @@ export async function collectBatchRound(
 
     const { record } = await unit.executeWithReplay(entries);
     record.cost_usd_estimate = worst;
+    const usage = batchUsageForRecord(entries, record);
+    if (usage) record.usage = usage;
     await writeResearchRecord(ctx.db, record, { docId: unit.docId });
     summary.spent_estimate_usd += worst;
     summary.written++;

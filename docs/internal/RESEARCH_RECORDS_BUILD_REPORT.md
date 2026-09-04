@@ -342,3 +342,24 @@ when list prices move).
   the REST client's request/response shapes follow the current official
   docs and the scripted-API tests; the first real submit should be the toy
   batch with a small `--budget-cap`.
+
+### Usage block approved and added (2026-09-04, second ruling)
+
+Iddo accepted decisions 1–5 above as built and approved the usage proposal
+as an ADDITIVE, optional schema change — the one sanctioned addition:
+`envelope.usage?` (`UsageInfo` in `src/research/types.ts`) carries the
+API's real billed token counts. Only batch-collected records populate it
+(`batchUsageForRecord` sums the replayed results' verbatim `usage`
+objects); the sync transports still discard usage (app code, unchanged),
+so a record's sync-run calls — collect-time retries, sync-filled expired
+slots, whole sync runs — report none, and `calls_covered`/`calls_total`
+make that partial coverage explicit rather than letting a summed number
+quietly understate consumption. A succeeded batch result that later
+failed parsing still counts: its tokens were billed. Validation accepts
+records with or without the block (absent on every earlier record) and
+checks the shape when present; batch-collected records also declare the
+measurement (a third appended `declared` line, under `measured`).
+Covered by validator tests, transport unit tests (retry raises
+`calls_total` not `calls_covered`; E3 sync-fill slots uncovered), and the
+emulator round-trips (written E2/E3 records carry the exact summed
+block).
