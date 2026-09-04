@@ -67,6 +67,33 @@ export interface DeclaredInfo {
   measured: string[];
 }
 
+/**
+ * Real token usage as billed by the API, when the transport surfaces it
+ * (approved 2026-09-04 as an ADDITIVE, optional envelope field — the one
+ * sanctioned schema change; everything else predates it unchanged).
+ *
+ * Only batch-collected records carry this today: the sync transports
+ * (api/translate-meme.ts, app code) discard the API's usage object, and a
+ * record's sync-run calls — including collect-time parse/validation retries
+ * and sync-filled expired slots — therefore report none. calls_covered /
+ * calls_total make that partial coverage explicit instead of letting a
+ * summed number quietly understate what a record's calls consumed.
+ */
+export interface UsageInfo {
+  /** Which transport reported the numbers (currently "anthropic-batch"). */
+  source: string;
+  /** Summed verbatim over the covered calls' API usage objects. */
+  input_tokens: number;
+  output_tokens: number;
+  /** Cache counters as reported; 0 where the API omits them. */
+  cache_creation_input_tokens: number;
+  cache_read_input_tokens: number;
+  /** Calls with reported usage vs every transport call the record made
+   *  (all attempts; for evolve_step, summed over candidates). */
+  calls_covered: number;
+  calls_total: number;
+}
+
 export interface ResearchEnvelope {
   record_id: string;
   batch_id: string;
@@ -84,6 +111,10 @@ export interface ResearchEnvelope {
   declared: DeclaredInfo;
   timing_ms: Record<string, number>;
   cost_usd_estimate: number;
+  /** Real billed token counts when the transport reports them (see
+   *  UsageInfo). Optional and additive (2026-09-04 approval): absent on all
+   *  earlier records and on sync-transport records. */
+  usage?: UsageInfo;
   /** v6 system-section ids (ruling R3). Optional in the shared type so other
    *  writers and Phases 1–2 are not broken; required on every record written
    *  by this implementation. */

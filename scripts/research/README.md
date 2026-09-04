@@ -21,6 +21,9 @@ human-initiated step, and no BASELINE tag exists yet.**
 | Corpus / matrix / costs / cell executor | `scripts/research/lib/` |
 | E3 frozen-state schema + parser + ranking (R2) | `scripts/research/lib/evolveState.ts` |
 | E3 step-mode executor | `scripts/research/lib/evolveStep.ts` |
+| Anthropic Message Batches mirror (parity-tested) | `scripts/research/lib/anthropicBatch.ts` |
+| Batch submit/collect rounds + submission docs | `scripts/research/lib/batchTransport.ts` |
+| Headless runner (workflow_dispatch) | `.github/workflows/research-batch.yml` |
 | Toy batches (dry-run fixtures, E2 + E3) | `scripts/research/examples/` |
 
 ## Commands
@@ -29,17 +32,52 @@ human-initiated step, and no BASELINE tag exists yet.**
 # Price a batch without calling any model or touching Firestore:
 npm run research:run -- --config scripts/research/examples/e2-toy.batch.json --dry-run
 npm run research:run -- --config scripts/research/examples/e3-toy.batch.json --dry-run
+# …priced as it would route through the Anthropic Batch API (50% discount +
+# prompt caching), with the sync figure kept for comparison:
+npm run research:run -- --config <batch.json> --dry-run --transport batch
 
 # Execute a batch (requires env below; resumable by batch_id — completed
-# cells are skipped; --budget-cap aborts when the estimate is exceeded):
-npm run research:run -- --config <batch.json> --execute [--budget-cap 25]
+# cells are skipped; --budget-cap aborts when the estimate is exceeded).
+# --operator records who launched it (a human name or a session identifier):
+npm run research:run -- --config <batch.json> --execute --operator "<who>" [--budget-cap 25]
+
+# Same batch through the Anthropic Message Batches API (anthropic-routed
+# models only; identical records, doc ids, hashes and failure handling):
+npm run research:run -- --config <batch.json> --execute --transport batch --operator "<who>"   # submit a round
+npm run research:run -- --config <batch.json> --collect --operator "<who>"                     # collect it later
+# An E2 batch is typically two rounds: submit/collect the (a) cells, then
+# submit/collect the (c) cells (their frozen Pass-1 sources are the round-1
+# records). --collect says what is still processing / pending; re-run it and
+# the next submit until "nothing to submit" + nothing awaiting.
 
 # Export records as JSONL (filterable):
 npm run research:export -- --batch <batch_id> --experiment E2 --kind translation --out out.jsonl
 
-# Verify the append-only rules against the Firestore emulator:
+# Verify the append-only rules + batch rounds against the Firestore emulator:
 npm run test:rules
 ```
+
+## Headless runs (GitHub Actions)
+
+`.github/workflows/research-batch.yml` is a `workflow_dispatch` runner for
+exactly one round per dispatch: `dry-run` (default, no spend), `submit`, or
+`collect`, taking a repo-relative config path, a required budget cap, and an
+optional operator (defaults to the dispatching GitHub username + run id).
+State lives in Firestore (batch record + append-only `__submission__` docs),
+so submit and collect can run on different days and runners — everything is
+resumable by `batch_id`. Repository secrets to set (names, exactly):
+
+| Secret | What it is |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key (submit/collect + collect-time sync retries) |
+| `OPENROUTER_API_KEY` | OpenRouter key (openrouter-routed cells; unused by batch rounds) |
+| `FIREBASE_API_KEY` | the Firebase **web** API key (the public client key the app ships) |
+| `FIREBASE_PROJECT_ID` | the Firebase project id |
+| `RESEARCH_USER_EMAIL` | the research identity's email (custom claim `research: true`) |
+| `RESEARCH_USER_PASSWORD` | its password |
+
+Secret values are passed to the harness as env only; the harness never
+prints them, and GitHub masks them in logs regardless.
 
 ## Environment (execute/export only — dry-run needs nothing)
 
@@ -94,3 +132,27 @@ npm run test:rules
   original preserved. Only a schema-invalid *envelope* throws.
 - **Append-only**: creates only; `update`/`delete` denied for everyone —
   research and admin claims included — in both rules files.
+- **Batch transport = the same pipeline, split in two** (2026-09-04). Submit
+  runs the normal executor with a transport that CAPTURES the request and
+  throws instead of calling — the submitted params are built by the exact
+  code path that later interprets the response (`lib/anthropicBatch.ts` only
+  mirrors the wire encoding, pinned byte-for-byte by
+  `anthropicBatch.parity.test.ts`). Collect re-runs the executor with the
+  stored result replayed for the initial call; parse/validation retries fall
+  through to the real sync caller, so failure handling is identical by
+  construction. Before any result is attached, the request params are
+  rebuilt and hash-compared against the submission doc (a result never lands
+  on a request the harness can't reproduce). Batch-collected records differ
+  from sync ones in three appended `declared` lines (transport, batch
+  scheduling, usage measurement) and an optional `usage` block — the real
+  billed token counts summed over batch-replayed calls, with
+  `calls_covered`/`calls_total` making explicit that sync retries and
+  sync-filled slots report none (additive schema change, approved
+  2026-09-04); `timing_ms` there measures collect-time replay, not model
+  latency. Expired/canceled slots billed nothing and re-enter the next
+  submit round; an E3 step with a partial expiry sync-fills only the missing
+  candidates. One submission may be open at a time per batch; submission
+  docs (`<batch_id>__submission__NNN` in `research_batches`) are append-only
+  provenance carrying the Anthropic batch id, per-call params hashes,
+  the operator, and both cost bounds. Budget caps gate on the WORST-case
+  (no-cache-hit) batch estimate, which never exceeds the sync estimate.

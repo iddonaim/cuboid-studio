@@ -20,6 +20,13 @@ export interface BatchRecord {
   created_at: string;
   baseline_tag: string;
   app_commit: string;
+  /** Who launched the batch (a human name or a session identifier —
+   *  --operator; 2026-09-04 instruction). The batch record is append-only,
+   *  so this names the CREATOR of the batch; later resume/submit/collect
+   *  rounds record their own operator in their submission docs, and a
+   *  different operator is deliberately NOT a resume mismatch (handing a
+   *  batch to another operator changes provenance, not conditions). */
+  operator: string;
   corpus: {
     source: string;
     /** Documents in the raw `memes` collection at read time. */
@@ -64,6 +71,7 @@ export function buildBatchRecord(args: {
   regime: RegimeInfo;
   siteContextHash: string | null;
   appCommit: string;
+  operator: string;
   cellCount: number;
   costEstimateUsd: number;
   notes?: string[];
@@ -78,6 +86,7 @@ export function buildBatchRecord(args: {
     created_at: new Date().toISOString(),
     baseline_tag: config.baseline_tag,
     app_commit: args.appCommit,
+    operator: args.operator,
     corpus: {
       source: corpus.source,
       raw_collection_count: corpus.raw_collection_count,

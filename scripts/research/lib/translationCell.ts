@@ -309,10 +309,13 @@ export interface TranslationCellContext {
   /** Per-model probe results filled in by the runner (R1). */
   prefillSupport: Map<string, boolean>;
   /**
-   * Test-only transport injection: when set, replaces the network callers so
-   * the full cell path (prompt assembly, prefill, recording, parseAndRoute,
-   * validators, record building) runs against a scripted model. The runner
-   * never sets this.
+   * Transport injection: when set, replaces the network callers so the full
+   * cell path (prompt assembly, prefill, recording, parseAndRoute,
+   * validators, record building) runs against a supplied transport. Tests
+   * script the model through it, and the batch transport's submit (capture)
+   * / collect (replay) phases ride the same seam — that is what guarantees
+   * a batch-collected record went through the identical pipeline. The sync
+   * execution path never sets this.
    */
   transportOverride?: (
     cell: MatrixCell,

@@ -40,6 +40,25 @@ function declaredError(declared: unknown): string | null {
   return null;
 }
 
+const isCount = (v: unknown): v is number => isFiniteNumber(v) && Number.isInteger(v) && v >= 0;
+
+/** Optional usage block (2026-09-04 approval): validated only when present. */
+function usageError(usage: unknown): string | null {
+  if (!isPlainObject(usage)) return 'usage must be an object';
+  const u = usage as Record<string, unknown>;
+  if (!isNonEmptyString(u.source)) return 'usage.source must be a non-empty string';
+  for (const key of ['input_tokens', 'output_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'] as const) {
+    if (!isCount(u[key])) return `usage.${key} must be a non-negative integer`;
+  }
+  if (!isCount(u.calls_covered) || u.calls_covered < 1) {
+    return 'usage.calls_covered must be a positive integer (a record with no covered calls omits the block)';
+  }
+  if (!isCount(u.calls_total) || u.calls_total < (u.calls_covered as number)) {
+    return 'usage.calls_total must be an integer >= usage.calls_covered';
+  }
+  return null;
+}
+
 /**
  * Returns null when the envelope is valid, else a precise error message.
  * Ontology is optional in the shared type (R3), but when present it must use
@@ -105,6 +124,11 @@ export function validateEnvelope(env: unknown): string | null {
   }
   if (!isFiniteNumber(e.cost_usd_estimate) || e.cost_usd_estimate < 0) {
     return 'cost_usd_estimate must be a non-negative number';
+  }
+
+  if (e.usage !== undefined) {
+    const uErr = usageError(e.usage);
+    if (uErr) return uErr;
   }
 
   if (e.ontology !== undefined && !isValidOntology(e.ontology)) {
