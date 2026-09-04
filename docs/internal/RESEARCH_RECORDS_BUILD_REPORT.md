@@ -228,3 +228,117 @@ push. Confirmed findings, all fixed in this same change:
 - Prompt-assembly parity with the handler is tested, including the shipped
   quirk that with no site context the literal `{site_context}` placeholder
   stays in the prompt (measured as-is, per rule 3).
+
+## Batch API transport + headless runner (2026-09-04 instruction)
+
+Scope as instructed: one PR; no changes to app code, prompts, lexicons, or
+the record schema. `--transport batch` submits a batch's model calls through
+the Anthropic Message Batches API; `--collect` retrieves results and writes
+records exactly as the sync path does; the dry-run prices the actual route
+(batch discount + prompt-caching reads, sync kept for comparison); a
+`workflow_dispatch` Action runs one round per dispatch; the batch record
+gains `operator`.
+
+### How "same records, same hashes, same failure handling" is enforced
+
+- **Submit = the normal executor with a capturing transport.** The request
+  params are built by the same code path that later interprets the response
+  (prompt assembly, prefill resolution, `parseAndRoute`); nothing is written
+  at submit time. `lib/anthropicBatch.ts` mirrors only the wire encoding of
+  `makeAnthropicCaller`, and `anthropicBatch.parity.test.ts` pins that
+  mirror byte-for-byte by patching `fetch` and diffing against the real
+  caller's body (images, prefill, model normalization, version header,
+  response handling and its exact error messages). If the app transport ever
+  changes, the parity suite fails before a divergent batch can be submitted.
+- **Collect = the normal executor with a replaying transport.** The stored
+  result answers the initial call; a parse/validation retry falls through to
+  the real sync caller (same retry policy, image dropped from retries
+  exactly as the sync caller does). Records come out shape-identical —
+  the emulator round-trip suite (`batchRounds.emulator.test.ts`) drives a
+  full E2 a→c two-round flow and E3 steps end to end and compares.
+- **Request identity is hash-verified before any result is attached**: the
+  submission doc stores sha256 of every submitted request body; collect
+  rebuilds the body from current inputs and refuses on mismatch (observed
+  live in the test by moving image bytes under a stable URL). A result is
+  never written onto a request the harness can no longer reproduce.
+
+### Decisions taken (flagging for review, not blocking)
+
+1. **Collect-time sync retries.** `parseAndRoute`'s corrective retries
+   cannot happen inside a one-shot batch; the alternatives were (a) freeze
+   batch records at one attempt (different failure handling than sync) or
+   (b) let retries run synchronously at collect time (identical failure
+   handling, small sync spend at collect). (b) was chosen as the literal
+   reading of "same failure handling"; retries are rare (parse/validation
+   failures only). If (a) is preferred, it is a small change.
+2. **Anthropic-routed models only.** OpenRouter has no batch API. A config
+   mixing providers is refused under `--transport batch` with instructions
+   to split — nothing is silently rerouted (explicit-routing rule).
+3. **E2 needs two rounds.** Cell (c) prefills the stored Pass-1 of this
+   batch's cell (a) r0 record (R1), which exists only after the first
+   collect — so submit defers (c) cells exactly like the sync path's
+   frozen-source defer, and a second submit/collect round completes the
+   matrix. Not a new semantic: it is the existing defer rule under a
+   transport where "later" is a separate command.
+4. **Expired/canceled slots** (the API bills nothing for them) void back to
+   pending and resubmit next round. An E3 step with a PARTIAL expiry
+   sync-fills only the missing candidates at collect, so paid results are
+   not discarded; a fully-expired unit defers whole.
+5. **Declared lines, not schema.** Batch-collected records append two
+   `declared` lines (fixed: transport + cache_control note; stochastic:
+   batch scheduling, replay-not-latency `timing_ms`, best-effort cache
+   hits, sync retries at collect). Sync records are byte-unchanged. The
+   envelope schema is untouched.
+6. **`cost_usd_estimate` on batch records = the worst-case (no-cache-hit)
+   batch figure** — deterministic and conservative; both bounds plus the
+   sync comparison live in the submission doc. The batch record's
+   `cost_estimate_usd` stays sync-basis for cross-transport comparability
+   (noted inside the record).
+7. **Budget caps gate on the worst-case batch estimate** per round
+   (submit) and per run (collect) — consistent with the sync loop's
+   per-invocation semantics. Worst-case batch never exceeds sync (1h cache
+   write ×2 halved = ×1 on the system prompt; everything else halved).
+8. **Prompt caching**: `cache_control {type: ephemeral, ttl: 1h}` on the
+   shared system prompt only — billing metadata, not prompt content (the
+   parity test asserts strip-and-unwrap equals the sync body). 1h TTL per
+   the batch docs' recommendation; hits are best-effort and both pricing
+   bounds are always shown. Below the 1024-token cache minimum the
+   estimator prices without caching and says so.
+9. **Operator provenance under append-only.** `operator` on the batch
+   record names the batch's CREATOR (the record can never be updated);
+   every batch submission doc carries its own round's operator. A sync
+   RESUME by a different operator is therefore not individually recorded —
+   accepted limitation; a run-log collection would fix it but is scope
+   beyond the instruction (proposed only, not added). A differing operator
+   is deliberately NOT a resume mismatch.
+10. **Recovery path**: if the submission doc write fails after the batch
+    was created, submit prints the batch id and `--collect
+    --anthropic-batch-id <id>` registers it — after verifying every
+    result custom_id corresponds to this config's pending calls.
+
+### Pricing facts used (official docs, fetched 2026-09-04)
+
+Batches are GA (no beta header); 50% off input AND output; the discount
+stacks multiplicatively with cache multipliers (write 1.25×/5m, 2×/1h;
+read 0.1×); ~1024-token minimum cacheable prefix on Sonnet-class models
+(below: silent no-op, no premium); results retained 29 days; custom_id
+must match `^[a-zA-Z0-9_-]{1,64}$` (ours are hashes of
+`<doc id>::<call key>`, so collect can recompute the mapping from the
+config alone). Base per-model prices in `MODEL_PRICING` were deliberately
+NOT touched (snapshot 2026-08; the user said no model changes — edit there
+when list prices move).
+
+### Verified
+
+- 493 vitest tests green (13 parity + 16 transport-behavior new), plus the
+  emulator suite (`npm run test:rules`): append-only rules AND the full
+  batch round-trips — E2 submit(a)/collect/submit(c)/collect with real
+  prefills from round-1 records, one-open-submission refusals, expired
+  resubmission with identical custom_ids, image-drift refusal, E3
+  per-candidate batching. `tsc` clean over src and the scripts tree.
+- Dry-runs: E2 toy $0.5326 sync vs $0.19–0.36 batch; E3 toy $0.2967 sync
+  vs $0.12–0.19 batch. No keys or Firestore needed for dry-run.
+- NOT verified against the live Batch API (no key in this environment):
+  the REST client's request/response shapes follow the current official
+  docs and the scripted-API tests; the first real submit should be the toy
+  batch with a small `--budget-cap`.

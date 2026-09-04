@@ -145,7 +145,13 @@ export interface EvolveStepContext {
   stateHash: string;
   /** Prebuilt once per batch (pool hashes verified against the corpus). */
   requests: StepTranslationRequest[];
-  /** Test-only transport injection; the runner never sets this. */
+  /** Pre-registration override: the batch transport appends its declared
+   *  lines here (withBatchTransportDeclared). Absent = declaredForStep(),
+   *  the sync default — sync records are unchanged. */
+  declared?: DeclaredInfo;
+  /** Transport injection: tests script the model, and the batch transport's
+   *  submit (capture) / collect (replay) phases ride the same seam. The
+   *  sync execution path never sets this. */
   transportOverride?: (
     request: StepTranslationRequest,
     opts: CallerOpts,
@@ -263,7 +269,7 @@ export async function runEvolveStep(
       provider: providerLabel(model),
       params: { max_tokens: MAX_TOKENS_TWO_PASS },
     },
-    declared: declaredForStep(),
+    declared: ctx.declared ?? declaredForStep(),
     timing_ms: { total_ms: Date.now() - t0, model_ms_total: modelMsTotal },
     cost_usd_estimate: estimate.usd,
     ontology: PHASE0_ONTOLOGY.evolve_step,

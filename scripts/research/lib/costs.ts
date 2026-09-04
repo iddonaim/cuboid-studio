@@ -5,6 +5,7 @@
  * written to the envelope as cost_usd_estimate (an ESTIMATE, as named).
  */
 
+import type { CacheTtl } from './anthropicBatch';
 import type { MatrixCell } from './matrix';
 
 export interface ModelPricing {
@@ -73,6 +74,160 @@ export function estimateCellCost(cell: {
     (tokensIn / 1_000_000) * pricing.usd_per_mtok_in +
     (tokensOut / 1_000_000) * pricing.usd_per_mtok_out;
   return { tokens_in: tokensIn, tokens_out: tokensOut, usd, pricing_known: known };
+}
+
+// ---------------------------------------------------------------------------
+// Batch-route pricing (--transport batch): Message Batches discount + prompt
+// caching on the shared system prompt. Multipliers from the official pricing
+// and batch docs as of 2026-09-04: the batch discount is 50% off input AND
+// output, cache writes cost 1.25× (5m TTL) or 2× (1h TTL) base input, cache
+// reads 0.1×, and these multipliers STACK multiplicatively with the batch
+// discount (stated explicitly on the pricing page). Base per-model prices
+// stay in MODEL_PRICING above (snapshot 2026-08) — edit there when list
+// prices move; the multipliers here move only if Anthropic changes the
+// discount structure itself.
+// ---------------------------------------------------------------------------
+
+export const BATCH_DISCOUNT_MULTIPLIER = 0.5;
+export const CACHE_WRITE_MULTIPLIER: Record<CacheTtl, number> = { '5m': 1.25, '1h': 2 };
+export const CACHE_READ_MULTIPLIER = 0.1;
+/** Sonnet-class minimum cacheable prefix. Below it caching silently no-ops
+ *  (no error, no premium billed) — so a too-short system prompt is priced
+ *  as plain batch-discounted input, with a visible note. */
+export const MIN_CACHEABLE_TOKENS = 1024;
+
+export interface BatchRouteEstimate {
+  /** System-prompt share of the input (the cacheable prefix). */
+  tokens_system: number;
+  tokens_in: number;
+  tokens_out: number;
+  usd_sync: number;
+  /** Upper bound: every call misses and writes the cache (or, below the
+   *  cache minimum, plain 50%-discounted input). Budget gating uses this. */
+  usd_batch_worst: number;
+  /** Marginal lower bound: this call reads a warm cache. The one write per
+   *  model is added at the round level (batchRouteTotals). */
+  usd_batch_best_marginal: number;
+  cacheable: boolean;
+  pricing_known: boolean;
+}
+
+/**
+ * Prices ONE model call on the batch route, from the same inputs
+ * estimateCellCost uses. Cache hits inside a batch are best-effort
+ * (concurrent processing), so both bounds are reported; the docs recommend
+ * the 1-hour TTL for batches and that is what the transport sends.
+ */
+export function estimateBatchRoute(cell: {
+  modelId: string;
+  systemPromptChars: number;
+  userMessageChars: number;
+  hasImage: boolean;
+  cellType: 'a' | 'c';
+  prefillChars?: number;
+  cacheTtl: CacheTtl;
+}): BatchRouteEstimate {
+  const sync = estimateCellCost(cell);
+  const { pricing } = pricingFor(cell.modelId);
+  const tokensSystem = estimateTokensFromChars(cell.systemPromptChars);
+  const tokensVariable = sync.tokens_in - tokensSystem;
+  const cacheable = tokensSystem >= MIN_CACHEABLE_TOKENS;
+
+  const inRate = pricing.usd_per_mtok_in / 1_000_000;
+  const outRate = pricing.usd_per_mtok_out / 1_000_000;
+  const variableAndOutput =
+    BATCH_DISCOUNT_MULTIPLIER * (tokensVariable * inRate + sync.tokens_out * outRate);
+
+  let worst: number;
+  let bestMarginal: number;
+  if (cacheable) {
+    worst = BATCH_DISCOUNT_MULTIPLIER * CACHE_WRITE_MULTIPLIER[cell.cacheTtl] * tokensSystem * inRate + variableAndOutput;
+    bestMarginal = BATCH_DISCOUNT_MULTIPLIER * CACHE_READ_MULTIPLIER * tokensSystem * inRate + variableAndOutput;
+  } else {
+    const flat = BATCH_DISCOUNT_MULTIPLIER * tokensSystem * inRate + variableAndOutput;
+    worst = flat;
+    bestMarginal = flat;
+  }
+
+  return {
+    tokens_system: tokensSystem,
+    tokens_in: sync.tokens_in,
+    tokens_out: sync.tokens_out,
+    usd_sync: sync.usd,
+    usd_batch_worst: worst,
+    usd_batch_best_marginal: bestMarginal,
+    cacheable,
+    pricing_known: sync.pricing_known,
+  };
+}
+
+export interface BatchRouteTotals {
+  usd_sync: number;
+  usd_batch_worst: number;
+  /** One cache write per distinct model, every other call a cache read. */
+  usd_batch_best: number;
+  call_count: number;
+  any_uncacheable: boolean;
+  pricing_known: boolean;
+}
+
+/** Aggregates PER-CALL batch estimates (an E3 step contributes one row per
+ *  candidate call, not one per step — the write-once-per-model correction
+ *  is per call). */
+export function batchRouteTotals(rows: Array<{ modelId: string; est: BatchRouteEstimate }>): BatchRouteTotals {
+  let sync = 0;
+  let worst = 0;
+  let best = 0;
+  let anyUncacheable = false;
+  let known = true;
+  const writeAdded = new Set<string>();
+  for (const { modelId, est } of rows) {
+    sync += est.usd_sync;
+    worst += est.usd_batch_worst;
+    anyUncacheable = anyUncacheable || !est.cacheable;
+    known = known && est.pricing_known;
+    if (est.cacheable && !writeAdded.has(modelId)) {
+      // The model's first processed call writes the cache at write price.
+      writeAdded.add(modelId);
+      best += est.usd_batch_worst;
+    } else {
+      best += est.usd_batch_best_marginal;
+    }
+  }
+  return {
+    usd_sync: sync,
+    usd_batch_worst: worst,
+    usd_batch_best: best,
+    call_count: rows.length,
+    any_uncacheable: anyUncacheable,
+    pricing_known: known,
+  };
+}
+
+/** The batch-route pricing block printed under the dry-run table (and before
+ *  a submit round). Returns lines; run.ts prints them. */
+export function renderBatchPricingLines(totals: BatchRouteTotals, cacheTtl: CacheTtl): string[] {
+  const lines: string[] = [];
+  lines.push('');
+  lines.push(
+    `transport=batch pricing (Anthropic Message Batches: 50% token discount; prompt caching on the shared system prompt, cache_control ephemeral ttl=${cacheTtl} — write ${CACHE_WRITE_MULTIPLIER[cacheTtl]}×, read ${CACHE_READ_MULTIPLIER}×, both stacked with the discount):`,
+  );
+  lines.push(
+    `  best case  (one cache write per model, later calls hit):  $${totals.usd_batch_best.toFixed(4)}`,
+  );
+  lines.push(
+    `  worst case (no cache hits — hits are best-effort in batches): $${totals.usd_batch_worst.toFixed(4)}   ← budget cap is checked against this`,
+  );
+  lines.push(`  sync comparison (no batch discount, no caching):           $${totals.usd_sync.toFixed(4)}`);
+  if (totals.any_uncacheable) {
+    lines.push(
+      `  NOTE: the system prompt is under the ~${MIN_CACHEABLE_TOKENS}-token cache minimum — caching would silently no-op; priced without it`,
+    );
+  }
+  if (!totals.pricing_known) {
+    lines.push('  NOTE: at least one model had no pricing entry — default pricing used (MODEL_PRICING in scripts/research/lib/costs.ts)');
+  }
+  return lines;
 }
 
 export interface DryRunRow {

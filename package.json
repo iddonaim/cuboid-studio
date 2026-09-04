@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "research:run": "tsx scripts/research/run.ts",
     "research:export": "tsx scripts/research/export.ts",
-    "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project rules-test-research \"vitest run scripts/research/rules.emulator.test.ts\""
+    "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project rules-test-research \"vitest run scripts/research/rules.emulator.test.ts scripts/research/batchRounds.emulator.test.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
