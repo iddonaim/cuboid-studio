@@ -1,0 +1,23 @@
+{
+  "batch_id": "e2-toy-001",
+  "experiment": "E2",
+  "baseline_tag": "SCAFFOLD-TOY",
+  "corpus": {
+    "meme_ids": [
+      "CGWKF5aryAKJa70NqTm6",
+      "5dSdLtmjRtgl0BNkAB9i",
+      "meme_1766758846536_xhz7mhovx"
+    ]
+  },
+  "models": [
+    { "id": "anthropic/claude-sonnet-4.6", "provider": "anthropic" }
+  ],
+  "cells": ["a", "c"],
+  "replicates": 3,
+  "site_context_file": null,
+  "composition_ref": null,
+  "target_cube": null,
+  "language": null,
+  "budget_cap_usd": 1,
+  "frozen_pass1_source": "batch-cell-a"
+}
