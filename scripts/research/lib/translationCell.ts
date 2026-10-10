@@ -10,11 +10,16 @@
  * text byte-for-byte (see translationLexicon.default.ts), so the regime is
  * fully identified by the prompt-file hash + the lexicon hash.
  *
- * Cell (c) — frozen Pass 1 (ruling R1): the unchanged prompt is sent and the
- * assistant turn is prefilled with "[" + the stored Pass-1 object (verbatim
- * raw text from the referenced record) + ",". The transport returns the
- * continuation; the recording caller returns prefill + continuation so the
- * existing fence-stripper, parser and validator see the full two-pass text.
+ * Cell (c) — frozen Pass 1 (ruling R1, mechanism revised 2026-10-10): the
+ * unchanged system prompt is sent, and the stored Pass-1 object (verbatim raw
+ * text from the referenced record) is handed back in the USER turn, after the
+ * meme message, under a short wrapper asking for Pass 2 only
+ * (buildPass1FreezeBlock). The original R1 mechanism — prefilling the
+ * assistant turn — is gone: current Claude models reject assistant prefill
+ * outright (e2-toy-001, 2026-10-10). The model's reply is recorded verbatim;
+ * for parsing and validation only, the harness composes
+ * "[" + stored Pass 1 + "," + reply + "]" so the app's parser and two-pass
+ * validator run unchanged. Records carry pass1_freeze_method.
  *
  * Every transport round-trip is recorded verbatim (spec principles 1 and 4):
  * the app pipeline's built-in parse/validation retries stay in the record as
@@ -35,7 +40,6 @@ import type { VercelResponse } from '@vercel/node';
 import { composeTranslationPrompt, DEFAULT_TRANSLATION_LEXICON } from '../../../src/prompts/translationLexicon.default.js';
 import { parsePromptVersion } from '../../../src/lib/promptVersion.js';
 import { mapMemeToCuboidInput } from '../../../src/lib/meme-mapper.js';
-import { sha256HexOfString } from '../../../src/research/hashing.js';
 import { extractTwoPassRawSlices } from '../../../src/research/jsonSlice.js';
 import { PHASE0_ONTOLOGY } from '../../../src/research/ontology.js';
 import type {
@@ -105,14 +109,14 @@ function retryRole(retryMessage: string | undefined, callIndex: number): string 
 }
 
 /**
- * Wraps a transport caller: records every round-trip verbatim, and (cell c)
- * prepends the prefill to the continuation so downstream parsing sees the
- * full text the model committed to.
+ * Wraps a transport caller: records every round-trip's model text verbatim,
+ * and (cell c) hands parseAndRoute the composed two-pass text
+ * (composeFrozenTwoPass) instead of the bare Pass-2 reply.
  */
 export function makeRecordingCaller(
   transport: (retryMessage?: string) => Promise<string>,
   attempts: CallAttempt[],
-  prefill: string | null,
+  frozenPass1Raw: string | null,
 ): (retryMessage?: string) => Promise<string> {
   let callIndex = 0;
   return async (retryMessage?: string) => {
@@ -120,10 +124,9 @@ export function makeRecordingCaller(
     callIndex++;
     const t0 = Date.now();
     try {
-      const continuation = await transport(retryMessage);
-      const full = prefill ? prefill + continuation : continuation;
-      attempts.push({ role, raw_response: full, error: null, timing_ms: Date.now() - t0 });
-      return full;
+      const text = await transport(retryMessage);
+      attempts.push({ role, raw_response: text, error: null, timing_ms: Date.now() - t0 });
+      return frozenPass1Raw !== null ? composeFrozenTwoPass(frozenPass1Raw, text) : text;
     } catch (err) {
       attempts.push({
         role,
@@ -214,77 +217,44 @@ export function extractFrozenSource(sourceDocId: string, data: unknown): FrozenP
   return { recordId: record.record_id, pass1Raw };
 }
 
-/** "[" + stored Pass-1 object verbatim + "," — the model continues with
- *  Pass 2 and the closing "]". */
-export function buildPass1Prefill(source: FrozenPass1Source): string {
-  return '[' + source.pass1Raw + ',';
-}
-
-// ---------------------------------------------------------------------------
-// Prefill support probe (R1: non-Anthropic OpenRouter providers)
-// ---------------------------------------------------------------------------
-
-export function needsPrefillProbe(model: BatchConfig['models'][number]): boolean {
-  return model.provider === 'openrouter' && !model.id.startsWith('anthropic/');
-}
-
-export const PROBE_PREFILL = '[1,';
+/** Which mechanism froze Pass 1 on a cell-(c) record (pass1_freeze_method).
+ *  Versioned: a changed wrapper text is a new value, never a silent edit. */
+export const PASS1_FREEZE_METHOD = 'user_message_v1' as const;
 
 /**
- * Judges whether a probe response is a genuine CONTINUATION of the prefill.
- * Providers that don't support prefill fall into two visible shapes: an API
- * error (rejecting the trailing assistant message), or a fresh assistant turn
- * that restarts the answer instead of continuing it — the response text then
- * doesn't compose with the prefill into the expected array. Accepting either
- * as "supported" would burn every cell-(c) replicate downstream, so only a
- * response that parses as the continuation counts.
+ * The text appended to the user turn for cell (c): a minimal, neutral
+ * wrapper around the stored Pass-1 object, which goes in verbatim. Asks for
+ * the Pass-2 object only, so the frozen Pass 1 is never re-emitted (and so
+ * never altered) by the model.
  */
-export function probeContinuationOk(continuation: string): boolean {
-  try {
-    const parsed = JSON.parse(stripCodeFences(PROBE_PREFILL + continuation));
-    return Array.isArray(parsed) && parsed[0] === 1;
-  } catch {
-    return false;
-  }
+export function buildPass1FreezeBlock(source: FrozenPass1Source): string {
+  return (
+    'The Pass 1 output for this meme was produced earlier and is given below, verbatim. ' +
+    'Use it as your Pass 1; do not redo it. ' +
+    'Produce Pass 2 from it and return only the Pass 2 JSON object, not the array.\n\n' +
+    'Pass 1 output:\n' +
+    source.pass1Raw
+  );
 }
 
-/** A probe call that failed for transport reasons (rate limit, network, bad
- *  key). NOT evidence about prefill support — the runner aborts (resumable)
- *  instead of recording a wrong "provider cannot prefill" conclusion into an
- *  append-only dataset. */
-export class ProbeTransportError extends Error {}
+/** The user message a cell-(c) request carries: the meme message, a blank
+ *  line, then the freeze block. Retries reuse it (parseAndRoute appends its
+ *  instructions to the user message it is given), so the frozen Pass 1
+ *  survives every attempt. */
+export function buildFrozenUserMessage(userMessage: string, source: FrozenPass1Source): string {
+  return userMessage + '\n\n' + buildPass1FreezeBlock(source);
+}
 
 /**
- * One dry call per model: a trivial continuation request through the same
- * transport. Returns true only when the model demonstrably CONTINUED the
- * prefill. A provider-side 4xx (the request shape rejected) is "unsupported";
- * any other failure (429, 5xx, network) throws ProbeTransportError.
+ * "[" + stored Pass 1 + "," + the model's Pass-2 reply (code fences
+ * stripped) + "]" — the two-pass array the app's parser and validator
+ * expect. Used only to parse/validate and to cut the pass slices; the
+ * record keeps the reply verbatim. A reply that is not a bare Pass-2 object
+ * (e.g. the model returned the whole array) fails parse/validation and is
+ * recorded as such — failures are data.
  */
-export async function probePrefillSupport(
-  modelId: string,
-  openRouterKey: string,
-): Promise<boolean> {
-  const transport = makeOpenRouterCaller({
-    apiKey: openRouterKey,
-    userMessage: 'Complete this JSON array of the numbers one to three. Return only JSON, nothing else.',
-    memeImageUrl: null,
-    systemPrompt: 'You return only JSON.',
-    selectedModel: modelId,
-    passMode: 'single',
-    assistantPrefill: PROBE_PREFILL,
-  });
-  try {
-    const continuation = await transport();
-    return probeContinuationOk(continuation);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // makeOpenRouterCaller embeds the HTTP status as "(NNN)". 400/404/422 ≈
-    // the provider rejecting the message shape; 401/403/408/429 and 5xx are
-    // transport/config trouble, not evidence.
-    const status = message.match(/\((\d{3})\)/)?.[1];
-    if (status && ['400', '404', '405', '422'].includes(status)) return false;
-    throw new ProbeTransportError(`prefill probe for ${modelId} failed for transport reasons — not evidence of missing prefill support: ${message}`);
-  }
+export function composeFrozenTwoPass(pass1Raw: string, reply: string): string {
+  return '[' + pass1Raw + ',' + stripCodeFences(reply) + ']';
 }
 
 // ---------------------------------------------------------------------------
@@ -306,11 +276,9 @@ export interface TranslationCellContext {
   /** Resolves the frozen Pass-1 source for a (c) cell (Firestore lookup in
    *  run.ts; injected fixture in tests). */
   resolveFrozenSource: (cell: MatrixCell) => Promise<FrozenPass1Source>;
-  /** Per-model probe results filled in by the runner (R1). */
-  prefillSupport: Map<string, boolean>;
   /**
    * Transport injection: when set, replaces the network callers so the full
-   * cell path (prompt assembly, prefill, recording, parseAndRoute,
+   * cell path (prompt assembly, Pass-1 freeze, recording, parseAndRoute,
    * validators, record building) runs against a supplied transport. Tests
    * script the model through it, and the batch transport's submit (capture)
    * / collect (replay) phases ride the same seam — that is what guarantees
@@ -326,7 +294,7 @@ export interface TranslationCellContext {
 export interface TranslationCellResult {
   record: TranslationRecord;
   estimate: CellCostEstimate;
-  /** True when the model was actually called (false: skipped-prefill cells). */
+  /** True when the model was actually called. */
   called: boolean;
 }
 
@@ -420,40 +388,12 @@ export async function runTranslationCell(
     cellType: cell.cellType,
   });
 
-  // Cell (c): resolve the frozen source and check prefill support first.
-  let prefill: string | null = null;
-  let frozenRecordId: string | null = null;
+  // Cell (c): resolve the frozen source and fold it into the user turn.
+  let frozen: FrozenPass1Source | null = null;
+  let sentUserMessage = userMessage;
   if (cell.cellType === 'c') {
-    const supported = ctx.prefillSupport.get(cell.model.id) ?? true;
-    if (!supported) {
-      // R1: record prefill_supported: false and skip cell (c) for this model
-      // — never substitute a Pass-2-only prompt variant.
-      const record: TranslationRecord = {
-        ...baseEnvelope(ctx, cell, provider),
-        payload: {
-          ...payloadBase,
-          pass1_input_mode: 'live', // no frozen record was consumed
-          prefill: false,
-          prefill_content_hash: null,
-          prefill_supported: false,
-          raw_response: null,
-          attempts: [],
-          pass1: { raw: null, parsed: null },
-          pass2: { raw: null, parsed: null },
-          parse_status: 'failed',
-          failure: {
-            stage: 'harness',
-            message: `cell (c) skipped: provider for ${cell.model.id} does not support assistant prefill (probed; R1 forbids a Pass-2-only prompt variant in Phase 0)`,
-            http_status: null,
-          },
-        },
-      };
-      return { record, estimate: { ...estimate, usd: 0, tokens_in: 0, tokens_out: 0 }, called: false };
-    }
-
-    const source = await ctx.resolveFrozenSource(cell);
-    prefill = buildPass1Prefill(source);
-    frozenRecordId = source.recordId;
+    frozen = await ctx.resolveFrozenSource(cell);
+    sentUserMessage = buildFrozenUserMessage(userMessage, frozen);
   }
 
   if (cell.model.provider === 'anthropic') {
@@ -463,12 +403,11 @@ export async function runTranslationCell(
   // Transport per explicit routing — never inferred from which keys exist.
   const callerOpts: CallerOpts = {
     apiKey: '',
-    userMessage,
+    userMessage: sentUserMessage,
     memeImageUrl,
     systemPrompt,
     selectedModel: cell.model.id,
     passMode: 'two_pass',
-    ...(prefill ? { assistantPrefill: prefill } : {}),
   };
 
   let transport: (retryMessage?: string) => Promise<string>;
@@ -483,26 +422,31 @@ export async function runTranslationCell(
   }
 
   const attempts: CallAttempt[] = [];
-  const caller = makeRecordingCaller(transport, attempts, prefill);
+  const caller = makeRecordingCaller(transport, attempts, frozen?.pass1Raw ?? null);
   const capture = captureRes();
 
   const t0 = Date.now();
-  await parseAndRoute(capture.res, caller, userMessage, 'two_pass', cell.model.id, promptVersion);
+  await parseAndRoute(capture.res, caller, sentUserMessage, 'two_pass', cell.model.id, promptVersion);
   const totalMs = Date.now() - t0;
 
   const { status, body } = capture.get();
   const errBody = (body ?? {}) as { error?: string };
   const describedRaw = pickDescribedRaw(attempts, status, errBody.error);
   const slices = describedRaw
-    ? extractTwoPassRawSlices(stripCodeFences(describedRaw))
+    ? extractTwoPassRawSlices(
+        frozen ? composeFrozenTwoPass(frozen.pass1Raw, describedRaw) : stripCodeFences(describedRaw),
+      )
     : { pass1: null, pass2: null };
 
   let payload: TranslationPayload;
   const shared = {
     ...payloadBase,
-    pass1_input_mode: (frozenRecordId ? `frozen:${frozenRecordId}` : 'live') as TranslationPayload['pass1_input_mode'],
-    prefill: prefill !== null,
-    prefill_content_hash: prefill !== null ? await sha256HexOfString(prefill) : null,
+    pass1_input_mode: (frozen ? `frozen:${frozen.recordId}` : 'live') as TranslationPayload['pass1_input_mode'],
+    // The assistant-prefill mechanism is retired; kept false/null so the
+    // schema stays one shape across old and new records.
+    prefill: false,
+    prefill_content_hash: null,
+    ...(frozen ? { pass1_freeze_method: PASS1_FREEZE_METHOD } : {}),
     raw_response: describedRaw,
     attempts,
   };

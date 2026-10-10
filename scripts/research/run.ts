@@ -79,8 +79,6 @@ import {
   buildUserMessage,
   extractFrozenSource,
   FrozenSourceUnavailableError,
-  needsPrefillProbe,
-  probePrefillSupport,
   runTranslationCell,
   type FrozenPass1Source,
   type TranslationCellContext,
@@ -380,22 +378,6 @@ async function main(): Promise<void> {
 
     const { db } = await initHeadlessFirebase();
 
-    // R1: probe assistant-prefill support once per model that needs it.
-    const prefillSupport = new Map<string, boolean>();
-    if (config.cells.includes('c')) {
-      for (const model of config.models) {
-        if (!needsPrefillProbe(model)) {
-          prefillSupport.set(model.id, true);
-          continue;
-        }
-        if (!openRouterKey) throw new Error(`cannot probe prefill support for ${model.id}: OPENROUTER_API_KEY unset`);
-        console.log(`probing assistant-prefill support: ${model.id}…`);
-        const supported = await probePrefillSupport(model.id, openRouterKey);
-        prefillSupport.set(model.id, supported);
-        console.log(`  → ${supported ? 'supported' : 'NOT supported — cell (c) will be skipped for this model (R1)'}`);
-      }
-    }
-
     const batchRecord = buildBatchRecord({
       config,
       corpus,
@@ -405,9 +387,6 @@ async function main(): Promise<void> {
       operator: operator!,
       cellCount: cells.length,
       costEstimateUsd: table.total_usd,
-      notes: [...prefillSupport.entries()]
-        .filter(([, ok]) => !ok)
-        .map(([id]) => `prefill_supported=false for ${id}; cell (c) skipped per R1`),
     });
     await reconcileBatchRecord({ db, mode, current: batchRecord });
 
@@ -421,7 +400,6 @@ async function main(): Promise<void> {
       anthropicKey,
       openRouterKey,
       resolveFrozenSource: makeResolveFrozenSource(db, config),
-      prefillSupport,
     };
 
     let spentEstimate = 0;
@@ -489,11 +467,6 @@ async function main(): Promise<void> {
 
   const { db } = await initHeadlessFirebase();
 
-  // All batch models are anthropic-routed (checked above) — prefill is
-  // native, no probes needed (R1 probes exist for non-Anthropic OpenRouter
-  // providers only).
-  const prefillSupport = new Map<string, boolean>(config.models.map((m) => [m.id, true]));
-
   const batchRecord = buildBatchRecord({
     config,
     corpus,
@@ -520,7 +493,6 @@ async function main(): Promise<void> {
     anthropicKey,
     openRouterKey: null,
     resolveFrozenSource: makeResolveFrozenSource(db, config),
-    prefillSupport,
   };
 
   const units: BatchUnit[] = cells.map((cell, i) => makeE2BatchUnit(cell, cellCtx, anthropicKey, batchEstimates![i]));
@@ -789,7 +761,13 @@ async function runE3(args: {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+// Exit explicitly: the Firebase client SDK keeps its Firestore channel and
+// auth token-refresh timers open after the work is done, so a finished run
+// would otherwise never end (CI sat until the 30-minute job limit).
+main().then(
+  () => process.exit(process.exitCode ?? 0),
+  (err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  },
+);

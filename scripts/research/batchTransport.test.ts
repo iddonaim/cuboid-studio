@@ -10,7 +10,7 @@
  *   - E2 and E3 units end to end through the REAL executors: capture yields
  *     the same request the sync path would send, replay yields a record
  *     shape-identical to a sync run's (the "same records, same failure
- *     handling" property), prefill cells and failure cells included.
+ *     handling" property), frozen-Pass-1 cells and failure cells included.
  */
 
 import fs from 'node:fs';
@@ -249,7 +249,6 @@ async function e2Fixtures(): Promise<{
     anthropicKey: null,
     openRouterKey: null,
     resolveFrozenSource: async () => ({ recordId: 'frozen-source-record', pass1Raw: JSON.stringify(validPass1) }),
-    prefillSupport: new Map([['anthropic/claude-sonnet-4.6', true]]),
   };
   return { cells: expandMatrix(config, corpus), ctx, corpus };
 }
@@ -306,24 +305,30 @@ describe('E2 batch unit (real executor)', () => {
     expect(validatePayload(record.kind, record.payload)).toBeNull();
   });
 
-  it('cell (c): capture carries the frozen prefill; replay records prefill provenance', async () => {
+  it('cell (c): capture carries the frozen Pass 1 in the user turn; replay records the freeze method', async () => {
     const { cells, ctx } = await e2Fixtures();
     const cellC = cells.find((c) => c.cellType === 'c')!;
     const unit = makeE2BatchUnit(cellC, ctx, 'key', toyEstimate);
 
     const captured = await unit.capture();
-    const expectedPrefill = '[' + JSON.stringify(validPass1) + ',';
-    expect(captured[0].opts.assistantPrefill).toBe(expectedPrefill);
+    const pass1Raw = JSON.stringify(validPass1);
+    expect(captured[0].opts.assistantPrefill).toBeUndefined();
+    expect(captured[0].opts.userMessage.endsWith('\n' + pass1Raw)).toBe(true);
+    const params = buildAnthropicMessageParams(captured[0].opts, null);
+    const messages = params.messages as Array<{ role: string }>;
+    expect(messages.map((m) => m.role)).toEqual(['user']);
 
-    // The batch result holds the CONTINUATION (as the API returns for a
-    // prefilled request); the recording caller reassembles the full text.
-    const continuation = JSON.stringify(validPass2) + ']';
-    const { record } = await unit.executeWithReplay(new Map([['call', succeededEntry(continuation)]]));
+    // The batch result holds the model's Pass-2 object; the record keeps it
+    // verbatim and parses the composed two-pass array.
+    const reply = JSON.stringify(validPass2);
+    const { record } = await unit.executeWithReplay(new Map([['call', succeededEntry(reply)]]));
     const payload = record.payload as TranslationPayload;
     expect(payload.parse_status).toBe('ok');
-    expect(payload.prefill).toBe(true);
+    expect(payload.prefill).toBe(false);
+    expect(payload.pass1_freeze_method).toBe('user_message_v1');
     expect(payload.pass1_input_mode).toBe('frozen:frozen-source-record');
-    expect(payload.raw_response).toBe(expectedPrefill + continuation);
+    expect(payload.raw_response).toBe(reply);
+    expect(payload.pass1.raw).toBe(pass1Raw);
   });
 
   it('an errored batch result becomes a transport-failure record — failures are data, never dropped', async () => {

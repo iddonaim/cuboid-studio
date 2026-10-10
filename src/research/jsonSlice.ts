@@ -2,7 +2,7 @@
  * Verbatim JSON slice extraction.
  *
  * The shipped two-pass translation is ONE model call whose response is a JSON
- * array `[Pass1, Pass2]`. Ruling R1 requires cell (c) to prefill the stored
+ * array `[Pass1, Pass2]`. Ruling R1 requires cell (c) to hand back the stored
  * Pass 1 as "verbatim raw text from the referenced record" — so translation
  * records must store each pass's exact character span from the raw response,
  * not a re-serialization (JSON.parse → stringify would normalize whitespace

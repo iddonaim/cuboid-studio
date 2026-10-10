@@ -9,6 +9,7 @@
  */
 
 import { isValidOntology } from './ontology';
+import { PASS1_FREEZE_METHODS } from './types';
 import type {
   DeclaredInfo,
   EncodePayload,
@@ -224,6 +225,13 @@ function validateTranslationPayload(p: Record<string, unknown>): string | null {
   }
   if (p.prefill_supported !== undefined && typeof p.prefill_supported !== 'boolean') {
     return 'prefill_supported must be a boolean when present';
+  }
+  if (p.pass1_freeze_method !== undefined) {
+    if (!(PASS1_FREEZE_METHODS as readonly unknown[]).includes(p.pass1_freeze_method)) {
+      return `pass1_freeze_method must be one of: ${PASS1_FREEZE_METHODS.join(', ')}`;
+    }
+    if (p.pass1_input_mode === 'live') return 'pass1_freeze_method requires a frozen pass1_input_mode';
+    if (p.prefill) return 'pass1_freeze_method and prefill are mutually exclusive';
   }
   if (!(p.raw_response === null || isString(p.raw_response))) return 'raw_response must be a string or null';
   const aErr = attemptsError(p.attempts);

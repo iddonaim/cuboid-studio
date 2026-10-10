@@ -104,11 +104,25 @@ prints them, and GitHub masks them in logs regardless.
   declared `ArchthesisMeme` type. Ghost fields (`topText`/`bottomText`/
   `userId`) are hashed only when a legacy doc really stores them. Each hash's
   covered field list is recorded in the batch record.
-- **E2 cell (c) = assistant prefill** (ruling R1): the unchanged prompt, the
-  assistant turn started with `[` + the stored Pass-1 verbatim + `,`. Records
-  carry `pass1_input_mode: "frozen:<record_id>"`, `prefill: true`, and the
-  prefill's content hash. Non-Anthropic OpenRouter providers are probed once;
-  unsupported → cell (c) skipped for that model with a recorded reason.
+- **E2 cell (c) = Pass 1 frozen in the user turn** (ruling R1; mechanism
+  revised 2026-10-10): the unchanged system prompt, and the user turn =
+  the meme message + a short wrapper + the stored Pass-1 object verbatim
+  (`buildPass1FreezeBlock` in `lib/translationCell.ts`). The model returns
+  the Pass-2 object alone; the record keeps that reply verbatim, and only
+  for parsing/validation the harness composes `[` + stored Pass 1 + `,` +
+  reply + `]` so the app's parser and two-pass validator run unchanged.
+  Retries carry the same user message, so the frozen Pass 1 survives them.
+  Records carry `pass1_input_mode: "frozen:<record_id>"` and
+  `pass1_freeze_method: "user_message_v1"` (with `prefill: false`). The
+  original mechanism — prefilling the assistant turn — is retired: current
+  Claude models reject assistant prefill outright (all 9 (c) records of
+  `e2-toy-001` failed on it). Those records are identifiable as frozen
+  records with `prefill: true` and no `pass1_freeze_method`. No per-model
+  prefill probe exists any more; the user-turn freeze works for every
+  model the same way.
+- **Runs exit on their own**: `run.ts` calls `process.exit` once its work is
+  done — the Firebase client keeps its Firestore channel and auth timers
+  open, which otherwise kept every finished CI run alive until the job limit.
 - **Cell identity lives in the Firestore document id**
   (`<batch>__<exp>__translation__<meme>__<provider>_<model>__cell-<x>__r<n>`),
   not in the record schema — the spec envelope has no cell field. The batch

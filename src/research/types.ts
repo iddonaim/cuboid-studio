@@ -16,6 +16,10 @@
  *   - `prefill` fields on the translation payload are ruled additions
  *     (R1: record `prefill: true` and the prefill's content hash;
  *     `prefill_supported: false` when a probed provider cannot prefill).
+ *     The prefill mechanism was retired 2026-10-10 (current Claude models
+ *     reject assistant prefill): cell (c) now hands the stored Pass 1 back
+ *     in the user turn and records `pass1_freeze_method`; new records carry
+ *     `prefill: false` / `prefill_content_hash: null`.
  */
 
 import type { TranslationPass1, TranslationPass2 } from '../lib/operators/types';
@@ -140,7 +144,7 @@ export interface FailureInfo {
 export interface RawParsed<T> {
   /** Verbatim text. For the one-call two-pass response, each pass's raw is
    *  the exact character span of that pass's object inside the full response
-   *  (see jsonSlice.ts) — the span cell (c) prefills verbatim per R1. */
+   *  (see jsonSlice.ts) — the span cell (c) hands back verbatim per R1. */
   raw: string | null;
   parsed: T | null;
 }
@@ -181,6 +185,8 @@ export interface EngagementAtRun {
 }
 
 export type Pass1InputMode = 'live' | `frozen:${string}`;
+export const PASS1_FREEZE_METHODS = ['user_message_v1'] as const;
+export type Pass1FreezeMethod = (typeof PASS1_FREEZE_METHODS)[number];
 export type StepInputMode = 'campaign' | `frozen:${string}`;
 
 export interface TranslationPayload {
@@ -200,7 +206,15 @@ export interface TranslationPayload {
   language: string | null;
   /** "live", or "frozen:<record_id>" for E2 cell (c) — ruling R1. */
   pass1_input_mode: Pass1InputMode;
-  /** R1: true when the assistant turn was prefilled with a stored Pass 1. */
+  /** How a frozen Pass 1 reached the model (E2 cell (c) only; absent on
+   *  live records). "user_message_v1": the stored Pass 1 verbatim in the
+   *  user turn under the wrapper in buildPass1FreezeBlock (translationCell.ts).
+   *  Absent on a frozen record means the retired R1 assistant prefill
+   *  (`prefill: true`). Versioned — a new mechanism or wrapper wording is a
+   *  new value. */
+  pass1_freeze_method?: Pass1FreezeMethod;
+  /** R1 (retired 2026-10-10): true when the assistant turn was prefilled
+   *  with a stored Pass 1. Always false on records written since. */
   prefill: boolean;
   /** sha256 of the exact prefill text sent (null when prefill is false). */
   prefill_content_hash: string | null;

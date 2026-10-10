@@ -8,7 +8,7 @@
  * FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm test). Proves the operational
  * story the transport was built for:
  *   - E2: submit (a-cells only; c-cells wait on frozen sources) → collect →
- *     submit (c-cells, prefilled from the just-written a-records) → collect,
+ *     submit (c-cells, Pass 1 frozen from the just-written a-records) → collect,
  *     ending with the full matrix written and a re-run collecting nothing;
  *   - one-open-submission discipline (submit refuses while in flight or
  *     uncollected);
@@ -79,7 +79,7 @@ const validPass2 = {
   reasoning: 'displacement maps to reassignment',
 };
 const fullTwoPass = JSON.stringify([validPass1, validPass2]);
-const continuationFor = JSON.stringify(validPass2) + ']';
+const pass2Only = JSON.stringify(validPass2);
 
 // ---------------------------------------------------------------------------
 // Scripted Batch API + image host (everything else passes through to the
@@ -90,8 +90,8 @@ interface FakeBatch {
   id: string;
   status: 'in_progress' | 'ended';
   requests: Array<{ custom_id: string; params: Record<string, unknown> }>;
-  /** Result per request; default: succeeded with a valid response (a
-   *  continuation when the request carried an assistant prefill). */
+  /** Result per request; default: succeeded with a valid response (the
+   *  Pass-2 object alone when the request carried a frozen Pass 1). */
   resultFor: (request: { custom_id: string; params: Record<string, unknown> }) => BatchResultEntry;
 }
 
@@ -102,12 +102,13 @@ let imageBytes = new Uint8Array([1, 2, 3, 4]);
 const FAKE_USAGE = { input_tokens: 5100, output_tokens: 1180, cache_creation_input_tokens: 1100, cache_read_input_tokens: 0 };
 
 function defaultResult(request: { params: Record<string, unknown> }): BatchResultEntry {
-  const messages = request.params.messages as Array<{ role: string; content: unknown }>;
-  const prefilled = messages[messages.length - 1]?.role === 'assistant';
+  const messages = request.params.messages as Array<{ role: string; content: Array<{ type: string; text?: string }> }>;
+  const userText = messages[messages.length - 1]?.content.find((b) => b.type === 'text')?.text ?? '';
+  const frozen = userText.includes('Pass 1 output:\n');
   return {
     type: 'succeeded',
     message: {
-      content: [{ type: 'text', text: prefilled ? continuationFor : fullTwoPass }],
+      content: [{ type: 'text', text: frozen ? pass2Only : fullTwoPass }],
       stop_reason: 'end_turn',
       usage: FAKE_USAGE,
     },
@@ -231,7 +232,6 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
         }
         return extractFrozenSource(sourceDocId, snap.data());
       },
-      prefillSupport: new Map(config.models.map((m) => [m.id, true])),
     };
 
     const units = cells.map((cell) =>
@@ -263,7 +263,7 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
   }
 
   it(
-    'E2 full flow: submit(a) → collect → submit(c, prefilled from round 1) → collect; idempotent re-collect',
+    'E2 full flow: submit(a) → collect → submit(c, Pass 1 frozen from round 1) → collect; idempotent re-collect',
     { timeout: 120_000 },
     async () => {
       const { db, config, cells, units, roundCtx } = await e2Setup();
@@ -303,18 +303,16 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
       // Real billed usage rides along (2026-09-04 approval), coverage explicit.
       expect(aRecord.usage).toEqual({ source: 'anthropic-batch', ...FAKE_USAGE, calls_covered: 1, calls_total: 1 });
 
-      // Round 2: the c-cells go up, prefilled from round 1's records.
+      // Round 2: the c-cells go up, Pass 1 frozen from round 1's records.
       await submitBatchRound(roundCtx, units);
       const sub2 = (await getDoc(doc(db, 'research_batches', submissionDocId(config.batch_id, 2)))).data() as BatchSubmissionDoc;
       expect(sub2.request_count).toBe(cCells.length);
       expect(new Set(sub2.units.map((u) => u.doc_id))).toEqual(new Set(cCells.map((c) => c.docId)));
-      const prefills = lastFakeBatch().requests.map((r) => {
-        const messages = r.params.messages as Array<{ role: string; content: unknown }>;
-        return messages[messages.length - 1];
-      });
-      for (const last of prefills) {
-        expect(last.role).toBe('assistant');
-        expect(String(last.content).startsWith('[' + JSON.stringify(validPass1) + ',')).toBe(true);
+      for (const r of lastFakeBatch().requests) {
+        const messages = r.params.messages as Array<{ role: string; content: Array<{ type: string; text?: string }> }>;
+        expect(messages.map((m) => m.role)).toEqual(['user']);
+        const text = messages[0].content.find((b) => b.type === 'text')?.text ?? '';
+        expect(text.endsWith('\n' + JSON.stringify(validPass1))).toBe(true);
       }
 
       lastFakeBatch().status = 'ended';
@@ -324,9 +322,10 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
 
       const cRecord = (await getDoc(doc(db, 'research_records', cCells[0].docId))).data() as { payload: TranslationPayload };
       expect(cRecord.payload.parse_status).toBe('ok');
-      expect(cRecord.payload.prefill).toBe(true);
+      expect(cRecord.payload.prefill).toBe(false);
+      expect(cRecord.payload.pass1_freeze_method).toBe('user_message_v1');
       expect(cRecord.payload.pass1_input_mode).toMatch(/^frozen:/);
-      expect(cRecord.payload.raw_response?.startsWith('[' + JSON.stringify(validPass1) + ',')).toBe(true);
+      expect(cRecord.payload.raw_response).toBe(pass2Only);
 
       // Append-only submission docs: nobody can rewrite provenance.
       await assertFails(updateDoc(doc(db, 'research_batches', submissionDocId(config.batch_id, 1)), { operator: 'evil' }));
