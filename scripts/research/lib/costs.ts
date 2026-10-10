@@ -61,14 +61,14 @@ export function estimateCellCost(cell: {
   userMessageChars: number;
   hasImage: boolean;
   cellType: 'a' | 'c';
-  prefillChars?: number;
+  frozenPass1Chars?: number;
 }): CellCostEstimate {
   const { pricing, known } = pricingFor(cell.modelId);
   const tokensIn =
     estimateTokensFromChars(cell.systemPromptChars) +
     estimateTokensFromChars(cell.userMessageChars) +
     (cell.hasImage ? IMAGE_TOKENS_ESTIMATE : 0) +
-    (cell.cellType === 'c' ? estimateTokensFromChars(cell.prefillChars ?? 2000) : 0);
+    (cell.cellType === 'c' ? estimateTokensFromChars(cell.frozenPass1Chars ?? 2000) : 0);
   const tokensOut = cell.cellType === 'c' ? OUTPUT_TOKENS_PASS2_ONLY : OUTPUT_TOKENS_TWO_PASS;
   const usd =
     (tokensIn / 1_000_000) * pricing.usd_per_mtok_in +
@@ -124,7 +124,7 @@ export function estimateBatchRoute(cell: {
   userMessageChars: number;
   hasImage: boolean;
   cellType: 'a' | 'c';
-  prefillChars?: number;
+  frozenPass1Chars?: number;
   cacheTtl: CacheTtl;
 }): BatchRouteEstimate {
   const sync = estimateCellCost(cell);

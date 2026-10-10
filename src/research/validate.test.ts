@@ -200,6 +200,25 @@ describe('validatePayload — accepts all four kinds (DoD b)', () => {
     expect(validatePayload('translation', frozen)).toBeNull();
   });
 
+  it('accepts a frozen record carrying pass1_freeze_method (user-message freeze, 2026-10-10)', () => {
+    const frozen: TranslationPayload = {
+      ...translationPayload(),
+      pass1_input_mode: 'frozen:some-record-id',
+      pass1_freeze_method: 'user_message_v1',
+    };
+    expect(validatePayload('translation', frozen)).toBeNull();
+  });
+
+  it('rejects an unknown pass1_freeze_method, one on a live record, and one combined with prefill', () => {
+    const base = { ...translationPayload(), pass1_input_mode: 'frozen:some-record-id' };
+    expect(validatePayload('translation', { ...base, pass1_freeze_method: 'telepathy' })).toContain('pass1_freeze_method');
+    expect(validatePayload('translation', { ...translationPayload(), pass1_freeze_method: 'user_message_v1' }))
+      .toContain('frozen');
+    expect(validatePayload('translation', {
+      ...base, pass1_freeze_method: 'user_message_v1', prefill: true, prefill_content_hash: 'f'.repeat(64),
+    })).toContain('mutually exclusive');
+  });
+
   it('rejects prefill without its content hash', () => {
     const bad = { ...translationPayload(), prefill: true };
     expect(validatePayload('translation', bad)).toContain('prefill_content_hash');

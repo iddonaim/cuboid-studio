@@ -3,8 +3,9 @@
  *
  * Covers: matrix determinism + doc ids; the dry-run cost table (DoD 2);
  * the frozen-Pass-1 round-trip through the app's own validator (DoD d + e):
- * a stored cell-(a) record's verbatim Pass 1 is pinned, prefilled, and the
- * continuation parses through validateAndReturnTwoPass; failure recording;
+ * a stored cell-(a) record's verbatim Pass 1 is pinned, handed back in the
+ * user turn, and the Pass-2 reply parses through validateAndReturnTwoPass;
+ * failure recording;
  * ontology on every produced record (DoD f).
  */
 
@@ -22,11 +23,11 @@ import { captureRegime } from './lib/regime';
 import { cellDocId, defaultFrozenSourceDocId, expandMatrix, type MatrixCell } from './lib/matrix';
 import {
   assembleTwoPassSystemPrompt,
-  buildPass1Prefill,
+  buildFrozenUserMessage,
+  buildPass1FreezeBlock,
   extractFrozenSource,
   FrozenSourceUnavailableError,
   pickDescribedRaw,
-  probeContinuationOk,
   runTranslationCell,
   type TranslationCellContext,
 } from './lib/translationCell';
@@ -92,7 +93,6 @@ async function makeContext(
     resolveFrozenSource: async () => {
       throw new Error('no frozen source configured in this test');
     },
-    prefillSupport: new Map([['anthropic/claude-sonnet-4.6', true]]),
     ...overrides,
   };
 }
@@ -223,14 +223,20 @@ describe('translation cell execution (scripted transport)', () => {
     // 1. Store a live translation record (cell a, replicate 0).
     const aCell = cells[0];
     const aResponse = JSON.stringify([validPass1, validPass2], null, 2);
-    const ctxA = await makeContext({ transportOverride: () => async () => aResponse });
+    let aUserMessage = '';
+    const ctxA = await makeContext({
+      transportOverride: (_cell, opts) => {
+        aUserMessage = opts.userMessage;
+        return async () => aResponse;
+      },
+    });
     const aResult = await runTranslationCell(ctxA, aCell);
     store.set(aCell.docId, prepareResearchRecord(aResult.record) as TranslationRecord);
 
     // 2. Pin its Pass 1 for the (c) cell of the same meme × model.
     const cCell = cells.find((c) => c.cellType === 'c' && c.memeId === aCell.memeId)!;
-    const seenPrefills: Array<string | undefined> = [];
-    const continuation = '\n  ' + JSON.stringify(validPass2) + '\n]';
+    const seenOpts: Array<{ userMessage: string; assistantPrefill?: string }> = [];
+    const reply = '```json\n' + JSON.stringify(validPass2, null, 2) + '\n```';
     const ctxC = await makeContext({
       resolveFrozenSource: async (cell: MatrixCell) => {
         const source = store.get(defaultFrozenSourceDocId(config, cell));
@@ -238,55 +244,78 @@ describe('translation cell execution (scripted transport)', () => {
         return { recordId: source.record_id, pass1Raw: source.payload.pass1.raw! };
       },
       transportOverride: (_cell, opts) => {
-        seenPrefills.push(opts.assistantPrefill);
-        return async () => continuation;
+        seenOpts.push({ userMessage: opts.userMessage, assistantPrefill: opts.assistantPrefill });
+        return async () => reply;
       },
     });
     const cResult = await runTranslationCell(ctxC, cCell);
     const cRecord = cResult.record;
 
-    // R1 mechanics: prefill is "[" + stored Pass-1 verbatim + ",".
+    // Freeze mechanics: no assistant prefill; the user turn is the meme
+    // message + the freeze block carrying the stored Pass 1 verbatim.
     const storedA = store.get(aCell.docId)!;
-    const expectedPrefill = buildPass1Prefill({
-      recordId: storedA.record_id,
-      pass1Raw: storedA.payload.pass1.raw!,
-    });
-    expect(seenPrefills).toEqual([expectedPrefill]);
-    expect(expectedPrefill.startsWith('[')).toBe(true);
-    expect(expectedPrefill.endsWith(',')).toBe(true);
-    expect(expectedPrefill).toContain(storedA.payload.pass1.raw!);
+    const source = { recordId: storedA.record_id, pass1Raw: storedA.payload.pass1.raw! };
+    expect(seenOpts).toHaveLength(1);
+    expect(seenOpts[0].assistantPrefill).toBeUndefined();
+    // Same meme message the (a) cell sent, then the freeze block.
+    expect(seenOpts[0].userMessage).toBe(buildFrozenUserMessage(aUserMessage, source));
+    expect(seenOpts[0].userMessage.endsWith('\n' + storedA.payload.pass1.raw!)).toBe(true);
+    expect(buildPass1FreezeBlock(source)).toContain(storedA.payload.pass1.raw!);
 
-    // The concatenated text parsed through the EXISTING validator (DoD e):
+    // The composed text parsed through the EXISTING validator (DoD e):
     expect(cRecord.payload.parse_status).toBe('ok');
     expect(cRecord.payload.pass1.parsed).toEqual(validPass1);
     expect(cRecord.payload.pass2.parsed).toEqual(validPass2);
+    // Pass-1 slice is the stored text verbatim; Pass-2 slice is the reply's object.
+    expect(cRecord.payload.pass1.raw).toBe(storedA.payload.pass1.raw);
+    expect(JSON.parse(cRecord.payload.pass2.raw!)).toEqual(validPass2);
 
-    // The record references the pinned Pass-1 record (DoD d):
+    // The record references the pinned Pass-1 record (DoD d) and says how:
     expect(cRecord.payload.pass1_input_mode).toBe(`frozen:${storedA.record_id}`);
-    expect(cRecord.payload.prefill).toBe(true);
-    expect(cRecord.payload.prefill_content_hash).toMatch(/^[0-9a-f]{64}$/);
-    // Full raw response = prefill + continuation, verbatim.
-    expect(cRecord.payload.raw_response).toBe(expectedPrefill + continuation);
+    expect(cRecord.payload.pass1_freeze_method).toBe('user_message_v1');
+    expect(cRecord.payload.prefill).toBe(false);
+    expect(cRecord.payload.prefill_content_hash).toBeNull();
+    // The model's reply is kept verbatim (fences and all).
+    expect(cRecord.payload.raw_response).toBe(reply);
+    expect(cRecord.payload.attempts.map((a) => a.raw_response)).toEqual([reply]);
     expect(validatePayload('translation', cRecord.payload)).toBeNull();
     expect(cRecord.ontology && isValidOntology(cRecord.ontology)).toBe(true);
   });
 
-  it('cell (c) is skipped with a recorded reason when the provider cannot prefill (R1)', async () => {
+  it('cell (c): a reply that re-emits the whole array fails visibly (the frozen Pass 1 is never taken from the model)', async () => {
     const { config, corpus } = await loadToy();
     const cells = expandMatrix(config, corpus);
     const cCell = cells.find((c) => c.cellType === 'c')!;
     const ctx = await makeContext({
-      prefillSupport: new Map([['anthropic/claude-sonnet-4.6', false]]),
-      transportOverride: () => async () => {
-        throw new Error('transport must not be called for a skipped cell');
+      resolveFrozenSource: async () => ({ recordId: 'rid-a', pass1Raw: JSON.stringify(validPass1) }),
+      transportOverride: () => async () => JSON.stringify([validPass1, validPass2]),
+    });
+    const { record } = await runTranslationCell(ctx, cCell);
+    expect(record.payload.parse_status).toBe('failed');
+    expect(record.payload.pass1_freeze_method).toBe('user_message_v1');
+    expect(validatePayload('translation', record.payload)).toBeNull();
+  });
+
+  it('cell (c): an unparseable reply is a failed, schema-valid record that still carries the frozen Pass 1 and both attempts', async () => {
+    const { config, corpus } = await loadToy();
+    const cells = expandMatrix(config, corpus);
+    const cCell = cells.find((c) => c.cellType === 'c')!;
+    const pass1Raw = JSON.stringify(validPass1);
+    const sent: string[] = [];
+    const ctx = await makeContext({
+      resolveFrozenSource: async () => ({ recordId: 'rid-a', pass1Raw }),
+      transportOverride: (_cell, opts) => async (retryMessage?: string) => {
+        sent.push(retryMessage ?? opts.userMessage);
+        return 'Sorry, here is Pass 2: {broken';
       },
     });
-    const { record, called } = await runTranslationCell(ctx, cCell);
-    expect(called).toBe(false);
+    const { record } = await runTranslationCell(ctx, cCell);
     expect(record.payload.parse_status).toBe('failed');
-    expect(record.payload.prefill_supported).toBe(false);
-    expect(record.payload.failure?.stage).toBe('harness');
-    expect(record.payload.failure?.message).toContain('skipped');
+    expect(record.payload.attempts.map((a) => a.role)).toEqual(['initial', 'parse_retry']);
+    expect(record.payload.raw_response).toBe('Sorry, here is Pass 2: {broken');
+    // The parse retry still carries the frozen Pass 1.
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toContain('Pass 1 output:\n' + pass1Raw);
     expect(validatePayload('translation', record.payload)).toBeNull();
   });
 
@@ -342,20 +371,6 @@ describe('config normalization', () => {
       cells: ['a'], replicates: 1, site_context_file: null, budget_cap_usd: null,
     });
     expect(() => parseBatchConfig(bad, 'bad.json')).toThrow(/BASELINE/);
-  });
-});
-
-describe('prefill probe continuation judgment (R1)', () => {
-  it('accepts a genuine continuation of the prefill', () => {
-    expect(probeContinuationOk(' 2, 3]')).toBe(true);
-    expect(probeContinuationOk('2,3]')).toBe(true);
-  });
-
-  it('rejects a provider that restarted the answer instead of continuing', () => {
-    // A fresh assistant turn: a complete array of its own. '[1,' + this is
-    // not valid JSON — the provider ignored the prefill.
-    expect(probeContinuationOk('[1, 2, 3]')).toBe(false);
-    expect(probeContinuationOk('Sure! The array is [1, 2, 3].')).toBe(false);
   });
 });
 

@@ -92,14 +92,15 @@ describe('request-body parity with makeAnthropicCaller', () => {
     expect(buildAnthropicMessageParams(opts, image)).toEqual(wire.body());
   });
 
-  it('prefill cell (c): identical trailing assistant message', async () => {
-    const opts = baseOpts({ assistantPrefill: '[{"pass":1,"meme_summary":"frozen"},' });
+  it('frozen cell (c): the Pass-1 freeze rides in the user text, so the bodies stay identical', async () => {
+    const opts = baseOpts({ userMessage: 'meme message\n\nPass 1 output:\n{"pass":1,"meme_summary":"frozen"}' });
     const wire = patchFetch();
     await (await makeAnthropicCaller(opts))();
-    const params = buildAnthropicMessageParams(opts, null);
-    expect(params).toEqual(wire.body());
-    const messages = params.messages as Array<{ role: string; content: unknown }>;
-    expect(messages[messages.length - 1]).toEqual({ role: 'assistant', content: opts.assistantPrefill });
+    expect(buildAnthropicMessageParams(opts, null)).toEqual(wire.body());
+  });
+
+  it('DIVERGENCE by design: an assistant prefill is refused (retired 2026-10-10 — current models reject it)', () => {
+    expect(() => buildAnthropicMessageParams(baseOpts({ assistantPrefill: '[' }), null)).toThrow(/prefill/);
   });
 
   it('model id normalization matches (anthropic/claude-sonnet-4.6 → claude-sonnet-4-6)', async () => {
@@ -126,7 +127,7 @@ describe('request-body parity with makeAnthropicCaller', () => {
     await expect(fetchImageForBatch('http://not-https.example/x.png')).rejects.toThrow(/not a safe public https URL/);
   });
 
-  it('only submits two_pass (probes and single-pass are never batched)', () => {
+  it('only submits two_pass (single-pass calls are never batched)', () => {
     expect(() => buildAnthropicMessageParams(baseOpts({ passMode: 'single' as CallerOpts['passMode'] }), null)).toThrow(/two_pass/);
   });
 });

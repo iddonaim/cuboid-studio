@@ -11,7 +11,9 @@
  * Cell semantics under the shipped ONE-CALL two-pass pipeline:
  *   (a) full pipeline — live call, total variance. Its Pass-1 marginals
  *       double as the reading-variance measurement.
- *   (c) frozen Pass 1 → Pass 2 only, via assistant prefill (R1) —
+ *   (c) frozen Pass 1 → Pass 2 only (R1): the stored Pass 1 is handed back
+ *       verbatim in the user turn (pass1_freeze_method "user_message_v1";
+ *       the original assistant-prefill mechanism was retired 2026-10-10) —
  *       translation variance given a fixed reading.
  * Cell (b) — "Pass 1 only" — was dropped as separate runs (Iddo,
  * 2026-08-30): the pipeline cannot stop after Pass 1 without a prompt
@@ -111,7 +113,7 @@ export function declaredForCell(cellType: CellType): DeclaredInfo {
       };
     case 'c':
       return {
-        fixed: [...SHARED_FIXED, 'pass1 (frozen — assistant prefill of stored Pass 1, R1)'],
+        fixed: [...SHARED_FIXED, 'pass1 (frozen — stored Pass 1 verbatim in the user turn, user_message_v1, R1)'],
         varied: [],
         stochastic: SHARED_STOCHASTIC,
         measured: [...PASS2_MEASURED, 'parse_status', 'timing_ms'],

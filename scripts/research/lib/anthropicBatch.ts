@@ -85,13 +85,19 @@ export function buildAnthropicMessageParams(
   image: FetchedImage | null,
 ): Record<string, unknown> {
   if (opts.passMode !== 'two_pass') {
-    throw new Error('batch transport only submits two_pass requests (probes and single-pass calls are never batched)');
+    throw new Error('batch transport only submits two_pass requests (single-pass calls are never batched)');
   }
   const model = toAnthropicModelId(opts.selectedModel);
   if (!model.startsWith('claude-')) {
     // Same refusal as assertAnthropicModelId: the sync caller would silently
     // substitute its default model here — never acceptable for a record.
     throw new Error(`model ${opts.selectedModel} does not normalize to a claude-* id — refusing to batch it`);
+  }
+  if (opts.assistantPrefill !== undefined) {
+    // The harness no longer prefills (retired 2026-10-10 — current Claude
+    // models reject a trailing assistant turn); cell (c) freezes Pass 1 in
+    // the user turn instead. Refuse rather than submit a doomed request.
+    throw new Error('assistant prefill is not used by the research harness — cell (c) freezes Pass 1 in the user turn');
   }
   const messageContent: unknown[] = [];
   if (image) {
@@ -105,10 +111,7 @@ export function buildAnthropicMessageParams(
     model,
     max_tokens: MAX_TOKENS_TWO_PASS,
     system: opts.systemPrompt,
-    messages: [
-      { role: 'user', content: messageContent },
-      ...(opts.assistantPrefill ? [{ role: 'assistant', content: opts.assistantPrefill }] : []),
-    ],
+    messages: [{ role: 'user', content: messageContent }],
   };
 }
 

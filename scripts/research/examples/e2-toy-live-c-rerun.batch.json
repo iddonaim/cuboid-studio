@@ -1,0 +1,27 @@
+{
+  "batch_id": "e2-toy-002",
+  "experiment": "E2",
+  "baseline_tag": "SCAFFOLD-TOY",
+  "corpus": {
+    "meme_ids": [
+      "CGWKF5aryAKJa70NqTm6",
+      "5dSdLtmjRtgl0BNkAB9i",
+      "meme_1766758846536_xhz7mhovx"
+    ]
+  },
+  "models": [
+    { "id": "anthropic/claude-sonnet-4.6", "provider": "anthropic" }
+  ],
+  "cells": ["c"],
+  "replicates": 3,
+  "site_context_file": null,
+  "composition_ref": null,
+  "target_cube": null,
+  "language": null,
+  "budget_cap_usd": 1,
+  "frozen_pass1_source": {
+    "CGWKF5aryAKJa70NqTm6": "e2-toy-001__E2__translation__CGWKF5aryAKJa70NqTm6__anthropic_anthropic~claude-sonnet-4-6__cell-a__r0",
+    "5dSdLtmjRtgl0BNkAB9i": "e2-toy-001__E2__translation__5dSdLtmjRtgl0BNkAB9i__anthropic_anthropic~claude-sonnet-4-6__cell-a__r0",
+    "meme_1766758846536_xhz7mhovx": "e2-toy-001__E2__translation__meme_1766758846536_xhz7mhovx__anthropic_anthropic~claude-sonnet-4-6__cell-a__r0"
+  }
+}

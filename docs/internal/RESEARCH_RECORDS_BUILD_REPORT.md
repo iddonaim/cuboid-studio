@@ -363,3 +363,36 @@ Covered by validator tests, transport unit tests (retry raises
 `calls_total` not `calls_covered`; E3 sync-fill slots uncovered), and the
 emulator round-trips (written E2/E3 records carry the exact summed
 block).
+
+### Cell (c) freeze moved to the user turn (2026-10-10, Iddo's ruling)
+
+The first live toy batch (`e2-toy-001`, Sonnet 4.6 via the Batch API) wrote
+9 ok (a) records and 9 failed (c) records: every (c) request was rejected
+with "This model does not support assistant message prefill." The R1
+prefill mechanism described above (and the inert `assistantPrefill` field
+on `CallerOpts`) assumed Anthropic models always accept prefill; current
+ones do not. Ruling: option 2 — hand the stored Pass 1 back as user-turn
+text. Changes, all inside the harness:
+
+- `lib/translationCell.ts`: the (c) user message is the meme message + a
+  minimal wrapper + the stored Pass 1 verbatim (`buildPass1FreezeBlock`);
+  the reply (Pass 2 alone) is recorded verbatim and composed with the
+  stored Pass 1 only for `parseAndRoute` and the pass slices. The prefill
+  probe and the "provider cannot prefill → skip (c)" path are removed —
+  nothing needs them.
+- Records: new optional `pass1_freeze_method` (`"user_message_v1"`) on the
+  translation payload; `prefill` stays in the schema and is now always
+  false. Validation checks the new field (known value, frozen records only,
+  never together with `prefill: true`).
+- `lib/anthropicBatch.ts`: the batch builder refuses `assistantPrefill`
+  instead of mirroring it. `api/translate-meme.ts` is untouched — its
+  `assistantPrefill` option is now unused by anything.
+- `run.ts` exits explicitly after a run: the Firebase client SDK kept the
+  process alive after the work finished, so every CI run sat until the
+  30-minute job limit (reproduced against the emulator: 25 s+ without the
+  exit, ~1 s with it).
+
+The 9 failed (c) records stay (append-only). Because they occupy the (c)
+document ids of `e2-toy-001`, the re-run goes under a new batch id that
+pins `e2-toy-001`'s (a) r0 records via `frozen_pass1_source`.
+
