@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useEvolutionStore } from '../../store/useEvolutionStore';
 import { useBuilderStore } from '../../store/useBuilderStore';
 import { useMemeStore } from '../../store/useMemeStore';
+import { useToastStore } from '../../store/useToastStore';
+import { exportFrozenEvolveState } from '../../lib/evolution/exportFrozenState';
 import { computeCompressibility } from '../../lib/evolution/compressibility';
 import { CompressibilitySparkline } from './CompressibilitySparkline';
 import { Button } from '@/components/ui/button';
@@ -58,6 +60,12 @@ export const EvolutionPanel: React.FC = () => {
   const placedCubes = useBuilderStore(s => s.placedCubes);
   const cubeOperators = useMemeStore(s => s.cubeOperators);
   const openViewer = useRecordViewerStore(s => s.open);
+  const showToast = useToastStore(s => s.showToast);
+
+  // Research export (approved 2026-08-31): freeze the current generation as
+  // a replayable state file. Fetches raw meme docs for hashing, so it's
+  // async with its own busy flag.
+  const [isExportingState, setIsExportingState] = useState(false);
 
   // Full two-pass prose lives in the shared full-reading drawer.
   const openCandidateReading = (candidate: EvolutionCandidate) => {
@@ -100,6 +108,30 @@ export const EvolutionPanel: React.FC = () => {
   const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
   const selectedStale = !!selectedCandidate && !liveCubeIds.has(selectedCandidate.targetCubeId);
   const applyEnabled = !!selectedCandidateId && !selectedStale;
+
+  // A frozen state pins THIS generation against THIS assembly — a stale
+  // candidate means the assembly moved on, so there is nothing coherent to
+  // freeze (the shared parser would refuse it anyway).
+  const anyStale = candidates.some(c => !liveCubeIds.has(c.targetCubeId));
+  const exportStateDisabled = isExportingState || isGenerating || anyStale;
+
+  const handleExportFrozenState = async () => {
+    setIsExportingState(true);
+    try {
+      const result = await exportFrozenEvolveState();
+      showToast(
+        `Frozen state exported: ${result.stateFilename}` +
+        (result.siteContextFilename ? ` + ${result.siteContextFilename}` : ''),
+      );
+    } catch (err) {
+      showToast(
+        `Couldn't export the frozen state: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
+    } finally {
+      setIsExportingState(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-2.5">
@@ -356,6 +388,26 @@ export const EvolutionPanel: React.FC = () => {
               Undo
             </Button>
           </div>
+
+          {/* Research export (approved 2026-08-31): downloads this generation
+              as a frozen-state file the Phase 0 harness can replay (E3 step
+              mode). One action, nothing else — see scripts/research/README.md. */}
+          <button
+            onClick={handleExportFrozenState}
+            disabled={exportStateDisabled}
+            title={
+              anyStale
+                ? 'The assembly changed since this generation — nothing coherent to freeze'
+                : 'Download this generation as a frozen state for research replay (E3 step mode)'
+            }
+            className={`w-full mt-1.5 py-1.5 bg-transparent border border-ink-200 rounded text-[11px] ${
+              exportStateDisabled
+                ? 'text-ink-400 cursor-default'
+                : 'text-ink-600 hover:bg-ink-100 cursor-pointer'
+            }`}
+          >
+            {isExportingState ? 'Exporting frozen state…' : 'Export frozen state (research)'}
+          </button>
         </div>
       )}
 

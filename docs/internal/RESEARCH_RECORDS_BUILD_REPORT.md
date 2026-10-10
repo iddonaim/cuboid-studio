@@ -139,9 +139,17 @@ valid on every test record ✓ — plus the dry-run table (DoD 2) ✓.
   per-cube operator history — `operator_count` alone cannot reproduce
   ranking scores); site-context, lexicon, pool-content and state hashes are
   verified before any spend, and resume re-verifies the state hash against
-  the batch manifest. Still absent: in-app state capture (states are
-  authored by hand) and CAMPAIGN mode. The refactor that unblocked this
-  (below) shipped as its own PR per the ruling:
+  the batch manifest. *In-app capture approved and built 2026-08-31*
+  (minimal, per the ruling: ONE export action in the Evolve panel, no other
+  UI change): it fetches each referenced meme's raw document for wire-truth
+  hashing, self-checks the state through the harness's own parser, and
+  downloads the state file plus — when a site is active — the companion
+  site-context file the batch config points at. The frozen-state schema
+  moved to `src/research/evolveState.ts` so capture and replay share one
+  source (the scripts module re-exports it); the Firestore REST decoder
+  likewise moved to `src/research/firestoreRest.ts` with `api/fetch-memes.ts`
+  re-exporting. Still absent: CAMPAIGN mode. The refactor that unblocked
+  step mode (below) shipped as its own PR per the ruling:
   1. `pickTargetCubes` in `src/store/useEvolutionStore.ts` is module-private —
      needs `export` (no behavior change).
   2. The generation loop (meme sampling, candidate assembly, simulated
