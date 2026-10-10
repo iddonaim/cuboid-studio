@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. One revision behind its EN twin — the 2026-07-29 "retire Builder" pass never reached the HE files, so this contains retired terminology ("Builder"). If any HE demo asset is reused it must be re-synced first. Do not cite as current.
+
 # Cuboid Studio — קריינות לסרטון הדגמה (HE)
 
 קהל: אדריכלים. יעד: ~5 דקות בקצב מדוד. שמות הטאבים נשארים באנגלית (כמו בממשק).

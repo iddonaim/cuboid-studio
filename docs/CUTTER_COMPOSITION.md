@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Its plan/elevation reads are in the old Z-up frame — superseded by the 2026-07-30 render-frame conversion. The method is reusable; the derived geometry statements are frame-stale. Do not cite as current.
+
 # The Eight Cutters, Read as a Composition
 
 > Positional analysis of the 8 master boolean cutters against the 42 mm cube,

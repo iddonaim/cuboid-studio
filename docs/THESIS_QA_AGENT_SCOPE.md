@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Scope for a Q&A agent that was never built; the Aug 9 date it targeted is past. If the idea revives, this is the starting point — but it is not a current commitment. Do not cite as current.
+
 # Thesis Q&A Agent — Scope
 
 > Status: **scope, not a build.** Nothing here is implemented.

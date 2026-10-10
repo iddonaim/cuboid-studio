@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. One revision behind its EN twin (drift confirmed) — contains retired terminology. If reused, re-sync first. Do not cite as current.
+
 # Cuboid Studio — מדריך צעד־אחר־צעד לאדריכלים
 
 אפליקציה חיה: https://cuboidstudio.vercel.app · ריפו: https://github.com/iddonaim/cuboid-studio

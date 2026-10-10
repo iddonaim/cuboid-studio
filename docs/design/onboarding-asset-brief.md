@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Purpose served — onboarding shipped (`OnboardingModal.tsx`, `GuidedTour.tsx` at HEAD). Its "this version is the only valid brief" claim is retired with it. Do not cite as current.
+
 # Brief for Claude Design — Cuboid Studio onboarding assets (v2)
 
 > v2 = v1 re-issued after the July 2026 design overhaul (PR #79). The v1 brief

@@ -1,3 +1,5 @@
+> **⛔ SUPERSEDED (banner added 2026-08-30, docs triage): do NOT rebuild from this file.** Its connection law and face model were both superseded in code — the connection law by the set-intersection law (PR #126/#128, 2026-07-28/30; see `docs/GAPS_AND_HOLES.md` P0-6) and the single-face cut model by `src/lib/cube/faceCuts.ts`, which gives a face a *set* of cuts (2026-07-29); its coordinate section predates the render-frame conversion (2026-07-30; GAPS P0-7). If Grasshopper export still matters, it needs a rewrite from `faceCuts.ts`/`specifications.ts` — new work, not this file.
+
 # Cuboid Studio Serialization Guide
 
 This document ensures that Grasshopper exports match the web app's variation numbering and connection rules.

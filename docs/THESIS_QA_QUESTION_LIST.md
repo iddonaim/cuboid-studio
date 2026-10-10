@@ -1,3 +1,5 @@
+> HISTORIC (2026-08-30): process record, not current. Working scaffold for the Aug 9 answer set, never updated after. Its "Source: NONE" findings may still feed post-defense writing. Do not cite as current.
+
 # Thesis Q&A — ranked question list
 
 > Working scaffold for the August 9 answer set. Drafted 2026-07-27.
