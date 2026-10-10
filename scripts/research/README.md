@@ -19,14 +19,16 @@ human-initiated step, and no BASELINE tag exists yet.**
 | Batch runner CLI | `scripts/research/run.ts` |
 | JSONL export CLI | `scripts/research/export.ts` |
 | Corpus / matrix / costs / cell executor | `scripts/research/lib/` |
-| E3 frozen-state support (R2) | `scripts/research/lib/evolveState.ts` |
-| Toy batch (dry-run fixture) | `scripts/research/examples/` |
+| E3 frozen-state schema + parser + ranking (R2) | `scripts/research/lib/evolveState.ts` |
+| E3 step-mode executor | `scripts/research/lib/evolveStep.ts` |
+| Toy batches (dry-run fixtures, E2 + E3) | `scripts/research/examples/` |
 
 ## Commands
 
 ```bash
 # Price a batch without calling any model or touching Firestore:
 npm run research:run -- --config scripts/research/examples/e2-toy.batch.json --dry-run
+npm run research:run -- --config scripts/research/examples/e3-toy.batch.json --dry-run
 
 # Execute a batch (requires env below; resumable by batch_id — completed
 # cells are skipped; --budget-cap aborts when the estimate is exceeded):
@@ -73,6 +75,14 @@ npm run test:rules
   (`<batch>__<exp>__translation__<meme>__<provider>_<model>__cell-<x>__r<n>`),
   not in the record schema — the spec envelope has no cell field. The batch
   record documents the scheme; resume = existence check on the id.
+- **E3 step mode = frozen-state replay** (ruling R2): an E3 batch replays
+  one `FrozenEvolveState` (`e3.state_file`) N times — every candidate call
+  rebuilt from the state's resolved assignments, ranked with the app's own
+  compression-progress scoring (`src/lib/evolution/generation.ts`), the
+  state's declared criterion selecting the winner. Site-context, lexicon,
+  pool-content and state hashes are all verified before any spend; states
+  are authored by hand for now (no in-app capture yet). Campaign mode is
+  still a stub.
 - **Failures are data**: refusals, malformed JSON, timeouts and the
   pipeline's own retries are all recorded verbatim (`attempts[]`), and
   schema-invalid payloads are written as `parse_status: "failed"` with the

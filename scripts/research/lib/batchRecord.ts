@@ -36,11 +36,20 @@ export interface BatchRecord {
   };
   matrix: {
     models: BatchConfig['models'];
+    /** E2 cells; empty for E3 (model × step-replicate matrix). */
     cells: string[];
     replicates: number;
     cell_count: number;
     ordering: string;
     doc_id_scheme: string;
+    /** E3 only: the frozen step being replayed. */
+    e3?: {
+      state_file: string;
+      state_hash: string;
+      generation_index: number;
+      candidates_per_step: number;
+      selection_criterion_id: string;
+    };
   };
   regime: RegimeInfo;
   site_context_hash: string | null;
@@ -58,6 +67,9 @@ export function buildBatchRecord(args: {
   cellCount: number;
   costEstimateUsd: number;
   notes?: string[];
+  ordering?: string;
+  docIdScheme?: string;
+  e3?: BatchRecord['matrix']['e3'];
 }): BatchRecord {
   const { config, corpus } = args;
   return {
@@ -83,9 +95,12 @@ export function buildBatchRecord(args: {
       cells: config.cells,
       replicates: config.replicates,
       cell_count: args.cellCount,
-      ordering: 'meme id ascending × config model order × cells (a, b, c) × replicate ascending',
+      ordering:
+        args.ordering ?? 'meme id ascending × config model order × cells (a, c) × replicate ascending',
       doc_id_scheme:
+        args.docIdScheme ??
         '<batch_id>__<experiment>__translation__<meme_id>__<provider>_<model id, / → ~ and . → ->__cell-<a|c>__r<replicate>',
+      ...(args.e3 ? { e3: args.e3 } : {}),
     },
     regime: args.regime,
     site_context_hash: args.siteContextHash,

@@ -1,0 +1,45 @@
+{
+  "captured_at": "2026-08-30T12:00:00.000Z",
+  "generation_index": 2,
+  "composition": {
+    "placed_cubes": [
+      { "id": "cube-a", "variationId": "v-00", "position": [0, 0, 0], "rotation": { "x": 0, "y": 0 }, "operator_count": 1 },
+      { "id": "cube-b", "variationId": "v-07", "position": [1, 0, 0], "rotation": { "x": 0, "y": 1 }, "operator_count": 0 },
+      { "id": "cube-c", "variationId": "v-12", "position": [0, 1, 0], "rotation": { "x": 0, "y": 0 }, "operator_count": 0 }
+    ],
+    "cube_operators": {
+      "cube-a": [
+        {
+          "id": "op-frozen-1",
+          "source": "meme",
+          "operator": "inversion",
+          "targets": ["adjacency"],
+          "magnitude": 0.5,
+          "decay": 0.2,
+          "createdAt": "2026-08-29T09:00:00.000Z",
+          "memeDescription": "an earlier meme cut, frozen with the state",
+          "reasoning": "flip the relationship weights",
+          "cutter": { "type": "sphere", "proportions": [0.6, 0.6, 0.6], "position": [0.2, 0.1, -0.3], "rotation": [0, 0, 0] }
+        }
+      ]
+    }
+  },
+  "meme_pool": [
+    { "id": "meme-toy-0001-current", "content_hash": "44f053b31068b4228460695c34e54b217e1110cb8aa063a58d282e4a9f36bc07" },
+    { "id": "meme-toy-0002-legacy", "content_hash": "dbd830662dc52675c06eadb86fb33e9d8f9bd84a131ca148921e845e5a879e6d" },
+    { "id": "meme-toy-0003-minimal", "content_hash": "f09f008fbf34511e9eada61a2902b31c9dca5f1799b0791d6a6ace444af00155" }
+  ],
+  "config": {
+    "population_size": 3,
+    "target_cube_strategy": "least-compressed",
+    "meme_pool_filter": null
+  },
+  "assignments": [
+    { "candidate_index": 0, "meme_id": "meme-toy-0002-legacy", "target_cube_id": "cube-b" },
+    { "candidate_index": 1, "meme_id": "meme-toy-0001-current", "target_cube_id": "cube-c" },
+    { "candidate_index": 2, "meme_id": "meme-toy-0003-minimal", "target_cube_id": "cube-a" }
+  ],
+  "site_context_hash": null,
+  "translation_lexicon_hash": "4847980b55b2102fe52db4263cf82a54739c71e2825e8c21de16833938f85f59",
+  "selection_criterion_id": "max-compression-progress"
+}

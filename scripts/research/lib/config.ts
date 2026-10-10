@@ -39,8 +39,15 @@ export interface BatchConfig {
     corpus_file?: string;
   };
   models: BatchModelConfig[];
+  /** E2 only: which cells to run. Empty (and rejected if set) for E3 —
+   *  a/c are E2 concepts; an E3 batch is model × step-replicate. */
   cells: CellType[];
   replicates: number;
+  /** E3 only: the frozen state to replay (see lib/evolveState.ts). */
+  e3?: {
+    /** Path to a FrozenEvolveState JSON file, repo-relative. */
+    state_file: string;
+  };
   /** Path to a site-context JSON file (SiteContextData), or null to run
    *  without site context (the prompt keeps its literal {site_context}
    *  placeholder, exactly as the app behaves with no active site). */
@@ -86,15 +93,26 @@ export function parseBatchConfig(json: string, filePath: string): BatchConfig {
       fail(`model ${m.id}: provider must be "anthropic" or "openrouter" — routing is always explicit`);
     }
   }
-  if (!Array.isArray(cfg.cells) || cfg.cells.length === 0) fail('cells must be a non-empty array');
-  for (const c of cfg.cells) {
-    if ((c as string) === 'b') {
-      fail(
-        'cell (b) was dropped as separate runs (Iddo, 2026-08-30): reading variance is decomposed ' +
-        'from cells (a) and (c), not run on its own — remove "b" from cells',
-      );
+  if (cfg.experiment === 'E3') {
+    if (Array.isArray(cfg.cells) && cfg.cells.length > 0) {
+      fail('cells do not apply to E3 (a/c are E2 concepts) — an E3 batch is model × step-replicate; remove cells');
     }
-    if (!CELL_ORDER.includes(c)) fail(`unknown cell type "${c}" (expected a, c)`);
+    cfg.cells = [];
+    if (!cfg.e3 || typeof cfg.e3.state_file !== 'string' || cfg.e3.state_file.length === 0) {
+      fail('E3 requires e3.state_file — the frozen state to replay');
+    }
+  } else {
+    if (cfg.e3 !== undefined) fail('e3 applies only to experiment E3');
+    if (!Array.isArray(cfg.cells) || cfg.cells.length === 0) fail('cells must be a non-empty array');
+    for (const c of cfg.cells) {
+      if ((c as string) === 'b') {
+        fail(
+          'cell (b) was dropped as separate runs (Iddo, 2026-08-30): reading variance is decomposed ' +
+          'from cells (a) and (c), not run on its own — remove "b" from cells',
+        );
+      }
+      if (!CELL_ORDER.includes(c)) fail(`unknown cell type "${c}" (expected a, c)`);
+    }
   }
   if (!Number.isInteger(cfg.replicates) || cfg.replicates < 1) fail('replicates must be a positive integer');
   if (cfg.site_context_file !== null && typeof cfg.site_context_file !== 'string') {

@@ -188,6 +188,9 @@ export interface EvolveCandidateRecord {
   meme_id: string;
   target_cube: string;
   response: RawParsed<unknown>;
+  /** Every transport round-trip for this candidate, verbatim — same
+   *  principle-1/-4 grounds as the translation payload's attempts. */
+  attempts?: CallAttempt[];
 }
 
 export interface EvolveStepPayload {

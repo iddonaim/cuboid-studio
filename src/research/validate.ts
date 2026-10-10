@@ -223,6 +223,10 @@ function validateEvolveStepPayload(p: Record<string, unknown>): string | null {
     if (!isNonEmptyString(c.target_cube)) return 'candidate.target_cube must be a non-empty string';
     const rpErr = rawParsedError(c.response, 'candidate.response');
     if (rpErr) return rpErr;
+    if (c.attempts !== undefined) {
+      const aErr = attemptsError(c.attempts);
+      if (aErr) return `candidate.${aErr}`;
+    }
   }
   if (!isPlainObject(p.ranking_scores) || !Object.values(p.ranking_scores).every(isFiniteNumber)) {
     return 'ranking_scores must be an object of numbers';

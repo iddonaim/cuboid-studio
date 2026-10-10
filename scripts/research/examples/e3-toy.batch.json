@@ -1,0 +1,21 @@
+{
+  "batch_id": "e3-toy-000",
+  "experiment": "E3",
+  "baseline_tag": "SCAFFOLD-TOY",
+  "corpus": {
+    "meme_ids": "all",
+    "corpus_file": "scripts/research/examples/e2-toy.corpus.json"
+  },
+  "models": [
+    { "id": "anthropic/claude-sonnet-4.6", "provider": "anthropic" }
+  ],
+  "replicates": 3,
+  "site_context_file": null,
+  "composition_ref": null,
+  "target_cube": null,
+  "language": null,
+  "budget_cap_usd": 5,
+  "e3": {
+    "state_file": "scripts/research/examples/e3-toy.state.json"
+  }
+}
