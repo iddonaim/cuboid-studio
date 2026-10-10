@@ -20,34 +20,21 @@ import type { ArchthesisMeme, FetchMemesResponse } from '../src/types/archthesis
  * small (thesis-scale), so re-reading offset+limit docs per page is fine.
  */
 
-// Exported for the research harness (scripts/research/), which reads the raw
-// `memes` collection through the same REST endpoint and decoder — see the
-// cross-system structure record (docs/SYSTEM-STRUCTURE.md, landing on PR
-// #152; Layer 1 §2) for why it must NOT go through this handler's query
-// (orderBy createdAt silently drops docs missing the field).
-export const PROJECT_ID = 'adaptivememeticarchitect-2776f';
-export const API_KEY = 'AIzaSyCsb6uQgANSQSnCp6kPhFX7I3TG_PQCd3o';
-export const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+// The REST constants + decoder live in src/research/firestoreRest.ts (shared
+// with the in-app frozen-state capture and the research harness — one
+// decoder, so wire-truth content hashes can never drift). Re-exported here
+// so existing importers (scripts/research/lib/corpus.ts) keep working. See
+// the cross-system structure record (docs/SYSTEM-STRUCTURE.md, landing on PR
+// #152; Layer 1 §2) for why research reads must NOT go through this
+// handler's query (orderBy createdAt silently drops docs missing the field).
+import {
+  API_KEY,
+  extractValue,
+  FIRESTORE_URL,
+  PROJECT_ID,
+} from '../src/research/firestoreRest.js';
 
-/** Extract a typed value from a Firestore REST API field */
-export function extractValue(field: any): any {
-  if (!field) return undefined;
-  if ('stringValue' in field) return field.stringValue;
-  if ('integerValue' in field) return Number(field.integerValue);
-  if ('doubleValue' in field) return field.doubleValue;
-  if ('booleanValue' in field) return field.booleanValue;
-  if ('timestampValue' in field) return field.timestampValue;
-  if ('arrayValue' in field) return (field.arrayValue.values || []).map(extractValue);
-  if ('mapValue' in field) {
-    const result: Record<string, any> = {};
-    for (const [k, v] of Object.entries(field.mapValue.fields || {})) {
-      result[k] = extractValue(v);
-    }
-    return result;
-  }
-  if ('nullValue' in field) return null;
-  return undefined;
-}
+export { API_KEY, extractValue, FIRESTORE_URL, PROJECT_ID };
 
 /** Convert a Firestore REST document to our ArchthesisMeme type.
  *  NOTE: injects the declared-type defaults ('' for topText/bottomText, etc.)

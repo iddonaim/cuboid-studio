@@ -1,0 +1,129 @@
+# Headless research batch runner (Phase 0 harness, 2026-09-04 instruction).
+#
+# Manually dispatched only — a batch is a human-initiated step, never a
+# side effect of a push. One dispatch = one round: price a config (dry-run,
+# the default; no secrets touched beyond none, no spend), SUBMIT one
+# Message-Batches round, or COLLECT an ended round into research_records.
+# Everything is resumable by batch_id: the batch record and the append-only
+# __submission__ docs live in Firestore, so submit and collect can run on
+# different days from different runners.
+#
+# Repository secrets to set (Settings → Secrets and variables → Actions):
+#   ANTHROPIC_API_KEY      — Anthropic API key (batch submit/collect + any
+#                            collect-time sync retries)
+#   OPENROUTER_API_KEY     — OpenRouter API key (openrouter-routed cells;
+#                            unused by batch rounds, which are anthropic-only)
+#   FIREBASE_API_KEY       — the Firebase WEB API key (the public client key,
+#                            same value the app bundle ships; not a service
+#                            credential)
+#   FIREBASE_PROJECT_ID    — the Firebase project id
+#   RESEARCH_USER_EMAIL    — the research identity (a normal Firebase user
+#   RESEARCH_USER_PASSWORD   carrying the `research: true` custom claim)
+#
+# Secret values are only ever passed as env into the harness process; the
+# harness never prints them, and GitHub masks them in logs regardless.
+
+name: Research batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run prices the config (no spend, nothing written); submit sends one batch round; collect writes an ended round into research_records'
+        type: choice
+        required: true
+        default: dry-run
+        options:
+          - dry-run
+          - submit
+          - collect
+      config:
+        description: 'Repo-relative batch config path (e.g. scripts/research/examples/e2-toy.batch.json)'
+        type: string
+        required: true
+      budget_cap:
+        description: 'Budget cap in USD — the round refuses to exceed it (overrides the config value)'
+        type: string
+        required: true
+      operator:
+        description: 'Who is launching this (provenance). Empty = your GitHub username + run id'
+        type: string
+        required: false
+      anthropic_batch_id:
+        description: 'RECOVERY ONLY (collect): register a batch whose submission doc write failed (msgbatch_… id printed by the failed submit)'
+        type: string
+        required: false
+
+# One round at a time per config — a second dispatch queues instead of
+# racing the first for the same submission index.
+concurrency:
+  group: research-batch-${{ inputs.config }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ inputs.mode }} — ${{ inputs.config }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MODE: ${{ inputs.mode }}
+      CONFIG: ${{ inputs.config }}
+      BUDGET_CAP: ${{ inputs.budget_cap }}
+      OPERATOR_INPUT: ${{ inputs.operator }}
+      ANTHROPIC_BATCH_ID: ${{ inputs.anthropic_batch_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Check required secrets are configured
+        if: inputs.mode != 'dry-run'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          RESEARCH_USER_EMAIL: ${{ secrets.RESEARCH_USER_EMAIL }}
+          RESEARCH_USER_PASSWORD: ${{ secrets.RESEARCH_USER_PASSWORD }}
+        run: |
+          missing=0
+          for name in ANTHROPIC_API_KEY FIREBASE_API_KEY FIREBASE_PROJECT_ID RESEARCH_USER_EMAIL RESEARCH_USER_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::repository secret $name is not set (see the header of .github/workflows/research-batch.yml)"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Run harness round
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          RESEARCH_USER_EMAIL: ${{ secrets.RESEARCH_USER_EMAIL }}
+          RESEARCH_USER_PASSWORD: ${{ secrets.RESEARCH_USER_PASSWORD }}
+        run: |
+          OPERATOR="${OPERATOR_INPUT:-$GITHUB_ACTOR (gh-run:$GITHUB_RUN_ID)}"
+          case "$MODE" in
+            dry-run)
+              npm run research:run -- --config "$CONFIG" --dry-run --transport batch --budget-cap "$BUDGET_CAP"
+              ;;
+            submit)
+              npm run research:run -- --config "$CONFIG" --execute --transport batch \
+                --operator "$OPERATOR" --budget-cap "$BUDGET_CAP"
+              ;;
+            collect)
+              npm run research:run -- --config "$CONFIG" --collect \
+                --operator "$OPERATOR" --budget-cap "$BUDGET_CAP" \
+                ${ANTHROPIC_BATCH_ID:+--anthropic-batch-id "$ANTHROPIC_BATCH_ID"}
+              ;;
+            *)
+              echo "::error::unknown mode $MODE" && exit 1
+              ;;
+          esac
