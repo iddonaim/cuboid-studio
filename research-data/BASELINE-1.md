@@ -1,0 +1,35 @@
+# BASELINE-1
+
+Freeze record for Phase 0 BASELINE-1 (ruling: Iddo, 2026-10-11, option A — E2 on a composition the app already encoded).
+
+| | |
+|---|---|
+| Date | 2026-10-11 |
+| Code | `721c27629d81c234b35eb7a05861108f8ad410e9` (main, merge of iddonaim/cuboid-studio#163), git tag `BASELINE-1` |
+| Batch | `e2-base-001` — config `scripts/research/examples/e2-base-001.batch.json` |
+| Model | `anthropic/claude-sonnet-4.6` (Anthropic direct, Message Batches API) |
+| Design | E2, cells (a) and (c); N = 10; (c) pins every (a) replicate (10 pins × 10 replicates per meme); 45 memes (raw collection 46, `hidden === true` excluded); 4,950 records |
+| Budget cap | $120 (dry-run worst case $101.78, best case $43.79) |
+
+## Regime hashes (sha256)
+
+| | |
+|---|---|
+| Two-pass translation prompt (`src/prompts/pataphysical-translation-v2.md`, declared version 4) | `2e3fcb6ca5844e860f7f18426a08dd455a4baa20f737c4f4199fdbf638bda033` |
+| Translation lexicon (built-in default) | `4847980b55b2102fe52db4263cf82a54739c71e2825e8c21de16833938f85f59` |
+| Spatial-encoding grammar (`src/prompts/spatial-encoding-grammar.md`, declared version 5) | `0c9b87574bcc257295f68ac3624eff49f9cee1f6c2af2488c95abf2f177336ac` |
+| Spatial lexicon | `e1c2588a9fa8eb7f41e5bb375679e37e645a6cb62ed7f10ed5a6c7e93f8b94b9` |
+
+## Composition
+
+| | |
+|---|---|
+| Composition id | `NSCSM9TXSN0KhhvnhGkJ` ("נחלת יצחק 16") |
+| Project / site | `MO0Vd4P8eMMkL4VsCZmn` / `w360Y6L05TxfR3zBa776` |
+| Target cube | none (null) |
+| Site-context hash (sha256 of the exact site-context string in the prompt) | `129cd04cd42edd38cf649c9e3f95bf01bd576aa88fa44deec458747bde978fd2` |
+| Pin file | `scripts/research/examples/compositions/NSCSM9TXSN0KhhvnhGkJ.json`, sha256 `889ecad60a72b3651fffe945fb51e522bf17fe355fb879f2c66987bc774f08e2` |
+| Stored composition document (sha256 at dump, 2026-10-11T12:40:49Z) | `15c60b38667e6d24a565bd790a629a90d680c89df9abeae12b6b7ef936823ab7` |
+| Encode photos (full-resolution sha256) | `57fa3269…99208`, `e139eef9…a0c83`, `9be964de…63550` (primary), `1f717898…cdb5` — full values in the pin file |
+
+Every record of `e2-base-001` carries `baseline_tag: "BASELINE-1"`, `composition_ref: "NSCSM9TXSN0KhhvnhGkJ"`, `target_cube: null` and the site-context hash above; the batch record in `research_batches/e2-base-001` carries the full manifest. Exports: `research-data/e2-base-001/`.
