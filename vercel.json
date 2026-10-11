@@ -1,0 +1,10 @@
+{
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "git": {
+    "deploymentEnabled": {
+      "research-data": false
+    }
+  }
+}
