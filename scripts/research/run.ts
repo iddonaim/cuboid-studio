@@ -71,7 +71,9 @@ import {
   type BatchRoundContext,
   type BatchUnit,
 } from './lib/batchTransport.js';
+import { loadCompositionPin } from './lib/composition.js';
 import { exportBatch } from './lib/exportBatch.js';
+import { parseLanguageOverrides } from './lib/language.js';
 import { initHeadlessFirebase } from './lib/headlessFirebase.js';
 import { defaultFrozenSourceDocId, expandMatrix, type MatrixCell } from './lib/matrix.js';
 import { captureRegime } from './lib/regime.js';
@@ -160,7 +162,7 @@ async function imagePreflight(corpus: Corpus): Promise<void> {
 function makeResolveFrozenSource(db: Firestore, config: BatchConfig) {
   return async (cell: MatrixCell): Promise<FrozenPass1Source> => {
     const explicit =
-      config.frozen_pass1_source && config.frozen_pass1_source !== 'batch-cell-a'
+      config.frozen_pass1_source && typeof config.frozen_pass1_source === 'object'
         ? config.frozen_pass1_source[cell.memeId]
         : undefined;
     const sourceDocId = explicit ?? defaultFrozenSourceDocId(config, cell);
@@ -298,8 +300,60 @@ async function main(): Promise<void> {
   );
 
   const { regime, twoPassPromptText } = await captureRegime(REPO_ROOT);
-  const { contextStr: siteContext } = loadSiteContext(config);
-  const siteContextHash = siteContext !== null ? await sha256HexOfString(siteContext) : null;
+
+  // A pinned composition supplies the site context and the recorded
+  // composition_ref / target_cube (lib/composition.ts).
+  const composition = config.composition_file ? await loadCompositionPin(REPO_ROOT, config.composition_file) : null;
+  if (composition) {
+    config.composition_ref = composition.pin.composition_id;
+    config.target_cube = composition.pin.target_cube_id;
+    console.log(
+      `composition: ${composition.pin.composition_id} ("${composition.pin.name}"), target cube ` +
+      `${composition.pin.target_cube_id ?? 'none'}, site context ${composition.site_context_hash.slice(0, 12)}…`,
+    );
+  }
+  const siteContext = composition ? composition.siteContextStr : loadSiteContext(config).contextStr;
+  const siteContextHash = composition
+    ? composition.site_context_hash
+    : siteContext !== null ? await sha256HexOfString(siteContext) : null;
+
+  // Per-meme language labels (lib/language.ts).
+  let languageOverrides: Record<string, string> | null = null;
+  let languageOverridesSha: string | null = null;
+  if (config.language_overrides_file) {
+    const raw = fs.readFileSync(path.resolve(REPO_ROOT, config.language_overrides_file), 'utf-8');
+    languageOverrides = parseLanguageOverrides(raw, config.language_overrides_file);
+    languageOverridesSha = await sha256HexOfString(raw);
+  }
+
+  const batchExtras: Pick<BatchRecord, 'composition' | 'language'> = {
+    ...(composition
+      ? {
+          composition: {
+            file: composition.file,
+            file_sha256: composition.file_sha256,
+            project_id: composition.pin.project_id,
+            site_id: composition.pin.site_id,
+            composition_id: composition.pin.composition_id,
+            name: composition.pin.name,
+            document_sha256: composition.pin.document_sha256,
+            target_cube_id: composition.pin.target_cube_id,
+            images: composition.pin.images.map((i) => ({
+              id: i.id, is_primary: i.is_primary, storage_path: i.storage_path, sha256: i.sha256,
+            })),
+          },
+        }
+      : {}),
+    ...(config.language_from
+      ? {
+          language: {
+            from: config.language_from,
+            overrides_file: config.language_overrides_file ?? null,
+            overrides_sha256: languageOverridesSha,
+          },
+        }
+      : {}),
+  };
 
   if (config.experiment === 'E3') {
     return runE3({
@@ -380,6 +434,7 @@ async function main(): Promise<void> {
     const { db } = await initHeadlessFirebase();
 
     const batchRecord = buildBatchRecord({
+    extras: batchExtras,
       config,
       corpus,
       regime,
@@ -401,6 +456,7 @@ async function main(): Promise<void> {
       anthropicKey,
       openRouterKey,
       resolveFrozenSource: makeResolveFrozenSource(db, config),
+      languageOverrides,
     };
 
     let spentEstimate = 0;
@@ -464,11 +520,23 @@ async function main(): Promise<void> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim() || null;
   if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY is required for --transport batch (submit and collect both talk to the Batch API)');
 
-  if (mode === 'execute') await imagePreflight(corpus);
+  if (mode === 'execute') {
+    // The cap bounds the WHOLE batch, not just one round: a large matrix
+    // goes up over several size-limited rounds, each also checked on submit.
+    const whole = batchRouteTotals(cells.map((cell, i) => ({ modelId: cell.model.id, est: batchEstimates![i] })));
+    if (config.budget_cap_usd !== null && whole.usd_batch_worst > config.budget_cap_usd) {
+      throw new Error(
+        `whole-batch worst-case estimate $${whole.usd_batch_worst.toFixed(4)} exceeds budget cap ` +
+        `$${config.budget_cap_usd.toFixed(2)} — not starting`,
+      );
+    }
+    await imagePreflight(corpus);
+  }
 
   const { db } = await initHeadlessFirebase();
 
   const batchRecord = buildBatchRecord({
+    extras: batchExtras,
     config,
     corpus,
     regime,
@@ -494,6 +562,7 @@ async function main(): Promise<void> {
     anthropicKey,
     openRouterKey: null,
     resolveFrozenSource: makeResolveFrozenSource(db, config),
+    languageOverrides,
   };
 
   const units: BatchUnit[] = cells.map((cell, i) => makeE2BatchUnit(cell, cellCtx, anthropicKey, batchEstimates![i]));
@@ -506,6 +575,7 @@ async function main(): Promise<void> {
     cacheTtl: BATCH_CACHE_TTL,
     budgetCapUsd: config.budget_cap_usd,
     imageCache: new Map(),
+    maxRequestsPerRound: config.max_requests_per_round ?? null,
   };
 
   if (mode === 'execute') {

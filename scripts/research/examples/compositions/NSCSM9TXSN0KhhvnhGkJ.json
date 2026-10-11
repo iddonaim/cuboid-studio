@@ -1,0 +1,167 @@
+{
+  "schema": "cuboid-composition-pin/v1",
+  "exported_at": "2026-10-11T12:40:49Z",
+  "project_id": "MO0Vd4P8eMMkL4VsCZmn",
+  "site_id": "w360Y6L05TxfR3zBa776",
+  "composition_id": "NSCSM9TXSN0KhhvnhGkJ",
+  "name": "נחלת יצחק 16",
+  "created_at": 1786196089592,
+  "updated_at": 1786196092979,
+  "document_sha256": "15c60b38667e6d24a565bd790a629a90d680c89df9abeae12b6b7ef936823ab7",
+  "storage_bucket": "adaptivememeticarchitect-2776f.firebasestorage.app",
+  "target_cube_id": null,
+  "encode": {
+    "model": "claude-sonnet-4-6",
+    "prompt_version": "5",
+    "mode": "standalone"
+  },
+  "images": [
+    {
+      "id": "img-1786195550206",
+      "is_primary": false,
+      "storage_path": "cuboidStudio/PF1nZd2ctcNXkwYOAunXOiqJnbi1/photos/6eebf4f0-45c7-422b-a54f-eb663fd9d91c.jpg",
+      "sha256": "57fa32697f880fd9d0629f9132e5e85df55f931351d1d940fbb48d1c60d99208",
+      "bytes": 309384,
+      "thumbnail_sha256": "701e893be170bc1a9bb379719a9bcd3771613909c0d1c742d45dc2b2fcd0295a",
+      "error": null
+    },
+    {
+      "id": "img-1786195565441-lx2k99v",
+      "is_primary": false,
+      "storage_path": "cuboidStudio/PF1nZd2ctcNXkwYOAunXOiqJnbi1/photos/5eaf37d1-87e6-47d8-bb42-ead62b08ee2a.jpg",
+      "sha256": "e139eef9793e52f6b3254442fe1ed857290c6c355e3736a76d5af9c3c97a0c83",
+      "bytes": 370472,
+      "thumbnail_sha256": "761c61eb30426ed24c48516f7985fca5edb16b149d0daf2f4a6b9c31b309a5f0",
+      "error": null
+    },
+    {
+      "id": "img-1786195565449-rwtvx9n",
+      "is_primary": true,
+      "storage_path": "cuboidStudio/PF1nZd2ctcNXkwYOAunXOiqJnbi1/photos/a04ba35d-0c2e-4013-ac2b-0f25b8f7c3c8.jpg",
+      "sha256": "9be964defa5edeb973f647364e8cc0f447905c3eea02d5de620a9fb970c63550",
+      "bytes": 361258,
+      "thumbnail_sha256": "f7e8f4a1513ef20892ce4c7b77ff019d8fcea18fe9b3f229489e01f5157913fb",
+      "error": null
+    },
+    {
+      "id": "img-1786195565464-evnh7q6",
+      "is_primary": false,
+      "storage_path": "cuboidStudio/PF1nZd2ctcNXkwYOAunXOiqJnbi1/photos/a1fc8156-9987-4c99-b42a-5174af0a1572.jpg",
+      "sha256": "1f717898d8f86f4eae17049962775285a9d960f57705f0011567d148c871cdb5",
+      "bytes": 515382,
+      "thumbnail_sha256": "847b828bc77ccce3eaec057ea87a3882d9f5a616a1576d8cdbed3c0b856a15ee",
+      "error": null
+    }
+  ],
+  "site_context": {
+    "generated": "2026-08-08T13:23:15.918Z",
+    "programmatic": {
+      "existing_uses": [],
+      "historical_uses": []
+    },
+    "sun_analysis": {
+      "equinox": {
+        "sunset": "05:52 PM",
+        "sunrise": "05:47 AM"
+      },
+      "summer_solstice": {
+        "sunset": "07:51 PM",
+        "sunrise": "05:36 AM"
+      },
+      "winter_solstice": {
+        "sunset": "04:41 PM",
+        "sunrise": "06:38 AM"
+      }
+    },
+    "quantitative": {
+      "morphology": {
+        "dominant_height": "Median ~16.0m across 432 building(s) with recorded heights (OSM)",
+        "typology": "",
+        "dominant_directionality": "Street grain ~22°/112° from north (length-weighted over 824 OSM segments)",
+        "topography": "Site centre ~29m ASL (single-point sample)",
+        "lot_dimensions": "",
+        "street_width": "Median ~1.6m across 4 tagged street(s) (OSM)"
+      },
+      "wind": {
+        "dominant_direction": "",
+        "intensity": ""
+      },
+      "transit": {
+        "primary_mode": "",
+        "walkability_notes": "",
+        "bus_stops_nearby": ""
+      },
+      "sun": {
+        "shadow_hours_summer": "~14.3h daylight (Jun solstice); sunrise 05:36 AM / sunset 07:51 PM",
+        "shadow_hours_winter": "~10.0h daylight (Dec solstice); sunrise 06:38 AM / sunset 04:41 PM",
+        "primary_exposure": "Noon altitude 77.2 (summer, SE) / 34.3 (winter, S)"
+      },
+      "location": {
+        "radius_meters": "400",
+        "lat": "32.074652",
+        "address": "16, נחלת יצחק, תל־אביב–יפו, נחלת יצחק, תל־אביב–יפו, נפת תל אביב, מחוז תל אביב, 6789731, ישראל",
+        "lng": "34.798089"
+      }
+    },
+    "nearby_pois": {
+      "education": [],
+      "majorRoads": [
+        {
+          "name": "עמק ברכה",
+          "type": "tertiary"
+        },
+        {
+          "name": "עליית הנוער",
+          "type": "tertiary"
+        },
+        {
+          "name": "איילון צפון",
+          "type": "motorway"
+        },
+        {
+          "name": "מוזס",
+          "type": "tertiary"
+        },
+        {
+          "name": "נחלת יצחק",
+          "type": "tertiary"
+        },
+        {
+          "name": "כצנלסון",
+          "type": "tertiary"
+        },
+        {
+          "name": "השלום",
+          "type": "secondary"
+        },
+        {
+          "name": "יגאל אלון",
+          "type": "tertiary"
+        },
+        {
+          "name": "אבני זיכרון",
+          "type": "tertiary"
+        }
+      ],
+      "greenSpace": [],
+      "healthcare": [],
+      "civic": [
+        {
+          "lat": 32.0753618,
+          "lng": 34.800762,
+          "type": "place_of_worship",
+          "name": "בית כנסת נחלת יצחק"
+        },
+        {
+          "name": "הישיבה הגדולה נחלת יצחק עטרת נחמיה",
+          "type": "place_of_worship",
+          "lat": 32.0779099,
+          "lng": 34.7987282
+        }
+      ],
+      "markets": [],
+      "transit": []
+    },
+    "site_name": "16"
+  }
+}

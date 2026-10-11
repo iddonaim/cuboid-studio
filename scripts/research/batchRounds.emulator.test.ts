@@ -20,6 +20,7 @@
 
 import fs from 'node:fs';
 import os from 'node:os';
+import zlib from 'node:zlib';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -342,13 +343,50 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
       const exportRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rd-'));
       const exported = await exportBatch(db, config.batch_id, exportRoot);
       expect(exported.recordCount).toBe(cells.length);
-      const jsonl = fs.readFileSync(exported.jsonlPath, 'utf-8');
+      const jsonl = zlib.gunzipSync(new Uint8Array(fs.readFileSync(exported.jsonlPath))).toString('utf-8');
       const csv = fs.readFileSync(exported.csvPath, 'utf-8');
       expect(jsonl.trim().split('\n')).toHaveLength(cells.length);
       expect(csv).toContain('user_message_v1');
       await exportBatch(db, config.batch_id, exportRoot);
-      expect(fs.readFileSync(exported.jsonlPath, 'utf-8')).toBe(jsonl);
+      expect(zlib.gunzipSync(new Uint8Array(fs.readFileSync(exported.jsonlPath))).toString('utf-8')).toBe(jsonl);
       expect(fs.readFileSync(exported.csvPath, 'utf-8')).toBe(csv);
+    },
+  );
+
+  it(
+    'multi-pin (c) under a round size limit: every round ≤ the limit, every (c) cell freezes its own pinned (a) replicate',
+    { timeout: 180_000 },
+    async () => {
+      const { db, config, cells, units, roundCtx } = await e2Setup((cfg) => {
+        cfg.frozen_pass1_source = 'all-batch-cell-a';
+      });
+      roundCtx.maxRequestsPerRound = 5;
+      const aCount = cells.filter((c) => c.cellType === 'a').length;
+      const cCells = cells.filter((c) => c.cellType === 'c');
+      expect(cCells.length).toBe(aCount * config.replicates);
+
+      let submissions = 0;
+      for (let guard = 0; guard < 40; guard++) {
+        const before = batchCounter;
+        await submitBatchRound(roundCtx, units);
+        if (batchCounter === before) break; // nothing left to submit
+        submissions++;
+        expect(lastFakeBatch().requests.length).toBeLessThanOrEqual(5);
+        lastFakeBatch().status = 'ended';
+        await collectBatchRound(roundCtx, units);
+      }
+      // ceil(9 / 5) rounds of (a), then ceil(27 / 5) rounds of (c).
+      expect(submissions).toBe(Math.ceil(aCount / 5) + Math.ceil(cCells.length / 5));
+
+      for (const cell of cells) {
+        expect((await getDoc(doc(db, 'research_records', cell.docId))).exists()).toBe(true);
+      }
+      const sample = cCells.find((c) => c.pinIndex === 2)!;
+      expect(sample.docId).toMatch(/__p2__r\d+$/);
+      const source = (await getDoc(doc(db, 'research_records', defaultFrozenSourceDocId(config, sample)))).data() as { record_id: string };
+      const cRecord = (await getDoc(doc(db, 'research_records', sample.docId))).data() as { payload: TranslationPayload };
+      expect(cRecord.payload.pass1_input_mode).toBe(`frozen:${source.record_id}`);
+      expect(cRecord.payload.parse_status).toBe('ok');
     },
   );
 

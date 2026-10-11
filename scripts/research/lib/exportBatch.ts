@@ -2,10 +2,12 @@
  * Batch export — the files a researcher opens (export protocol, 2026-10-11).
  *
  * A batch is not finished until its export exists:
- *   research-data/<batch_id>/<batch_id>.jsonl  — every record in full, the
+ *   research-data/<batch_id>/<batch_id>.jsonl.gz — every record in full, the
  *     artifact of record (one line per Firestore document, `_doc_id` + every
  *     stored field, raw model text included; keys sorted so a re-export of
- *     unchanged records is byte-identical).
+ *     unchanged records is byte-identical), gzip-compressed: a BASELINE-size
+ *     batch is ~100 MB of JSONL, over GitHub's per-file limit (ruling
+ *     2026-10-11 — compressed for every batch, one rule).
  *   research-data/<batch_id>/<batch_id>.csv    — one flat row per record for
  *     reading (CSV_COLUMNS). Derived from the JSONL's records; never the
  *     source of truth.
@@ -20,6 +22,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { collection, doc, getDoc, getDocs, query, where, type Firestore } from 'firebase/firestore';
 import { RESEARCH_BATCHES_COLLECTION, RESEARCH_RECORDS_COLLECTION } from '../../../src/research/types.js';
 
@@ -79,6 +82,7 @@ export const CSV_COLUMNS = [
   'experiment',
   'kind',
   'cell',
+  'pin',
   'replicate_index',
   'meme_id',
   'language',
@@ -127,10 +131,16 @@ function obj(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-/** "a" | "c" from the cell-identity document id (…__cell-<x>__r<n>); blank
- *  for record kinds without cells. */
+/** "a" | "c" from the cell-identity document id (…__cell-<x>[__p<k>]__r<n>);
+ *  blank for record kinds without cells. */
 export function cellFromDocId(docId: string): string {
-  return docId.match(/__cell-([a-z])__r\d+$/)?.[1] ?? '';
+  return docId.match(/__cell-([a-z])(?:__p\d+)?__r\d+$/)?.[1] ?? '';
+}
+
+/** The pin (frozen cell-(a) replicate) of a multi-pin (c) record, from its
+ *  document id; blank otherwise. */
+export function pinFromDocId(docId: string): string {
+  return docId.match(/__cell-[a-z]__p(\d+)__r\d+$/)?.[1] ?? '';
 }
 
 export function recordToRow(d: ExportedDoc, runOperator: string | null): Row {
@@ -151,6 +161,7 @@ export function recordToRow(d: ExportedDoc, runOperator: string | null): Row {
     experiment: str(r.experiment),
     kind: str(r.kind),
     cell: cellFromDocId(d.docId),
+    pin: pinFromDocId(d.docId),
     replicate_index: str(r.replicate_index),
     meme_id: str(payload.meme_id),
     language: str(payload.language),
@@ -208,6 +219,12 @@ export function toCsv(docs: ExportedDoc[], runOperator: string | null): string {
 
 export const RESEARCH_DATA_DIR = 'research-data';
 
+/** gzip with a fixed header (zero mtime, set by zlib) so identical records
+ *  give identical bytes — an unchanged re-export still makes no commit. */
+export function gzipStable(text: string): Uint8Array {
+  return new Uint8Array(zlib.gzipSync(new TextEncoder().encode(text), { level: 9 }));
+}
+
 export interface BatchExportResult {
   dir: string;
   jsonlPath: string;
@@ -233,9 +250,11 @@ export function writeBatchExport(
   assertSafeBatchId(batchId);
   const dir = path.join(root, RESEARCH_DATA_DIR, batchId);
   fs.mkdirSync(dir, { recursive: true });
-  const jsonlPath = path.join(dir, `${batchId}.jsonl`);
+  const jsonlPath = path.join(dir, `${batchId}.jsonl.gz`);
   const csvPath = path.join(dir, `${batchId}.csv`);
-  fs.writeFileSync(jsonlPath, toJsonl(docs));
+  // A full rewrite: drop the pre-gzip plain file from older exports.
+  fs.rmSync(path.join(dir, `${batchId}.jsonl`), { force: true });
+  fs.writeFileSync(jsonlPath, gzipStable(toJsonl(docs)));
   fs.writeFileSync(csvPath, toCsv(docs, runOperator));
   return { dir, jsonlPath, csvPath, recordCount: docs.length };
 }

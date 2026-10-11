@@ -26,7 +26,7 @@
 #
 # Export protocol (2026-10-11): a batch is not finished until its export is
 # in the repo. Every successful collect — and every `export` dispatch —
-# rewrites research-data/<batch_id>/<batch_id>.jsonl + .csv from Firestore
+# rewrites research-data/<batch_id>/<batch_id>.jsonl.gz + .csv from Firestore
 # and commits them to the `research-data` branch (never main; created as an
 # orphan branch on first use, so it carries only research-data/ files). No
 # change → no commit.
@@ -173,7 +173,7 @@ jobs:
           fi
           printf '%s' "$BATCH" | grep -Eq '^[A-Za-z0-9_-][A-Za-z0-9._-]*$' || { echo "::error::unsafe batch id $BATCH"; exit 1; }
           SRC="research-data/$BATCH"
-          [ -f "$SRC/$BATCH.jsonl" ] && [ -f "$SRC/$BATCH.csv" ] || { echo "::error::export files missing in $SRC"; exit 1; }
+          [ -f "$SRC/$BATCH.jsonl.gz" ] && [ -f "$SRC/$BATCH.csv" ] || { echo "::error::export files missing in $SRC"; exit 1; }
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -187,14 +187,14 @@ jobs:
           fi
           rm -rf "$WT/$SRC"
           mkdir -p "$WT/$SRC"
-          cp "$SRC/$BATCH.jsonl" "$SRC/$BATCH.csv" "$WT/$SRC/"
+          cp "$SRC/$BATCH.jsonl.gz" "$SRC/$BATCH.csv" "$WT/$SRC/"
           cd "$WT"
           git add -A "$SRC"
           if git diff --cached --quiet; then
             echo "research-data/$BATCH unchanged — no commit"
             exit 0
           fi
-          COUNT="$(grep -c '' "$SRC/$BATCH.jsonl")"
+          COUNT="$(gzip -cd "$SRC/$BATCH.jsonl.gz" | grep -c '')"
           git commit -q -m "research-data: $BATCH — $COUNT records" -m "Exported by $OPERATOR (${MODE}, run $GITHUB_RUN_ID)."
           # Another batch's export may have landed meanwhile: rebase onto it
           # (different folders never conflict) and retry.

@@ -60,6 +60,28 @@ export interface BatchRecord {
   };
   regime: RegimeInfo;
   site_context_hash: string | null;
+  /** The pinned composition the batch translated against (composition_file;
+   *  BASELINE-1 ruling 2026-10-11). Absent when the batch pins none. */
+  composition?: {
+    file: string;
+    file_sha256: string;
+    project_id: string;
+    site_id: string;
+    composition_id: string;
+    name: string;
+    document_sha256: string;
+    target_cube_id: string | null;
+    images: Array<{ id: string; is_primary: boolean; storage_path: string | null; sha256: string | null }>;
+  };
+  /** How each record's `language` label was filled. Absent = the config's
+   *  batch-wide `language` value. */
+  language?: {
+    from: 'meme-script';
+    overrides_file: string | null;
+    overrides_sha256: string | null;
+  };
+  /** (c) pin mode: which (a) record(s) each (c) cell froze. */
+  frozen_pass1_source?: string;
   cost_estimate_usd: number;
   budget_cap_usd: number | null;
   notes: string[];
@@ -78,6 +100,7 @@ export function buildBatchRecord(args: {
   ordering?: string;
   docIdScheme?: string;
   e3?: BatchRecord['matrix']['e3'];
+  extras?: Pick<BatchRecord, 'composition' | 'language'>;
 }): BatchRecord {
   const { config, corpus } = args;
   return {
@@ -108,11 +131,21 @@ export function buildBatchRecord(args: {
         args.ordering ?? 'meme id ascending × config model order × cells (a, c) × replicate ascending',
       doc_id_scheme:
         args.docIdScheme ??
-        '<batch_id>__<experiment>__translation__<meme_id>__<provider>_<model id, / → ~ and . → ->__cell-<a|c>__r<replicate>',
+        '<batch_id>__<experiment>__translation__<meme_id>__<provider>_<model id, / → ~ and . → ->__cell-<a|c>__r<replicate>' +
+          (config.frozen_pass1_source === 'all-batch-cell-a'
+            ? ' — multi-pin (c) cells insert __p<pin> before __r (pin = the frozen cell-(a) replicate)'
+            : ''),
       ...(args.e3 ? { e3: args.e3 } : {}),
     },
     regime: args.regime,
     site_context_hash: args.siteContextHash,
+    ...(args.extras?.composition ? { composition: args.extras.composition } : {}),
+    ...(args.extras?.language ? { language: args.extras.language } : {}),
+    // Recorded only for multi-pin, so batches made before it existed resume
+    // unchanged.
+    ...(config.cells.includes('c') && config.frozen_pass1_source === 'all-batch-cell-a'
+      ? { frozen_pass1_source: config.frozen_pass1_source }
+      : {}),
     cost_estimate_usd: args.costEstimateUsd,
     budget_cap_usd: config.budget_cap_usd,
     notes: args.notes ?? [],
@@ -153,6 +186,16 @@ export function batchResumeMismatches(stored: BatchRecord, current: BatchRecord)
     problems.push('regime.translation_lexicon_hash changed');
   }
   if (stored.site_context_hash !== current.site_context_hash) problems.push('site_context_hash changed');
+  if ((stored.composition?.file_sha256 ?? null) !== (current.composition?.file_sha256 ?? null)) {
+    problems.push('composition pin file changed');
+  }
+  if ((stored.language?.overrides_sha256 ?? null) !== (current.language?.overrides_sha256 ?? null)
+      || (stored.language?.from ?? null) !== (current.language?.from ?? null)) {
+    problems.push('language labelling changed');
+  }
+  if ((stored.frozen_pass1_source ?? null) !== (current.frozen_pass1_source ?? null)) {
+    problems.push('frozen_pass1_source changed');
+  }
 
   const storedMemes = new Map(stored.corpus.memes.map((m) => [m.id, m.content_hash]));
   for (const meme of current.corpus.memes) {

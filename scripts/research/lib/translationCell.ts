@@ -50,6 +50,7 @@ import type {
 } from '../../../src/research/types';
 import type { BatchConfig } from './config';
 import { estimateCellCost, type CellCostEstimate } from './costs';
+import { languageForMeme } from './language';
 import type { MatrixCell } from './matrix';
 
 // ---------------------------------------------------------------------------
@@ -276,6 +277,9 @@ export interface TranslationCellContext {
   /** Resolves the frozen Pass-1 source for a (c) cell (Firestore lookup in
    *  run.ts; injected fixture in tests). */
   resolveFrozenSource: (cell: MatrixCell) => Promise<FrozenPass1Source>;
+  /** language_from "meme-script": per-meme label overrides (meme id →
+   *  label), or null for the script classification alone. */
+  languageOverrides?: Record<string, string> | null;
   /**
    * Transport injection: when set, replaces the network callers so the full
    * cell path (prompt assembly, Pass-1 freeze, recording, parseAndRoute,
@@ -377,7 +381,10 @@ export async function runTranslationCell(
     composition_ref: ctx.config.composition_ref,
     target_cube: ctx.config.target_cube,
     site_context_hash: ctx.siteContextHash,
-    language: ctx.config.language,
+    // A label, not a prompt input (lib/language.ts).
+    language: ctx.config.language_from === 'meme-script'
+      ? languageForMeme(cell.memeId, cell.meme.meme, ctx.languageOverrides ?? null)
+      : ctx.config.language,
   };
 
   const estimate = estimateCellCost({

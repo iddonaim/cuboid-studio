@@ -1,0 +1,22 @@
+{
+  "batch_id": "e2-base-001",
+  "experiment": "E2",
+  "baseline_tag": "BASELINE-1",
+  "baseline_freeze": "BASELINE-1",
+  "corpus": {
+    "meme_ids": "all"
+  },
+  "models": [
+    { "id": "anthropic/claude-sonnet-4.6", "provider": "anthropic" }
+  ],
+  "cells": ["a", "c"],
+  "replicates": 10,
+  "site_context_file": null,
+  "composition_file": "scripts/research/examples/compositions/NSCSM9TXSN0KhhvnhGkJ.json",
+  "composition_ref": null,
+  "target_cube": null,
+  "language": null,
+  "language_from": "meme-script",
+  "budget_cap_usd": 120,
+  "frozen_pass1_source": "all-batch-cell-a"
+}

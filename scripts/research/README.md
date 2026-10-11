@@ -19,6 +19,9 @@ human-initiated step, and no BASELINE tag exists yet.**
 | Batch runner CLI | `scripts/research/run.ts` |
 | JSONL export CLI | `scripts/research/export.ts` |
 | Batch export (JSONL + CSV → `research-data/`) | `scripts/research/lib/exportBatch.ts` |
+| Composition pin loader | `scripts/research/lib/composition.ts` |
+| Per-meme language labels | `scripts/research/lib/language.ts` |
+| BASELINE-1 config + its composition pin | `scripts/research/examples/e2-base-001.batch.json`, `examples/compositions/` |
 | Corpus / matrix / costs / cell executor | `scripts/research/lib/` |
 | E3 frozen-state schema + parser + ranking (R2) | `scripts/research/lib/evolveState.ts` |
 | E3 step-mode executor | `scripts/research/lib/evolveStep.ts` |
@@ -102,7 +105,10 @@ full from Firestore; records in the database are only ever read.
   `research-data: <batch_id> — <N> records`; an unchanged export makes no
   commit. Locally the files land in `research-data/<batch_id>/` of the
   working copy (don't commit them to `main`).
-- **`<batch_id>.jsonl` — the artifact of record.** One line per record:
+- **`<batch_id>.jsonl.gz` — the artifact of record** (gzip-compressed
+  JSONL; open with any unzip tool, or `gzip -cd <file>`). Compressed for
+  every batch since 2026-10-11: a BASELINE-size batch is ~100 MB of JSONL,
+  over GitHub's per-file limit. One line per record:
   `_doc_id` (the Firestore document id, which encodes the cell identity)
   plus every stored field — envelope, payload, raw model text, every
   attempt, usage. Keys are sorted, so an unchanged re-export is
@@ -116,6 +122,7 @@ full from Firestore; records in the database are only ever read.
 |---|---|
 | `record_id`, `doc_id`, `batch_id`, `experiment`, `kind`, `replicate_index` | envelope (`doc_id` = Firestore id) |
 | `cell` | `a`/`c`, read from `doc_id`; blank for E3 |
+| `pin` | multi-pin (c) only: the (a) replicate whose Pass 1 was frozen (`__p<k>` in `doc_id`); blank otherwise |
 | `meme_id`, `language` | payload |
 | `model_id`, `model_provider` | envelope `model` |
 | `status` | `ok` / `failed` (`payload.parse_status`) |
@@ -135,6 +142,52 @@ full from Firestore; records in the database are only ever read.
 | `baseline_tag` | envelope |
 
 Pass-2 columns are blank for failed records and for non-translation kinds.
+
+## Ordered E2 runs — composition, pins, language (BASELINE-1, 2026-10-11)
+
+An E2 batch can translate against a composition the app already encoded,
+freeze every (a) reading in turn, and label each record's language.
+All of it is declared in the batch config:
+
+| Config field | What it does |
+|---|---|
+| `composition_file` | A **composition pin file** (below). Its site-context snapshot is the site context of every cell; its composition id and target cube id become every record's `composition_ref` / `target_cube`; the pin's identity, photo hashes and file hash go into the batch record. Exclusive with `site_context_file`, `composition_ref`, `target_cube`. |
+| `frozen_pass1_source: "all-batch-cell-a"` | **Multi-pin (c):** every (a) replicate of a meme is a pin, and (c) runs `replicates` replicates per pin — so N=10 gives 10 (a) + 10 × 10 (c) per meme. (c) record names gain a pin segment, `…__cell-c__p<k>__r<n>`; all other names are unchanged. The pin is declared **varied** on each (c) record. |
+| `language_from: "meme-script"` | Each record's `language` is the **script of its meme's own text** (`memeText`, else `topText` / `bottomText`): `hebrew`, `latin`, `mixed` or `none`. A label for analysis only — the prompt is unchanged. Requires `language: null`. |
+| `language_overrides_file` | Optional JSON `{ "<meme id>": "<label>" }` overriding individual memes. |
+| `max_requests_per_round` | Optional cap on requests per batch round (below). |
+| `baseline_freeze` | Must repeat `baseline_tag` for a `BASELINE…` tag — the explicit declaration that this config is the ruled freeze run. Without it any BASELINE tag is refused. |
+
+**Composition pin files** live in `examples/compositions/<composition id>.json`
+(schema `cuboid-composition-pin/v1`). The research identity cannot read
+projects, so the composition's owner dumps it read-only (the Cloud Shell
+command used for BASELINE-1 is in the PR that added this section): ids,
+name, target cube, the site-context snapshot verbatim, the encode photos'
+storage paths with sha256 of the full-resolution bytes, and a sha256 of the
+whole stored document. The site-context snapshot is exactly what the app
+makes active when the composition is restored, so it is exactly what a
+translation request carries; the harness serializes it as the handler does
+and records the sha256 of that string as `site_context_hash`. Note that the
+shipped translation request carries **no** composition or cube — those are
+recorded conditions, not prompt inputs. A site context over the handler's
+32,000-character limit is refused.
+
+**Round size limits.** The Message Batches API refuses batches over 256 MB,
+and every request carries its meme image, so a large matrix goes up over
+several rounds: each submit takes pending cells in matrix order until it
+reaches ~200 MB, 2,000 requests, or `max_requests_per_round`; the rest wait.
+Run submit → collect repeatedly until submit reports nothing left — the
+same loop that already handles (c) cells waiting on their (a) sources. The
+`budget_cap_usd` is checked against the **whole batch's** worst case before
+the first round, and against each round on submit.
+
+**BASELINE-1** is `examples/e2-base-001.batch.json`: composition
+`NSCSM9TXSN0KhhvnhGkJ` ("נחלת יצחק 16"), all 45 usable memes, N=10, cells (a)
+and (c) with all pins (4,950 records), language by script, Sonnet 4.6, cap
+$120. The freeze is the git tag `BASELINE-1` on the code it ran with, plus
+`research-data/BASELINE-1.md` on the `research-data` branch (commit sha,
+prompt / lexicon / grammar hashes, composition id, site-context hash, model,
+date).
 
 ## Environment (execute/export only — dry-run needs nothing)
 
