@@ -32,6 +32,8 @@ export interface MatrixCell {
   model: BatchModelConfig;
   cellType: CellType;
   replicateIndex: number;
+  /** Multi-pin (c) only: the (a) replicate whose Pass 1 this cell freezes. */
+  pinIndex?: number;
   docId: string;
   declared: DeclaredInfo;
 }
@@ -49,6 +51,7 @@ export function cellDocId(
   model: BatchModelConfig,
   cellType: CellType,
   replicateIndex: number,
+  pinIndex?: number,
 ): string {
   return [
     batchId,
@@ -57,6 +60,8 @@ export function cellDocId(
     memeId,
     `${model.provider}_${modelKey(model.id)}`,
     `cell-${cellType}`,
+    // Multi-pin (c) cells only; every other record name is unchanged.
+    ...(pinIndex !== undefined ? [`p${pinIndex}`] : []),
     `r${replicateIndex}`,
   ].join('__');
 }
@@ -98,8 +103,10 @@ const PASS2_MEASURED = [
   'pass2.reasoning',
 ];
 
-/** Pre-registration blocks per E2 cell type (spec principle 6). */
-export function declaredForCell(cellType: CellType): DeclaredInfo {
+/** Pre-registration blocks per E2 cell type (spec principle 6). A multi-pin
+ *  (c) cell declares the pin as varied: which (a) replicate's Pass 1 it
+ *  freezes changes across cells by design. */
+export function declaredForCell(cellType: CellType, multiPin = false): DeclaredInfo {
   switch (cellType) {
     case 'a':
       return {
@@ -114,7 +121,7 @@ export function declaredForCell(cellType: CellType): DeclaredInfo {
     case 'c':
       return {
         fixed: [...SHARED_FIXED, 'pass1 (frozen — stored Pass 1 verbatim in the user turn, user_message_v1, R1)'],
-        varied: [],
+        varied: multiPin ? ['pass1 pin (which cell-(a) replicate of this meme × model is frozen; record name segment p<k>)'] : [],
         stochastic: SHARED_STOCHASTIC,
         measured: [...PASS2_MEASURED, 'parse_status', 'timing_ms'],
       };
@@ -131,17 +138,24 @@ export function expandMatrix(config: BatchConfig, corpus: Corpus): MatrixCell[] 
   for (const meme of corpus.memes) {
     for (const model of config.models) {
       for (const cellType of config.cells) {
-        for (let r = 0; r < config.replicates; r++) {
-          cells.push({
-            index: index++,
-            memeId: meme.id,
-            meme,
-            model,
-            cellType,
-            replicateIndex: r,
-            docId: cellDocId(config.batch_id, config.experiment, meme.id, model, cellType, r),
-            declared: declaredForCell(cellType),
-          });
+        const multiPin = cellType === 'c' && config.frozen_pass1_source === 'all-batch-cell-a';
+        const pins: Array<number | undefined> = multiPin
+          ? Array.from({ length: config.replicates }, (_, k) => k)
+          : [undefined];
+        for (const pin of pins) {
+          for (let r = 0; r < config.replicates; r++) {
+            cells.push({
+              index: index++,
+              memeId: meme.id,
+              meme,
+              model,
+              cellType,
+              replicateIndex: r,
+              ...(pin !== undefined ? { pinIndex: pin } : {}),
+              docId: cellDocId(config.batch_id, config.experiment, meme.id, model, cellType, r, pin),
+              declared: declaredForCell(cellType, multiPin),
+            });
+          }
         }
       }
     }
@@ -150,7 +164,8 @@ export function expandMatrix(config: BatchConfig, corpus: Corpus): MatrixCell[] 
 }
 
 /** The batch's own frozen-source doc id for a (c) cell: cell (a) replicate 0
- *  of the same meme × model. */
+ *  of the same meme × model — or, for a multi-pin cell, the (a) replicate
+ *  named by its pin. */
 export function defaultFrozenSourceDocId(config: BatchConfig, cell: MatrixCell): string {
-  return cellDocId(config.batch_id, config.experiment, cell.memeId, cell.model, 'a', 0);
+  return cellDocId(config.batch_id, config.experiment, cell.memeId, cell.model, 'a', cell.pinIndex ?? 0);
 }

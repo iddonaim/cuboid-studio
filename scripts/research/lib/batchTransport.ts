@@ -468,7 +468,19 @@ export interface BatchRoundContext {
   cacheTtl: CacheTtl;
   budgetCapUsd: number | null;
   imageCache: ImageCache;
+  /** Per-round request limit (config max_requests_per_round), or null. */
+  maxRequestsPerRound?: number | null;
 }
+
+/**
+ * Round size limits. The Message Batches API refuses a batch over 256 MB
+ * (and 100,000 requests); every request carries its meme image, so a large
+ * matrix must go up over several rounds. The byte budget leaves headroom
+ * under the API limit; the request ceiling keeps the round's submission doc
+ * (one entry per request) well under Firestore's 1 MB document limit.
+ */
+export const MAX_ROUND_BYTES = 200_000_000;
+export const MAX_ROUND_REQUESTS = 2_000;
 
 async function buildSubmittedParams(
   opts: CallerOpts,
@@ -521,14 +533,25 @@ export async function submitBatchRound(ctx: BatchRoundContext, units: BatchUnit[
     // expired / canceled: unbilled, void — the call re-enters this round.
   }
 
-  // Capture pending units.
+  // Capture pending units, up to this round's size limits — units past the
+  // limit stay pending (nothing captured or written) for the next round.
   const pending: Array<{ unit: BatchUnit; calls: Array<CapturedCall & { customId: string; params: Record<string, unknown>; paramsHash: string }> }> = [];
   let skipped = 0;
   let deferredFrozen = 0;
+  let heldForNextRound = 0;
+  let roundBytes = 0;
+  let roundRequests = 0;
+  const requestLimit = Math.min(ctx.maxRequestsPerRound ?? MAX_ROUND_REQUESTS, MAX_ROUND_REQUESTS);
   for (const unit of units) {
     if (exists.get(unit.docId)) {
       skipped++;
       continue;
+    }
+    if (heldForNextRound > 0 || roundRequests + unit.callEstimates.length > requestLimit) {
+      if (roundRequests > 0) {
+        heldForNextRound++;
+        continue;
+      }
     }
     let captured: CapturedCall[];
     try {
@@ -547,8 +570,10 @@ export async function submitBatchRound(ctx: BatchRoundContext, units: BatchUnit[
       );
     }
     const calls = [];
+    let unitBytes = 0;
     for (const call of captured) {
       const params = await buildSubmittedParams(call.opts, ctx.cacheTtl, ctx.imageCache);
+      unitBytes += Buffer.byteLength(JSON.stringify(params));
       calls.push({
         ...call,
         customId: await batchCustomId(unit.docId, call.callKey),
@@ -556,7 +581,19 @@ export async function submitBatchRound(ctx: BatchRoundContext, units: BatchUnit[
         paramsHash: await hashMessageParams(params),
       });
     }
+    if (roundRequests > 0 && roundBytes + unitBytes > MAX_ROUND_BYTES) {
+      heldForNextRound++;
+      continue;
+    }
+    roundBytes += unitBytes;
+    roundRequests += calls.length;
     pending.push({ unit, calls });
+  }
+  if (heldForNextRound > 0) {
+    console.log(
+      `round size limit reached (${roundRequests} requests, ${(roundBytes / 1e6).toFixed(1)} MB): ` +
+      `${heldForNextRound} unit(s) held for the next round — collect this one, then submit again`,
+    );
   }
 
   if (pending.length === 0) {

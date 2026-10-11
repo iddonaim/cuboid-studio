@@ -6,10 +6,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import {
   cellFromDocId,
   CSV_COLUMNS,
+  pinFromDocId,
   recordToRow,
   toCsv,
   toJsonl,
@@ -157,8 +159,12 @@ describe('CSV (reading copy)', () => {
     expect(rows[2][col('pass1_meme_summary')]).toBe('כשהרויט קורס, "backup", always');
   });
 
-  it('reads the cell from the document id; blank for cell-less kinds', () => {
+  it('reads the cell and pin from the document id; blank where absent', () => {
     expect(cellFromDocId(okDoc.docId)).toBe('c');
+    expect(pinFromDocId(okDoc.docId)).toBe('');
+    const pinned = 'e2-base-001__E2__translation__m__anthropic_x__cell-c__p7__r3';
+    expect(cellFromDocId(pinned)).toBe('c');
+    expect(pinFromDocId(pinned)).toBe('7');
     expect(cellFromDocId('e3-toy__E3__evolve_step__state__anthropic_x__r0')).toBe('');
   });
 });
@@ -167,12 +173,26 @@ describe('writeBatchExport', () => {
   it('writes research-data/<batch>/<batch>.jsonl + .csv and rewrites them in full', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rd-'));
     const first = writeBatchExport(root, 'e2-toy-002', [okDoc, failedDoc], 'iddo');
-    expect(first.jsonlPath).toBe(path.join(root, 'research-data', 'e2-toy-002', 'e2-toy-002.jsonl'));
+    expect(first.jsonlPath).toBe(path.join(root, 'research-data', 'e2-toy-002', 'e2-toy-002.jsonl.gz'));
     expect(first.csvPath).toBe(path.join(root, 'research-data', 'e2-toy-002', 'e2-toy-002.csv'));
-    expect(fs.readFileSync(first.jsonlPath, 'utf-8').trim().split('\n')).toHaveLength(2);
+    const lines = () => zlib.gunzipSync(new Uint8Array(fs.readFileSync(first.jsonlPath))).toString('utf-8').trim().split('\n');
+    expect(lines()).toHaveLength(2);
     writeBatchExport(root, 'e2-toy-002', [okDoc], 'iddo');
-    expect(fs.readFileSync(first.jsonlPath, 'utf-8').trim().split('\n')).toHaveLength(1);
+    expect(lines()).toHaveLength(1);
+    expect(JSON.parse(lines()[0])._doc_id).toBe(okDoc.docId);
     expect(parseCsv(fs.readFileSync(first.csvPath, 'utf-8').slice(1))).toHaveLength(2);
+  });
+
+  it('compresses byte-stably and replaces a pre-gzip plain .jsonl', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rd-'));
+    const dir = path.join(root, 'research-data', 'old-batch');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'old-batch.jsonl'), 'stale\n');
+    const a = writeBatchExport(root, 'old-batch', [okDoc], null);
+    const bytes = fs.readFileSync(a.jsonlPath).toString('base64');
+    writeBatchExport(root, 'old-batch', [okDoc], null);
+    expect(fs.readFileSync(a.jsonlPath).toString('base64')).toBe(bytes);
+    expect(fs.existsSync(path.join(dir, 'old-batch.jsonl'))).toBe(false);
   });
 
   it('refuses a path-like batch id', () => {

@@ -28,9 +28,13 @@ export interface BatchModelConfig {
 export interface BatchConfig {
   batch_id: string;
   experiment: 'E1' | 'E2' | 'E3';
-  /** No BASELINE tag is ever written by this scaffold; the freeze is a
-   *  separate human step. Until then batches must carry a non-BASELINE tag. */
+  /** A BASELINE tag is refused unless `baseline_freeze` repeats it: the
+   *  freeze is a separate, human-ruled step (BASELINE-1: Iddo, 2026-10-11),
+   *  and a stray BASELINE tag must never come from a copied config. */
   baseline_tag: string;
+  /** Must equal baseline_tag for a BASELINE-tagged batch — the explicit
+   *  declaration that this config is the ruled freeze run. */
+  baseline_freeze?: string;
   corpus: {
     /** "all" = the whole raw memes collection; or an explicit id list. */
     meme_ids: 'all' | string[];
@@ -64,9 +68,33 @@ export interface BatchConfig {
   /**
    * E2 cell (c) frozen Pass-1 source. "batch-cell-a" (default) pins each
    * meme×model's own cell-(a) replicate-0 record from this batch;
+   * "all-batch-cell-a" pins EVERY (a) replicate of the meme×model in turn
+   * (multi-pin: (c) runs `replicates` replicates per pin, and the pin index
+   * is a declared varied condition and a segment of the record name);
    * or a map of "<memeId>" → research_records document id.
    */
-  frozen_pass1_source?: 'batch-cell-a' | Record<string, string>;
+  frozen_pass1_source?: 'batch-cell-a' | 'all-batch-cell-a' | Record<string, string>;
+  /**
+   * Path to a composition pin file (lib/composition.ts) — the stored
+   * composition the batch translates against. Its site-context snapshot is
+   * the site context of every cell; its composition id and target cube id
+   * fill composition_ref / target_cube. Exclusive with site_context_file,
+   * composition_ref and target_cube.
+   */
+  composition_file?: string;
+  /**
+   * "meme-script": each record's `language` is the script of its meme's text
+   * (hebrew / latin / mixed / none — lib/language.ts), a label only; the
+   * prompt is unchanged. Exclusive with a non-null `language`.
+   */
+  language_from?: 'meme-script';
+  /** Optional JSON map "<memeId>" → language label, overriding the script
+   *  classification for those memes (requires language_from). */
+  language_overrides_file?: string;
+  /** Batch transport: at most this many requests per submit round (a large
+   *  round is also cut at a byte budget well under the API's batch size
+   *  limit). Rounds go up one after another; omitted = byte budget only. */
+  max_requests_per_round?: number;
 }
 
 const CELL_ORDER: CellType[] = ['a', 'c'];
@@ -80,8 +108,11 @@ export function parseBatchConfig(json: string, filePath: string): BatchConfig {
   if (!cfg.batch_id || typeof cfg.batch_id !== 'string') fail('batch_id is required');
   if (!['E1', 'E2', 'E3'].includes(cfg.experiment)) fail('experiment must be E1 | E2 | E3');
   if (!cfg.baseline_tag || typeof cfg.baseline_tag !== 'string') fail('baseline_tag is required');
-  if (/^BASELINE/i.test(cfg.baseline_tag)) {
-    fail('baseline_tag must not be a BASELINE tag — the freeze is a separate, human-initiated step');
+  if (/^BASELINE/i.test(cfg.baseline_tag) && cfg.baseline_freeze !== cfg.baseline_tag) {
+    fail(
+      'baseline_tag must not be a BASELINE tag unless the config also declares the freeze — set ' +
+      '"baseline_freeze" to the same tag (a human-ruled step: the freeze tag on the code, then this batch)',
+    );
   }
   if (!cfg.corpus || (cfg.corpus.meme_ids !== 'all' && !Array.isArray(cfg.corpus.meme_ids))) {
     fail('corpus.meme_ids must be "all" or a string array');
@@ -133,6 +164,40 @@ export function parseBatchConfig(json: string, filePath: string): BatchConfig {
     }
   }
   if (cfg.frozen_pass1_source === undefined) cfg.frozen_pass1_source = 'batch-cell-a';
+  const fps = cfg.frozen_pass1_source;
+  if (typeof fps === 'string' && fps !== 'batch-cell-a' && fps !== 'all-batch-cell-a') {
+    fail('frozen_pass1_source must be "batch-cell-a", "all-batch-cell-a" or a meme-id → record-id map');
+  }
+  if (fps === 'all-batch-cell-a' && cfg.cells.includes('c') && !cfg.cells.includes('a')) {
+    fail('frozen_pass1_source "all-batch-cell-a" pins this batch\'s own (a) records — cells must include "a"');
+  }
+
+  if (cfg.experiment === 'E3' && (cfg.composition_file !== undefined || cfg.language_from !== undefined)) {
+    fail('composition_file and language_from apply to E2 translation batches only');
+  }
+  if (cfg.composition_file !== undefined) {
+    if (typeof cfg.composition_file !== 'string' || cfg.composition_file.length === 0) {
+      fail('composition_file must be a repo-relative path');
+    }
+    if (cfg.site_context_file !== null) fail('composition_file supplies the site context — set site_context_file to null');
+    if (cfg.composition_ref !== null || cfg.target_cube !== null) {
+      fail('composition_file supplies composition_ref and target_cube — leave both null');
+    }
+  }
+
+  if (cfg.language_from !== undefined) {
+    if (cfg.language_from !== 'meme-script') fail('language_from must be "meme-script"');
+    if (cfg.language !== null) fail('language_from labels each record per meme — set language to null');
+  }
+  if (cfg.language_overrides_file !== undefined) {
+    if (cfg.language_from === undefined) fail('language_overrides_file requires language_from');
+    if (typeof cfg.language_overrides_file !== 'string') fail('language_overrides_file must be a path');
+  }
+
+  if (cfg.max_requests_per_round !== undefined
+      && !(Number.isInteger(cfg.max_requests_per_round) && cfg.max_requests_per_round > 0)) {
+    fail('max_requests_per_round must be a positive integer');
+  }
 
   // Deterministic cell order regardless of config order.
   cfg.cells = CELL_ORDER.filter((c) => cfg.cells.includes(c));
