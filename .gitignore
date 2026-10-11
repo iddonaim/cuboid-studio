@@ -43,3 +43,6 @@ REFERENCES/
 # Demo recordings (scripts/record-demo.mjs output)
 /recordings/
 __pycache__/
+
+# Research batch exports — they live on the research-data branch, never main
+/research-data/
