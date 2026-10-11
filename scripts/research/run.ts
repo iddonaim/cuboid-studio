@@ -71,6 +71,7 @@ import {
   type BatchRoundContext,
   type BatchUnit,
 } from './lib/batchTransport.js';
+import { exportBatch } from './lib/exportBatch.js';
 import { initHeadlessFirebase } from './lib/headlessFirebase.js';
 import { defaultFrozenSourceDocId, expandMatrix, type MatrixCell } from './lib/matrix.js';
 import { captureRegime } from './lib/regime.js';
@@ -511,6 +512,7 @@ async function main(): Promise<void> {
     await submitBatchRound(roundCtx, units);
   } else {
     await collectBatchRound(roundCtx, units, { registerAnthropicBatchId: values['anthropic-batch-id'] });
+    await exportAfterCollect(db, config.batch_id);
   }
 }
 
@@ -758,6 +760,26 @@ async function runE3(args: {
     await submitBatchRound(roundCtx, batchUnits);
   } else {
     await collectBatchRound(roundCtx, batchUnits, { registerAnthropicBatchId: args.anthropicBatchId });
+    await exportAfterCollect(db, config.batch_id);
+  }
+}
+
+/**
+ * Export protocol: a batch is not finished until its export exists. Every
+ * successful collect rewrites research-data/<batch_id>/ from the database
+ * (lib/exportBatch.ts); the workflow commits it to the research-data branch.
+ * A failure here leaves the records safe in Firestore — re-run
+ * `research:export -- --batch <id> --research-data`.
+ */
+async function exportAfterCollect(db: Firestore, batchId: string): Promise<void> {
+  try {
+    const result = await exportBatch(db, batchId, REPO_ROOT);
+    console.log(`export: ${result.recordCount} records → ${path.relative(REPO_ROOT, result.dir)}/`);
+  } catch (err) {
+    throw new Error(
+      `collect finished, but the export failed: ${err instanceof Error ? err.message : String(err)} — ` +
+      `records are safe in Firestore; re-run: npm run research:export -- --batch ${batchId} --research-data`,
+    );
   }
 }
 

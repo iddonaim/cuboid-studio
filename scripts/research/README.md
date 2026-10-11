@@ -18,6 +18,7 @@ human-initiated step, and no BASELINE tag exists yet.**
 | Security rules (reference copy) | `firestore.rules` (deployed twin: `archthesis/firestore.rules`) |
 | Batch runner CLI | `scripts/research/run.ts` |
 | JSONL export CLI | `scripts/research/export.ts` |
+| Batch export (JSONL + CSV → `research-data/`) | `scripts/research/lib/exportBatch.ts` |
 | Corpus / matrix / costs / cell executor | `scripts/research/lib/` |
 | E3 frozen-state schema + parser + ranking (R2) | `scripts/research/lib/evolveState.ts` |
 | E3 step-mode executor | `scripts/research/lib/evolveStep.ts` |
@@ -50,7 +51,11 @@ npm run research:run -- --config <batch.json> --collect --operator "<who>"      
 # records). --collect says what is still processing / pending; re-run it and
 # the next submit until "nothing to submit" + nothing awaiting.
 
-# Export records as JSONL (filterable):
+# Export a batch to research-data/<batch_id>/ (JSONL + CSV; see "Export
+# protocol" below). --collect does this itself after every collect:
+npm run research:export -- --batch <batch_id> --research-data
+
+# Ad-hoc filtered JSONL (not the protocol export):
 npm run research:export -- --batch <batch_id> --experiment E2 --kind translation --out out.jsonl
 
 # Verify the append-only rules + batch rounds against the Firestore emulator:
@@ -60,9 +65,12 @@ npm run test:rules
 ## Headless runs (GitHub Actions)
 
 `.github/workflows/research-batch.yml` is a `workflow_dispatch` runner for
-exactly one round per dispatch: `dry-run` (default, no spend), `submit`, or
-`collect`, taking a repo-relative config path, a required budget cap, and an
-optional operator (defaults to the dispatching GitHub username + run id).
+exactly one step per dispatch: `dry-run` (default, no spend), `submit`,
+`collect`, or `export`. The first three take a repo-relative config path and
+a budget cap; `export` takes a `batch_id`. All take an optional operator
+(defaults to the dispatching GitHub username + run id). `collect` and
+`export` commit the batch's export to the `research-data` branch (see
+"Export protocol").
 State lives in Firestore (batch record + append-only `__submission__` docs),
 so submit and collect can run on different days and runners — everything is
 resumable by `batch_id`. Repository secrets to set (names, exactly):
@@ -78,6 +86,55 @@ resumable by `batch_id`. Repository secrets to set (names, exactly):
 
 Secret values are passed to the harness as env only; the harness never
 prints them, and GitHub masks them in logs regardless.
+
+## Export protocol — a batch is not finished until it is exported
+
+Every successful `--collect` rewrites the batch's export from the database,
+and the workflow commits it — nobody has to remember a separate step. The
+same export runs on demand for any batch (`research:export -- --batch <id>
+--research-data`, or the workflow's `export` mode), e.g. for batches
+collected before the protocol existed. Re-exporting rewrites both files in
+full from Firestore; records in the database are only ever read.
+
+- **Where:** the `research-data` branch of this repo (never `main`). The
+  workflow creates it as an orphan branch on first use, so it holds only
+  `research-data/<batch_id>/` folders. One commit per export, message
+  `research-data: <batch_id> — <N> records`; an unchanged export makes no
+  commit. Locally the files land in `research-data/<batch_id>/` of the
+  working copy (don't commit them to `main`).
+- **`<batch_id>.jsonl` — the artifact of record.** One line per record:
+  `_doc_id` (the Firestore document id, which encodes the cell identity)
+  plus every stored field — envelope, payload, raw model text, every
+  attempt, usage. Keys are sorted, so an unchanged re-export is
+  byte-identical. Analyses run on this file.
+- **`<batch_id>.csv` — the reading copy.** One flat row per record, failed
+  records included, UTF-8 with a byte-order mark (spreadsheet apps show the
+  Hebrew without an import step). Derived from the same records; never the
+  source of truth. Columns, in order:
+
+| Column | From |
+|---|---|
+| `record_id`, `doc_id`, `batch_id`, `experiment`, `kind`, `replicate_index` | envelope (`doc_id` = Firestore id) |
+| `cell` | `a`/`c`, read from `doc_id`; blank for E3 |
+| `meme_id`, `language` | payload |
+| `model_id`, `model_provider` | envelope `model` |
+| `status` | `ok` / `failed` (`payload.parse_status`) |
+| `pass1_input_mode`, `pass1_freeze_method`, `prefill` | how Pass 1 was obtained |
+| `run_operator` | who launched the batch (the batch record's `operator`) |
+| `pass2_operator` | Pass 2's operator class |
+| `cutter`, `cutter_proportions`, `cutter_position`, `cutter_rotation` | Pass 2 cutter (type; three `[x,y,z]` vectors) |
+| `targets` | Pass 2 targets, `; `-separated |
+| `magnitude`, `decay` | Pass 2 |
+| `confidence_rhetorical_clarity`, `confidence_site_resonance`, `confidence_affective_coherence`, `confidence_operational_specificity` | Pass 2 confidence vector |
+| `pass1_meme_summary` | Pass 1's one-line reading |
+| `attempts` | number of model calls the record made (retries included) |
+| `cost_usd_estimate` | the harness's estimate |
+| `usage_input_tokens`, `usage_output_tokens`, `usage_cache_creation_input_tokens`, `usage_cache_read_input_tokens` | real billed tokens where the transport reported them (batch-collected records) |
+| `created_at` | envelope |
+| `failure_stage`, `failure_reason` | blank when `status` is `ok` |
+| `baseline_tag` | envelope |
+
+Pass-2 columns are blank for failed records and for non-translation kinds.
 
 ## Environment (execute/export only — dry-run needs nothing)
 
@@ -120,7 +177,7 @@ prints them, and GitHub masks them in logs regardless.
   records with `prefill: true` and no `pass1_freeze_method`. No per-model
   prefill probe exists any more; the user-turn freeze works for every
   model the same way.
-- **Runs exit on their own**: `run.ts` calls `process.exit` once its work is
+- **Runs exit on their own**: `run.ts` and `export.ts` call `process.exit` once their work is
   done — the Firebase client keeps its Firestore channel and auth timers
   open, which otherwise kept every finished CI run alive until the job limit.
 - **Cell identity lives in the Firestore document id**

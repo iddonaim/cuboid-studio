@@ -19,6 +19,7 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -42,6 +43,7 @@ import {
 import { parseBatchConfig, type BatchConfig } from './lib/config';
 import { loadCorpusFromFile, type Corpus } from './lib/corpus';
 import { estimateBatchRoute } from './lib/costs';
+import { exportBatch } from './lib/exportBatch';
 import { buildStepTranslationRequests, hashEvolveState, parseFrozenEvolveState } from './lib/evolveState';
 import { type EvolveStepContext } from './lib/evolveStep';
 import { defaultFrozenSourceDocId, expandMatrix, type MatrixCell } from './lib/matrix';
@@ -334,6 +336,19 @@ describe.skipIf(!emulatorHost)('batch submit/collect rounds (emulator + scripted
       const collect3 = await collectBatchRound(roundCtx, units);
       expect(collect3.written).toBe(0);
       expect(collect3.skipped_existing).toBe(cells.length);
+
+      // Export protocol: the batch reads back in full, a (c) row carries the
+      // freeze method, and an unchanged re-export is byte-identical.
+      const exportRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rd-'));
+      const exported = await exportBatch(db, config.batch_id, exportRoot);
+      expect(exported.recordCount).toBe(cells.length);
+      const jsonl = fs.readFileSync(exported.jsonlPath, 'utf-8');
+      const csv = fs.readFileSync(exported.csvPath, 'utf-8');
+      expect(jsonl.trim().split('\n')).toHaveLength(cells.length);
+      expect(csv).toContain('user_message_v1');
+      await exportBatch(db, config.batch_id, exportRoot);
+      expect(fs.readFileSync(exported.jsonlPath, 'utf-8')).toBe(jsonl);
+      expect(fs.readFileSync(exported.csvPath, 'utf-8')).toBe(csv);
     },
   );
 

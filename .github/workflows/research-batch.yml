@@ -3,7 +3,8 @@
 # Manually dispatched only — a batch is a human-initiated step, never a
 # side effect of a push. One dispatch = one round: price a config (dry-run,
 # the default; no secrets touched beyond none, no spend), SUBMIT one
-# Message-Batches round, or COLLECT an ended round into research_records.
+# Message-Batches round, COLLECT an ended round into research_records, or
+# EXPORT any batch on demand.
 # Everything is resumable by batch_id: the batch record and the append-only
 # __submission__ docs live in Firestore, so submit and collect can run on
 # different days from different runners.
@@ -22,6 +23,13 @@
 #
 # Secret values are only ever passed as env into the harness process; the
 # harness never prints them, and GitHub masks them in logs regardless.
+#
+# Export protocol (2026-10-11): a batch is not finished until its export is
+# in the repo. Every successful collect — and every `export` dispatch —
+# rewrites research-data/<batch_id>/<batch_id>.jsonl + .csv from Firestore
+# and commits them to the `research-data` branch (never main; created as an
+# orphan branch on first use, so it carries only research-data/ files). No
+# change → no commit.
 
 name: Research batch
 
@@ -29,7 +37,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'dry-run prices the config (no spend, nothing written); submit sends one batch round; collect writes an ended round into research_records'
+        description: 'dry-run prices the config (no spend, nothing written); submit sends one batch round; collect writes an ended round into research_records and exports it; export re-exports any batch to the research-data branch'
         type: choice
         required: true
         default: dry-run
@@ -37,16 +45,21 @@ on:
           - dry-run
           - submit
           - collect
+          - export
       config:
-        description: 'Repo-relative batch config path (e.g. scripts/research/examples/e2-toy.batch.json)'
+        description: 'dry-run/submit/collect: repo-relative batch config path (e.g. scripts/research/examples/e2-toy.batch.json)'
         type: string
-        required: true
+        required: false
       budget_cap:
-        description: 'Budget cap in USD — the round refuses to exceed it (overrides the config value)'
+        description: 'dry-run/submit/collect: budget cap in USD — the round refuses to exceed it (overrides the config value)'
         type: string
-        required: true
+        required: false
+      batch_id:
+        description: 'export only: the batch id to export (e.g. e2-toy-001)'
+        type: string
+        required: false
       operator:
-        description: 'Who is launching this (provenance). Empty = your GitHub username + run id'
+        description: 'Who is launching this (provenance; also named in export commits). Empty = your GitHub username + run id'
         type: string
         required: false
       anthropic_batch_id:
@@ -54,24 +67,26 @@ on:
         type: string
         required: false
 
-# One round at a time per config — a second dispatch queues instead of
-# racing the first for the same submission index.
+# One round at a time per config (or per batch for exports) — a second
+# dispatch queues instead of racing the first for the same submission index.
 concurrency:
-  group: research-batch-${{ inputs.config }}
+  group: research-batch-${{ inputs.config || inputs.batch_id }}
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  # write: export commits go to the research-data branch.
+  contents: write
 
 jobs:
   run:
-    name: ${{ inputs.mode }} — ${{ inputs.config }}
+    name: ${{ inputs.mode }} — ${{ inputs.config || inputs.batch_id }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       MODE: ${{ inputs.mode }}
       CONFIG: ${{ inputs.config }}
       BUDGET_CAP: ${{ inputs.budget_cap }}
+      BATCH_ID_INPUT: ${{ inputs.batch_id }}
       OPERATOR_INPUT: ${{ inputs.operator }}
       ANTHROPIC_BATCH_ID: ${{ inputs.anthropic_batch_id }}
     steps:
@@ -82,6 +97,18 @@ jobs:
           cache: npm
       - run: npm ci
 
+      - name: Check inputs for this mode
+        run: |
+          if [ "$MODE" = "export" ]; then
+            if ! printf '%s' "$BATCH_ID_INPUT" | grep -Eq '^[A-Za-z0-9_-][A-Za-z0-9._-]*$'; then
+              echo "::error::export needs batch_id (letters, digits, . _ - only)"; exit 1
+            fi
+          else
+            [ -n "$CONFIG" ] || { echo "::error::$MODE needs config"; exit 1; }
+            [ -f "$CONFIG" ] || { echo "::error::config $CONFIG not found in the repo"; exit 1; }
+            [ -n "$BUDGET_CAP" ] || { echo "::error::$MODE needs budget_cap"; exit 1; }
+          fi
+
       - name: Check required secrets are configured
         if: inputs.mode != 'dry-run'
         env:
@@ -91,8 +118,10 @@ jobs:
           RESEARCH_USER_EMAIL: ${{ secrets.RESEARCH_USER_EMAIL }}
           RESEARCH_USER_PASSWORD: ${{ secrets.RESEARCH_USER_PASSWORD }}
         run: |
+          required="FIREBASE_API_KEY FIREBASE_PROJECT_ID RESEARCH_USER_EMAIL RESEARCH_USER_PASSWORD"
+          [ "$MODE" = "export" ] || required="ANTHROPIC_API_KEY $required"
           missing=0
-          for name in ANTHROPIC_API_KEY FIREBASE_API_KEY FIREBASE_PROJECT_ID RESEARCH_USER_EMAIL RESEARCH_USER_PASSWORD; do
+          for name in $required; do
             if [ -z "${!name}" ]; then
               echo "::error::repository secret $name is not set (see the header of .github/workflows/research-batch.yml)"
               missing=1
@@ -119,11 +148,62 @@ jobs:
                 --operator "$OPERATOR" --budget-cap "$BUDGET_CAP"
               ;;
             collect)
+              # Collect also writes research-data/<batch_id>/ (export protocol).
               npm run research:run -- --config "$CONFIG" --collect \
                 --operator "$OPERATOR" --budget-cap "$BUDGET_CAP" \
                 ${ANTHROPIC_BATCH_ID:+--anthropic-batch-id "$ANTHROPIC_BATCH_ID"}
+              ;;
+            export)
+              npm run research:export -- --batch "$BATCH_ID_INPUT" --research-data
               ;;
             *)
               echo "::error::unknown mode $MODE" && exit 1
               ;;
           esac
+
+      - name: Commit export to the research-data branch
+        if: inputs.mode == 'collect' || inputs.mode == 'export'
+        run: |
+          set -euo pipefail
+          OPERATOR="${OPERATOR_INPUT:-$GITHUB_ACTOR (gh-run:$GITHUB_RUN_ID)}"
+          if [ "$MODE" = "export" ]; then
+            BATCH="$BATCH_ID_INPUT"
+          else
+            BATCH="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).batch_id)' "$CONFIG")"
+          fi
+          printf '%s' "$BATCH" | grep -Eq '^[A-Za-z0-9_-][A-Za-z0-9._-]*$' || { echo "::error::unsafe batch id $BATCH"; exit 1; }
+          SRC="research-data/$BATCH"
+          [ -f "$SRC/$BATCH.jsonl" ] && [ -f "$SRC/$BATCH.csv" ] || { echo "::error::export files missing in $SRC"; exit 1; }
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          WT="$RUNNER_TEMP/research-data"
+          if git ls-remote --exit-code --heads origin research-data >/dev/null; then
+            git fetch --no-tags --depth=1 origin research-data
+            git worktree add --detach "$WT" FETCH_HEAD
+          else
+            # First use: an orphan branch that carries only research-data/ files.
+            git worktree add --orphan -b research-data "$WT"
+          fi
+          rm -rf "$WT/$SRC"
+          mkdir -p "$WT/$SRC"
+          cp "$SRC/$BATCH.jsonl" "$SRC/$BATCH.csv" "$WT/$SRC/"
+          cd "$WT"
+          git add -A "$SRC"
+          if git diff --cached --quiet; then
+            echo "research-data/$BATCH unchanged — no commit"
+            exit 0
+          fi
+          COUNT="$(grep -c '' "$SRC/$BATCH.jsonl")"
+          git commit -q -m "research-data: $BATCH — $COUNT records" -m "Exported by $OPERATOR (${MODE}, run $GITHUB_RUN_ID)."
+          # Another batch's export may have landed meanwhile: rebase onto it
+          # (different folders never conflict) and retry.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:refs/heads/research-data; then
+              echo "committed research-data/$BATCH ($COUNT records) to the research-data branch"
+              exit 0
+            fi
+            git fetch --no-tags origin research-data
+            git rebase FETCH_HEAD
+          done
+          echo "::error::could not push the export after 3 attempts"; exit 1
