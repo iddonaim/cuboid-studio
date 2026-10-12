@@ -33,3 +33,9 @@ Freeze record for Phase 0 BASELINE-1 (ruling: Iddo, 2026-10-11, option A — E2 
 | Encode photos (full-resolution sha256) | `57fa3269…99208`, `e139eef9…a0c83`, `9be964de…63550` (primary), `1f717898…cdb5` — full values in the pin file |
 
 Every record of `e2-base-001` carries `baseline_tag: "BASELINE-1"`, `composition_ref: "NSCSM9TXSN0KhhvnhGkJ"`, `target_cube: null` and the site-context hash above; the batch record in `research_batches/e2-base-001` carries the full manifest. Exports: `research-data/e2-base-001/`.
+
+## Note: records stamped with a different commit (round 2b)
+
+The 1,000 records written by the collect of round 2b (Anthropic batch `msgbatch_01Qw4Ut3Yp2A6dFWjspkGzJC`, collect run https://github.com/iddonaim/cuboid-studio/actions/runs/38156374175) carry `app_commit: "157cf49a255c0259efd18313e77605c24d19dc1d"` instead of `721c276…`. That collect was dispatched from `main` after iddonaim/cuboid-studio#164 merged.
+
+`157cf49` differs from `721c276` only in `vercel.json` (one file: a Vercel setting that stops deployments of the `research-data` branch). The research harness does not read `vercel.json` — nothing under `scripts/research/` or `src/research/` or the research workflow references it — so all 4,950 records of `e2-base-001` come from identical harness code, prompts, lexicons, rules and grammar. The regime hashes above are unchanged.
