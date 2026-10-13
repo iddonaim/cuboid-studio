@@ -39,3 +39,33 @@ Every record of `e2-base-001` carries `baseline_tag: "BASELINE-1"`, `composition
 The 1,000 records written by the collect of round 2b (Anthropic batch `msgbatch_01Qw4Ut3Yp2A6dFWjspkGzJC`, collect run https://github.com/iddonaim/cuboid-studio/actions/runs/38156374175) carry `app_commit: "157cf49a255c0259efd18313e77605c24d19dc1d"` instead of `721c276…`. That collect was dispatched from `main` after iddonaim/cuboid-studio#164 merged.
 
 `157cf49` differs from `721c276` only in `vercel.json` (one file: a Vercel setting that stops deployments of the `research-data` branch). The research harness does not read `vercel.json` — nothing under `scripts/research/` or `src/research/` or the research workflow references it — so all 4,950 records of `e2-base-001` come from identical harness code, prompts, lexicons, rules and grammar. The regime hashes above are unchanged.
+
+## Completion (2026-10-12)
+
+`e2-base-001` is complete: 4,950 of 4,950 records written (450 cell (a), 4,500 cell (c)), all unique.
+
+| | |
+|---|---|
+| Records | 4,950 (450 (a), 4,500 (c)) |
+| Failures | 0 — every record `parse_status: "ok"` |
+| Retries | 4 records needed one retry each; all succeeded on it |
+| Cost | ≈ $52.08, from billed token usage in the export (batch rates, 50% discount, caching as billed); dry-run estimate was $43.79 best / $101.78 worst; cap $120 |
+| Code | 3,950 records `721c276`; 1,000 records (round 2b) `157cf49` — see the note above. Rounds 2c onward were dispatched from tag `BASELINE-1` |
+| Final export | `research-data` commit `9abcc59` |
+
+| Round | Cell | Anthropic batch id | Requests |
+|---|---|---|---|
+| 1 | a | `msgbatch_01U9orY89NvCYxkDeSujKE2D` | 450 |
+| 2a | c | `msgbatch_01KUuZakBJsxuJypcjKiB5Xb` | 1,243 |
+| 2b | c | `msgbatch_01Qw4Ut3Yp2A6dFWjspkGzJC` | 1,000 |
+| 2c | c | `msgbatch_015ftXYjyUk4AiSE4qLriVPE` | 555 |
+| 2d | c | `msgbatch_01453uNuJTBbvLZibhfca4tr` | 373 |
+| 2e | c | `msgbatch_01PFXmsoznHnuixbeQVUU269` | 1,212 |
+| 2f | c | `msgbatch_017DaAYwg2EN4em4drBUz6WT` | 117 |
+
+Round sizes vary because each round is capped at 200 MB of requests; the cap does not affect what is sent per request.
+
+Exports:
+- CSV: https://github.com/iddonaim/cuboid-studio/blob/research-data/research-data/e2-base-001/e2-base-001.csv
+- JSONL (gzip): https://github.com/iddonaim/cuboid-studio/blob/research-data/research-data/e2-base-001/e2-base-001.jsonl.gz
+- Tag: https://github.com/iddonaim/cuboid-studio/releases/tag/BASELINE-1
