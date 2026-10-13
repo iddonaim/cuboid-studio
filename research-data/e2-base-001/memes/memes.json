@@ -1,0 +1,122 @@
+{
+  "batch_id": "e2-base-001",
+  "purpose": "BASELINE-1 judgment pass",
+  "source": "firestore memes raw collection via REST listDocuments (the harness corpus loader, scripts/research/lib/corpus.ts)",
+  "notes": [
+    "hashed_fields is exactly the input to meme_content_hash: every stored field except likes, hidden, timestamp. Each meme_content_hash matches the value stored in the e2-base-001 records, so the documents are unchanged since the run.",
+    "None of the five documents has a title or caption field; title_or_caption is null. 6eJtl5NTlqX5E9z9bdgk carries its text in description, which the language labeller does not read, hence language none.",
+    "language is the per-meme label recorded in the e2-base-001 records (language_from: meme-script)."
+  ],
+  "memes": [
+    {
+      "id": "gpgl6TeUGDS0MaR8xKVl",
+      "image_file": "gpgl6TeUGDS0MaR8xKVl.jpg",
+      "title_or_caption": null,
+      "hashed_fields": {
+        "createdAt": "2026-01-31T17:26:55.525Z",
+        "description": null,
+        "imageUrl": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme-1769880413525-u7sxoobqu.jpg?alt=media&token=8e511e4f-779f-41a3-aa44-e76aa2194956",
+        "location": null,
+        "memeText": "כשהאדריכל משחק טטריס בשירותים",
+        "originSource": "link",
+        "tags": [],
+        "username": null
+      },
+      "meme_content_hash": "167b733299a0cd16efaf5ea396dc7087fee505e96d9ab8b715a82ef512a9c347",
+      "language": "hebrew",
+      "image_url": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme-1769880413525-u7sxoobqu.jpg?alt=media&token=8e511e4f-779f-41a3-aa44-e76aa2194956",
+      "image_sha256": "f14951a6aa6e582f39a596408d488b1c56fae7ab9b74e0a191c819caa8a37fbd",
+      "image_bytes": 181002
+    },
+    {
+      "id": "meme_1766522645261_vftyfefid",
+      "image_file": "meme_1766522645261_vftyfefid.jpg",
+      "title_or_caption": null,
+      "hashed_fields": {
+        "bottomText": "זה לא על המושב, אז מותר",
+        "category": "ישיבה",
+        "createdAt": "2025-12-23T20:44:10.151Z",
+        "id": "meme_1766522645261_vftyfefid",
+        "imageUrl": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme_1766522645261_vftyfefid.jpg?alt=media&token=30eabbb7-8447-4fed-83c4-2119538730b1",
+        "location": "קו 54",
+        "topText": "ככה יותר נוח לברכיים"
+      },
+      "meme_content_hash": "07ff041629d458019d04cd14144651585ee8c6ade26f73059044e408a01dcfee",
+      "language": "hebrew",
+      "image_url": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme_1766522645261_vftyfefid.jpg?alt=media&token=30eabbb7-8447-4fed-83c4-2119538730b1",
+      "image_sha256": "a033659303e020ebd4620206e72b8605ff75e850d261afff3f649d984e9304ca",
+      "image_bytes": 469942
+    },
+    {
+      "id": "5dSdLtmjRtgl0BNkAB9i",
+      "image_file": "5dSdLtmjRtgl0BNkAB9i.jpg",
+      "title_or_caption": null,
+      "hashed_fields": {
+        "createdAt": "2026-06-07T11:35:50.080Z",
+        "description": null,
+        "imageUrl": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme-1780832147638-8oggilmz9.jpg?alt=media&token=cb930c6f-6605-4f18-b0a9-698028dd9607",
+        "location": null,
+        "memeText": "Junkspace, Koolhaas says",
+        "originSource": "link",
+        "tags": [
+          "נוף עירוני",
+          "מודרניזם",
+          "אדריכלות"
+        ],
+        "username": "אלכסנדר הגדול"
+      },
+      "meme_content_hash": "7e1f9b8a9face19de9a2fbe398b915c95317789a9bf8aa9225560f514f0e8010",
+      "language": "latin",
+      "image_url": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme-1780832147638-8oggilmz9.jpg?alt=media&token=cb930c6f-6605-4f18-b0a9-698028dd9607",
+      "image_sha256": "6a6b0055e93e9633b17e6209dce8e4827d45e7488f69bcfd4b1192769b16d348",
+      "image_bytes": 101654
+    },
+    {
+      "id": "6eJtl5NTlqX5E9z9bdgk",
+      "image_file": "6eJtl5NTlqX5E9z9bdgk.jpg",
+      "title_or_caption": null,
+      "hashed_fields": {
+        "createdAt": "2026-01-31T17:21:30.676Z",
+        "description": "אני אחרי שבוע סטודיו ",
+        "imageUrl": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme-1769880088257-el0lvss6v.jpg?alt=media&token=d08a32ff-108a-4ee1-a940-f6edbecce4da",
+        "location": null,
+        "memeText": null,
+        "originSource": "link",
+        "tags": [],
+        "username": null
+      },
+      "meme_content_hash": "5a9ae56f7cffdd2ce007dbb231786fda9334a17bb718da8a62167c1390f26130",
+      "language": "none",
+      "image_url": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme-1769880088257-el0lvss6v.jpg?alt=media&token=d08a32ff-108a-4ee1-a940-f6edbecce4da",
+      "image_sha256": "5aafbbf0982c661b5479311b17b38eff942be3acc0216e72ae6cd32385f7bd70",
+      "image_bytes": 218813
+    },
+    {
+      "id": "meme_1766758846536_xhz7mhovx",
+      "image_file": "meme_1766758846536_xhz7mhovx.jpg",
+      "title_or_caption": null,
+      "hashed_fields": {
+        "bottomText": "האם זה באוהאוס?",
+        "createdAt": "2025-12-26T14:20:49.544Z",
+        "id": "meme_1766758846536_xhz7mhovx",
+        "imageUrl": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme_1766758846536_xhz7mhovx.jpg?alt=media&token=47140cc9-b254-49b6-b725-f30d2ddda095",
+        "isTemplate": true,
+        "location": "",
+        "tags": [
+          "אורבני"
+        ],
+        "templateId": "pigeon",
+        "textColor": "white",
+        "textPositions": null,
+        "textSize": 40,
+        "topText": "אני מסתכל על בניין רנדומלי בתל אביב",
+        "username": "ג׳וני"
+      },
+      "meme_content_hash": "36ccbdbdc437e5ccd60ba946558e36bf8a16da47072e4ea2b81fbd989c6e26f4",
+      "language": "hebrew",
+      "image_url": "https://firebasestorage.googleapis.com/v0/b/adaptivememeticarchitect-2776f.firebasestorage.app/o/memes%2Fmeme_1766758846536_xhz7mhovx.jpg?alt=media&token=47140cc9-b254-49b6-b725-f30d2ddda095",
+      "image_sha256": "3069ddd69674d1a274200b654e460f62331feb0f8ff1506ea90bf6707a58f118",
+      "image_bytes": 86373
+    }
+  ]
+}
